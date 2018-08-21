@@ -1,14 +1,14 @@
 #ifndef CALIBRATION_WRAPPER_H_
 #define CALIBRATION_WRAPPER_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "calibration_settings.h"
 
 #include <libcaer/events/frame.h>
 #include <libcaer/events/polarity.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct Calibration Calibration;
 
