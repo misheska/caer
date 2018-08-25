@@ -154,7 +154,7 @@ void caerMainloopRun(void) {
 	modulesDefaultDir.append(MODULES_DIRECTORY, boost::filesystem::path::codecvt());
 
 	sshsNodeCreate(modulesNode, "modulesSearchPath", modulesDefaultDir.string(), 1, 8 * PATH_MAX, SSHS_FLAGS_NORMAL,
-		"Directories to search loadable modules in, separated by ':'.");
+		"Directories to search loadable modules in, separated by '|'.");
 
 	sshsNodeCreate(modulesNode, "modulesListOptions", "", 0, 10000, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 		"List of loadable modules.");
