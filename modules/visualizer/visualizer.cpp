@@ -4,6 +4,7 @@
 #include "caer-sdk/mainloop.h"
 #include "ext/fonts/LiberationSans-Bold.h"
 #include "ext/sfml/helpers.hpp"
+#include "ext/sfml/line.hpp"
 #include "modules/statistics/statistics.h"
 
 #include "visualizer_handlers.hpp"
@@ -741,6 +742,20 @@ repeat:
 
 	// Render content to display.
 	if (drewSomething) {
+		// Render visual area border.
+		sfml::Line borderX(
+			sf::Vector2f(0, state->renderSizeY * state->renderZoomFactor.load(std::memory_order_relaxed)),
+			sf::Vector2f(state->renderSizeX * state->renderZoomFactor.load(std::memory_order_relaxed),
+				state->renderSizeY * state->renderZoomFactor.load(std::memory_order_relaxed)),
+			2.0f, sf::Color::Blue);
+		sfml::Line borderY(
+			sf::Vector2f(state->renderSizeX * state->renderZoomFactor.load(std::memory_order_relaxed), 0),
+			sf::Vector2f(state->renderSizeX * state->renderZoomFactor.load(std::memory_order_relaxed),
+				state->renderSizeY * state->renderZoomFactor.load(std::memory_order_relaxed)),
+			2.0f, sf::Color::Blue);
+		state->renderWindow->draw(borderX);
+		state->renderWindow->draw(borderY);
+
 		// Render statistics string.
 		// TODO: implement for OpenGL 3.3 too, using some text rendering library.
 		bool doStatistics = (state->showStatistics && state->font != nullptr && !state->renderer->needsOpenGL3);
