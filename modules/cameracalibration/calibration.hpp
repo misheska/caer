@@ -2,16 +2,17 @@
 #define CALIBRATION_HPP_
 
 #include "calibration_settings.h"
-#include <iostream>
-#include <sstream>
 #include <cstdio>
 #include <ctime>
+#include <iostream>
+#include <sstream>
 
 #include <libcaer/events/frame.h>
 #include <libcaer/events/polarity.h>
 
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
+#include <opencv2/core/core_c.h>
 #include <opencv2/core/utility.hpp>
 #include <opencv2/imgproc.hpp>
 
