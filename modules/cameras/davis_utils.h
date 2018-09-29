@@ -89,8 +89,8 @@ static inline const char *chipIDToName(int16_t chipID, bool withEndSlash) {
 			return ((withEndSlash) ? ("DAVIS640/") : ("DAVIS640"));
 			break;
 
-		case 7: // TODO: finalize name of this chip type.
-			return ((withEndSlash) ? ("DAVIS640het/") : ("DAVIS640het"));
+		case 7:
+			return ((withEndSlash) ? ("DAVIS640H/") : ("DAVIS640H"));
 			break;
 
 		case 8: // PixelParade.
@@ -98,7 +98,7 @@ static inline const char *chipIDToName(int16_t chipID, bool withEndSlash) {
 			break;
 
 		case 9: // DAVIS346Cbsi -> only BSI chip.
-			return ((withEndSlash) ? ("DAVIS346bsi/") : ("DAVIS346bsi"));
+			return ((withEndSlash) ? ("DAVIS346BSI/") : ("DAVIS346BSI"));
 			break;
 	}
 
