@@ -1,14 +1,15 @@
 #ifndef MODULES_INI_DAVIS_UTILS_H_
 #define MODULES_INI_DAVIS_UTILS_H_
 
-#include "caer-sdk/mainloop.h"
-
 #include <libcaer/events/frame.h>
 #include <libcaer/events/imu6.h>
 #include <libcaer/events/packetContainer.h>
 #include <libcaer/events/polarity.h>
 #include <libcaer/events/special.h>
+
 #include <libcaer/devices/davis.h>
+
+#include "caer-sdk/mainloop.h"
 
 static void caerInputDAVISCommonSystemConfigInit(sshsNode moduleNode);
 static void caerInputDAVISCommonRun(
@@ -243,7 +244,7 @@ static void createDefaultBiasConfiguration(caerModuleData moduleData, const char
 		createShiftedSourceBiasSetting(biasNode, "SSN", 1, 33, "ShiftedSource", "SplitGate");
 	}
 
-	if (IS_DAVISRGB(chipID)) {
+	if (IS_DAVIS640H(chipID)) {
 		createVDACBiasSetting(biasNode, "ApsCas", 21, 4);
 		createVDACBiasSetting(biasNode, "OVG1Lo", 63, 4);
 		createVDACBiasSetting(biasNode, "OVG2Lo", 0, 0);
@@ -314,13 +315,13 @@ static void createDefaultBiasConfiguration(caerModuleData moduleData, const char
 	}
 
 	if (IS_DAVIS128(chipID) || IS_DAVIS208(chipID) || IS_DAVIS346(chipID) || IS_DAVIS640(chipID)
-		|| IS_DAVISRGB(chipID)) {
+		|| IS_DAVIS640H(chipID)) {
 		sshsNodeCreateBool(chipNode, "SelectGrayCounter", 1, SSHS_FLAGS_NORMAL,
 			"Select which gray counter to use with the internal ADC: '0' means the external gray counter "
 			"is used, which has to be supplied off-chip. '1' means the on-chip gray counter is used instead.");
 	}
 
-	if (IS_DAVIS346(chipID) || IS_DAVIS640(chipID) || IS_DAVISRGB(chipID)) {
+	if (IS_DAVIS346(chipID) || IS_DAVIS640(chipID) || IS_DAVIS640H(chipID)) {
 		sshsNodeCreateBool(chipNode, "TestADC", false, SSHS_FLAGS_NORMAL,
 			"Test ADC functionality: if true, the ADC takes its input voltage not from the pixel, but from the "
 			"VDAC 'AdcTestVoltage'. If false, the voltage comes from the pixels.");
@@ -336,7 +337,7 @@ static void createDefaultBiasConfiguration(caerModuleData moduleData, const char
 		sshsNodeCreateBool(chipNode, "SelectHighPass", false, SSHS_FLAGS_NORMAL, "Enable HighPass pixels.");
 	}
 
-	if (IS_DAVISRGB(chipID)) {
+	if (IS_DAVIS640H(chipID)) {
 		sshsNodeCreateBool(chipNode, "AdjustOVG1Lo", true, SSHS_FLAGS_NORMAL, "Adjust OVG1 Low.");
 		sshsNodeCreateBool(chipNode, "AdjustOVG2Lo", false, SSHS_FLAGS_NORMAL, "Adjust OVG2 Low.");
 		sshsNodeCreateBool(chipNode, "AdjustTX2OVG2Hi", false, SSHS_FLAGS_NORMAL, "Adjust TX2OVG2Hi.");
@@ -488,7 +489,7 @@ static void createDefaultLogicConfiguration(
 		"Enable automatic exposure control, to react to changes in lighting conditions.");
 
 	// Not supported on DAVIS RGB.
-	if (!IS_DAVISRGB(devInfo->chipID)) {
+	if (!IS_DAVIS640H(devInfo->chipID)) {
 		sshsNodeCreateShort(apsNode, "ResetSettle", devInfo->adcClock, 0, I16T(devInfo->adcClock * 2),
 			SSHS_FLAGS_NORMAL, "Set reset settle time (in cycles).");
 		sshsNodeCreateShort(apsNode, "NullSettle", (devInfo->adcClock / 10), 0, devInfo->adcClock, SSHS_FLAGS_NORMAL,
@@ -545,7 +546,7 @@ static void createDefaultLogicConfiguration(
 	}
 
 	// DAVIS RGB has additional timing counters.
-	if (IS_DAVISRGB(devInfo->chipID)) {
+	if (IS_DAVIS640H(devInfo->chipID)) {
 		sshsNodeCreateInt(apsNode, "TransferTime", 1500, 0, I32T(devInfo->adcClock * 2048), SSHS_FLAGS_NORMAL,
 			"Transfer time counter (3 in GS, 1 in RS, in cycles).");
 		sshsNodeCreateShort(apsNode, "RSFDSettleTime", 1000, 0, I16T(devInfo->adcClock * 128), SSHS_FLAGS_NORMAL,
@@ -839,7 +840,7 @@ static void biasConfigSend(sshsNode node, caerModuleData moduleData, struct caer
 			generateShiftedSourceBiasParent(node, "SSN"));
 	}
 
-	if (IS_DAVISRGB(devInfo->chipID)) {
+	if (IS_DAVIS640H(devInfo->chipID)) {
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_BIAS, DAVISRGB_CONFIG_BIAS_APSCAS,
 			generateVDACBiasParent(node, "ApsCas"));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_BIAS, DAVISRGB_CONFIG_BIAS_OVG1LO,
@@ -1150,7 +1151,7 @@ static void biasConfigListener(sshsNode node, void *userData, enum sshs_node_att
 			}
 		}
 
-		if (IS_DAVISRGB(devInfo.chipID)) {
+		if (IS_DAVIS640H(devInfo.chipID)) {
 			if (caerStrEquals(nodeName, "ApsCas")) {
 				caerDeviceConfigSet(
 					moduleData->moduleState, DAVIS_CONFIG_BIAS, DAVISRGB_CONFIG_BIAS_APSCAS, generateVDACBias(node));
@@ -1327,12 +1328,12 @@ static void chipConfigSend(sshsNode node, caerModuleData moduleData, struct caer
 	}
 
 	if (IS_DAVIS128(devInfo->chipID) || IS_DAVIS208(devInfo->chipID) || IS_DAVIS346(devInfo->chipID)
-		|| IS_DAVIS640(devInfo->chipID) || IS_DAVISRGB(devInfo->chipID)) {
+		|| IS_DAVIS640(devInfo->chipID) || IS_DAVIS640H(devInfo->chipID)) {
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_SELECTGRAYCOUNTER,
 			sshsNodeGetBool(node, "SelectGrayCounter"));
 	}
 
-	if (IS_DAVIS346(devInfo->chipID) || IS_DAVIS640(devInfo->chipID) || IS_DAVISRGB(devInfo->chipID)) {
+	if (IS_DAVIS346(devInfo->chipID) || IS_DAVIS640(devInfo->chipID) || IS_DAVIS640H(devInfo->chipID)) {
 		caerDeviceConfigSet(
 			moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS346_CONFIG_CHIP_TESTADC, sshsNodeGetBool(node, "TestADC"));
 	}
@@ -1350,7 +1351,7 @@ static void chipConfigSend(sshsNode node, caerModuleData moduleData, struct caer
 			sshsNodeGetBool(node, "SelectHighPass"));
 	}
 
-	if (IS_DAVISRGB(devInfo->chipID)) {
+	if (IS_DAVIS640H(devInfo->chipID)) {
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVISRGB_CONFIG_CHIP_ADJUSTOVG1LO,
 			sshsNodeGetBool(node, "AdjustOVG1Lo"));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVISRGB_CONFIG_CHIP_ADJUSTOVG2LO,
@@ -1426,12 +1427,12 @@ static void chipConfigListener(sshsNode node, void *userData, enum sshs_node_att
 				changeValue.boolean);
 		}
 		else if ((IS_DAVIS128(devInfo.chipID) || IS_DAVIS208(devInfo.chipID) || IS_DAVIS346(devInfo.chipID)
-					 || IS_DAVIS640(devInfo.chipID) || IS_DAVISRGB(devInfo.chipID))
+					 || IS_DAVIS640(devInfo.chipID) || IS_DAVIS640H(devInfo.chipID))
 				 && changeType == SSHS_BOOL && caerStrEquals(changeKey, "SelectGrayCounter")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_SELECTGRAYCOUNTER,
 				changeValue.boolean);
 		}
-		else if ((IS_DAVIS346(devInfo.chipID) || IS_DAVIS640(devInfo.chipID) || IS_DAVISRGB(devInfo.chipID))
+		else if ((IS_DAVIS346(devInfo.chipID) || IS_DAVIS640(devInfo.chipID) || IS_DAVIS640H(devInfo.chipID))
 				 && changeType == SSHS_BOOL && caerStrEquals(changeKey, "TestADC")) {
 			caerDeviceConfigSet(
 				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS346_CONFIG_CHIP_TESTADC, changeValue.boolean);
@@ -1460,7 +1461,7 @@ static void chipConfigListener(sshsNode node, void *userData, enum sshs_node_att
 			}
 		}
 
-		if (IS_DAVISRGB(devInfo.chipID)) {
+		if (IS_DAVIS640H(devInfo.chipID)) {
 			if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "AdjustOVG1Lo")) {
 				caerDeviceConfigSet(
 					moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVISRGB_CONFIG_CHIP_ADJUSTOVG1LO, changeValue.boolean);
@@ -1794,7 +1795,7 @@ static void apsConfigSend(sshsNode node, caerModuleData moduleData, struct caer_
 		sshsNodeGetBool(node, "AutoExposure"));
 
 	// Not supported on DAVIS RGB.
-	if (!IS_DAVISRGB(devInfo->chipID)) {
+	if (!IS_DAVIS640H(devInfo->chipID)) {
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_RESET_SETTLE,
 			U32T(sshsNodeGetShort(node, "ResetSettle")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_NULL_SETTLE,
@@ -1855,7 +1856,7 @@ static void apsConfigSend(sshsNode node, caerModuleData moduleData, struct caer_
 	}
 
 	// DAVIS RGB extra timing support.
-	if (IS_DAVISRGB(devInfo->chipID)) {
+	if (IS_DAVIS640H(devInfo->chipID)) {
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVISRGB_CONFIG_APS_TRANSFER,
 			U32T(sshsNodeGetInt(node, "TransferTime")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVISRGB_CONFIG_APS_RSFDSETTLE,
