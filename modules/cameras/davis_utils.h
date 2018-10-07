@@ -36,7 +36,7 @@ static void dvsConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 static void apsConfigSend(sshsNode node, caerModuleData moduleData, struct caer_davis_info *devInfo);
 static void apsConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
 	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
-static void imuConfigSend(sshsNode node, caerModuleData moduleData);
+static void imuConfigSend(sshsNode node, caerModuleData moduleData, struct caer_davis_info *devInfo);
 static void imuConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
 	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
 static void extInputConfigSend(sshsNode node, caerModuleData moduleData, struct caer_davis_info *devInfo);
@@ -582,19 +582,30 @@ static void createDefaultLogicConfiguration(
 	}
 
 	// Subsystem 3: IMU
-	sshsNode imuNode = sshsGetRelativeNode(deviceConfigNode, "imu/");
+	if (devInfo->imuType != 0) {
+		sshsNode imuNode = sshsGetRelativeNode(deviceConfigNode, "imu/");
 
-	sshsNodeCreateBool(imuNode, "RunAccel", true, SSHS_FLAGS_NORMAL, "Enable IMU accelerometer.");
-	sshsNodeCreateBool(imuNode, "RunGyro", true, SSHS_FLAGS_NORMAL, "Enable IMU gyroscope.");
-	sshsNodeCreateBool(imuNode, "RunTemp", true, SSHS_FLAGS_NORMAL, "Enable IMU temperature sensor.");
-	sshsNodeCreateShort(imuNode, "SampleRateDivider", 0, 0, 255, SSHS_FLAGS_NORMAL, "Sample-rate divider value.");
-	sshsNodeCreateByte(imuNode, "AccelDLPF", 1, 0, 7, SSHS_FLAGS_NORMAL,
-		"Accelerometer digital low-pass filter configuration (on InvenSense MPU-9250, also for gyroscope on InvenSense "
-		"MPU-6050/6150).");
-	sshsNodeCreateByte(imuNode, "AccelFullScale", 1, 0, 3, SSHS_FLAGS_NORMAL, "Accelerometer scale configuration.");
-	sshsNodeCreateByte(imuNode, "GyroDLPF", 1, 0, 7, SSHS_FLAGS_NORMAL,
-		"Gyroscope digital low-pass filter configuration (on InvenSense MPU-9250 only).");
-	sshsNodeCreateByte(imuNode, "GyroFullScale", 1, 0, 3, SSHS_FLAGS_NORMAL, "Gyroscope scale configuration.");
+		sshsNodeCreateBool(imuNode, "RunAccel", true, SSHS_FLAGS_NORMAL, "Enable IMU accelerometer.");
+		sshsNodeCreateBool(imuNode, "RunGyro", true, SSHS_FLAGS_NORMAL, "Enable IMU gyroscope.");
+		sshsNodeCreateBool(imuNode, "RunTemp", true, SSHS_FLAGS_NORMAL, "Enable IMU temperature sensor.");
+		sshsNodeCreateShort(imuNode, "SampleRateDivider", 0, 0, 255, SSHS_FLAGS_NORMAL, "Sample-rate divider value.");
+
+		if (devInfo->imuType == 2) {
+			// InvenSense MPU 9250 IMU.
+			sshsNodeCreateByte(imuNode, "AccelDLPF", 1, 0, 7, SSHS_FLAGS_NORMAL,
+				"Accelerometer digital low-pass filter configuration.");
+			sshsNodeCreateByte(
+				imuNode, "GyroDLPF", 1, 0, 7, SSHS_FLAGS_NORMAL, "Gyroscope digital low-pass filter configuration.");
+		}
+		else {
+			// InvenSense MPU 6050/6150 IMU.
+			sshsNodeCreateByte(imuNode, "DigitalLowPassFilter", 1, 0, 7, SSHS_FLAGS_NORMAL,
+				"Accelerometer/Gyroscope digital low-pass filter configuration.");
+		}
+
+		sshsNodeCreateByte(imuNode, "AccelFullScale", 1, 0, 3, SSHS_FLAGS_NORMAL, "Accelerometer scale configuration.");
+		sshsNodeCreateByte(imuNode, "GyroFullScale", 1, 0, 3, SSHS_FLAGS_NORMAL, "Gyroscope scale configuration.");
+	}
 
 	// Subsystem 4: External Input
 	sshsNode extNode = sshsGetRelativeNode(deviceConfigNode, "externalInput/");
@@ -1848,24 +1859,34 @@ static void apsConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 	}
 }
 
-static void imuConfigSend(sshsNode node, caerModuleData moduleData) {
-	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_SAMPLE_RATE_DIVIDER,
-		U32T(sshsNodeGetShort(node, "SampleRateDivider")));
-	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_ACCEL_DLPF,
-		U32T(sshsNodeGetByte(node, "AccelDLPF")));
-	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_ACCEL_FULL_SCALE,
-		U32T(sshsNodeGetByte(node, "AccelFullScale")));
-	caerDeviceConfigSet(
-		moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_GYRO_DLPF, U32T(sshsNodeGetByte(node, "GyroDLPF")));
-	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_GYRO_FULL_SCALE,
-		U32T(sshsNodeGetByte(node, "GyroFullScale")));
+static void imuConfigSend(sshsNode node, caerModuleData moduleData, struct caer_davis_info *devInfo) {
+	if (devInfo->imuType != 0) {
+		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_SAMPLE_RATE_DIVIDER,
+			U32T(sshsNodeGetShort(node, "SampleRateDivider")));
 
-	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_RUN_ACCELEROMETER,
-		sshsNodeGetBool(node, "RunAccel"));
-	caerDeviceConfigSet(
-		moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_RUN_GYROSCOPE, sshsNodeGetBool(node, "RunGyro"));
-	caerDeviceConfigSet(
-		moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_RUN_TEMPERATURE, sshsNodeGetBool(node, "RunTemp"));
+		if (devInfo->imuType == 2) {
+			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_ACCEL_DLPF,
+				U32T(sshsNodeGetByte(node, "AccelDLPF")));
+			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_GYRO_DLPF,
+				U32T(sshsNodeGetByte(node, "GyroDLPF")));
+		}
+		else {
+			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_DIGITAL_LOW_PASS_FILTER,
+				U32T(sshsNodeGetByte(node, "DigitalLowPassFilter")));
+		}
+
+		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_ACCEL_FULL_SCALE,
+			U32T(sshsNodeGetByte(node, "AccelFullScale")));
+		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_GYRO_FULL_SCALE,
+			U32T(sshsNodeGetByte(node, "GyroFullScale")));
+
+		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_RUN_ACCELEROMETER,
+			sshsNodeGetBool(node, "RunAccel"));
+		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_RUN_GYROSCOPE,
+			sshsNodeGetBool(node, "RunGyro"));
+		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_RUN_TEMPERATURE,
+			sshsNodeGetBool(node, "RunTemp"));
+	}
 }
 
 static void imuConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
@@ -1877,6 +1898,10 @@ static void imuConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 	if (event == SSHS_ATTRIBUTE_MODIFIED) {
 		if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "SampleRateDivider")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_SAMPLE_RATE_DIVIDER,
+				U32T(changeValue.ibyte));
+		}
+		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "DigitalLowPassFilter")) {
+			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_DIGITAL_LOW_PASS_FILTER,
 				U32T(changeValue.ibyte));
 		}
 		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "AccelDLPF")) {

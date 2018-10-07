@@ -248,7 +248,7 @@ static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davi
 	muxConfigSend(sshsGetRelativeNode(deviceConfigNode, "multiplexer/"), moduleData);
 	dvsConfigSend(sshsGetRelativeNode(deviceConfigNode, "dvs/"), moduleData, devInfo);
 	apsConfigSend(sshsGetRelativeNode(deviceConfigNode, "aps/"), moduleData, devInfo);
-	imuConfigSend(sshsGetRelativeNode(deviceConfigNode, "imu/"), moduleData);
+	imuConfigSend(sshsGetRelativeNode(deviceConfigNode, "imu/"), moduleData, devInfo);
 	extInputConfigSend(sshsGetRelativeNode(deviceConfigNode, "externalInput/"), moduleData, devInfo);
 }
 
