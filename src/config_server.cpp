@@ -1,10 +1,17 @@
 #include "config_server.h"
+
+#include <libcaercpp/libcaer.hpp>
+
 #include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/cross/portable_threads.h"
+
 #include "mainloop.h"
 
 #include <algorithm>
 #include <atomic>
+#include <boost/algorithm/string.hpp>
+#include <boost/asio.hpp>
+#include <boost/format.hpp>
 #include <memory>
 #include <mutex>
 #include <new>
@@ -14,12 +21,6 @@
 #include <system_error>
 #include <thread>
 #include <vector>
-
-#include <boost/algorithm/string.hpp>
-#include <boost/asio.hpp>
-#include <boost/format.hpp>
-
-#include <libcaercpp/libcaer.hpp>
 namespace logger = libcaer::log;
 
 namespace asio   = boost::asio;
@@ -136,8 +137,10 @@ private:
 					const uint8_t *key = (keyLength == 0)
 											 ? (nullptr)
 											 : (data + CAER_CONFIG_SERVER_HEADER_SIZE + extraLength + nodeLength);
-					const uint8_t *value = (valueLength == 0) ? (nullptr) : (data + CAER_CONFIG_SERVER_HEADER_SIZE
-																				+ extraLength + nodeLength + keyLength);
+					const uint8_t *value
+						= (valueLength == 0)
+							  ? (nullptr)
+							  : (data + CAER_CONFIG_SERVER_HEADER_SIZE + extraLength + nodeLength + keyLength);
 
 					caerConfigServerHandleRequest(
 						self, action, type, extra, extraLength, node, nodeLength, key, keyLength, value, valueLength);
@@ -167,8 +170,9 @@ private:
 	std::thread ioThread;
 
 public:
-	ConfigServer(const asioIP::address &listenAddress, unsigned short listenPort)
-		: acceptor(ioService, asioTCP::endpoint(listenAddress, listenPort)), socket(ioService) {
+	ConfigServer(const asioIP::address &listenAddress, unsigned short listenPort) :
+		acceptor(ioService, asioTCP::endpoint(listenAddress, listenPort)),
+		socket(ioService) {
 		acceptStart();
 
 		threadStart();
@@ -752,6 +756,18 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		case CAER_CONFIG_ADD_MODULE: {
 			std::unique_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
 
+			if (nodeLength == 0) {
+				// Disallow empty strings.
+				caerConfigSendError(client, "Name cannot be empty.");
+				break;
+			}
+
+			if (keyLength == 0) {
+				// Disallow empty strings.
+				caerConfigSendError(client, "Library cannot be empty.");
+				break;
+			}
+
 			// Node is the module name, key the library.
 			const std::string moduleName((const char *) node);
 			const std::string moduleLibrary((const char *) key);
@@ -861,6 +877,12 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 
 		case CAER_CONFIG_REMOVE_MODULE: {
 			std::unique_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
+
+			if (nodeLength == 0) {
+				// Disallow empty strings.
+				caerConfigSendError(client, "Name cannot be empty.");
+				break;
+			}
 
 			// Node is the module name.
 			const std::string moduleName((const char *) node);
