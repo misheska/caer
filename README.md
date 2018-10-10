@@ -19,6 +19,9 @@ Optional: OpenCV >= 3.1 (cameracalibration, framestatistics modules) <br />
 Optional: libpng >= 1.6 (input/output frame PNG compression) <br />
 Optional: libuv >= 1.7.5 (output module, deprecated) <br />
 
+Install all dependencies manually on Ubuntu Bionic:
+sudo apt install git cmake build-essential pkg-config libboost-all-dev libusb-1.0-0-dev libserialport-dev libopencv-contrib-dev libopencv-dev libuv1-dev libsfml-dev libglew-dev
+
 # Installation
 
 1) configure: <br />
