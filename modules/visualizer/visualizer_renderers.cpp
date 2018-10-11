@@ -1,8 +1,5 @@
 #include "visualizer_renderers.hpp"
 
-#include "ext/sfml/helpers.hpp"
-#include "ext/sfml/line.hpp"
-
 #include <libcaercpp/events/frame.hpp>
 #include <libcaercpp/events/imu6.hpp>
 #include <libcaercpp/events/matrix4x4.hpp> // Render camera pose
@@ -10,8 +7,12 @@
 #include <libcaercpp/events/point4d.hpp>
 #include <libcaercpp/events/polarity.hpp>
 #include <libcaercpp/events/spike.hpp>
+
 #include <libcaercpp/devices/davis.hpp>   // Only for constants.
 #include <libcaercpp/devices/dynapse.hpp> // Only for constants.
+
+#include "ext/sfml/helpers.hpp"
+#include "ext/sfml/line.hpp"
 
 static void *caerVisualizerRendererPolarityEventsStateInit(caerVisualizerPublicState state);
 static bool caerVisualizerRendererPolarityEvents(caerVisualizerPublicState state, caerEventPacketContainer container);
@@ -88,7 +89,7 @@ static bool caerVisualizerRendererPolarityEvents(caerVisualizerPublicState state
 		= caerEventPacketContainerFindEventPacketByType(container, POLARITY_EVENT);
 
 	// No packet of requested type or empty packet (no valid events).
-	if (polarityPacketHeader == NULL || caerEventPacketHeaderGetEventValid(polarityPacketHeader) == 0) {
+	if (polarityPacketHeader == nullptr || caerEventPacketHeaderGetEventValid(polarityPacketHeader) == 0) {
 		return (false);
 	}
 
@@ -124,32 +125,31 @@ static bool caerVisualizerRendererPolarityEvents(caerVisualizerPublicState state
 }
 
 struct renderer_frame_events_state {
-	sf::Sprite sprite[DAVIS_APS_ROI_REGIONS_MAX];
-	sf::Texture texture[DAVIS_APS_ROI_REGIONS_MAX];
-	std::vector<uint8_t> pixels[DAVIS_APS_ROI_REGIONS_MAX];
+	sf::Sprite sprite;
+	sf::Texture texture;
+	std::vector<uint8_t> pixels;
 };
 
 typedef struct renderer_frame_events_state *rendererFrameEventsState;
 
 static void *caerVisualizerRendererFrameEventsStateInit(caerVisualizerPublicState state) {
 	// Add configuration for ROI region.
-	sshsNodeCreate(state->visualizerConfigNode, "ROIRegion", -1, -1, 7, SSHS_FLAGS_NORMAL,
-		"Selects which ROI region to display. '-1' disables this and renders all of [0,1,2,3].");
+	sshsNodeCreate(state->visualizerConfigNode, "ROIRegion", 0, 0, 2, SSHS_FLAGS_NORMAL,
+		"Selects which ROI region to display. 0 is the standard image, 1 is for debug (reset read), 2 is for debug "
+		"(signal read).");
 
 	// Allocate memory via C++ for renderer state, since we use C++ objects directly.
 	rendererFrameEventsState renderState = new renderer_frame_events_state();
 
-	for (size_t i = 0; i < DAVIS_APS_ROI_REGIONS_MAX; i++) {
-		// Create texture representing frame, set smoothing.
-		renderState->texture[i].create(state->renderSizeX, state->renderSizeY);
-		renderState->texture[i].setSmooth(false);
+	// Create texture representing frame, set smoothing.
+	renderState->texture.create(state->renderSizeX, state->renderSizeY);
+	renderState->texture.setSmooth(false);
 
-		// Assign texture to sprite.
-		renderState->sprite[i].setTexture(renderState->texture[i]);
+	// Assign texture to sprite.
+	renderState->sprite.setTexture(renderState->texture);
 
-		// 32-bit RGBA pixels (8-bit per channel), standard CG layout.
-		renderState->pixels[i].reserve(state->renderSizeX * state->renderSizeY * 4);
-	}
+	// 32-bit RGBA pixels (8-bit per channel), standard CG layout.
+	renderState->pixels.reserve(state->renderSizeX * state->renderSizeY * 4);
 
 	return (renderState);
 }
@@ -166,7 +166,7 @@ static bool caerVisualizerRendererFrameEvents(caerVisualizerPublicState state, c
 	caerEventPacketHeader framePacketHeader = caerEventPacketContainerFindEventPacketByType(container, FRAME_EVENT);
 
 	// No packet of requested type or empty packet (no valid events).
-	if (framePacketHeader == NULL || caerEventPacketHeaderGetEventValid(framePacketHeader) == 0) {
+	if ((framePacketHeader == nullptr) || (caerEventPacketHeaderGetEventValid(framePacketHeader) == 0)) {
 		return (false);
 	}
 
@@ -174,80 +174,67 @@ static bool caerVisualizerRendererFrameEvents(caerVisualizerPublicState state, c
 
 	const libcaer::events::FrameEventPacket framePacket(framePacketHeader, false);
 
-	// Get last valid frame for each possible ROI region.
-	const libcaer::events::FrameEvent *frames[DAVIS_APS_ROI_REGIONS_MAX] = {nullptr};
+	// Only operate on the last, valid frame for the selected ROI region.
+	const libcaer::events::FrameEvent *frame = {nullptr};
 
-	for (const auto &frame : framePacket) {
-		if (frame.isValid()) {
-			if (roiRegionSelect == -1) {
-				if (frame.getROIIdentifier() < DAVIS_APS_ROI_REGIONS_MAX) {
-					frames[frame.getROIIdentifier()] = &frame;
-				}
-			}
-			else {
-				if (frame.getROIIdentifier() == roiRegionSelect) {
-					frames[0] = &frame;
-				}
-			}
+	for (const auto &f : framePacket) {
+		if (f.isValid() && (f.getROIIdentifier() == roiRegionSelect)) {
+			frame = &f;
 		}
 	}
 
-	// Only operate on the last, valid frame for each ROI region. At least one must exist (see check above).
-	for (size_t i = 0; i < DAVIS_APS_ROI_REGIONS_MAX; i++) {
-		// Skip non existent ROI regions.
-		if (frames[i] == nullptr) {
-			continue;
-		}
-
-		// 32-bit RGBA pixels (8-bit per channel), standard CG layout.
-		switch (frames[i]->getChannelNumber()) {
-			case libcaer::events::FrameEvent::colorChannels::GRAYSCALE: {
-				for (size_t srcIdx = 0, dstIdx = 0; srcIdx < frames[i]->getPixelsMaxIndex();) {
-					uint8_t greyValue                = U8T(frames[i]->getPixelArrayUnsafe()[srcIdx++] >> 8);
-					renderState->pixels[i][dstIdx++] = greyValue; // R
-					renderState->pixels[i][dstIdx++] = greyValue; // G
-					renderState->pixels[i][dstIdx++] = greyValue; // B
-					renderState->pixels[i][dstIdx++] = UINT8_MAX; // A
-				}
-				break;
-			}
-
-			case libcaer::events::FrameEvent::colorChannels::RGB: {
-				for (size_t srcIdx = 0, dstIdx = 0; srcIdx < frames[i]->getPixelsMaxIndex();) {
-					renderState->pixels[i][dstIdx++] = U8T(frames[i]->getPixelArrayUnsafe()[srcIdx++] >> 8); // R
-					renderState->pixels[i][dstIdx++] = U8T(frames[i]->getPixelArrayUnsafe()[srcIdx++] >> 8); // G
-					renderState->pixels[i][dstIdx++] = U8T(frames[i]->getPixelArrayUnsafe()[srcIdx++] >> 8); // B
-					renderState->pixels[i][dstIdx++] = UINT8_MAX;                                            // A
-				}
-				break;
-			}
-
-			case libcaer::events::FrameEvent::colorChannels::RGBA: {
-				for (size_t srcIdx = 0, dstIdx = 0; srcIdx < frames[i]->getPixelsMaxIndex();) {
-					renderState->pixels[i][dstIdx++] = U8T(frames[i]->getPixelArrayUnsafe()[srcIdx++] >> 8); // R
-					renderState->pixels[i][dstIdx++] = U8T(frames[i]->getPixelArrayUnsafe()[srcIdx++] >> 8); // G
-					renderState->pixels[i][dstIdx++] = U8T(frames[i]->getPixelArrayUnsafe()[srcIdx++] >> 8); // B
-					renderState->pixels[i][dstIdx++] = U8T(frames[i]->getPixelArrayUnsafe()[srcIdx++] >> 8); // A
-				}
-				break;
-			}
-		}
-
-		renderState->texture[i].update(renderState->pixels[i].data(), U32T(frames[i]->getLengthX()),
-			U32T(frames[i]->getLengthY()), U32T(frames[i]->getPositionX()), U32T(frames[i]->getPositionY()));
-
-		renderState->sprite[i].setTextureRect(sf::IntRect(
-			frames[i]->getPositionX(), frames[i]->getPositionY(), frames[i]->getLengthX(), frames[i]->getLengthY()));
-
-		float zoomFactor = state->renderZoomFactor.load(std::memory_order_relaxed);
-
-		renderState->sprite[i].setPosition(
-			(float) frames[i]->getPositionX() * zoomFactor, (float) frames[i]->getPositionY() * zoomFactor);
-
-		renderState->sprite[i].setScale(zoomFactor, zoomFactor);
-
-		state->renderWindow->draw(renderState->sprite[i]);
+	if (frame == nullptr) {
+		return (false);
 	}
+
+	// 32-bit RGBA pixels (8-bit per channel), standard CG layout.
+	switch (frame->getChannelNumber()) {
+		case libcaer::events::FrameEvent::colorChannels::GRAYSCALE: {
+			for (size_t srcIdx = 0, dstIdx = 0; srcIdx < frame->getPixelsMaxIndex();) {
+				uint8_t greyValue             = U8T(frame->getPixelArrayUnsafe()[srcIdx++] >> 8);
+				renderState->pixels[dstIdx++] = greyValue; // R
+				renderState->pixels[dstIdx++] = greyValue; // G
+				renderState->pixels[dstIdx++] = greyValue; // B
+				renderState->pixels[dstIdx++] = UINT8_MAX; // A
+			}
+			break;
+		}
+
+		case libcaer::events::FrameEvent::colorChannels::RGB: {
+			for (size_t srcIdx = 0, dstIdx = 0; srcIdx < frame->getPixelsMaxIndex();) {
+				renderState->pixels[dstIdx++] = U8T(frame->getPixelArrayUnsafe()[srcIdx++] >> 8); // R
+				renderState->pixels[dstIdx++] = U8T(frame->getPixelArrayUnsafe()[srcIdx++] >> 8); // G
+				renderState->pixels[dstIdx++] = U8T(frame->getPixelArrayUnsafe()[srcIdx++] >> 8); // B
+				renderState->pixels[dstIdx++] = UINT8_MAX;                                        // A
+			}
+			break;
+		}
+
+		case libcaer::events::FrameEvent::colorChannels::RGBA: {
+			for (size_t srcIdx = 0, dstIdx = 0; srcIdx < frame->getPixelsMaxIndex();) {
+				renderState->pixels[dstIdx++] = U8T(frame->getPixelArrayUnsafe()[srcIdx++] >> 8); // R
+				renderState->pixels[dstIdx++] = U8T(frame->getPixelArrayUnsafe()[srcIdx++] >> 8); // G
+				renderState->pixels[dstIdx++] = U8T(frame->getPixelArrayUnsafe()[srcIdx++] >> 8); // B
+				renderState->pixels[dstIdx++] = U8T(frame->getPixelArrayUnsafe()[srcIdx++] >> 8); // A
+			}
+			break;
+		}
+	}
+
+	renderState->texture.update(renderState->pixels.data(), U32T(frame->getLengthX()), U32T(frame->getLengthY()),
+		U32T(frame->getPositionX()), U32T(frame->getPositionY()));
+
+	renderState->sprite.setTextureRect(
+		sf::IntRect(frame->getPositionX(), frame->getPositionY(), frame->getLengthX(), frame->getLengthY()));
+
+	float zoomFactor = state->renderZoomFactor.load(std::memory_order_relaxed);
+
+	renderState->sprite.setPosition(
+		(float) frame->getPositionX() * zoomFactor, (float) frame->getPositionY() * zoomFactor);
+
+	renderState->sprite.setScale(zoomFactor, zoomFactor);
+
+	state->renderWindow->draw(renderState->sprite);
 
 	return (true);
 }
@@ -264,7 +251,7 @@ static bool caerVisualizerRendererFrameEvents(caerVisualizerPublicState state, c
 static bool caerVisualizerRendererIMU6Events(caerVisualizerPublicState state, caerEventPacketContainer container) {
 	caerEventPacketHeader imu6PacketHeader = caerEventPacketContainerFindEventPacketByType(container, IMU6_EVENT);
 
-	if (imu6PacketHeader == NULL || caerEventPacketHeaderGetEventValid(imu6PacketHeader) == 0) {
+	if (imu6PacketHeader == nullptr || caerEventPacketHeaderGetEventValid(imu6PacketHeader) == 0) {
 		return (false);
 	}
 
@@ -389,7 +376,7 @@ static bool caerVisualizerRendererPoint2DEvents(caerVisualizerPublicState state,
 
 	caerEventPacketHeader point2DPacketHeader = caerEventPacketContainerFindEventPacketByType(container, POINT2D_EVENT);
 
-	if (point2DPacketHeader == NULL || caerEventPacketHeaderGetEventValid(point2DPacketHeader) == 0) {
+	if (point2DPacketHeader == nullptr || caerEventPacketHeaderGetEventValid(point2DPacketHeader) == 0) {
 		return (false);
 	}
 
@@ -434,7 +421,7 @@ static bool caerVisualizerRendererSpikeEvents(caerVisualizerPublicState state, c
 
 	caerEventPacketHeader spikePacketHeader = caerEventPacketContainerFindEventPacketByType(container, SPIKE_EVENT);
 
-	if (spikePacketHeader == NULL || caerEventPacketHeaderGetEventValid(spikePacketHeader) == 0) {
+	if (spikePacketHeader == nullptr || caerEventPacketHeaderGetEventValid(spikePacketHeader) == 0) {
 		return (false);
 	}
 
@@ -501,7 +488,7 @@ static bool caerVisualizerRendererMatrix4x4EventsPose(
 		= (caerMatrix4x4EventPacket) caerEventPacketContainerFindEventPacketByType(container, MATRIX4x4_EVENT);
 	caerEventPacketHeader matrix4x4PacketHeader = &pkg->packetHeader;
 
-	if (matrix4x4PacketHeader == NULL || caerEventPacketHeaderGetEventValid(matrix4x4PacketHeader) == 0) {
+	if (matrix4x4PacketHeader == nullptr || caerEventPacketHeaderGetEventValid(matrix4x4PacketHeader) == 0) {
 		return (false);
 	}
 
@@ -801,7 +788,7 @@ static bool caerVisualizerRendererSpikeEventsRaster(
 
 	caerEventPacketHeader spikePacketHeader = caerEventPacketContainerFindEventPacketByType(container, SPIKE_EVENT);
 
-	if (spikePacketHeader == NULL || caerEventPacketHeaderGetEventValid(spikePacketHeader) == 0) {
+	if (spikePacketHeader == nullptr || caerEventPacketHeaderGetEventValid(spikePacketHeader) == 0) {
 		return (false);
 	}
 
