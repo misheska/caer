@@ -12,7 +12,7 @@ Linux, MacOS X or Windows (for Windows build instructions see README.Windows) <b
 gcc >= 5.2 or clang >= 3.6 <br />
 cmake >= 2.6 <br />
 Boost >= 1.50 (with system, filesystem, iostreams, program_options) <br />
-libcaer >= 2.4.2 <br />
+libcaer >= 2.9.9 <br />
 Optional: tcmalloc >= 2.2 (faster memory allocation) <br />
 Optional: SFML >= 2.3.0 (visualizer module) <br />
 Optional: OpenCV >= 3.1 (cameracalibration, framestatistics modules) <br />
@@ -20,7 +20,7 @@ Optional: libpng >= 1.6 (input/output frame PNG compression) <br />
 Optional: libuv >= 1.7.5 (output module, deprecated) <br />
 
 Install all dependencies manually on Ubuntu Bionic:
-sudo apt install git cmake build-essential pkg-config libboost-all-dev libusb-1.0-0-dev libserialport-dev libopencv-contrib-dev libopencv-dev libuv1-dev libsfml-dev libglew-dev
+$ sudo apt install git cmake build-essential pkg-config libboost-all-dev libusb-1.0-0-dev libserialport-dev libopencv-contrib-dev libopencv-dev libuv1-dev libsfml-dev libglew-dev
 
 # Installation
 

@@ -1,8 +1,8 @@
-Release 1.2.0 - 23.03.2018
+Release 1.2.2 - XX.10.2018
 INCOMPATIBLE CHANGES
 - The modules are now fully separated from the core system by a well-defined
   API in /usr/include/caer-sdk/ and a library called libcaersdk. Together
-  with the shared CMake module 'caer-base.cmake' installed by libcaer 2.4.2,
+  with the shared CMake module 'caer-base.cmake' installed by libcaer >= 2.4.2,
   it is now possible to easily build modules outside of the cAER source tree.
   All Dynap-SE related modules have been moved to their own external repo at
   https://gitlab.com/aiCTX/caer-modules-dynapse/ and can now be managed
@@ -40,6 +40,16 @@ INCOMPATIBLE CHANGES
   compilation control switches fall away. Only -DUSE_OPENCV=1/0 and
   -DVISUALIZER=1/0 remain to control the inclusion of external dependencies
   (OpenCV for cameracalibration, framestatistics - SFML for visualizer).
+- Support for libcaer 3.0.0, which supports the new device logic version 16:
+  + changed, slightly more efficient data encoding (IMU, APS).
+  + cleaned up device configuration, removed lots of unused debug options.
+  + changed APS FrameDelay to FrameInterval, to allow for setting time between
+    frames and thus control the frame rate directly.
+  + new hardware filter options for DVS: Background Activity, Refractory Period,
+    Skip Events, Polarity Suppress/Flatten, Region of Interest (ROI) and
+    single Pixel Filtering.
+  + full support for new iniVation devices: DAVIS346 Blue, DAVIS346 Red
+    and DAVIS346 Red Color.
 
 NEW FEATURES
 - Docs: added two camera example 'davis-2cams-config.xml'.
