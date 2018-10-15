@@ -1,9 +1,10 @@
-#include "caer-sdk/mainloop.h"
-
 #include <libcaer/events/packetContainer.h>
 #include <libcaer/events/polarity.h>
 #include <libcaer/events/special.h>
+
 #include <libcaer/devices/dvs128.h>
+
+#include "caer-sdk/mainloop.h"
 
 static void caerInputDVS128ConfigInit(sshsNode moduleNode);
 static bool caerInputDVS128Init(caerModuleData moduleData);
@@ -166,6 +167,12 @@ static bool caerInputDVS128Init(caerModuleData moduleData) {
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Device source information.");
 
 	// Generate sub-system string for module.
+	char *prevAdditionStart = strchr(moduleData->moduleSubSystemString, '[');
+
+	if (prevAdditionStart != NULL) {
+		*prevAdditionStart = '\0';
+	}
+
 	size_t subSystemStringLength
 		= (size_t) snprintf(NULL, 0, "%s[SN %s, %" PRIu8 ":%" PRIu8 "]", moduleData->moduleSubSystemString,
 			devInfo.deviceSerialNumber, devInfo.deviceUSBBusNumber, devInfo.deviceUSBDeviceAddress);
