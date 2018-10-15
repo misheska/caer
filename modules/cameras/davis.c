@@ -76,6 +76,12 @@ static bool caerInputDAVISInit(caerModuleData moduleData) {
 	caerInputDAVISCommonInit(moduleData, &devInfo);
 
 	// Generate sub-system string for module.
+	char *prevAdditionStart = strchr(moduleData->moduleSubSystemString, '[');
+
+	if (prevAdditionStart != NULL) {
+		*prevAdditionStart = '\0';
+	}
+
 	size_t subSystemStringLength
 		= (size_t) snprintf(NULL, 0, "%s[SN %s, %" PRIu8 ":%" PRIu8 "]", moduleData->moduleSubSystemString,
 			devInfo.deviceSerialNumber, devInfo.deviceUSBBusNumber, devInfo.deviceUSBDeviceAddress);
