@@ -18,3 +18,6 @@ core*
 *.dll*
 *.a
 *.gch
+*.log
+*.cbp
+*.idea
