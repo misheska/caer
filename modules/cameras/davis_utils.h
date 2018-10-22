@@ -565,6 +565,10 @@ static void createDefaultLogicConfiguration(
 	sshsNodeCreateBool(apsNode, "AutoExposure", true, SSHS_FLAGS_NORMAL,
 		"Enable automatic exposure control, to react to changes in lighting conditions.");
 
+	sshsNodeCreateString(apsNode, "FrameMode", "Default", 7, 9, SSHS_FLAGS_NORMAL,
+		"Enable automatic exposure control, to react to changes in lighting conditions.");
+	sshsNodeCreateAttributeListOptions(apsNode, "FrameMode", SSHS_STRING, "Default,Grayscale,Original", false);
+
 	// DAVIS RGB has additional timing counters.
 	if (IS_DAVIS640H(devInfo->chipID)) {
 		sshsNodeCreateInt(apsNode, "TransferTime", 1500, 0, (60 * 2048), SSHS_FLAGS_NORMAL,
@@ -1737,6 +1741,18 @@ static void dvsConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 	}
 }
 
+static inline uint32_t parseAPSFrameMode(char *configStr) {
+	if (caerStrEquals(configStr, "Default")) {
+		return (APS_FRAME_DEFAULT);
+	}
+	else if (caerStrEquals(configStr, "Grayscale")) {
+		return (APS_FRAME_GRAYSCALE);
+	}
+	else {
+		return (APS_FRAME_ORIGINAL);
+	}
+}
+
 static void apsConfigSend(sshsNode node, caerModuleData moduleData, struct caer_davis_info *devInfo) {
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_WAIT_ON_TRANSFER_STALL,
 		sshsNodeGetBool(node, "WaitOnTransferStall"));
@@ -1778,6 +1794,11 @@ static void apsConfigSend(sshsNode node, caerModuleData moduleData, struct caer_
 
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_AUTOEXPOSURE,
 		sshsNodeGetBool(node, "AutoExposure"));
+
+	char *frameModeStr = sshsNodeGetString(node, "FrameMode");
+	caerDeviceConfigSet(
+		moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_FRAME_MODE, parseAPSFrameMode(frameModeStr));
+	free(frameModeStr);
 
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_RUN, sshsNodeGetBool(node, "Run"));
 }
@@ -1855,6 +1876,10 @@ static void apsConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "AutoExposure")) {
 			caerDeviceConfigSet(
 				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_AUTOEXPOSURE, changeValue.boolean);
+		}
+		else if (changeType == SSHS_STRING && caerStrEquals(changeKey, "FrameMode")) {
+			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_FRAME_MODE,
+				parseAPSFrameMode(changeValue.string));
 		}
 	}
 }
