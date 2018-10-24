@@ -1,6 +1,7 @@
+#include <libcaer/events/frame.h>
+
 #include "caer-sdk/mainloop.h"
 
-#include <libcaer/events/frame.h>
 #include <libcaer/frame_utils.h>
 
 struct FrameEnhancer_state {
@@ -53,22 +54,23 @@ static void caerFrameEnhancerConfigInit(sshsNode moduleNode) {
 	sshsNodeCreateBool(moduleNode, "doContrast", false, SSHS_FLAGS_NORMAL, "Do contrast enhancement on frame.");
 
 #if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
-	sshsNodeCreateString(moduleNode, "demosaicType", "opencv_edge_aware", 8, 17, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateString(moduleNode, "demosaicType", "opencv_edge_aware", 7, 17, SSHS_FLAGS_NORMAL,
 		"Demoisaicing (color interpolation) algorithm to apply.");
-	sshsNodeCreateAttributeListOptions(
-		moduleNode, "demosaicType", SSHS_STRING, "opencv_edge_aware,opencv_normal,standard", false);
+	sshsNodeCreateAttributeListOptions(moduleNode, "demosaicType", SSHS_STRING,
+		"opencv_edge_aware,opencv_to_gray,opencv_standard,to_gray,standard", false);
+
 	sshsNodeCreateString(moduleNode, "contrastType", "opencv_normalization", 8, 29, SSHS_FLAGS_NORMAL,
 		"Contrast enhancement algorithm to apply.");
 	sshsNodeCreateAttributeListOptions(moduleNode, "contrastType", SSHS_STRING,
 		"opencv_normalization,opencv_histogram_equalization,opencv_clahe,standard", false);
 #else
-	// Only standard algorithms are available here, so we force those and make it read-only.
-	sshsNodeRemoveAttribute(moduleNode, "demosaicType", SSHS_STRING);
-	sshsNodeCreateString(moduleNode, "demosaicType", "standard", 8, 8, SSHS_FLAGS_READ_ONLY,
+	sshsNodeCreateString(moduleNode, "demosaicType", "standard", 7, 8, SSHS_FLAGS_NORMAL,
 		"Demoisaicing (color interpolation) algorithm to apply.");
-	sshsNodeRemoveAttribute(moduleNode, "contrastType", SSHS_STRING);
+	sshsNodeCreateAttributeListOptions(moduleNode, "demosaicType", SSHS_STRING, "to_gray,standard", false);
+
 	sshsNodeCreateString(
-		moduleNode, "contrastType", "standard", 8, 8, SSHS_FLAGS_READ_ONLY, "Contrast enhancement algorithm to apply.");
+		moduleNode, "contrastType", "standard", 8, 8, SSHS_FLAGS_NORMAL, "Contrast enhancement algorithm to apply.");
+	sshsNodeCreateAttributeListOptions(moduleNode, "contrastType", SSHS_STRING, "standard", false);
 #endif
 }
 
@@ -105,57 +107,70 @@ static bool caerFrameEnhancerInit(caerModuleData moduleData) {
 
 static void caerFrameEnhancerRun(
 	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
-	caerFrameEventPacketConst frame
+	caerFrameEventPacketConst inputFramePacket
 		= (caerFrameEventPacketConst) caerEventPacketContainerFindEventPacketByTypeConst(in, FRAME_EVENT);
 
 	// Only process packets with content.
-	if (frame == NULL) {
+	if (inputFramePacket == NULL) {
 		return;
 	}
 
-	FrameEnhancerState state           = moduleData->moduleState;
-	caerFrameEventPacket enhancedFrame = NULL;
-
-	if (state->doDemosaic) {
-#if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
-		enhancedFrame = caerFrameUtilsDemosaic(frame, state->demosaicType);
-#else
-		enhancedFrame = caerFrameUtilsDemosaic(frame, DEMOSAIC_STANDARD);
-#endif
+	caerFrameEventPacket outputFramePacket
+		= caerFrameEventPacketAllocateNumPixels(caerEventPacketHeaderGetEventValid(&inputFramePacket->packetHeader),
+			moduleData->moduleID, caerEventPacketHeaderGetEventTSOverflow(&inputFramePacket->packetHeader),
+			caerEventPacketHeaderGetEventSize(&inputFramePacket->packetHeader), RGBA);
+	if (outputFramePacket == NULL) {
+		return;
 	}
 
-	if (state->doContrast) {
-		// If enhancedFrame doesn't exist yet, make a copy of frame, since
-		// the demosaic operation didn't do it for us.
-		if (enhancedFrame == NULL) {
-			enhancedFrame
-				= (caerFrameEventPacket) caerEventPacketCopyOnlyValidEvents((caerEventPacketHeaderConst) frame);
-			if (enhancedFrame == NULL) {
-				return;
-			}
+	FrameEnhancerState state = moduleData->moduleState;
+
+	int32_t outIdx = 0;
+
+	for (int32_t inIdx = 0; inIdx < caerEventPacketHeaderGetEventNumber(&inputFramePacket->packetHeader); inIdx++) {
+		caerFrameEventConst inFrame = caerFrameEventPacketGetEventConst(inputFramePacket, inIdx);
+		if (!caerFrameEventIsValid(inFrame)) {
+			continue;
 		}
 
-#if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
-		caerFrameUtilsContrast(enhancedFrame, state->contrastType);
-#else
-		caerFrameUtilsContrast(enhancedFrame, CONTRAST_STANDARD);
-#endif
-	}
+		caerFrameEvent outFrame = caerFrameEventPacketGetEvent(outputFramePacket, outIdx);
 
-	// If something did happen, make a packet container and return the result.
-	// Also remember to put this new container up for freeing at loop end.
-	if (enhancedFrame != NULL) {
-		*out = caerEventPacketContainerAllocate(1);
-		if (*out == NULL) {
-			free(enhancedFrame);
-			return;
+		// Copy header over. This will also copy validity information, so all copied frames are valid.
+		memcpy(outFrame, inFrame, (sizeof(struct caer_frame_event) - sizeof(uint16_t)));
+
+		if (state->doDemosaic && (caerFrameEventGetChannelNumber(inFrame) == GRAYSCALE)
+			&& (caerFrameEventGetColorFilter(inFrame) != MONO)) {
+			// Demosaicing needs output frame set to RGB.
+			caerFrameEventSetLengthXLengthYChannelNumber(
+				outFrame, caerFrameEventGetLengthX(inFrame), caerFrameEventGetLengthY(inFrame), RGB, outputFramePacket);
+
+			caerFrameUtilsDemosaic(inFrame, outFrame, state->demosaicType);
+		}
+		else {
+			// Just copy data over.
+			memcpy(caerFrameEventGetPixelArrayUnsafe(outFrame), caerFrameEventGetPixelArrayUnsafeConst(inFrame),
+				caerFrameEventGetPixelsSize(inFrame));
 		}
 
-		caerEventPacketContainerSetEventPacket(*out, 0, (caerEventPacketHeader) enhancedFrame);
+		if (state->doContrast) {
+			caerFrameUtilsContrast(outFrame, outFrame, state->contrastType);
+		}
 
-		// Source ID must be this module!
-		caerEventPacketHeaderSetEventSource((caerEventPacketHeader) enhancedFrame, moduleData->moduleID);
+		outIdx++;
 	}
+
+	// Set number of events in output packet correctly.
+	caerEventPacketHeaderSetEventNumber(&outputFramePacket->packetHeader, outIdx);
+	caerEventPacketHeaderSetEventValid(&outputFramePacket->packetHeader, outIdx);
+
+	// Make a packet container and return the result.
+	*out = caerEventPacketContainerAllocate(1);
+	if (*out == NULL) {
+		free(outputFramePacket);
+		return;
+	}
+
+	caerEventPacketContainerSetEventPacket(*out, 0, (caerEventPacketHeader) outputFramePacket);
 }
 
 static void caerFrameEnhancerConfig(caerModuleData moduleData) {
@@ -165,14 +180,22 @@ static void caerFrameEnhancerConfig(caerModuleData moduleData) {
 
 	state->doContrast = sshsNodeGetBool(moduleData->moduleNode, "doContrast");
 
-#if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
 	char *demosaicType = sshsNodeGetString(moduleData->moduleNode, "demosaicType");
 
-	if (caerStrEquals(demosaicType, "opencv_normal")) {
-		state->demosaicType = DEMOSAIC_OPENCV_NORMAL;
-	}
-	else if (caerStrEquals(demosaicType, "opencv_edge_aware")) {
+#if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
+	if (caerStrEquals(demosaicType, "opencv_edge_aware")) {
 		state->demosaicType = DEMOSAIC_OPENCV_EDGE_AWARE;
+	}
+	else if (caerStrEquals(demosaicType, "opencv_to_gray")) {
+		state->demosaicType = DEMOSAIC_OPENCV_TO_GRAY;
+	}
+	else if (caerStrEquals(demosaicType, "opencv_standard")) {
+		state->demosaicType = DEMOSAIC_OPENCV_STANDARD;
+	}
+	else
+#endif
+		if (caerStrEquals(demosaicType, "to_gray")) {
+		state->demosaicType = DEMOSAIC_TO_GRAY;
 	}
 	else {
 		// Standard, non-OpenCV method.
@@ -183,6 +206,7 @@ static void caerFrameEnhancerConfig(caerModuleData moduleData) {
 
 	char *contrastType = sshsNodeGetString(moduleData->moduleNode, "contrastType");
 
+#if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
 	if (caerStrEquals(contrastType, "opencv_normalization")) {
 		state->contrastType = CONTRAST_OPENCV_NORMALIZATION;
 	}
@@ -192,13 +216,14 @@ static void caerFrameEnhancerConfig(caerModuleData moduleData) {
 	else if (caerStrEquals(contrastType, "opencv_clahe")) {
 		state->contrastType = CONTRAST_OPENCV_CLAHE;
 	}
-	else {
+	else
+#endif
+	{
 		// Standard, non-OpenCV method.
 		state->contrastType = CONTRAST_STANDARD;
 	}
 
 	free(contrastType);
-#endif
 }
 
 static void caerFrameEnhancerExit(caerModuleData moduleData) {
