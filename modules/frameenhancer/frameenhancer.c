@@ -138,11 +138,18 @@ static void caerFrameEnhancerRun(
 		// Copy header over. This will also copy validity information, so all copied frames are valid.
 		memcpy(outFrame, inFrame, (sizeof(struct caer_frame_event) - sizeof(uint16_t)));
 
+		// Verify requirements for demosaicing operation.
 		if (state->doDemosaic && (caerFrameEventGetChannelNumber(inFrame) == GRAYSCALE)
 			&& (caerFrameEventGetColorFilter(inFrame) != MONO)) {
-			// Demosaicing needs output frame set to RGB.
-			caerFrameEventSetLengthXLengthYChannelNumber(
-				outFrame, caerFrameEventGetLengthX(inFrame), caerFrameEventGetLengthY(inFrame), RGB, outputFramePacket);
+#if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
+			if ((state->demosaicType != DEMOSAIC_TO_GRAY) && (state->demosaicType != DEMOSAIC_OPENCV_TO_GRAY)) {
+#else
+			if (state->demosaicType != DEMOSAIC_TO_GRAY) {
+#endif
+				// Demosaicing needs output frame set to RGB. If color requested.
+				caerFrameEventSetLengthXLengthYChannelNumber(outFrame, caerFrameEventGetLengthX(inFrame),
+					caerFrameEventGetLengthY(inFrame), RGB, outputFramePacket);
+			}
 
 			caerFrameUtilsDemosaic(inFrame, outFrame, state->demosaicType);
 		}
