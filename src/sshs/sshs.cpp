@@ -66,7 +66,7 @@ sshs sshsNew(void) {
 	sshsMemoryCheck(newSshs, __func__);
 
 	// Create root node.
-	newSshs->root = sshsNodeNew("", nullptr);
+	newSshs->root = sshsNodeNew("", nullptr, newSshs);
 
 	return (newSshs);
 }

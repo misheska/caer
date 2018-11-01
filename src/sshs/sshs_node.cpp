@@ -153,6 +153,7 @@ struct sshs_node {
 public:
 	std::string name;
 	std::string path;
+	sshs global;
 	sshsNode parent;
 	std::map<std::string, sshsNode> children;
 	std::map<std::string, sshs_node_attr> attributes;
@@ -161,7 +162,10 @@ public:
 	std::shared_timed_mutex traversal_lock;
 	std::recursive_mutex node_lock;
 
-	sshs_node(const std::string &_name, sshsNode _parent) : name(_name), parent(_parent) {
+	sshs_node(const std::string &_name, sshsNode _parent, sshs _global) :
+		name(_name),
+		global(_global),
+		parent(_parent) {
 		// Path is based on parent.
 		if (_parent != nullptr) {
 			path = parent->path + _name + "/";
@@ -387,8 +391,8 @@ static boost::property_tree::ptree sshsNodeGenerateXML(sshsNode node, bool recur
 static bool sshsNodeFromXML(sshsNode node, int fd, bool recursive, bool strict);
 static void sshsNodeConsumeXML(sshsNode node, const boost::property_tree::ptree &content, bool recursive);
 
-sshsNode sshsNodeNew(const char *nodeName, sshsNode parent) {
-	sshsNode newNode = new sshs_node(nodeName, parent);
+sshsNode sshsNodeNew(const char *nodeName, sshsNode parent, sshs global) {
+	sshsNode newNode = new sshs_node(nodeName, parent, global);
 	sshsMemoryCheck(newNode, __func__);
 
 	return (newNode);
@@ -419,7 +423,7 @@ sshsNode sshsNodeAddChild(sshsNode node, const char *childName) {
 	}
 	else {
 		// Create new child node with appropriate name and parent.
-		sshsNode newChild = sshsNodeNew(childName, node);
+		sshsNode newChild = sshsNodeNew(childName, node, node->global);
 
 		// No node present, let's add it.
 		node->children[childName] = newChild;
