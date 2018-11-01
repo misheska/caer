@@ -1,10 +1,16 @@
 #include "mainloop.h"
+
 #include "caer-sdk/cross/portable_io.h"
+
 #include "config.h"
-#include <csignal>
 
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/format.hpp>
+#include <boost/range/join.hpp>
 #include <chrono>
+#include <csignal>
 #include <iostream>
 #include <mutex>
 #include <queue>
@@ -13,32 +19,27 @@
 #include <thread>
 #include <unordered_set>
 
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/format.hpp>
-#include <boost/range/join.hpp>
-
 // If Boost version recent enough, enable better stack traces on segfault.
 #include <boost/version.hpp>
 #if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 66
-#define BOOST_HAS_STACKTRACE 1
+#	define BOOST_HAS_STACKTRACE 1
 #else
-#define BOOST_HAS_STACKTRACE 0
+#	define BOOST_HAS_STACKTRACE 0
 #endif
 
 #if BOOST_HAS_STACKTRACE
-#include <boost/stacktrace.hpp>
+#	include <boost/stacktrace.hpp>
 #elif defined(OS_LINUX)
-#include <execinfo.h>
+#	include <execinfo.h>
 #endif
 
 #define INTERNAL_XSTR(a) INTERNAL_STR(a)
 #define INTERNAL_STR(a) #a
 
 #ifdef CM_SHARE_DIR
-#define CM_SHARE_DIRECTORY INTERNAL_XSTR(CM_SHARE_DIR)
+#	define CM_SHARE_DIRECTORY INTERNAL_XSTR(CM_SHARE_DIR)
 #else
-#define CM_SHARE_DIRECTORY "/usr/share/caer"
+#	define CM_SHARE_DIRECTORY "/usr/share/caer"
 #endif
 
 #define MODULES_DIRECTORY "modules/"
@@ -1391,7 +1392,7 @@ static int caerMainloopRunner() {
 			continue;
 		}
 
-		if (!sshsNodeAttributeExists(module, "moduleId", SSHS_SHORT)
+		if (!sshsNodeAttributeExists(module, "moduleId", SSHS_INT)
 			|| !sshsNodeAttributeExists(module, "moduleLibrary", SSHS_STRING)) {
 			// Missing required attributes, notify and skip.
 			log(logLevel::ERROR, "Mainloop",
@@ -1400,7 +1401,7 @@ static int caerMainloopRunner() {
 			continue;
 		}
 
-		int16_t moduleId                = sshsNodeGetShort(module, "moduleId");
+		int16_t moduleId                = I16T(sshsNodeGetInt(module, "moduleId"));
 		const std::string moduleLibrary = sshsNodeGetStdString(module, "moduleLibrary");
 
 		// Ensure flags and ranges are set correctly on first-load.

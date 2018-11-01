@@ -43,9 +43,8 @@ static void usbConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 static void caerInputDAVISConfigInit(sshsNode moduleNode) {
 	// USB port/bus/SN settings/restrictions.
 	// These can be used to force connection to one specific device at startup.
-	sshsNodeCreateShort(moduleNode, "busNumber", 0, 0, INT16_MAX, SSHS_FLAGS_NORMAL, "USB bus number restriction.");
-	sshsNodeCreateShort(
-		moduleNode, "devAddress", 0, 0, INT16_MAX, SSHS_FLAGS_NORMAL, "USB device address restriction.");
+	sshsNodeCreateInt(moduleNode, "busNumber", 0, 0, INT16_MAX, SSHS_FLAGS_NORMAL, "USB bus number restriction.");
+	sshsNodeCreateInt(moduleNode, "devAddress", 0, 0, INT16_MAX, SSHS_FLAGS_NORMAL, "USB device address restriction.");
 	sshsNodeCreateString(moduleNode, "serialNumber", "", 0, 8, SSHS_FLAGS_NORMAL, "USB serial number restriction.");
 
 	// Add auto-restart setting.
@@ -62,8 +61,8 @@ static bool caerInputDAVISInit(caerModuleData moduleData) {
 	// shutdown cases (device pulled, ...).
 	char *serialNumber      = sshsNodeGetString(moduleData->moduleNode, "serialNumber");
 	moduleData->moduleState = caerDeviceOpen(U16T(moduleData->moduleID), CAER_DEVICE_DAVIS,
-		U8T(sshsNodeGetShort(moduleData->moduleNode, "busNumber")),
-		U8T(sshsNodeGetShort(moduleData->moduleNode, "devAddress")), serialNumber);
+		U8T(sshsNodeGetInt(moduleData->moduleNode, "busNumber")),
+		U8T(sshsNodeGetInt(moduleData->moduleNode, "devAddress")), serialNumber);
 	free(serialNumber);
 
 	if (moduleData->moduleState == NULL) {
@@ -204,13 +203,14 @@ static void caerInputDAVISExit(caerModuleData moduleData) {
 		free(biasNodes);
 	}
 
-	// Ensure Exposure value is coherent with libcaer. Removing a Read Modifier
-	// will synchronize the value once here on exit.
-	sshsNodeRemoveAttributeReadModifier(apsNode, "Exposure", SSHS_INT);
+	// Ensure Exposure value is coherent with libcaer.
+	sshsAttributeUpdaterRemoveAll(apsNode);
+	sshsNodePutAttribute(
+		apsNode, "Exposure", SSHS_INT, apsExposureUpdater(moduleData->moduleState, "Exposure", SSHS_INT));
 
-	// Remove statistics read modifiers.
+	// Remove statistics updaters.
 	sshsNode statNode = sshsGetRelativeNode(deviceConfigNode, "statistics/");
-	sshsNodeRemoveAllAttributeReadModifiers(statNode);
+	sshsAttributeUpdaterRemoveAll(statNode);
 
 	caerDeviceDataStop(moduleData->moduleState);
 
@@ -234,7 +234,7 @@ static void createDefaultUSBConfiguration(caerModuleData moduleData, const char 
 	sshsNode usbNode = sshsGetRelativeNode(deviceConfigNode, "usb/");
 	sshsNodeCreateBool(
 		usbNode, "Run", true, SSHS_FLAGS_NORMAL, "Enable the USB state machine (FPGA to USB data exchange).");
-	sshsNodeCreateShort(usbNode, "EarlyPacketDelay", 8, 1, 8000, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(usbNode, "EarlyPacketDelay", 8, 1, 8000, SSHS_FLAGS_NORMAL,
 		"Send early USB packets if this timeout is reached (in 125µs time-slices).");
 
 	sshsNodeCreateInt(usbNode, "BufferNumber", 8, 2, 128, SSHS_FLAGS_NORMAL, "Number of USB transfers.");
@@ -265,7 +265,7 @@ static void usbConfigSend(sshsNode node, caerModuleData moduleData) {
 		U32T(sshsNodeGetInt(node, "BufferSize")));
 
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_USB, DAVIS_CONFIG_USB_EARLY_PACKET_DELAY,
-		U32T(sshsNodeGetShort(node, "EarlyPacketDelay")));
+		U32T(sshsNodeGetInt(node, "EarlyPacketDelay")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_USB, DAVIS_CONFIG_USB_RUN, sshsNodeGetBool(node, "Run"));
 }
 
@@ -284,9 +284,9 @@ static void usbConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 			caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_USB, CAER_HOST_CONFIG_USB_BUFFER_SIZE,
 				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "EarlyPacketDelay")) {
-			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_USB, DAVIS_CONFIG_USB_EARLY_PACKET_DELAY,
-				U32T(changeValue.ishort));
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "EarlyPacketDelay")) {
+			caerDeviceConfigSet(
+				moduleData->moduleState, DAVIS_CONFIG_USB, DAVIS_CONFIG_USB_EARLY_PACKET_DELAY, U32T(changeValue.iint));
 		}
 		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "Run")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_USB, DAVIS_CONFIG_USB_RUN, changeValue.boolean);

@@ -9,16 +9,6 @@ inline void sshsNodeCreate(sshsNode node, const char *key, bool defaultValue, in
 	sshsNodeCreateBool(node, key, defaultValue, flags, description);
 }
 
-inline void sshsNodeCreate(sshsNode node, const char *key, int8_t defaultValue, int8_t minValue, int8_t maxValue,
-	int flags, const char *description) {
-	sshsNodeCreateByte(node, key, defaultValue, minValue, maxValue, flags, description);
-}
-
-inline void sshsNodeCreate(sshsNode node, const char *key, int16_t defaultValue, int16_t minValue, int16_t maxValue,
-	int flags, const char *description) {
-	sshsNodeCreateShort(node, key, defaultValue, minValue, maxValue, flags, description);
-}
-
 inline void sshsNodeCreate(sshsNode node, const char *key, int32_t defaultValue, int32_t minValue, int32_t maxValue,
 	int flags, const char *description) {
 	sshsNodeCreateInt(node, key, defaultValue, minValue, maxValue, flags, description);
@@ -51,14 +41,6 @@ inline void sshsNodeCreate(sshsNode node, const char *key, const std::string &de
 
 inline bool sshsNodePut(sshsNode node, const char *key, bool value) {
 	return (sshsNodePutBool(node, key, value));
-}
-
-inline bool sshsNodePut(sshsNode node, const char *key, int8_t value) {
-	return (sshsNodePutByte(node, key, value));
-}
-
-inline bool sshsNodePut(sshsNode node, const char *key, int16_t value) {
-	return (sshsNodePutShort(node, key, value));
 }
 
 inline bool sshsNodePut(sshsNode node, const char *key, int32_t value) {
@@ -98,11 +80,6 @@ inline bool sshsNodeUpdateReadOnlyAttribute(sshsNode node, const char *key, cons
 	union sshs_node_attr_value newValue;
 	newValue.string = const_cast<char *>(value.c_str());
 	return (sshsNodeUpdateReadOnlyAttribute(node, key, SSHS_STRING, newValue));
-}
-
-inline void sshsNodeCreateAttributePollTime(
-	sshsNode node, const std::string &key, enum sshs_node_attr_value_type type, int32_t pollTimeSeconds) {
-	sshsNodeCreateAttributePollTime(node, key.c_str(), type, pollTimeSeconds);
 }
 
 inline void sshsNodeCreateAttributeListOptions(sshsNode node, const std::string &key,

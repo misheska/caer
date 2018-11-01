@@ -1,12 +1,14 @@
 #include "visualizer.hpp"
+
 #include <libcaer/ringbuffer.h>
+
 #include "caer-sdk/cross/portable_threads.h"
 #include "caer-sdk/mainloop.h"
+
 #include "ext/fonts/LiberationSans-Bold.h"
 #include "ext/sfml/helpers.hpp"
 #include "ext/sfml/line.hpp"
 #include "modules/statistics/statistics.h"
-
 #include "visualizer_handlers.hpp"
 #include "visualizer_renderers.hpp"
 
@@ -14,7 +16,7 @@
 #include <thread>
 
 #if defined(OS_LINUX) && OS_LINUX == 1
-#include <X11/Xlib.h>
+#	include <X11/Xlib.h>
 #endif
 
 #define VISUALIZER_REFRESH_RATE 60
@@ -29,7 +31,7 @@
 
 #if defined(OS_WINDOWS) && OS_WINDOWS == 1
 // Avoid blocking of main thread on Windows when the window is being dragged.
-#define VISUALIZER_HANDLE_EVENTS_MAIN 0
+#	define VISUALIZER_HANDLE_EVENTS_MAIN 0
 #endif
 
 #define GLOBAL_FONT_SIZE 20   // in pixels
@@ -388,13 +390,13 @@ static bool initRenderSize(caerModuleData moduleData) {
 
 		// Get sizes from sourceInfo node. visualizer prefix takes precedence,
 		// then generic data visualization size.
-		if (sshsNodeAttributeExists(sourceInfoNode, "visualizerSizeX", SSHS_SHORT)) {
-			packetSizeX = U32T(sshsNodeGetShort(sourceInfoNode, "visualizerSizeX"));
-			packetSizeY = U32T(sshsNodeGetShort(sourceInfoNode, "visualizerSizeY"));
+		if (sshsNodeAttributeExists(sourceInfoNode, "visualizerSizeX", SSHS_INT)) {
+			packetSizeX = U32T(sshsNodeGetInt(sourceInfoNode, "visualizerSizeX"));
+			packetSizeY = U32T(sshsNodeGetInt(sourceInfoNode, "visualizerSizeY"));
 		}
-		else if (sshsNodeAttributeExists(sourceInfoNode, "dataSizeX", SSHS_SHORT)) {
-			packetSizeX = U32T(sshsNodeGetShort(sourceInfoNode, "dataSizeX"));
-			packetSizeY = U32T(sshsNodeGetShort(sourceInfoNode, "dataSizeY"));
+		else if (sshsNodeAttributeExists(sourceInfoNode, "dataSizeX", SSHS_INT)) {
+			packetSizeX = U32T(sshsNodeGetInt(sourceInfoNode, "dataSizeX"));
+			packetSizeY = U32T(sshsNodeGetInt(sourceInfoNode, "dataSizeY"));
 		}
 
 		if (packetSizeX > sizeX) {

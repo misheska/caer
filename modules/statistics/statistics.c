@@ -1,4 +1,5 @@
 #include "statistics.h"
+
 #include "caer-sdk/mainloop.h"
 
 static void statisticsModuleConfigInit(sshsNode moduleNode);
@@ -44,15 +45,12 @@ static void statisticsModuleConfigInit(sshsNode moduleNode) {
 
 	sshsNodeCreateLong(moduleNode, "eventsTotal", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 		"Number of events per second.");
-	sshsNodeCreateAttributePollTime(moduleNode, "eventsTotal", SSHS_LONG, 1);
 
 	sshsNodeCreateLong(moduleNode, "eventsValid", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 		"Number of valid events per second.");
-	sshsNodeCreateAttributePollTime(moduleNode, "eventsValid", SSHS_LONG, 1);
 
 	sshsNodeCreateLong(moduleNode, "packetTSDiff", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 		"Maximum time difference (in µs) between consecutive packets.");
-	sshsNodeCreateAttributePollTime(moduleNode, "packetTSDiff", SSHS_LONG, 2);
 }
 
 static bool statisticsModuleInit(caerModuleData moduleData) {

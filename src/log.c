@@ -1,5 +1,7 @@
 #include "log.h"
+
 #include "caer-sdk/cross/portable_io.h"
+
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -33,7 +35,7 @@ void caerLogInit(void) {
 	free(logFileDirClean);
 	free(logFileDir);
 
-	sshsNodeCreateByte(logNode, "logLevel", CAER_LOG_NOTICE, CAER_LOG_EMERGENCY, CAER_LOG_DEBUG, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(logNode, "logLevel", CAER_LOG_NOTICE, CAER_LOG_EMERGENCY, CAER_LOG_DEBUG, SSHS_FLAGS_NORMAL,
 		"Global log-level.");
 
 	// Try to open the specified file and error out if not possible.
@@ -57,7 +59,7 @@ void caerLogInit(void) {
 	atexit(&caerLogShutDownWriteBack);
 
 	// Set global log level and install listener for its update.
-	uint8_t logLevel = (uint8_t) sshsNodeGetByte(logNode, "logLevel");
+	uint8_t logLevel = (uint8_t) sshsNodeGetInt(logNode, "logLevel");
 	caerLogLevelSet(logLevel);
 
 	sshsNodeAddAttributeListener(logNode, NULL, &caerLogLevelListener);
@@ -92,9 +94,9 @@ static void caerLogLevelListener(sshsNode node, void *userData, enum sshs_node_a
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BYTE && caerStrEquals(changeKey, "logLevel")) {
+	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_INT && caerStrEquals(changeKey, "logLevel")) {
 		// Update the global log level asynchronously.
-		caerLogLevelSet((uint8_t) changeValue.ibyte);
-		caerLog(CAER_LOG_DEBUG, "Logger", "Log-level set to %" PRIi8 ".", changeValue.ibyte);
+		caerLogLevelSet((uint8_t) changeValue.iint);
+		caerLog(CAER_LOG_DEBUG, "Logger", "Log-level set to %" PRIi8 ".", changeValue.iint);
 	}
 }

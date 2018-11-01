@@ -3,6 +3,7 @@
 
 // Implementation relevant common includes.
 #include "caer-sdk/sshs/sshs.h"
+
 #include <boost/format.hpp>
 #include <cstring>
 #include <stdexcept>
@@ -34,8 +35,6 @@ private:
 	enum sshs_node_attr_value_type type;
 	union {
 		bool boolean;
-		int8_t ibyte;
-		int16_t ishort;
 		int32_t iint;
 		int64_t ilong;
 		float ffloat;
@@ -64,32 +63,6 @@ public:
 	void setBool(bool v) noexcept {
 		type          = SSHS_BOOL;
 		value.boolean = v;
-	}
-
-	int8_t getByte() const {
-		if (type != SSHS_BYTE) {
-			throw std::runtime_error("SSHS: value type does not match requested type.");
-		}
-
-		return (value.ibyte);
-	}
-
-	void setByte(int8_t v) noexcept {
-		type        = SSHS_BYTE;
-		value.ibyte = v;
-	}
-
-	int16_t getShort() const {
-		if (type != SSHS_SHORT) {
-			throw std::runtime_error("SSHS: value type does not match requested type.");
-		}
-
-		return (value.ishort);
-	}
-
-	void setShort(int16_t v) noexcept {
-		type         = SSHS_SHORT;
-		value.ishort = v;
 	}
 
 	int32_t getInt() const {
@@ -163,12 +136,6 @@ public:
 				// No check for bool, because no range exists.
 				return (true);
 
-			case SSHS_BYTE:
-				return (value.ibyte >= ranges.min.ibyteRange && value.ibyte <= ranges.max.ibyteRange);
-
-			case SSHS_SHORT:
-				return (value.ishort >= ranges.min.ishortRange && value.ishort <= ranges.max.ishortRange);
-
 			case SSHS_INT:
 				return (value.iint >= ranges.min.iintRange && value.iint <= ranges.max.iintRange);
 
@@ -195,14 +162,6 @@ public:
 		switch (tu) {
 			case SSHS_BOOL:
 				setBool(vu.boolean);
-				break;
-
-			case SSHS_BYTE:
-				setByte(vu.ibyte);
-				break;
-
-			case SSHS_SHORT:
-				setShort(vu.ishort);
 				break;
 
 			case SSHS_INT:
@@ -238,14 +197,6 @@ public:
 		switch (type) {
 			case SSHS_BOOL:
 				vu.boolean = getBool();
-				break;
-
-			case SSHS_BYTE:
-				vu.ibyte = getByte();
-				break;
-
-			case SSHS_SHORT:
-				vu.ishort = getShort();
 				break;
 
 			case SSHS_INT:
@@ -288,12 +239,6 @@ public:
 		switch (type) {
 			case SSHS_BOOL:
 				return (getBool() == rhs.getBool());
-
-			case SSHS_BYTE:
-				return (getByte() == rhs.getByte());
-
-			case SSHS_SHORT:
-				return (getShort() == rhs.getShort());
 
 			case SSHS_INT:
 				return (getInt() == rhs.getInt());

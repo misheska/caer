@@ -6,8 +6,6 @@ const std::string &sshsHelperCppTypeToStringConverter(enum sshs_node_attr_value_
 	// Convert the value and its type into a string for XML output.
 	switch (type) {
 		case SSHS_BOOL:
-		case SSHS_BYTE:
-		case SSHS_SHORT:
 		case SSHS_INT:
 		case SSHS_LONG:
 		case SSHS_FLOAT:
@@ -26,11 +24,11 @@ enum sshs_node_attr_value_type sshsHelperCppStringToTypeConverter(const std::str
 	if (typeString == typeStrings[SSHS_BOOL]) {
 		return (SSHS_BOOL);
 	}
-	else if (typeString == typeStrings[SSHS_BYTE]) {
-		return (SSHS_BYTE);
+	else if (typeString == typeStrings[1]) {
+		return (SSHS_INT);
 	}
-	else if (typeString == typeStrings[SSHS_SHORT]) {
-		return (SSHS_SHORT);
+	else if (typeString == typeStrings[2]) {
+		return (SSHS_INT);
 	}
 	else if (typeString == typeStrings[SSHS_INT]) {
 		return (SSHS_INT);
@@ -57,12 +55,6 @@ std::string sshsHelperCppValueToStringConverter(const sshs_value &val) {
 		case SSHS_BOOL:
 			// Manually generate true or false.
 			return ((val.getBool()) ? ("true") : ("false"));
-
-		case SSHS_BYTE:
-			return (std::to_string(val.getByte()));
-
-		case SSHS_SHORT:
-			return (std::to_string(val.getShort()));
 
 		case SSHS_INT:
 			return (std::to_string(val.getInt()));
@@ -95,14 +87,6 @@ sshs_value sshsHelperCppStringToValueConverter(enum sshs_node_attr_value_type ty
 		case SSHS_BOOL:
 			// Boolean uses custom true/false strings.
 			value.setBool(valueString == "true");
-			break;
-
-		case SSHS_BYTE:
-			value.setByte((int8_t) std::stoi(valueString));
-			break;
-
-		case SSHS_SHORT:
-			value.setShort((int16_t) std::stoi(valueString));
 			break;
 
 		case SSHS_INT:

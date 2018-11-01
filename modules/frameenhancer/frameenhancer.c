@@ -82,17 +82,17 @@ static bool caerFrameEnhancerInit(caerModuleData moduleData) {
 		return (false);
 	}
 
-	int16_t sizeX = sshsNodeGetShort(sourceInfoSource, "dataSizeX");
-	int16_t sizeY = sshsNodeGetShort(sourceInfoSource, "dataSizeY");
+	int16_t sizeX = sshsNodeGetInt(sourceInfoSource, "dataSizeX");
+	int16_t sizeY = sshsNodeGetInt(sourceInfoSource, "dataSizeY");
 
 	sshsNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
-	sshsNodeCreateShort(sourceInfoNode, "frameSizeX", sizeX, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+	sshsNodeCreateInt(sourceInfoNode, "frameSizeX", sizeX, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 		"Output frame width.");
-	sshsNodeCreateShort(sourceInfoNode, "frameSizeY", sizeY, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+	sshsNodeCreateInt(sourceInfoNode, "frameSizeY", sizeY, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 		"Output frame height.");
-	sshsNodeCreateShort(
+	sshsNodeCreateInt(
 		sourceInfoNode, "dataSizeX", sizeX, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Output data width.");
-	sshsNodeCreateShort(sourceInfoNode, "dataSizeY", sizeY, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+	sshsNodeCreateInt(sourceInfoNode, "dataSizeY", sizeY, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 		"Output data height.");
 
 	// Initialize configuration.
