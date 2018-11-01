@@ -85,7 +85,16 @@ typedef void (*sshsAttributeChangeListener)(sshsNode node, void *userData, enum 
 
 const char *sshsNodeGetName(sshsNode node);
 const char *sshsNodeGetPath(sshsNode node);
+
+/**
+ * This returns a reference to a node, and as such must be carefully mediated with
+ * any sshsNodeRemoveNode() calls.
+ */
 sshsNode sshsNodeGetParent(sshsNode node);
+/**
+ * Remember to free the resulting array. This returns references to nodes,
+ * and as such must be carefully mediated with any sshsNodeRemoveNode() calls.
+ */
 sshsNode *sshsNodeGetChildren(sshsNode node, size_t *numChildren); // Walk all children.
 
 void sshsNodeAddNodeListener(sshsNode node, void *userData, sshsNodeChangeListener node_changed);
@@ -96,9 +105,11 @@ void sshsNodeAddAttributeListener(sshsNode node, void *userData, sshsAttributeCh
 void sshsNodeRemoveAttributeListener(sshsNode node, void *userData, sshsAttributeChangeListener attribute_changed);
 void sshsNodeRemoveAllAttributeListeners(sshsNode node);
 
-// Careful, only use if no references exist to this node and all its children.
-// References are created by sshsGetNode(), sshsGetRelativeNode(),
-// sshsNodeGetParent() and sshsNodeGetChildren().
+/**
+ * Careful, only use if no references exist to this node and all its children.
+ * References are created by sshsGetNode(), sshsGetRelativeNode(),
+ * sshsNodeGetParent() and sshsNodeGetChildren().
+ */
 void sshsNodeRemoveNode(sshsNode node);
 void sshsNodeClearSubTree(sshsNode startNode, bool clearStartNode);
 
@@ -173,8 +184,16 @@ void sshsSetGlobalErrorLogCallback(sshsErrorLogCallback error_log_cb);
 sshsErrorLogCallback sshsGetGlobalErrorLogCallback(void);
 sshs sshsNew(void);
 bool sshsExistsNode(sshs st, const char *nodePath);
+/**
+ * This returns a reference to a node, and as such must be carefully mediated with
+ * any sshsNodeRemoveNode() calls.
+ */
 sshsNode sshsGetNode(sshs st, const char *nodePath);
 bool sshsExistsRelativeNode(sshsNode node, const char *nodePath);
+/**
+ * This returns a reference to a node, and as such must be carefully mediated with
+ * any sshsNodeRemoveNode() calls.
+ */
 sshsNode sshsGetRelativeNode(sshsNode node, const char *nodePath);
 bool sshsBeginTransaction(sshs st, const char *nodePaths[], size_t nodePathsLength);
 bool sshsEndTransaction(sshs st, const char *nodePaths[], size_t nodePathsLength);

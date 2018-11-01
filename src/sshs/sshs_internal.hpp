@@ -12,8 +12,16 @@
 // C linkage to guarantee no name mangling.
 extern "C" {
 // Internal functions.
-sshsNode sshsNodeNew(const char *nodeName, sshsNode parent);
+sshsNode sshsNodeNew(const char *nodeName, sshsNode parent, sshs global);
+/**
+ * This returns a reference to a node, and as such must be carefully mediated with
+ * any sshsNodeRemoveNode() calls.
+ */
 sshsNode sshsNodeAddChild(sshsNode node, const char *childName);
+/**
+ * This returns a reference to a node, and as such must be carefully mediated with
+ * any sshsNodeRemoveNode() calls.
+ */
 sshsNode sshsNodeGetChild(sshsNode node, const char *childName);
 void sshsNodeTransactionLock(sshsNode node);
 void sshsNodeTransactionUnlock(sshsNode node);

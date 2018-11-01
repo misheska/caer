@@ -414,8 +414,6 @@ sshsNode sshsNodeGetParent(sshsNode node) {
 sshsNode sshsNodeAddChild(sshsNode node, const char *childName) {
 	std::unique_lock<std::shared_timed_mutex> lock(node->traversal_lock);
 
-	// Atomic putIfAbsent: returns null if nothing was there before and the
-	// node is the new one, or it returns the old node if already present.
 	if (node->children.count(childName)) {
 		return (node->children[childName]);
 	}
@@ -437,8 +435,6 @@ sshsNode sshsNodeAddChild(sshsNode node, const char *childName) {
 	}
 }
 
-// This returns a reference to a node, and as such must be carefully mediated with
-// any sshsNodeRemoveNode() calls.
 sshsNode sshsNodeGetChild(sshsNode node, const char *childName) {
 	std::shared_lock<std::shared_timed_mutex> lock(node->traversal_lock);
 
@@ -450,8 +446,6 @@ sshsNode sshsNodeGetChild(sshsNode node, const char *childName) {
 	}
 }
 
-// Remember to free the resulting array. This returns references to nodes,
-// and as such must be carefully mediated with any sshsNodeRemoveNode() calls.
 sshsNode *sshsNodeGetChildren(sshsNode node, size_t *numChildren) {
 	std::shared_lock<std::shared_timed_mutex> lock(node->traversal_lock);
 
