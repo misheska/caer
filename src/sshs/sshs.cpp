@@ -1,11 +1,45 @@
 #include "sshs_internal.hpp"
+
 #include <boost/tokenizer.hpp>
 #include <iostream>
 #include <mutex>
 #include <regex>
+#include <shared_mutex>
+#include <vector>
 
+class sshs_attribute_updater {
+private:
+	sshsAttributeUpdater updater;
+	void *userData;
+
+public:
+	sshs_attribute_updater(sshsAttributeUpdater _updater, void *_userData) : updater(_updater), userData(_userData) {
+	}
+
+	sshsAttributeUpdater getUpdater() const noexcept {
+		return (updater);
+	}
+
+	void *getUserData() const noexcept {
+		return (userData);
+	}
+
+	// Comparison operators.
+	bool operator==(const sshs_attribute_updater &rhs) const noexcept {
+		return ((updater == rhs.updater) && (userData == rhs.userData));
+	}
+
+	bool operator!=(const sshs_attribute_updater &rhs) const noexcept {
+		return (!this->operator==(rhs));
+	}
+};
+
+// struct for C compatibility
 struct sshs_struct {
+public:
 	sshsNode root;
+	std::vector<sshs_attribute_updater> attrUpdaters;
+	std::shared_timed_mutex globalLock;
 };
 
 static void sshsGlobalInitialize(void);
@@ -201,16 +235,23 @@ sshsNode sshsGetRelativeNode(sshsNode node, const char *nodePathC) {
 
 bool sshsAttributeUpdaterAdd(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
 	sshsAttributeUpdater updater, void *updaterUserData) {
+	sshs tree = node->global;
+	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
 }
 
 bool sshsAttributeUpdaterRemove(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
 	sshsAttributeUpdater updater, void *updaterUserData) {
+	sshs tree = node->global;
+	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
 }
 
 bool sshsAttributeUpdaterRemoveAll(sshsNode node) {
+	sshs tree = node->global;
+	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
 }
 
-bool sshsAttributeUpdatersRun(sshs st) {
+bool sshsAttributeUpdatersRun(sshs tree) {
+	std::shared_lock<std::shared_timed_mutex> lock(tree->globalLock);
 }
 
 #define ALLOWED_CHARS_REGEXP "([a-zA-Z-_\\d\\.]+/)"
