@@ -1765,26 +1765,43 @@ static int caerMainloopRunner() {
 	// getting some initial data (dataAvailable > 0).
 	runModules(inputContainer);
 
+	// Run global config updaters once at startup.
+	sshs globalSSHS = sshsGetGlobal();
+	sshsAttributeUpdatersRun(globalSSHS);
+
 	// Write config to file, at this point basic configuration is available.
 	caerConfigWriteBack();
 
 	// If no data is available, sleep for a millisecond to avoid wasting resources.
-	// Wait for someone to toggle the module shutdown flag OR for the loop
-	// itself to signal termination.
-	size_t sleepCount = 0;
+	// Every second, run all module state machines anyway to ensure they can do
+	// operations such as opening new devices.
+	auto currTime        = std::chrono::steady_clock::now();
+	auto lastRanTime     = currTime;
+	auto lastUpdaterTime = currTime;
 
+	// Wait for someone to toggle the mainloop shutdown flag.
 	while (glMainloopData.running.load(std::memory_order_relaxed)) {
+		currTime             = std::chrono::steady_clock::now();
+		auto lastRanDiff     = std::chrono::duration_cast<std::chrono::milliseconds>(currTime - lastRanTime);
+		auto lastUpdaterDiff = std::chrono::duration_cast<std::chrono::milliseconds>(currTime - lastUpdaterTime);
+
 		// Run only if data available to consume, else sleep. But make a run
 		// anyway each second, to detect new devices for example.
-		if (glMainloopData.dataAvailable.load(std::memory_order_acquire) > 0 || sleepCount > 1000) {
-			sleepCount = 0;
-
+		if ((glMainloopData.dataAvailable.load(std::memory_order_acquire) > 0) || (lastRanDiff.count() >= 1000)) {
 			runModules(inputContainer);
 			// TODO: handle exceptions here.
+
+			lastRanTime = currTime;
 		}
 		else {
-			sleepCount++;
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+
+		// Run global config updaters once a second.
+		if (lastUpdaterDiff.count() >= 1000) {
+			sshsAttributeUpdatersRun(globalSSHS);
+
+			lastUpdaterTime = currTime;
 		}
 	}
 
