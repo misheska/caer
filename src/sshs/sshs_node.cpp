@@ -551,13 +551,15 @@ void sshsNodeClearSubTree(sshsNode startNode, bool clearStartNode) {
 // be in the process of getting one, to this node or any of its children.
 // You need to make sure of this in your application!
 void sshsNodeRemoveNode(sshsNode node) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	{
+		std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
-	// Now we can clear the subtree from all attribute related data.
-	sshsNodeClearSubTree(node, true);
+		// Now we can clear the subtree from all attribute related data.
+		sshsNodeClearSubTree(node, true);
 
-	// And finally remove the node related data and the node itself.
-	sshsNodeRemoveSubTree(node);
+		// And finally remove the node related data and the node itself.
+		sshsNodeRemoveSubTree(node);
+	}
 
 	// If this is the root node (parent == nullptr), it isn't fully removed.
 	if (node->parent != nullptr) {
