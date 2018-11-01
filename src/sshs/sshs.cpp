@@ -199,36 +199,18 @@ sshsNode sshsGetRelativeNode(sshsNode node, const char *nodePathC) {
 	return (curr);
 }
 
-bool sshsBeginTransaction(sshs st, const char *nodePaths[], size_t nodePathsLength) {
-	// Check all node paths, then lock them.
-	for (size_t i = 0; i < nodePathsLength; i++) {
-		if (!sshsCheckAbsoluteNodePath(nodePaths[i])) {
-			errno = EINVAL;
-			return (false);
-		}
-	}
-
-	for (size_t i = 0; i < nodePathsLength; i++) {
-		sshsNodeTransactionLock(sshsGetNode(st, nodePaths[i]));
-	}
-
-	return (true);
+bool sshsAttributeUpdaterAdd(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
+	sshsAttributeUpdater updater, void *updaterUserData) {
 }
 
-bool sshsEndTransaction(sshs st, const char *nodePaths[], size_t nodePathsLength) {
-	// Check all node paths, then unlock them.
-	for (size_t i = 0; i < nodePathsLength; i++) {
-		if (!sshsCheckAbsoluteNodePath(nodePaths[i])) {
-			errno = EINVAL;
-			return (false);
-		}
-	}
+bool sshsAttributeUpdaterRemove(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
+	sshsAttributeUpdater updater, void *updaterUserData) {
+}
 
-	for (size_t i = 0; i < nodePathsLength; i++) {
-		sshsNodeTransactionUnlock(sshsGetNode(st, nodePaths[i]));
-	}
+bool sshsAttributeUpdaterRemoveAll(sshsNode node) {
+}
 
-	return (true);
+bool sshsAttributeUpdatersRun(sshs st) {
 }
 
 #define ALLOWED_CHARS_REGEXP "([a-zA-Z-_\\d\\.]+/)"

@@ -195,8 +195,6 @@ bool sshsExistsRelativeNode(sshsNode node, const char *nodePath);
  * any sshsNodeRemoveNode() calls.
  */
 sshsNode sshsGetRelativeNode(sshsNode node, const char *nodePath);
-bool sshsBeginTransaction(sshs st, const char *nodePaths[], size_t nodePathsLength);
-bool sshsEndTransaction(sshs st, const char *nodePaths[], size_t nodePathsLength);
 
 typedef union sshs_node_attr_value (*sshsAttributeUpdater)(
 	void *userData, const char *key, enum sshs_node_attr_value_type type);

@@ -523,14 +523,6 @@ void sshsNodeRemoveAllAttributeListeners(sshsNode node) {
 	node->attrListeners.clear();
 }
 
-void sshsNodeTransactionLock(sshsNode node) {
-	node->node_lock.lock();
-}
-
-void sshsNodeTransactionUnlock(sshsNode node) {
-	node->node_lock.unlock();
-}
-
 void sshsNodeClearSubTree(sshsNode startNode, bool clearStartNode) {
 	std::lock_guard<std::recursive_mutex> lockNode(startNode->node_lock);
 

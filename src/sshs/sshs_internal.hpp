@@ -23,8 +23,6 @@ sshsNode sshsNodeAddChild(sshsNode node, const char *childName);
  * any sshsNodeRemoveNode() calls.
  */
 sshsNode sshsNodeGetChild(sshsNode node, const char *childName);
-void sshsNodeTransactionLock(sshsNode node);
-void sshsNodeTransactionUnlock(sshsNode node);
 }
 
 // Terminate process on failed memory allocation.
