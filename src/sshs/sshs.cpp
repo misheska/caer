@@ -235,18 +235,18 @@ sshsNode sshsGetRelativeNode(sshsNode node, const char *nodePathC) {
 
 bool sshsAttributeUpdaterAdd(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
 	sshsAttributeUpdater updater, void *updaterUserData) {
-	sshs tree = node->global;
+	sshs tree = sshsNodeGetGlobal(node);
 	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
 }
 
 bool sshsAttributeUpdaterRemove(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
 	sshsAttributeUpdater updater, void *updaterUserData) {
-	sshs tree = node->global;
+	sshs tree = sshsNodeGetGlobal(node);
 	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
 }
 
 bool sshsAttributeUpdaterRemoveAll(sshsNode node) {
-	sshs tree = node->global;
+	sshs tree = sshsNodeGetGlobal(node);
 	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
 }
 

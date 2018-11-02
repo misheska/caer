@@ -415,6 +415,10 @@ sshsNode sshsNodeGetParent(sshsNode node) {
 	return (node->parent);
 }
 
+sshs sshsNodeGetGlobal(sshsNode node) {
+	return (node->global);
+}
+
 sshsNode sshsNodeAddChild(sshsNode node, const char *childName) {
 	std::unique_lock<std::shared_timed_mutex> lock(node->traversal_lock);
 

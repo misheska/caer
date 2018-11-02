@@ -23,6 +23,10 @@ sshsNode sshsNodeAddChild(sshsNode node, const char *childName);
  * any sshsNodeRemoveNode() calls.
  */
 sshsNode sshsNodeGetChild(sshsNode node, const char *childName);
+/**
+ * Get link to global SSHS tree.
+ */
+sshs sshsNodeGetGlobal(sshsNode node);
 }
 
 // Terminate process on failed memory allocation.
