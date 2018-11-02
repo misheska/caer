@@ -34,16 +34,6 @@ static inline void sshsNodeErrorNoAttribute(
 	sshsNodeError(funcName, key, type, "attribute doesn't exist, you must create it first");
 }
 
-template<typename InIter, typename Elem> static inline bool findBool(InIter begin, InIter end, const Elem &val) {
-	const auto result = std::find(begin, end, val);
-
-	if (result == end) {
-		return (false);
-	}
-
-	return (true);
-}
-
 class sshs_node_attr {
 private:
 	struct sshs_node_attr_ranges ranges;

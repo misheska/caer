@@ -29,6 +29,16 @@ sshsNode sshsNodeGetChild(sshsNode node, const char *childName);
 sshs sshsNodeGetGlobal(sshsNode node);
 }
 
+template<typename InIter, typename Elem> static inline bool findBool(InIter begin, InIter end, const Elem &val) {
+	const auto result = std::find(begin, end, val);
+
+	if (result == end) {
+		return (false);
+	}
+
+	return (true);
+}
+
 // Terminate process on failed memory allocation.
 template<typename T> static inline void sshsMemoryCheck(T *ptr, const std::string &funcName) {
 	if (ptr == nullptr) {

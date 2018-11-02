@@ -9,11 +9,32 @@
 
 class sshs_attribute_updater {
 private:
+	sshsNode node;
+	std::string key;
+	enum sshs_node_attr_value_type type;
 	sshsAttributeUpdater updater;
 	void *userData;
 
 public:
-	sshs_attribute_updater(sshsAttributeUpdater _updater, void *_userData) : updater(_updater), userData(_userData) {
+	sshs_attribute_updater(sshsNode _node, const std::string &_key, enum sshs_node_attr_value_type _type,
+		sshsAttributeUpdater _updater, void *_userData) :
+		node(_node),
+		key(_key),
+		type(_type),
+		updater(_updater),
+		userData(_userData) {
+	}
+
+	sshsNode getNode() const noexcept {
+		return (node);
+	}
+
+	const std::string &getKey() const noexcept {
+		return (key);
+	}
+
+	enum sshs_node_attr_value_type getType() const noexcept {
+		return (type);
 	}
 
 	sshsAttributeUpdater getUpdater() const noexcept {
@@ -26,7 +47,8 @@ public:
 
 	// Comparison operators.
 	bool operator==(const sshs_attribute_updater &rhs) const noexcept {
-		return ((updater == rhs.updater) && (userData == rhs.userData));
+		return ((node == rhs.node) && (key == rhs.key) && (type == rhs.type) && (updater == rhs.updater)
+				&& (userData == rhs.userData));
 	}
 
 	bool operator!=(const sshs_attribute_updater &rhs) const noexcept {
@@ -38,7 +60,7 @@ public:
 struct sshs_struct {
 public:
 	sshsNode root;
-	std::vector<sshs_attribute_updater> attrUpdaters;
+	std::vector<sshs_attribute_updater> attributeUpdaters;
 	std::shared_timed_mutex globalLock;
 };
 
@@ -233,25 +255,60 @@ sshsNode sshsGetRelativeNode(sshsNode node, const char *nodePathC) {
 	return (curr);
 }
 
-bool sshsAttributeUpdaterAdd(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
+void sshsAttributeUpdaterAdd(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
 	sshsAttributeUpdater updater, void *updaterUserData) {
+	sshs_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
+
 	sshs tree = sshsNodeGetGlobal(node);
 	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
+
+	// Check no other updater already exists that matches this one.
+	if (!findBool(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(), attrUpdater)) {
+		tree->attributeUpdaters.push_back(attrUpdater);
+	}
 }
 
-bool sshsAttributeUpdaterRemove(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
+void sshsAttributeUpdaterRemove(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
 	sshsAttributeUpdater updater, void *updaterUserData) {
+	sshs_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
+
 	sshs tree = sshsNodeGetGlobal(node);
 	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
+
+	tree->attributeUpdaters.erase(
+		std::remove(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(), attrUpdater),
+		tree->attributeUpdaters.end());
 }
 
-bool sshsAttributeUpdaterRemoveAll(sshsNode node) {
+void sshsAttributeUpdaterRemoveAllForNode(sshsNode node) {
 	sshs tree = sshsNodeGetGlobal(node);
 	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
+
+	tree->attributeUpdaters.erase(std::remove_if(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(),
+									  [&node](const sshs_attribute_updater &up) { return (up.getNode() == node); }),
+		tree->attributeUpdaters.end());
 }
 
-bool sshsAttributeUpdatersRun(sshs tree) {
+void sshsAttributeUpdaterRemoveAll(sshs tree) {
+	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
+
+	tree->attributeUpdaters.clear();
+}
+
+bool sshsAttributeUpdaterRun(sshs tree) {
 	std::shared_lock<std::shared_timed_mutex> lock(tree->globalLock);
+
+	bool allSuccess = true;
+
+	for (const auto &up : tree->attributeUpdaters) {
+		union sshs_node_attr_value newValue = (*up.getUpdater())(up.getUserData(), up.getKey().c_str(), up.getType());
+
+		if (!sshsNodePutAttribute(up.getNode(), up.getKey().c_str(), up.getType(), newValue)) {
+			allSuccess = false;
+		}
+	}
+
+	return (allSuccess);
 }
 
 #define ALLOWED_CHARS_REGEXP "([a-zA-Z-_\\d\\.]+/)"
