@@ -204,13 +204,13 @@ static void caerInputDAVISExit(caerModuleData moduleData) {
 	}
 
 	// Ensure Exposure value is coherent with libcaer.
-	sshsAttributeUpdaterRemoveAll(apsNode);
+	sshsAttributeUpdaterRemoveAllForNode(apsNode);
 	sshsNodePutAttribute(
 		apsNode, "Exposure", SSHS_INT, apsExposureUpdater(moduleData->moduleState, "Exposure", SSHS_INT));
 
 	// Remove statistics updaters.
 	sshsNode statNode = sshsGetRelativeNode(deviceConfigNode, "statistics/");
-	sshsAttributeUpdaterRemoveAll(statNode);
+	sshsAttributeUpdaterRemoveAllForNode(statNode);
 
 	caerDeviceDataStop(moduleData->moduleState);
 

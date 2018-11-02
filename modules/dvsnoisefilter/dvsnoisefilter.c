@@ -228,7 +228,7 @@ static void caerDVSNoiseFilterExit(caerModuleData moduleData) {
 	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData->moduleState, &caerDVSNoiseFilterConfigCustom);
 
-	sshsAttributeUpdaterRemoveAll(moduleData->moduleNode);
+	sshsAttributeUpdaterRemoveAllForNode(moduleData->moduleNode);
 
 	caerFilterDVSNoiseDestroy(moduleData->moduleState);
 }

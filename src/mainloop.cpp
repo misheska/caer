@@ -1767,7 +1767,7 @@ static int caerMainloopRunner() {
 
 	// Run global config updaters once at startup.
 	sshs globalSSHS = sshsGetGlobal();
-	sshsAttributeUpdatersRun(globalSSHS);
+	sshsAttributeUpdaterRun(globalSSHS);
 
 	// Write config to file, at this point basic configuration is available.
 	caerConfigWriteBack();
@@ -1799,7 +1799,7 @@ static int caerMainloopRunner() {
 
 		// Run global config updaters once a second.
 		if (lastUpdaterDiff.count() >= 1000) {
-			sshsAttributeUpdatersRun(globalSSHS);
+			sshsAttributeUpdaterRun(globalSSHS);
 
 			lastUpdaterTime = currTime;
 		}

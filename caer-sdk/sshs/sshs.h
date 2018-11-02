@@ -199,12 +199,13 @@ sshsNode sshsGetRelativeNode(sshsNode node, const char *nodePath);
 typedef union sshs_node_attr_value (*sshsAttributeUpdater)(
 	void *userData, const char *key, enum sshs_node_attr_value_type type);
 
-bool sshsAttributeUpdaterAdd(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
+void sshsAttributeUpdaterAdd(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
 	sshsAttributeUpdater updater, void *updaterUserData);
-bool sshsAttributeUpdaterRemove(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
+void sshsAttributeUpdaterRemove(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
 	sshsAttributeUpdater updater, void *updaterUserData);
-bool sshsAttributeUpdaterRemoveAll(sshsNode node);
-bool sshsAttributeUpdatersRun(sshs st);
+void sshsAttributeUpdaterRemoveAllForNode(sshsNode node);
+void sshsAttributeUpdaterRemoveAll(sshs tree);
+bool sshsAttributeUpdaterRun(sshs tree);
 
 // Deprecated.
 void sshsNodeCreateByte(sshsNode node, const char *key, int8_t defaultValue, int8_t minValue, int8_t maxValue,
