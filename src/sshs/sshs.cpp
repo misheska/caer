@@ -343,6 +343,14 @@ void sshsGlobalNodeListenerSet(sshs tree, sshsNodeChangeListener node_changed, v
 	tree->globalNodeListenerUserData.store(userData);
 }
 
+sshsNodeChangeListener sshsGlobalNodeListenerGetFunction(sshs tree) {
+	return (tree->globalNodeListenerFunction.load(std::memory_order_relaxed));
+}
+
+void *sshsGlobalNodeListenerGetUserData(sshs tree) {
+	return (tree->globalNodeListenerUserData.load(std::memory_order_relaxed));
+}
+
 void sshsGlobalAttributeListenerSet(sshs tree, sshsAttributeChangeListener attribute_changed, void *userData) {
 	std::lock_guard<std::mutex> lock(tree->globalListenersLock);
 
@@ -354,6 +362,14 @@ void sshsGlobalAttributeListenerSet(sshs tree, sshsAttributeChangeListener attri
 
 	// Associate new user data.
 	tree->globalAttributeListenerUserData.store(userData);
+}
+
+sshsAttributeChangeListener sshsGlobalAttributeListenerGetFunction(sshs tree) {
+	return (tree->globalAttributeListenerFunction.load(std::memory_order_relaxed));
+}
+
+void *sshsGlobalAttributeListenerGetUserData(sshs tree) {
+	return (tree->globalAttributeListenerUserData.load(std::memory_order_relaxed));
 }
 
 #define ALLOWED_CHARS_REGEXP "([a-zA-Z-_\\d\\.]+/)"

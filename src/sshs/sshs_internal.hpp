@@ -11,7 +11,7 @@
 
 // C linkage to guarantee no name mangling.
 extern "C" {
-// Internal functions.
+// Internal node functions.
 sshsNode sshsNodeNew(const char *nodeName, sshsNode parent, sshs global);
 /**
  * This returns a reference to a node, and as such must be carefully mediated with
@@ -27,6 +27,12 @@ sshsNode sshsNodeGetChild(sshsNode node, const char *childName);
  * Get link to global SSHS tree.
  */
 sshs sshsNodeGetGlobal(sshsNode node);
+
+// Internal global functions.
+sshsNodeChangeListener sshsGlobalNodeListenerGetFunction(sshs tree);
+void *sshsGlobalNodeListenerGetUserData(sshs tree);
+sshsAttributeChangeListener sshsGlobalAttributeListenerGetFunction(sshs tree);
+void *sshsGlobalAttributeListenerGetUserData(sshs tree);
 }
 
 template<typename InIter, typename Elem> static inline bool findBool(InIter begin, InIter end, const Elem &val) {

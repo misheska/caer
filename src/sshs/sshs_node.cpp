@@ -224,6 +224,13 @@ public:
 			attributes[key] = newAttr;
 
 			// Listener support. Call only on change, which is always the case here.
+			sshsAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+			if (globalListener != nullptr) {
+				// Global listener support.
+				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), SSHS_ATTRIBUTE_ADDED,
+					key.c_str(), newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
+			}
+
 			for (const auto &l : attrListeners) {
 				(*l.getListener())(this, l.getUserData(), SSHS_ATTRIBUTE_ADDED, key.c_str(),
 					newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
@@ -256,6 +263,14 @@ public:
 				attributes[key] = newAttr;
 
 				// Listener support. Call only on change, which is always the case here.
+				sshsAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+				if (globalListener != nullptr) {
+					// Global listener support.
+					(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global),
+						SSHS_ATTRIBUTE_MODIFIED, key.c_str(), newAttr.getValue().getType(),
+						newAttr.getValue().toCUnion(true));
+				}
+
 				for (const auto &l : attrListeners) {
 					(*l.getListener())(this, l.getUserData(), SSHS_ATTRIBUTE_MODIFIED, key.c_str(),
 						newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
@@ -276,6 +291,13 @@ public:
 		sshs_node_attr &attr = attributes[key];
 
 		// Listener support.
+		sshsAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+		if (globalListener != nullptr) {
+			// Global listener support.
+			(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), SSHS_ATTRIBUTE_REMOVED,
+				key.c_str(), attr.getValue().getType(), attr.getValue().toCUnion(true));
+		}
+
 		for (const auto &l : attrListeners) {
 			(*l.getListener())(this, l.getUserData(), SSHS_ATTRIBUTE_REMOVED, key.c_str(), attr.getValue().getType(),
 				attr.getValue().toCUnion(true));
@@ -289,6 +311,13 @@ public:
 		std::lock_guard<std::recursive_mutex> lock(node_lock);
 
 		for (const auto &attr : attributes) {
+			sshsAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+			if (globalListener != nullptr) {
+				// Global listener support.
+				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), SSHS_ATTRIBUTE_REMOVED,
+					attr.first.c_str(), attr.second.getValue().getType(), attr.second.getValue().toCUnion(true));
+			}
+
 			for (const auto &l : attrListeners) {
 				(*l.getListener())(this, l.getUserData(), SSHS_ATTRIBUTE_REMOVED, attr.first.c_str(),
 					attr.second.getValue().getType(), attr.second.getValue().toCUnion(true));
@@ -359,6 +388,13 @@ public:
 			// the case where NOTIFY_ONLY prevented the updated of the stored
 			// attribute, but the call to the listeners has to happen with the
 			// new value (call-listeners-only behavior).
+			sshsAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+			if (globalListener != nullptr) {
+				// Global listener support.
+				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), SSHS_ATTRIBUTE_MODIFIED,
+					key.c_str(), value.getType(), value.toCUnion(true));
+			}
+
 			for (const auto &l : attrListeners) {
 				(*l.getListener())(
 					this, l.getUserData(), SSHS_ATTRIBUTE_MODIFIED, key.c_str(), value.getType(), value.toCUnion(true));
@@ -424,6 +460,12 @@ sshsNode sshsNodeAddChild(sshsNode node, const char *childName) {
 
 		// Listener support (only on new addition!).
 		std::lock_guard<std::recursive_mutex> nodeLock(node->node_lock);
+
+		sshsNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
+		if (globalListener != nullptr) {
+			// Global listener support.
+			(*globalListener)(node, sshsGlobalNodeListenerGetUserData(node->global), SSHS_CHILD_NODE_ADDED, childName);
+		}
 
 		for (const auto &l : node->nodeListeners) {
 			(*l.getListener())(node, l.getUserData(), SSHS_CHILD_NODE_ADDED, childName);
@@ -589,6 +631,13 @@ static void sshsNodeRemoveChild(sshsNode node, const std::string childName) {
 	}
 
 	// Listener support.
+	sshsNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
+	if (globalListener != nullptr) {
+		// Global listener support.
+		(*globalListener)(
+			node, sshsGlobalNodeListenerGetUserData(node->global), SSHS_CHILD_NODE_REMOVED, childName.c_str());
+	}
+
 	for (const auto &l : node->nodeListeners) {
 		(*l.getListener())(node, l.getUserData(), SSHS_CHILD_NODE_REMOVED, childName.c_str());
 	}
@@ -606,6 +655,13 @@ static void sshsNodeRemoveAllChildren(sshsNode node) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	for (const auto &child : node->children) {
+		sshsNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
+		if (globalListener != nullptr) {
+			// Global listener support.
+			(*globalListener)(
+				node, sshsGlobalNodeListenerGetUserData(node->global), SSHS_CHILD_NODE_REMOVED, child.first.c_str());
+		}
+
 		for (const auto &l : node->nodeListeners) {
 			(*l.getListener())(node, l.getUserData(), SSHS_CHILD_NODE_REMOVED, child.first.c_str());
 		}
