@@ -585,7 +585,8 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 			// separated by a NUL character.
 			const char *typeStr = sshsHelperTypeToStringConverter(attrType);
 
-			caerConfigSendResponse(client, CAER_CONFIG_GET_TYPES, SSHS_STRING, (const uint8_t *) typeStr, typesLength);
+			caerConfigSendResponse(
+				client, CAER_CONFIG_GET_TYPES, SSHS_STRING, (const uint8_t *) typeStr, strlen(typeStr) + 1);
 
 			break;
 		}
