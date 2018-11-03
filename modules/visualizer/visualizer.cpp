@@ -482,7 +482,7 @@ static bool initGraphics(caerModuleData moduleData) {
 	state->renderWindow->setFramerateLimit(60);
 
 	// Default zoom factor for above window would be 1.
-	state->renderZoomFactor.store(1.0f);
+	new (&state->renderZoomFactor) std::atomic<float>(1.0f);
 
 	// Set scale transform for display window, update sizes.
 	updateDisplaySize(state);
