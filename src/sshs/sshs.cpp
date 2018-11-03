@@ -283,6 +283,11 @@ void sshsAttributeUpdaterAdd(sshsNode node, const char *key, enum sshs_node_attr
 
 	// Check no other updater already exists that matches this one.
 	if (!findBool(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(), attrUpdater)) {
+		// Verify referenced attribute actually exists.
+		if (!sshsNodeAttributeExists(node, key, type)) {
+			sshsNodeErrorNoAttribute("sshsAttributeUpdaterAdd", key, type);
+		}
+
 		tree->attributeUpdaters.push_back(attrUpdater);
 	}
 }

@@ -15,25 +15,6 @@
 #include <utility>
 #include <vector>
 
-// We don't care about unlocking anything here, as we exit hard on error anyway.
-static inline void sshsNodeError(const std::string &funcName, const std::string &key,
-	enum sshs_node_attr_value_type type, const std::string &msg, bool fatal = true) {
-	boost::format errorMsg = boost::format("%s(): attribute '%s' (type '%s'): %s.") % funcName % key
-							 % sshsHelperCppTypeToStringConverter(type) % msg;
-
-	(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str());
-
-	if (fatal) {
-		// This is a critical usage error that *must* be fixed!
-		exit(EXIT_FAILURE);
-	}
-}
-
-static inline void sshsNodeErrorNoAttribute(
-	const std::string &funcName, const std::string &key, enum sshs_node_attr_value_type type) {
-	sshsNodeError(funcName, key, type, "attribute doesn't exist, you must create it first");
-}
-
 class sshs_node_attr {
 private:
 	struct sshs_node_attr_ranges ranges;
