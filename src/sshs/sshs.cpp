@@ -1,10 +1,10 @@
 #include "sshs_internal.hpp"
 
+#include <atomic>
 #include <boost/tokenizer.hpp>
 #include <iostream>
 #include <mutex>
 #include <regex>
-#include <shared_mutex>
 #include <vector>
 
 class sshs_attribute_updater {
@@ -59,9 +59,19 @@ public:
 // struct for C compatibility
 struct sshs_struct {
 public:
+	// Data root node. Cannot be deleted.
 	sshsNode root;
+	// Global attribute updaters.
 	std::vector<sshs_attribute_updater> attributeUpdaters;
-	std::shared_timed_mutex globalLock;
+	std::mutex attributeUpdatersLock;
+	// Global node listener.
+	std::atomic<sshsNodeChangeListener> globalNodeListenerFunction;
+	std::atomic<void *> globalNodeListenerUserData;
+	// Global attribute listener.
+	std::atomic<sshsAttributeChangeListener> globalAttributeListenerFunction;
+	std::atomic<void *> globalAttributeListenerUserData;
+	// Lock to serialize setting of global listeners.
+	std::mutex globalListenersLock;
 };
 
 static void sshsGlobalInitialize(void);
@@ -123,6 +133,15 @@ sshs sshsNew(void) {
 
 	// Create root node.
 	newSshs->root = sshsNodeNew("", nullptr, newSshs);
+
+	// Initialize C++ objects using placement new.
+	new (&newSshs->attributeUpdaters) std::vector<sshs_attribute_updater>();
+	new (&newSshs->attributeUpdatersLock) std::mutex();
+	new (&newSshs->globalNodeListenerFunction) std::atomic<sshsNodeChangeListener>(nullptr);
+	new (&newSshs->globalNodeListenerUserData) std::atomic<void *>(nullptr);
+	new (&newSshs->globalAttributeListenerFunction) std::atomic<sshsAttributeChangeListener>(nullptr);
+	new (&newSshs->globalAttributeListenerUserData) std::atomic<void *>(nullptr);
+	new (&newSshs->globalListenersLock) std::mutex();
 
 	return (newSshs);
 }
@@ -260,7 +279,7 @@ void sshsAttributeUpdaterAdd(sshsNode node, const char *key, enum sshs_node_attr
 	sshs_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
 
 	sshs tree = sshsNodeGetGlobal(node);
-	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
+	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
 
 	// Check no other updater already exists that matches this one.
 	if (!findBool(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(), attrUpdater)) {
@@ -273,7 +292,7 @@ void sshsAttributeUpdaterRemove(sshsNode node, const char *key, enum sshs_node_a
 	sshs_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
 
 	sshs tree = sshsNodeGetGlobal(node);
-	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
+	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
 
 	tree->attributeUpdaters.erase(
 		std::remove(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(), attrUpdater),
@@ -282,7 +301,7 @@ void sshsAttributeUpdaterRemove(sshsNode node, const char *key, enum sshs_node_a
 
 void sshsAttributeUpdaterRemoveAllForNode(sshsNode node) {
 	sshs tree = sshsNodeGetGlobal(node);
-	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
+	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
 
 	tree->attributeUpdaters.erase(std::remove_if(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(),
 									  [&node](const sshs_attribute_updater &up) { return (up.getNode() == node); }),
@@ -290,13 +309,13 @@ void sshsAttributeUpdaterRemoveAllForNode(sshsNode node) {
 }
 
 void sshsAttributeUpdaterRemoveAll(sshs tree) {
-	std::unique_lock<std::shared_timed_mutex> lock(tree->globalLock);
+	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
 
 	tree->attributeUpdaters.clear();
 }
 
 bool sshsAttributeUpdaterRun(sshs tree) {
-	std::shared_lock<std::shared_timed_mutex> lock(tree->globalLock);
+	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
 
 	bool allSuccess = true;
 
@@ -309,6 +328,32 @@ bool sshsAttributeUpdaterRun(sshs tree) {
 	}
 
 	return (allSuccess);
+}
+
+void sshsGlobalNodeListenerSet(sshs tree, sshsNodeChangeListener node_changed, void *userData) {
+	std::lock_guard<std::mutex> lock(tree->globalListenersLock);
+
+	// Ensure function is never called with old user data.
+	tree->globalNodeListenerUserData.store(nullptr);
+
+	// Update function.
+	tree->globalNodeListenerFunction.store(node_changed);
+
+	// Associate new user data.
+	tree->globalNodeListenerUserData.store(userData);
+}
+
+void sshsGlobalAttributeListenerSet(sshs tree, sshsAttributeChangeListener attribute_changed, void *userData) {
+	std::lock_guard<std::mutex> lock(tree->globalListenersLock);
+
+	// Ensure function is never called with old user data.
+	tree->globalAttributeListenerUserData.store(nullptr);
+
+	// Update function.
+	tree->globalAttributeListenerFunction.store(attribute_changed);
+
+	// Associate new user data.
+	tree->globalAttributeListenerUserData.store(userData);
 }
 
 #define ALLOWED_CHARS_REGEXP "([a-zA-Z-_\\d\\.]+/)"

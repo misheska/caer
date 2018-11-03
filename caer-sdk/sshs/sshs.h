@@ -207,6 +207,17 @@ void sshsAttributeUpdaterRemoveAllForNode(sshsNode node);
 void sshsAttributeUpdaterRemoveAll(sshs tree);
 bool sshsAttributeUpdaterRun(sshs tree);
 
+/**
+ * Listener must be able to deal with userData being NULL at any moment.
+ * This can happen due to concurrent changes from this setter.
+ */
+void sshsGlobalNodeListenerSet(sshs tree, sshsNodeChangeListener node_changed, void *userData);
+/**
+ * Listener must be able to deal with userData being NULL at any moment.
+ * This can happen due to concurrent changes from this setter.
+ */
+void sshsGlobalAttributeListenerSet(sshs tree, sshsAttributeChangeListener attribute_changed, void *userData);
+
 // Deprecated.
 void sshsNodeCreateByte(sshsNode node, const char *key, int8_t defaultValue, int8_t minValue, int8_t maxValue,
 	int flags, const char *description);
