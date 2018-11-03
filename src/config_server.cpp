@@ -570,42 +570,22 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 			// This cannot fail, since we know the node exists from above.
 			sshsNode wantedNode = sshsGetNode(configStore, (const char *) node);
 
-			// Check if any keys match the given one and return its types.
-			size_t numTypes;
-			enum sshs_node_attr_value_type *attrTypes
-				= sshsNodeGetAttributeTypes(wantedNode, (const char *) key, &numTypes);
+			// Check if any keys match the given one and return its type.
+			enum sshs_node_attr_value_type attrType = sshsNodeGetAttributeType(wantedNode, (const char *) key);
 
 			// No attributes for specified key, return empty.
-			if (attrTypes == NULL) {
+			if (attrType == SSHS_UNKNOWN) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Node has no attributes with specified key.");
 
 				break;
 			}
 
-			// We need to return a big string with all of the attribute types,
+			// We need to return a string with the attribute type,
 			// separated by a NUL character.
-			size_t typesLength = 0;
+			const char *typeStr = sshsHelperTypeToStringConverter(attrType);
 
-			for (size_t i = 0; i < numTypes; i++) {
-				const char *typeString = sshsHelperTypeToStringConverter(attrTypes[i]);
-				typesLength += strlen(typeString) + 1; // +1 for terminating NUL byte.
-			}
-
-			// Allocate a buffer for the types and copy them over.
-			char typesBuffer[typesLength];
-
-			for (size_t i = 0, acc = 0; i < numTypes; i++) {
-				const char *typeString = sshsHelperTypeToStringConverter(attrTypes[i]);
-				size_t len             = strlen(typeString) + 1;
-				memcpy(typesBuffer + acc, typeString, len);
-				acc += len;
-			}
-
-			free(attrTypes);
-
-			caerConfigSendResponse(
-				client, CAER_CONFIG_GET_TYPES, SSHS_STRING, (const uint8_t *) typesBuffer, typesLength);
+			caerConfigSendResponse(client, CAER_CONFIG_GET_TYPES, SSHS_STRING, (const uint8_t *) typeStr, typesLength);
 
 			break;
 		}

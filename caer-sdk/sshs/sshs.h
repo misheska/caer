@@ -157,7 +157,7 @@ bool sshsNodeImportSubTreeFromXML(sshsNode node, int fd, bool strict);
 bool sshsNodeStringToAttributeConverter(sshsNode node, const char *key, const char *type, const char *value);
 const char **sshsNodeGetChildNames(sshsNode node, size_t *numNames);
 const char **sshsNodeGetAttributeKeys(sshsNode node, size_t *numKeys);
-enum sshs_node_attr_value_type *sshsNodeGetAttributeTypes(sshsNode node, const char *key, size_t *numTypes);
+enum sshs_node_attr_value_type sshsNodeGetAttributeType(sshsNode node, const char *key);
 struct sshs_node_attr_ranges sshsNodeGetAttributeRanges(
 	sshsNode node, const char *key, enum sshs_node_attr_value_type type);
 int sshsNodeGetAttributeFlags(sshsNode node, const char *key, enum sshs_node_attr_value_type type);

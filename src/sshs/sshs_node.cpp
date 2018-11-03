@@ -1244,26 +1244,16 @@ const char **sshsNodeGetAttributeKeys(sshsNode node, size_t *numKeys) {
 }
 
 // Remember to free the resulting array.
-enum sshs_node_attr_value_type *sshsNodeGetAttributeTypes(sshsNode node, const char *key, size_t *numTypes) {
+enum sshs_node_attr_value_type sshsNodeGetAttributeType(sshsNode node, const char *key) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	if (!node->attributes.count(key)) {
-		*numTypes = 0;
-		errno     = ENOENT;
-		return (nullptr);
+		errno = ENOENT;
+		return (SSHS_UNKNOWN);
 	}
 
-	// There is at most 1 type for one specific attribute key.
-	enum sshs_node_attr_value_type *attributeTypes
-		= (enum sshs_node_attr_value_type *) malloc(1 * sizeof(*attributeTypes));
-	sshsMemoryCheck(attributeTypes, __func__);
-
-	// Check each attribute if it matches, and save its type if true.
-	// We only support one type per attribute key here.
-	attributeTypes[0] = node->attributes[key].getValue().getType();
-
-	*numTypes = 1;
-	return (attributeTypes);
+	// There is exactly one type for one specific attribute key.
+	return (node->attributes[key].getValue().getType());
 }
 
 struct sshs_node_attr_ranges sshsNodeGetAttributeRanges(
