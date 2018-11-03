@@ -1291,12 +1291,12 @@ char *sshsNodeGetAttributeDescription(sshsNode node, const char *key, enum sshs_
 	return (descriptionCopy);
 }
 
-void sshsNodeCreateAttributeListOptions(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
-	const char *listOptions, bool allowMultipleSelections) {
+void sshsNodeCreateAttributeListOptions(
+	sshsNode node, const char *key, const char *listOptions, bool allowMultipleSelections) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
-	if (!node->attributeExists(key, type)) {
-		sshsNodeErrorNoAttribute("sshsNodeCreateAttributeListOptions", key, type);
+	if (!node->attributeExists(key, SSHS_STRING)) {
+		sshsNodeErrorNoAttribute("sshsNodeCreateAttributeListOptions", key, SSHS_STRING);
 	}
 
 	std::string fullKey(key);
@@ -1306,23 +1306,20 @@ void sshsNodeCreateAttributeListOptions(sshsNode node, const char *key, enum ssh
 		fullKey += "Multi";
 	}
 
-	sshsNodeRemoveAttribute(node, fullKey.c_str(), SSHS_STRING);
 	sshsNodeCreateString(node, fullKey.c_str(), listOptions, 1, INT32_MAX, SSHS_FLAGS_READ_ONLY,
 		"Comma separated list of possible associated attribute values.");
 }
 
-void sshsNodeCreateAttributeFileChooser(
-	sshsNode node, const char *key, enum sshs_node_attr_value_type type, const char *allowedExtensions) {
+void sshsNodeCreateAttributeFileChooser(sshsNode node, const char *key, const char *allowedExtensions) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
-	if (!node->attributeExists(key, type)) {
-		sshsNodeErrorNoAttribute("sshsNodeCreateAttributeFileChooser", key, type);
+	if (!node->attributeExists(key, SSHS_STRING)) {
+		sshsNodeErrorNoAttribute("sshsNodeCreateAttributeFileChooser", key, SSHS_STRING);
 	}
 
 	std::string fullKey(key);
 	fullKey += "FileChooser";
 
-	sshsNodeRemoveAttribute(node, fullKey.c_str(), SSHS_STRING);
 	sshsNodeCreateString(node, fullKey.c_str(), allowedExtensions, 1, INT32_MAX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 		"Comma separated list of allowed extensions for the file chooser dialog.");

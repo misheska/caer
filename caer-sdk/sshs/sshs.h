@@ -170,10 +170,9 @@ char *sshsHelperValueToStringConverter(enum sshs_node_attr_value_type type, unio
 union sshs_node_attr_value sshsHelperStringToValueConverter(
 	enum sshs_node_attr_value_type type, const char *valueString);
 
-void sshsNodeCreateAttributeListOptions(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
-	const char *listOptions, bool allowMultipleSelections);
-void sshsNodeCreateAttributeFileChooser(
-	sshsNode node, const char *key, enum sshs_node_attr_value_type type, const char *allowedExtensions);
+void sshsNodeCreateAttributeListOptions(
+	sshsNode node, const char *key, const char *listOptions, bool allowMultipleSelections);
+void sshsNodeCreateAttributeFileChooser(sshsNode node, const char *key, const char *allowedExtensions);
 
 // SSHS
 typedef struct sshs_struct *sshs;

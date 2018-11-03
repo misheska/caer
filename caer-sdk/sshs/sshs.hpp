@@ -82,14 +82,14 @@ inline bool sshsNodeUpdateReadOnlyAttribute(sshsNode node, const char *key, cons
 	return (sshsNodeUpdateReadOnlyAttribute(node, key, SSHS_STRING, newValue));
 }
 
-inline void sshsNodeCreateAttributeListOptions(sshsNode node, const std::string &key,
-	enum sshs_node_attr_value_type type, const std::string &listOptions, bool allowMultipleSelections) {
-	sshsNodeCreateAttributeListOptions(node, key.c_str(), type, listOptions.c_str(), allowMultipleSelections);
+inline void sshsNodeCreateAttributeListOptions(
+	sshsNode node, const std::string &key, const std::string &listOptions, bool allowMultipleSelections) {
+	sshsNodeCreateAttributeListOptions(node, key.c_str(), listOptions.c_str(), allowMultipleSelections);
 }
 
 inline void sshsNodeCreateAttributeFileChooser(
-	sshsNode node, const std::string &key, enum sshs_node_attr_value_type type, const std::string &allowedExtensions) {
-	sshsNodeCreateAttributeFileChooser(node, key.c_str(), type, allowedExtensions.c_str());
+	sshsNode node, const std::string &key, const std::string &allowedExtensions) {
+	sshsNodeCreateAttributeFileChooser(node, key.c_str(), allowedExtensions.c_str());
 }
 
 // std::string variants of node getters.

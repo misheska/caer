@@ -56,21 +56,21 @@ static void caerFrameEnhancerConfigInit(sshsNode moduleNode) {
 #if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
 	sshsNodeCreateString(moduleNode, "demosaicType", "opencv_edge_aware", 7, 17, SSHS_FLAGS_NORMAL,
 		"Demoisaicing (color interpolation) algorithm to apply.");
-	sshsNodeCreateAttributeListOptions(moduleNode, "demosaicType", SSHS_STRING,
-		"opencv_edge_aware,opencv_to_gray,opencv_standard,to_gray,standard", false);
+	sshsNodeCreateAttributeListOptions(
+		moduleNode, "demosaicType", "opencv_edge_aware,opencv_to_gray,opencv_standard,to_gray,standard", false);
 
 	sshsNodeCreateString(moduleNode, "contrastType", "opencv_normalization", 8, 29, SSHS_FLAGS_NORMAL,
 		"Contrast enhancement algorithm to apply.");
-	sshsNodeCreateAttributeListOptions(moduleNode, "contrastType", SSHS_STRING,
-		"opencv_normalization,opencv_histogram_equalization,opencv_clahe,standard", false);
+	sshsNodeCreateAttributeListOptions(
+		moduleNode, "contrastType", "opencv_normalization,opencv_histogram_equalization,opencv_clahe,standard", false);
 #else
 	sshsNodeCreateString(moduleNode, "demosaicType", "standard", 7, 8, SSHS_FLAGS_NORMAL,
 		"Demoisaicing (color interpolation) algorithm to apply.");
-	sshsNodeCreateAttributeListOptions(moduleNode, "demosaicType", SSHS_STRING, "to_gray,standard", false);
+	sshsNodeCreateAttributeListOptions(moduleNode, "demosaicType", "to_gray,standard", false);
 
 	sshsNodeCreateString(
 		moduleNode, "contrastType", "standard", 8, 8, SSHS_FLAGS_NORMAL, "Contrast enhancement algorithm to apply.");
-	sshsNodeCreateAttributeListOptions(moduleNode, "contrastType", SSHS_STRING, "standard", false);
+	sshsNodeCreateAttributeListOptions(moduleNode, "contrastType", "standard", false);
 #endif
 }
 

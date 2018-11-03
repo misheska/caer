@@ -566,7 +566,7 @@ static void createDefaultLogicConfiguration(
 
 	sshsNodeCreateString(apsNode, "FrameMode", "Default", 7, 9, SSHS_FLAGS_NORMAL,
 		"Enable automatic exposure control, to react to changes in lighting conditions.");
-	sshsNodeCreateAttributeListOptions(apsNode, "FrameMode", SSHS_STRING, "Default,Grayscale,Original", false);
+	sshsNodeCreateAttributeListOptions(apsNode, "FrameMode", "Default,Grayscale,Original", false);
 
 	// DAVIS RGB has additional timing counters.
 	if (IS_DAVIS640H(devInfo->chipID)) {
@@ -2191,11 +2191,11 @@ static void createCoarseFineBiasSetting(sshsNode biasNode, const char *biasName,
 		"Fine current value (small adjustments).");
 	sshsNodeCreateBool(biasConfigNode, "enabled", enabled, SSHS_FLAGS_NORMAL, "Bias enabled.");
 	sshsNodeCreateString(biasConfigNode, "sex", sex, 1, 1, SSHS_FLAGS_NORMAL, "Bias sex.");
-	sshsNodeCreateAttributeListOptions(biasConfigNode, "sex", SSHS_STRING, "N,P", false);
+	sshsNodeCreateAttributeListOptions(biasConfigNode, "sex", "N,P", false);
 	sshsNodeCreateString(biasConfigNode, "type", type, 6, 7, SSHS_FLAGS_NORMAL, "Bias type.");
-	sshsNodeCreateAttributeListOptions(biasConfigNode, "type", SSHS_STRING, "Normal,Cascode", false);
+	sshsNodeCreateAttributeListOptions(biasConfigNode, "type", "Normal,Cascode", false);
 	sshsNodeCreateString(biasConfigNode, "currentLevel", "Normal", 3, 6, SSHS_FLAGS_NORMAL, "Bias current level.");
-	sshsNodeCreateAttributeListOptions(biasConfigNode, "currentLevel", SSHS_STRING, "Normal,Low", false);
+	sshsNodeCreateAttributeListOptions(biasConfigNode, "currentLevel", "Normal,Low", false);
 }
 
 static uint16_t generateCoarseFineBiasParent(sshsNode biasNode, const char *biasName) {
@@ -2254,12 +2254,10 @@ static void createShiftedSourceBiasSetting(sshsNode biasNode, const char *biasNa
 		"Shifted-source bias current for buffer amplifier.");
 	sshsNodeCreateString(
 		biasConfigNode, "operatingMode", operatingMode, 3, 13, SSHS_FLAGS_NORMAL, "Shifted-source operating mode.");
-	sshsNodeCreateAttributeListOptions(
-		biasConfigNode, "operatingMode", SSHS_STRING, "ShiftedSource,HiZ,TiedToRail", false);
+	sshsNodeCreateAttributeListOptions(biasConfigNode, "operatingMode", "ShiftedSource,HiZ,TiedToRail", false);
 	sshsNodeCreateString(
 		biasConfigNode, "voltageLevel", voltageLevel, 9, 11, SSHS_FLAGS_NORMAL, "Shifted-source voltage level.");
-	sshsNodeCreateAttributeListOptions(
-		biasConfigNode, "voltageLevel", SSHS_STRING, "SplitGate,SingleDiode,DoubleDiode", false);
+	sshsNodeCreateAttributeListOptions(biasConfigNode, "voltageLevel", "SplitGate,SingleDiode,DoubleDiode", false);
 }
 
 static uint16_t generateShiftedSourceBiasParent(sshsNode biasNode, const char *biasName) {

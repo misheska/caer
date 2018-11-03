@@ -67,7 +67,7 @@ static void caerCameraCalibrationConfigInit(sshsNode moduleNode) {
 	sshsNodeCreateString(
 		moduleNode, "calibrationPattern", "chessboard", 10, 21, SSHS_FLAGS_NORMAL, "Pattern to run calibration with.");
 	sshsNodeCreateAttributeListOptions(
-		moduleNode, "calibrationPattern", SSHS_STRING, "chessboard,circlesGrid,asymmetricCirclesGrid", false);
+		moduleNode, "calibrationPattern", "chessboard,circlesGrid,asymmetricCirclesGrid", false);
 	sshsNodeCreateInt(moduleNode, "boardWidth", 9, 1, 64, SSHS_FLAGS_NORMAL, "The size of the board (width).");
 	sshsNodeCreateInt(moduleNode, "boardHeigth", 5, 1, 64, SSHS_FLAGS_NORMAL, "The size of the board (heigth).");
 	sshsNodeCreateFloat(moduleNode, "boardSquareSize", 1.0f, 0.0f, 1000.0f, SSHS_FLAGS_NORMAL,
