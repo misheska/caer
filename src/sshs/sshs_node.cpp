@@ -107,13 +107,13 @@ public:
 	}
 };
 
-class sshs_node_attr_listener {
+class sshs_attribute_listener {
 private:
 	sshsAttributeChangeListener attributeChanged;
 	void *userData;
 
 public:
-	sshs_node_attr_listener(sshsAttributeChangeListener _listener, void *_userData) :
+	sshs_attribute_listener(sshsAttributeChangeListener _listener, void *_userData) :
 		attributeChanged(_listener),
 		userData(_userData) {
 	}
@@ -127,11 +127,11 @@ public:
 	}
 
 	// Comparison operators.
-	bool operator==(const sshs_node_attr_listener &rhs) const noexcept {
+	bool operator==(const sshs_attribute_listener &rhs) const noexcept {
 		return ((attributeChanged == rhs.attributeChanged) && (userData == rhs.userData));
 	}
 
-	bool operator!=(const sshs_node_attr_listener &rhs) const noexcept {
+	bool operator!=(const sshs_attribute_listener &rhs) const noexcept {
 		return (!this->operator==(rhs));
 	}
 };
@@ -148,7 +148,7 @@ public:
 	std::map<std::string, sshsNode> children;
 	std::map<std::string, sshs_node_attr> attributes;
 	std::vector<sshs_node_listener> nodeListeners;
-	std::vector<sshs_node_attr_listener> attrListeners;
+	std::vector<sshs_attribute_listener> attrListeners;
 	std::shared_timed_mutex traversal_lock;
 	std::recursive_mutex node_lock;
 
@@ -382,7 +382,7 @@ static bool sshsNodeFromXML(sshsNode node, int fd, bool recursive, bool strict);
 static void sshsNodeConsumeXML(sshsNode node, const boost::property_tree::ptree &content, bool recursive);
 
 sshsNode sshsNodeNew(const char *nodeName, sshsNode parent, sshs global) {
-	sshsNode newNode = new sshs_node(nodeName, parent, global);
+	sshsNode newNode = new (std::nothrow) sshs_node(nodeName, parent, global);
 	sshsMemoryCheck(newNode, __func__);
 
 	return (newNode);
@@ -493,7 +493,7 @@ void sshsNodeRemoveAllNodeListeners(sshsNode node) {
 }
 
 void sshsNodeAddAttributeListener(sshsNode node, void *userData, sshsAttributeChangeListener attribute_changed) {
-	sshs_node_attr_listener listener(attribute_changed, userData);
+	sshs_attribute_listener listener(attribute_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
 
@@ -503,7 +503,7 @@ void sshsNodeAddAttributeListener(sshsNode node, void *userData, sshsAttributeCh
 }
 
 void sshsNodeRemoveAttributeListener(sshsNode node, void *userData, sshsAttributeChangeListener attribute_changed) {
-	sshs_node_attr_listener listener(attribute_changed, userData);
+	sshs_attribute_listener listener(attribute_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
 
