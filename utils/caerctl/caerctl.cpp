@@ -894,7 +894,7 @@ static void typeCompletion(const char *buf, size_t bufLength, linenoiseCompletio
 
 	uint8_t dataBuffer[CAER_CONFIG_SERVER_BUFFER_SIZE];
 
-	// Send request for all type names for this key on this node.
+	// Send request for the type name for this key on this node.
 	dataBuffer[0] = CAER_CONFIG_GET_TYPE;
 	dataBuffer[1] = 0;                                        // UNUSED.
 	setExtraLen(dataBuffer, 0);                               // UNUSED.
@@ -945,14 +945,9 @@ static void typeCompletion(const char *buf, size_t bufLength, linenoiseCompletio
 	}
 
 	// At this point we made a valid request and got back a full response.
-	for (size_t i = 0; i < msgLength; i++) {
-		if (strncasecmp((const char *) dataBuffer + 4 + i, partialTypeString, partialTypeStringLength) == 0) {
-			addCompletionSuffix(
-				autoComplete, buf, bufLength - partialTypeStringLength, (const char *) dataBuffer + 4 + i, true, false);
-		}
-
-		// Jump to the NUL character after this string.
-		i += strlen((const char *) dataBuffer + 4 + i);
+	if (strncasecmp((const char *) dataBuffer + 4, partialTypeString, partialTypeStringLength) == 0) {
+		addCompletionSuffix(
+			autoComplete, buf, bufLength - partialTypeStringLength, (const char *) dataBuffer + 4, true, false);
 	}
 }
 
