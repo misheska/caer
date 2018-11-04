@@ -24,6 +24,15 @@
 extern "C" {
 #endif
 
+// Function deprecation.
+#if defined(__GNUC__) || defined(__clang__)
+#	define DEPRECATED_FUNCTION(DEPR_MSG) __attribute__((__deprecated__(DEPR_MSG)))
+#elif defined(_MSC_VER)
+#	define DEPRECATED_FUNCTION(DEPR_MSG) __declspec(deprecated(DEPR_MSG))
+#else
+#	define DEPRECATED_FUNCTION(DEPR_MSG)
+#endif
+
 // SSHS node
 typedef struct sshs_node *sshsNode;
 
@@ -218,13 +227,19 @@ void sshsGlobalNodeListenerSet(sshs tree, sshsNodeChangeListener node_changed, v
 void sshsGlobalAttributeListenerSet(sshs tree, sshsAttributeChangeListener attribute_changed, void *userData);
 
 // Deprecated.
+DEPRECATED_FUNCTION("Byte type has been removed. Use integer type instead: sshsNodeCreateInt().")
 void sshsNodeCreateByte(sshsNode node, const char *key, int8_t defaultValue, int8_t minValue, int8_t maxValue,
 	int flags, const char *description);
+DEPRECATED_FUNCTION("Byte type has been removed. Use integer type instead: sshsNodePutInt().")
 bool sshsNodePutByte(sshsNode node, const char *key, int8_t value);
+DEPRECATED_FUNCTION("Byte type has been removed. Use integer type instead: sshsNodeGetInt().")
 int8_t sshsNodeGetByte(sshsNode node, const char *key);
+DEPRECATED_FUNCTION("Short type has been removed. Use integer type instead: sshsNodeCreateInt().")
 void sshsNodeCreateShort(sshsNode node, const char *key, int16_t defaultValue, int16_t minValue, int16_t maxValue,
 	int flags, const char *description);
+DEPRECATED_FUNCTION("Short type has been removed. Use integer type instead: sshsNodePutInt().")
 bool sshsNodePutShort(sshsNode node, const char *key, int16_t value);
+DEPRECATED_FUNCTION("Short type has been removed. Use integer type instead: sshsNodeGetInt().")
 int16_t sshsNodeGetShort(sshsNode node, const char *key);
 
 #ifdef __cplusplus
