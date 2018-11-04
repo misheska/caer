@@ -560,7 +560,7 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 			break;
 		}
 
-		case CAER_CONFIG_GET_TYPES: {
+		case CAER_CONFIG_GET_TYPE: {
 			std::shared_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
 
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
@@ -586,7 +586,7 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 			const char *typeStr = sshsHelperTypeToStringConverter(attrType);
 
 			caerConfigSendResponse(
-				client, CAER_CONFIG_GET_TYPES, SSHS_STRING, (const uint8_t *) typeStr, strlen(typeStr) + 1);
+				client, CAER_CONFIG_GET_TYPE, SSHS_STRING, (const uint8_t *) typeStr, strlen(typeStr) + 1);
 
 			break;
 		}

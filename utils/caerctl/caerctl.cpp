@@ -1,16 +1,16 @@
 #include "caer-sdk/utils.h"
+
 #include "src/config_server.h"
 #include "utils/ext/linenoise-ng/linenoise.h"
-
-#include <iostream>
-#include <string>
-#include <vector>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
+#include <iostream>
+#include <string>
+#include <vector>
 
 namespace asio   = boost::asio;
 namespace asioIP = boost::asio::ip;
@@ -18,8 +18,8 @@ using asioTCP    = boost::asio::ip::tcp;
 namespace po     = boost::program_options;
 
 #if defined(OS_UNIX) && OS_UNIX == 1
-#include <pwd.h>
-#include <sys/types.h>
+#	include <pwd.h>
+#	include <sys/types.h>
 #endif
 
 #define CAERCTL_HISTORY_FILE_NAME ".caer-ctl.history"
@@ -83,9 +83,13 @@ static const struct {
 	size_t nameLen;
 	uint8_t code;
 } actions[] = {
-	{"node_exists", 11, CAER_CONFIG_NODE_EXISTS}, {"attr_exists", 11, CAER_CONFIG_ATTR_EXISTS},
-	{"get", 3, CAER_CONFIG_GET}, {"put", 3, CAER_CONFIG_PUT}, {"help", 4, CAER_CONFIG_GET_DESCRIPTION},
-	{"add_module", 10, CAER_CONFIG_ADD_MODULE}, {"remove_module", 13, CAER_CONFIG_REMOVE_MODULE},
+	{"node_exists", 11, CAER_CONFIG_NODE_EXISTS},
+	{"attr_exists", 11, CAER_CONFIG_ATTR_EXISTS},
+	{"get", 3, CAER_CONFIG_GET},
+	{"put", 3, CAER_CONFIG_PUT},
+	{"help", 4, CAER_CONFIG_GET_DESCRIPTION},
+	{"add_module", 10, CAER_CONFIG_ADD_MODULE},
+	{"remove_module", 13, CAER_CONFIG_REMOVE_MODULE},
 };
 static const size_t actionsLength = sizeof(actions) / sizeof(actions[0]);
 
@@ -891,7 +895,7 @@ static void typeCompletion(const char *buf, size_t bufLength, linenoiseCompletio
 	uint8_t dataBuffer[CAER_CONFIG_SERVER_BUFFER_SIZE];
 
 	// Send request for all type names for this key on this node.
-	dataBuffer[0] = CAER_CONFIG_GET_TYPES;
+	dataBuffer[0] = CAER_CONFIG_GET_TYPE;
 	dataBuffer[1] = 0;                                        // UNUSED.
 	setExtraLen(dataBuffer, 0);                               // UNUSED.
 	setNodeLen(dataBuffer, (uint16_t)(nodeStringLength + 1)); // +1 for terminating NUL byte.
