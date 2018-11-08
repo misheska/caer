@@ -1,16 +1,16 @@
 #include "config.h"
-#include "caer-sdk/cross/portable_io.h"
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 
-#include <iostream>
-#include <string>
-#include <vector>
+#include "caer-sdk/cross/portable_io.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <fcntl.h>
+#include <iostream>
+#include <string>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <vector>
 
 namespace po = boost::program_options;
 
@@ -57,8 +57,10 @@ void caerConfigInit(int argc, char *argv[]) {
 		configFile = boost::filesystem::path(cliVarMap["config"].as<std::string>());
 	}
 	else {
-		// Default config file.
-		configFile = boost::filesystem::path(CAER_CONFIG_FILE_NAME);
+		// Default config file in $USER_HOME.
+		char *userHome = portable_get_user_home_directory();
+		configFile     = boost::filesystem::path(std::string(userHome) + "/" + CAER_CONFIG_FILE_NAME);
+		free(userHome);
 	}
 
 	// Ensure file path is absolute.
