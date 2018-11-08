@@ -185,7 +185,7 @@ void sshsNodeCreateAttributeFileChooser(sshsNode node, const char *key, const ch
 
 // SSHS
 typedef struct sshs_struct *sshs;
-typedef void (*sshsErrorLogCallback)(const char *msg);
+typedef void (*sshsErrorLogCallback)(const char *msg, bool fatal);
 
 sshs sshsGetGlobal(void);
 void sshsSetGlobalErrorLogCallback(sshsErrorLogCallback error_log_cb);

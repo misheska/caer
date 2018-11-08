@@ -869,7 +869,7 @@ static bool sshsNodeToXML(sshsNode node, int fd, bool recursive) {
 	}
 	catch (const boost::property_tree::xml_parser_error &ex) {
 		const std::string errorMsg = std::string("Failed to write XML to output stream. Exception: ") + ex.what();
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str());
+		(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str(), false);
 		return (false);
 	}
 
@@ -962,7 +962,7 @@ static bool sshsNodeFromXML(sshsNode node, int fd, bool recursive, bool strict) 
 	}
 	catch (const boost::property_tree::xml_parser_error &ex) {
 		const std::string errorMsg = std::string("Failed to load XML from input stream. Exception: ") + ex.what();
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str());
+		(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str(), false);
 		return (false);
 	}
 
@@ -975,14 +975,14 @@ static bool sshsNodeFromXML(sshsNode node, int fd, bool recursive, bool strict) 
 	}
 	catch (const boost::property_tree::ptree_error &ex) {
 		const std::string errorMsg = std::string("Invalid XML content. Exception: ") + ex.what();
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str());
+		(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str(), false);
 		return (false);
 	}
 
 	auto root = sshsNodeXMLFilterChildNodes(xmlTree.get_child("sshs"), "node");
 
 	if (root.size() != 1) {
-		(*sshsGetGlobalErrorLogCallback())("Multiple or no root child nodes present.");
+		(*sshsGetGlobalErrorLogCallback())("Multiple or no root child nodes present.", false);
 		return (false);
 	}
 
@@ -999,7 +999,7 @@ static bool sshsNodeFromXML(sshsNode node, int fd, bool recursive, bool strict) 
 		}
 		catch (const boost::property_tree::ptree_error &ex) {
 			const std::string errorMsg = std::string("Invalid root node. Exception: ") + ex.what();
-			(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str());
+			(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str(), false);
 			return (false);
 		}
 	}

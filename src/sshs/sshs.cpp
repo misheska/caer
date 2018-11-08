@@ -77,7 +77,7 @@ public:
 static void sshsGlobalInitialize(void);
 static void sshsGlobalErrorLogCallbackInitialize(void);
 static void sshsGlobalErrorLogCallbackSetInternal(sshsErrorLogCallback error_log_cb);
-static void sshsDefaultErrorLogCallback(const char *msg);
+static void sshsDefaultErrorLogCallback(const char *msg, bool fatal);
 static bool sshsCheckAbsoluteNodePath(const std::string &absolutePath);
 static bool sshsCheckRelativeNodePath(const std::string &relativePath);
 
@@ -383,14 +383,14 @@ static const std::regex sshsRelativeNodePathRegexp("^" ALLOWED_CHARS_REGEXP "+$"
 
 static bool sshsCheckAbsoluteNodePath(const std::string &absolutePath) {
 	if (absolutePath.empty()) {
-		(*sshsGetGlobalErrorLogCallback())("Absolute node path cannot be empty.");
+		(*sshsGetGlobalErrorLogCallback())("Absolute node path cannot be empty.", false);
 		return (false);
 	}
 
 	if (!std::regex_match(absolutePath, sshsAbsoluteNodePathRegexp)) {
 		boost::format errorMsg = boost::format("Invalid absolute node path format: '%s'.") % absolutePath;
 
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str());
+		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str(), false);
 
 		return (false);
 	}
@@ -400,14 +400,14 @@ static bool sshsCheckAbsoluteNodePath(const std::string &absolutePath) {
 
 static bool sshsCheckRelativeNodePath(const std::string &relativePath) {
 	if (relativePath.empty()) {
-		(*sshsGetGlobalErrorLogCallback())("Relative node path cannot be empty.");
+		(*sshsGetGlobalErrorLogCallback())("Relative node path cannot be empty.", false);
 		return (false);
 	}
 
 	if (!std::regex_match(relativePath, sshsRelativeNodePathRegexp)) {
 		boost::format errorMsg = boost::format("Invalid relative node path format: '%s'.") % relativePath;
 
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str());
+		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str(), false);
 
 		return (false);
 	}
@@ -415,6 +415,10 @@ static bool sshsCheckRelativeNodePath(const std::string &relativePath) {
 	return (true);
 }
 
-static void sshsDefaultErrorLogCallback(const char *msg) {
+static void sshsDefaultErrorLogCallback(const char *msg, bool fatal) {
 	std::cerr << msg << std::endl;
+
+	if (fatal) {
+		exit(EXIT_FAILURE);
+	}
 }

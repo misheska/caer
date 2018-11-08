@@ -50,9 +50,7 @@ template<typename T> static inline void sshsMemoryCheck(T *ptr, const std::strin
 	if (ptr == nullptr) {
 		boost::format errorMsg = boost::format("%s(): unable to allocate memory.") % funcName;
 
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str());
-
-		exit(EXIT_FAILURE);
+		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str(), true);
 	}
 }
 
@@ -304,12 +302,7 @@ static inline void sshsNodeError(const std::string &funcName, const std::string 
 	boost::format errorMsg = boost::format("%s(): attribute '%s' (type '%s'): %s.") % funcName % key
 							 % sshsHelperCppTypeToStringConverter(type) % msg;
 
-	(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str());
-
-	if (fatal) {
-		// This is a critical usage error that *must* be fixed!
-		exit(EXIT_FAILURE);
-	}
+	(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str(), fatal);
 }
 
 static inline void sshsNodeErrorNoAttribute(
