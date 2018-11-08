@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-int CAER_LOG_FILE_FD = -1;
+static int CAER_LOG_FILE_FD = -1;
 
 static void caerLogShutDownWriteBack(void);
 static void caerLogSSHSLogger(const char *msg);

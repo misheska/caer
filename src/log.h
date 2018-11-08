@@ -14,8 +14,6 @@
 extern "C" {
 #endif
 
-extern int CAER_LOG_FILE_FD;
-
 void caerLogInit(void);
 
 #ifdef __cplusplus
