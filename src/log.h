@@ -14,6 +14,8 @@
 extern "C" {
 #endif
 
+#define CAER_LOG_FILE_NAME ".caer.log"
+
 void caerLogInit(void);
 
 #ifdef __cplusplus
