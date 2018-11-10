@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#define CAER_CONFIG_FILE_NAME "caer-config.xml"
+#define CAER_CONFIG_FILE_NAME ".caer-config.xml"
 
 // Create configuration storage, initialize it with content from the
 // configuration file, and apply eventual CLI overrides.
