@@ -1,10 +1,16 @@
 #include "mainloop.h"
+
 #include "caer-sdk/cross/portable_io.h"
+
 #include "config.h"
-#include <csignal>
 
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/format.hpp>
+#include <boost/range/join.hpp>
 #include <chrono>
+#include <csignal>
 #include <iostream>
 #include <mutex>
 #include <queue>
@@ -13,32 +19,27 @@
 #include <thread>
 #include <unordered_set>
 
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/format.hpp>
-#include <boost/range/join.hpp>
-
 // If Boost version recent enough, enable better stack traces on segfault.
 #include <boost/version.hpp>
 #if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 66
-#define BOOST_HAS_STACKTRACE 1
+#	define BOOST_HAS_STACKTRACE 1
 #else
-#define BOOST_HAS_STACKTRACE 0
+#	define BOOST_HAS_STACKTRACE 0
 #endif
 
 #if BOOST_HAS_STACKTRACE
-#include <boost/stacktrace.hpp>
+#	include <boost/stacktrace.hpp>
 #elif defined(OS_LINUX)
-#include <execinfo.h>
+#	include <execinfo.h>
 #endif
 
 #define INTERNAL_XSTR(a) INTERNAL_STR(a)
 #define INTERNAL_STR(a) #a
 
 #ifdef CM_SHARE_DIR
-#define CM_SHARE_DIRECTORY INTERNAL_XSTR(CM_SHARE_DIR)
+#	define CM_SHARE_DIRECTORY INTERNAL_XSTR(CM_SHARE_DIR)
 #else
-#define CM_SHARE_DIRECTORY "/usr/share/caer"
+#	define CM_SHARE_DIRECTORY "/usr/share/caer"
 #endif
 
 #define MODULES_DIRECTORY "modules/"
@@ -1396,7 +1397,7 @@ static int caerMainloopRunner() {
 			continue;
 		}
 
-		if (!sshsNodeAttributeExists(module, "moduleId", SSHS_SHORT)
+		if (!sshsNodeAttributeExists(module, "moduleId", SSHS_INT)
 			|| !sshsNodeAttributeExists(module, "moduleLibrary", SSHS_STRING)) {
 			// Missing required attributes, notify and skip.
 			log(logLevel::ERROR, "Mainloop",
@@ -1405,7 +1406,7 @@ static int caerMainloopRunner() {
 			continue;
 		}
 
-		int16_t moduleId                = sshsNodeGetShort(module, "moduleId");
+		int16_t moduleId                = I16T(sshsNodeGetInt(module, "moduleId"));
 		const std::string moduleLibrary = sshsNodeGetStdString(module, "moduleLibrary");
 
 		// Ensure flags and ranges are set correctly on first-load.
@@ -1769,26 +1770,43 @@ static int caerMainloopRunner() {
 	// getting some initial data (dataAvailable > 0).
 	runModules(inputContainer);
 
+	// Run global config updaters once at startup.
+	sshs globalSSHS = sshsGetGlobal();
+	sshsAttributeUpdaterRun(globalSSHS);
+
 	// Write config to file, at this point basic configuration is available.
 	caerConfigWriteBack();
 
 	// If no data is available, sleep for a millisecond to avoid wasting resources.
-	// Wait for someone to toggle the module shutdown flag OR for the loop
-	// itself to signal termination.
-	size_t sleepCount = 0;
+	// Every second, run all module state machines anyway to ensure they can do
+	// operations such as opening new devices.
+	auto currTime        = std::chrono::steady_clock::now();
+	auto lastRanTime     = currTime;
+	auto lastUpdaterTime = currTime;
 
+	// Wait for someone to toggle the mainloop shutdown flag.
 	while (glMainloopData.running.load(std::memory_order_relaxed)) {
+		currTime             = std::chrono::steady_clock::now();
+		auto lastRanDiff     = std::chrono::duration_cast<std::chrono::milliseconds>(currTime - lastRanTime);
+		auto lastUpdaterDiff = std::chrono::duration_cast<std::chrono::milliseconds>(currTime - lastUpdaterTime);
+
 		// Run only if data available to consume, else sleep. But make a run
 		// anyway each second, to detect new devices for example.
-		if (glMainloopData.dataAvailable.load(std::memory_order_acquire) > 0 || sleepCount > 1000) {
-			sleepCount = 0;
-
+		if ((glMainloopData.dataAvailable.load(std::memory_order_acquire) > 0) || (lastRanDiff.count() >= 1000)) {
 			runModules(inputContainer);
 			// TODO: handle exceptions here.
+
+			lastRanTime = currTime;
 		}
 		else {
-			sleepCount++;
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+
+		// Run global config updaters once a second.
+		if (lastUpdaterDiff.count() >= 1000) {
+			sshsAttributeUpdaterRun(globalSSHS);
+
+			lastUpdaterTime = currTime;
 		}
 	}
 

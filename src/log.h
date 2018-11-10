@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-extern int CAER_LOG_FILE_FD;
+#define CAER_LOG_FILE_NAME ".caer.log"
 
 void caerLogInit(void);
 

@@ -48,10 +48,10 @@ static void systemConfigListener(sshsNode node, void *userData, enum sshs_node_a
 static void logLevelListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
 	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
 
-static void statisticsPassthrough(
-	void *userData, const char *key, enum sshs_node_attr_value_type type, union sshs_node_attr_value *value);
-static void apsExposurePassthrough(
-	void *userData, const char *key, enum sshs_node_attr_value_type type, union sshs_node_attr_value *value);
+static union sshs_node_attr_value statisticsUpdater(
+	void *userData, const char *key, enum sshs_node_attr_value_type type);
+static union sshs_node_attr_value apsExposureUpdater(
+	void *userData, const char *key, enum sshs_node_attr_value_type type);
 
 static void createVDACBiasSetting(sshsNode biasNode, const char *biasName, uint8_t voltageValue, uint8_t currentValue);
 static uint16_t generateVDACBiasParent(sshsNode biasNode, const char *biasName);
@@ -130,12 +130,12 @@ static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davi
 	// Put global source information into SSHS.
 	sshsNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 
-	sshsNodeCreateShort(sourceInfoNode, "firmwareVersion", devInfo->firmwareVersion, devInfo->firmwareVersion,
+	sshsNodeCreateInt(sourceInfoNode, "firmwareVersion", devInfo->firmwareVersion, devInfo->firmwareVersion,
 		devInfo->firmwareVersion, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Device firmware version.");
-	sshsNodeCreateShort(sourceInfoNode, "logicVersion", devInfo->logicVersion, devInfo->logicVersion,
+	sshsNodeCreateInt(sourceInfoNode, "logicVersion", devInfo->logicVersion, devInfo->logicVersion,
 		devInfo->logicVersion, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Device logic version.");
 
-	sshsNodeCreateShort(sourceInfoNode, "chipID", devInfo->chipID, devInfo->chipID, devInfo->chipID,
+	sshsNodeCreateInt(sourceInfoNode, "chipID", devInfo->chipID, devInfo->chipID, devInfo->chipID,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Device chip identification number.");
 	sshsNodeCreateBool(sourceInfoNode, "deviceIsMaster", devInfo->deviceIsMaster,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Timestamp synchronization support: device master status.");
@@ -143,9 +143,9 @@ static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davi
 	sshsNodeCreateBool(sourceInfoNode, "muxHasStatistics", devInfo->muxHasStatistics,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Device supports FPGA Multiplexer statistics (USB event drops).");
 
-	sshsNodeCreateShort(sourceInfoNode, "polaritySizeX", devInfo->dvsSizeX, devInfo->dvsSizeX, devInfo->dvsSizeX,
+	sshsNodeCreateInt(sourceInfoNode, "polaritySizeX", devInfo->dvsSizeX, devInfo->dvsSizeX, devInfo->dvsSizeX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Polarity events width.");
-	sshsNodeCreateShort(sourceInfoNode, "polaritySizeY", devInfo->dvsSizeY, devInfo->dvsSizeY, devInfo->dvsSizeY,
+	sshsNodeCreateInt(sourceInfoNode, "polaritySizeY", devInfo->dvsSizeY, devInfo->dvsSizeY, devInfo->dvsSizeY,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Polarity events height.");
 	sshsNodeCreateBool(sourceInfoNode, "dvsHasPixelFilter", devInfo->dvsHasPixelFilter,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Device supports FPGA DVS Pixel-level filter.");
@@ -161,11 +161,11 @@ static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davi
 	sshsNodeCreateBool(sourceInfoNode, "dvsHasStatistics", devInfo->dvsHasStatistics,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Device supports FPGA DVS statistics.");
 
-	sshsNodeCreateShort(sourceInfoNode, "frameSizeX", devInfo->apsSizeX, devInfo->apsSizeX, devInfo->apsSizeX,
+	sshsNodeCreateInt(sourceInfoNode, "frameSizeX", devInfo->apsSizeX, devInfo->apsSizeX, devInfo->apsSizeX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Frame events width.");
-	sshsNodeCreateShort(sourceInfoNode, "frameSizeY", devInfo->apsSizeY, devInfo->apsSizeY, devInfo->apsSizeY,
+	sshsNodeCreateInt(sourceInfoNode, "frameSizeY", devInfo->apsSizeY, devInfo->apsSizeY, devInfo->apsSizeY,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Frame events height.");
-	sshsNodeCreateByte(sourceInfoNode, "apsColorFilter", I8T(devInfo->apsColorFilter), I8T(devInfo->apsColorFilter),
+	sshsNodeCreateInt(sourceInfoNode, "apsColorFilter", I8T(devInfo->apsColorFilter), I8T(devInfo->apsColorFilter),
 		I8T(devInfo->apsColorFilter), SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "APS sensor color-filter pattern.");
 	sshsNodeCreateBool(sourceInfoNode, "apsHasGlobalShutter", devInfo->apsHasGlobalShutter,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "APS sensor supports global-shutter mode.");
@@ -177,9 +177,9 @@ static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davi
 	int16_t dataSizeX = (devInfo->dvsSizeX > devInfo->apsSizeX) ? (devInfo->dvsSizeX) : (devInfo->apsSizeX);
 	int16_t dataSizeY = (devInfo->dvsSizeY > devInfo->apsSizeY) ? (devInfo->dvsSizeY) : (devInfo->apsSizeY);
 
-	sshsNodeCreateShort(sourceInfoNode, "dataSizeX", dataSizeX, dataSizeX, dataSizeX,
+	sshsNodeCreateInt(sourceInfoNode, "dataSizeX", dataSizeX, dataSizeX, dataSizeX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Data width.");
-	sshsNodeCreateShort(sourceInfoNode, "dataSizeY", dataSizeY, dataSizeY, dataSizeY,
+	sshsNodeCreateInt(sourceInfoNode, "dataSizeY", dataSizeY, dataSizeY, dataSizeY,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Data height.");
 
 	// Generate source string for output modules.
@@ -371,14 +371,14 @@ static void createDefaultBiasConfiguration(caerModuleData moduleData, const char
 	// Chip configuration shift register.
 	sshsNode chipNode = sshsGetRelativeNode(deviceConfigNode, "chip/");
 
-	sshsNodeCreateByte(chipNode, "DigitalMux0", 0, 0, 15, SSHS_FLAGS_NORMAL, "Digital debug multiplexer 0.");
-	sshsNodeCreateByte(chipNode, "DigitalMux1", 0, 0, 15, SSHS_FLAGS_NORMAL, "Digital debug multiplexer 1.");
-	sshsNodeCreateByte(chipNode, "DigitalMux2", 0, 0, 15, SSHS_FLAGS_NORMAL, "Digital debug multiplexer 2.");
-	sshsNodeCreateByte(chipNode, "DigitalMux3", 0, 0, 15, SSHS_FLAGS_NORMAL, "Digital debug multiplexer 3.");
-	sshsNodeCreateByte(chipNode, "AnalogMux0", 0, 0, 15, SSHS_FLAGS_NORMAL, "Analog debug multiplexer 0.");
-	sshsNodeCreateByte(chipNode, "AnalogMux1", 0, 0, 15, SSHS_FLAGS_NORMAL, "Analog debug multiplexer 1.");
-	sshsNodeCreateByte(chipNode, "AnalogMux2", 0, 0, 15, SSHS_FLAGS_NORMAL, "Analog debug multiplexer 2.");
-	sshsNodeCreateByte(chipNode, "BiasMux0", 0, 0, 15, SSHS_FLAGS_NORMAL, "Bias debug multiplexer 0.");
+	sshsNodeCreateInt(chipNode, "DigitalMux0", 0, 0, 15, SSHS_FLAGS_NORMAL, "Digital debug multiplexer 0.");
+	sshsNodeCreateInt(chipNode, "DigitalMux1", 0, 0, 15, SSHS_FLAGS_NORMAL, "Digital debug multiplexer 1.");
+	sshsNodeCreateInt(chipNode, "DigitalMux2", 0, 0, 15, SSHS_FLAGS_NORMAL, "Digital debug multiplexer 2.");
+	sshsNodeCreateInt(chipNode, "DigitalMux3", 0, 0, 15, SSHS_FLAGS_NORMAL, "Digital debug multiplexer 3.");
+	sshsNodeCreateInt(chipNode, "AnalogMux0", 0, 0, 15, SSHS_FLAGS_NORMAL, "Analog debug multiplexer 0.");
+	sshsNodeCreateInt(chipNode, "AnalogMux1", 0, 0, 15, SSHS_FLAGS_NORMAL, "Analog debug multiplexer 1.");
+	sshsNodeCreateInt(chipNode, "AnalogMux2", 0, 0, 15, SSHS_FLAGS_NORMAL, "Analog debug multiplexer 2.");
+	sshsNodeCreateInt(chipNode, "BiasMux0", 0, 0, 15, SSHS_FLAGS_NORMAL, "Bias debug multiplexer 0.");
 
 	sshsNodeCreateBool(chipNode, "ResetCalibNeuron", true, SSHS_FLAGS_NORMAL,
 		"Turn off the integrate and fire calibration neuron (bias generator).");
@@ -455,37 +455,37 @@ static void createDefaultLogicConfiguration(
 		"Don't drive AER ACK pin from FPGA (dvs.Run must also be disabled).");
 
 	if (devInfo->dvsHasPixelFilter) {
-		sshsNodeCreateShort(dvsNode, "FilterPixel0Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel0Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
 			"Row/Y address of pixel 0 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel0Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel0Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
 			"Column/X address of pixel 0 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel1Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel1Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
 			"Row/Y address of pixel 1 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel1Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel1Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
 			"Column/X address of pixel 1 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel2Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel2Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
 			"Row/Y address of pixel 2 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel2Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel2Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
 			"Column/X address of pixel 2 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel3Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel3Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
 			"Row/Y address of pixel 3 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel3Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel3Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
 			"Column/X address of pixel 3 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel4Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel4Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
 			"Row/Y address of pixel 4 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel4Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel4Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
 			"Column/X address of pixel 4 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel5Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel5Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
 			"Row/Y address of pixel 5 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel5Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel5Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
 			"Column/X address of pixel 5 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel6Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel6Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
 			"Row/Y address of pixel 6 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel6Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel6Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
 			"Column/X address of pixel 6 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel7Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel7Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, SSHS_FLAGS_NORMAL,
 			"Row/Y address of pixel 7 to filter out.");
-		sshsNodeCreateShort(dvsNode, "FilterPixel7Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterPixel7Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, SSHS_FLAGS_NORMAL,
 			"Column/X address of pixel 7 to filter out.");
 		sshsNodeCreateBool(dvsNode, "FilterPixelAutoTrain", false, SSHS_FLAGS_NOTIFY_ONLY,
 			"Set hardware pixel filter up automatically using software hot-pixel detection.");
@@ -503,13 +503,13 @@ static void createDefaultLogicConfiguration(
 	}
 
 	if (devInfo->dvsHasROIFilter) {
-		sshsNodeCreateShort(dvsNode, "FilterROIStartColumn", 0, 0, I16T(devInfo->dvsSizeX - 1), SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterROIStartColumn", 0, 0, I16T(devInfo->dvsSizeX - 1), SSHS_FLAGS_NORMAL,
 			"Column/X address of ROI filter start point.");
-		sshsNodeCreateShort(dvsNode, "FilterROIStartRow", 0, 0, I16T(devInfo->dvsSizeY - 1), SSHS_FLAGS_NORMAL,
+		sshsNodeCreateInt(dvsNode, "FilterROIStartRow", 0, 0, I16T(devInfo->dvsSizeY - 1), SSHS_FLAGS_NORMAL,
 			"Row/Y address of ROI filter start point.");
-		sshsNodeCreateShort(dvsNode, "FilterROIEndColumn", I16T(devInfo->dvsSizeX - 1), 0, I16T(devInfo->dvsSizeX - 1),
+		sshsNodeCreateInt(dvsNode, "FilterROIEndColumn", I16T(devInfo->dvsSizeX - 1), 0, I16T(devInfo->dvsSizeX - 1),
 			SSHS_FLAGS_NORMAL, "Column/X address of ROI filter end point.");
-		sshsNodeCreateShort(dvsNode, "FilterROIEndRow", I16T(devInfo->dvsSizeY - 1), 0, I16T(devInfo->dvsSizeY - 1),
+		sshsNodeCreateInt(dvsNode, "FilterROIEndRow", I16T(devInfo->dvsSizeY - 1), 0, I16T(devInfo->dvsSizeY - 1),
 			SSHS_FLAGS_NORMAL, "Row/Y address of ROI filter end point.");
 	}
 
@@ -541,13 +541,13 @@ static void createDefaultLogicConfiguration(
 			apsNode, "GlobalShutter", true, SSHS_FLAGS_NORMAL, "Enable global-shutter versus rolling-shutter mode.");
 	}
 
-	sshsNodeCreateShort(apsNode, "StartColumn0", 0, 0, I16T(devInfo->apsSizeX - 1), SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(apsNode, "StartColumn0", 0, 0, I16T(devInfo->apsSizeX - 1), SSHS_FLAGS_NORMAL,
 		"Column/X address of ROI 0 start point.");
-	sshsNodeCreateShort(apsNode, "StartRow0", 0, 0, I16T(devInfo->apsSizeY - 1), SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(apsNode, "StartRow0", 0, 0, I16T(devInfo->apsSizeY - 1), SSHS_FLAGS_NORMAL,
 		"Row/Y address of ROI 0 start point.");
-	sshsNodeCreateShort(apsNode, "EndColumn0", I16T(devInfo->apsSizeX - 1), 0, I16T(devInfo->apsSizeX - 1),
+	sshsNodeCreateInt(apsNode, "EndColumn0", I16T(devInfo->apsSizeX - 1), 0, I16T(devInfo->apsSizeX - 1),
 		SSHS_FLAGS_NORMAL, "Column/X address of ROI 0 end point.");
-	sshsNodeCreateShort(apsNode, "EndRow0", I16T(devInfo->apsSizeY - 1), 0, I16T(devInfo->apsSizeY - 1),
+	sshsNodeCreateInt(apsNode, "EndRow0", I16T(devInfo->apsSizeY - 1), 0, I16T(devInfo->apsSizeY - 1),
 		SSHS_FLAGS_NORMAL, "Row/Y address of ROI 0 end point.");
 
 	sshsNodeCreateInt(apsNode, "Exposure", 4000, 0, (0x01 << 22) - 1, SSHS_FLAGS_NORMAL, "Set exposure time (in µs).");
@@ -555,8 +555,7 @@ static void createDefaultLogicConfiguration(
 	// libcaer directly will read the correct value.
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE,
 		U32T(sshsNodeGetInt(apsNode, "Exposure")));
-	sshsNodeCreateAttributePollTime(apsNode, "Exposure", SSHS_INT, 1);
-	sshsNodeAddAttributeReadModifier(apsNode, "Exposure", SSHS_INT, moduleData->moduleState, &apsExposurePassthrough);
+	sshsAttributeUpdaterAdd(apsNode, "Exposure", SSHS_INT, &apsExposureUpdater, moduleData->moduleState);
 
 	sshsNodeCreateInt(
 		apsNode, "FrameInterval", 40000, 0, (0x01 << 23) - 1, SSHS_FLAGS_NORMAL, "Set time between frames (in µs).");
@@ -567,21 +566,20 @@ static void createDefaultLogicConfiguration(
 
 	sshsNodeCreateString(apsNode, "FrameMode", "Default", 7, 9, SSHS_FLAGS_NORMAL,
 		"Enable automatic exposure control, to react to changes in lighting conditions.");
-	sshsNodeCreateAttributeListOptions(apsNode, "FrameMode", SSHS_STRING, "Default,Grayscale,Original", false);
+	sshsNodeCreateAttributeListOptions(apsNode, "FrameMode", "Default,Grayscale,Original", false);
 
 	// DAVIS RGB has additional timing counters.
 	if (IS_DAVIS640H(devInfo->chipID)) {
 		sshsNodeCreateInt(apsNode, "TransferTime", 1500, 0, (60 * 2048), SSHS_FLAGS_NORMAL,
 			"Transfer time counter (2 in GS, 1 in RS, in cycles).");
-		sshsNodeCreateShort(
+		sshsNodeCreateInt(
 			apsNode, "RSFDSettleTime", 1000, 0, (60 * 128), SSHS_FLAGS_NORMAL, "RS counter 0 (in cycles).");
-		sshsNodeCreateShort(
+		sshsNodeCreateInt(
 			apsNode, "GSPDResetTime", 1000, 0, (60 * 128), SSHS_FLAGS_NORMAL, "GS counter 0 (in cycles).");
-		sshsNodeCreateShort(
+		sshsNodeCreateInt(
 			apsNode, "GSResetFallTime", 1000, 0, (60 * 128), SSHS_FLAGS_NORMAL, "GS counter 1 (in cycles).");
-		sshsNodeCreateShort(
-			apsNode, "GSTXFallTime", 1000, 0, (60 * 128), SSHS_FLAGS_NORMAL, "GS counter 3 (in cycles).");
-		sshsNodeCreateShort(
+		sshsNodeCreateInt(apsNode, "GSTXFallTime", 1000, 0, (60 * 128), SSHS_FLAGS_NORMAL, "GS counter 3 (in cycles).");
+		sshsNodeCreateInt(
 			apsNode, "GSFDResetTime", 1000, 0, (60 * 128), SSHS_FLAGS_NORMAL, "GS counter 4 (in cycles).");
 	}
 
@@ -592,23 +590,23 @@ static void createDefaultLogicConfiguration(
 		sshsNodeCreateBool(imuNode, "RunAccel", true, SSHS_FLAGS_NORMAL, "Enable IMU accelerometer.");
 		sshsNodeCreateBool(imuNode, "RunGyro", true, SSHS_FLAGS_NORMAL, "Enable IMU gyroscope.");
 		sshsNodeCreateBool(imuNode, "RunTemp", true, SSHS_FLAGS_NORMAL, "Enable IMU temperature sensor.");
-		sshsNodeCreateShort(imuNode, "SampleRateDivider", 0, 0, 255, SSHS_FLAGS_NORMAL, "Sample-rate divider value.");
+		sshsNodeCreateInt(imuNode, "SampleRateDivider", 0, 0, 255, SSHS_FLAGS_NORMAL, "Sample-rate divider value.");
 
 		if (devInfo->imuType == 2) {
 			// InvenSense MPU 9250 IMU.
-			sshsNodeCreateByte(imuNode, "AccelDLPF", 1, 0, 7, SSHS_FLAGS_NORMAL,
+			sshsNodeCreateInt(imuNode, "AccelDLPF", 1, 0, 7, SSHS_FLAGS_NORMAL,
 				"Accelerometer digital low-pass filter configuration.");
-			sshsNodeCreateByte(
+			sshsNodeCreateInt(
 				imuNode, "GyroDLPF", 1, 0, 7, SSHS_FLAGS_NORMAL, "Gyroscope digital low-pass filter configuration.");
 		}
 		else {
 			// InvenSense MPU 6050/6150 IMU.
-			sshsNodeCreateByte(imuNode, "DigitalLowPassFilter", 1, 0, 7, SSHS_FLAGS_NORMAL,
+			sshsNodeCreateInt(imuNode, "DigitalLowPassFilter", 1, 0, 7, SSHS_FLAGS_NORMAL,
 				"Accelerometer/Gyroscope digital low-pass filter configuration.");
 		}
 
-		sshsNodeCreateByte(imuNode, "AccelFullScale", 1, 0, 3, SSHS_FLAGS_NORMAL, "Accelerometer scale configuration.");
-		sshsNodeCreateByte(imuNode, "GyroFullScale", 1, 0, 3, SSHS_FLAGS_NORMAL, "Gyroscope scale configuration.");
+		sshsNodeCreateInt(imuNode, "AccelFullScale", 1, 0, 3, SSHS_FLAGS_NORMAL, "Accelerometer scale configuration.");
+		sshsNodeCreateInt(imuNode, "GyroFullScale", 1, 0, 3, SSHS_FLAGS_NORMAL, "Gyroscope scale configuration.");
 	}
 
 	// Subsystem 4: External Input
@@ -645,15 +643,11 @@ static void createDefaultLogicConfiguration(
 
 		sshsNodeCreateLong(statNode, "muxDroppedExtInput", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 			"Number of dropped External Input events due to USB full.");
-		sshsNodeCreateAttributePollTime(statNode, "muxDroppedExtInput", SSHS_LONG, 2);
-		sshsNodeAddAttributeReadModifier(
-			statNode, "muxDroppedExtInput", SSHS_LONG, moduleData->moduleState, &statisticsPassthrough);
+		sshsAttributeUpdaterAdd(statNode, "muxDroppedExtInput", SSHS_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		sshsNodeCreateLong(statNode, "muxDroppedDVS", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 			"Number of dropped DVS events due to USB full.");
-		sshsNodeCreateAttributePollTime(statNode, "muxDroppedDVS", SSHS_LONG, 2);
-		sshsNodeAddAttributeReadModifier(
-			statNode, "muxDroppedDVS", SSHS_LONG, moduleData->moduleState, &statisticsPassthrough);
+		sshsAttributeUpdaterAdd(statNode, "muxDroppedDVS", SSHS_LONG, &statisticsUpdater, moduleData->moduleState);
 	}
 
 	if (devInfo->dvsHasStatistics) {
@@ -661,43 +655,33 @@ static void createDefaultLogicConfiguration(
 
 		sshsNodeCreateLong(statNode, "dvsEventsRow", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 			"Number of row events handled.");
-		sshsNodeCreateAttributePollTime(statNode, "dvsEventsRow", SSHS_LONG, 2);
-		sshsNodeAddAttributeReadModifier(
-			statNode, "dvsEventsRow", SSHS_LONG, moduleData->moduleState, &statisticsPassthrough);
+		sshsAttributeUpdaterAdd(statNode, "dvsEventsRow", SSHS_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		sshsNodeCreateLong(statNode, "dvsEventsColumn", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 			"Number of column events handled.");
-		sshsNodeCreateAttributePollTime(statNode, "dvsEventsColumn", SSHS_LONG, 2);
-		sshsNodeAddAttributeReadModifier(
-			statNode, "dvsEventsColumn", SSHS_LONG, moduleData->moduleState, &statisticsPassthrough);
+		sshsAttributeUpdaterAdd(statNode, "dvsEventsColumn", SSHS_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		sshsNodeCreateLong(statNode, "dvsEventsDropped", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 			"Number of dropped events (groups of events).");
-		sshsNodeCreateAttributePollTime(statNode, "dvsEventsDropped", SSHS_LONG, 2);
-		sshsNodeAddAttributeReadModifier(
-			statNode, "dvsEventsDropped", SSHS_LONG, moduleData->moduleState, &statisticsPassthrough);
+		sshsAttributeUpdaterAdd(statNode, "dvsEventsDropped", SSHS_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		if (devInfo->dvsHasPixelFilter) {
 			sshsNodeCreateLong(statNode, "dvsFilteredPixel", 0, 0, INT64_MAX,
 				SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Number of events filtered out by the Pixel Filter.");
-			sshsNodeCreateAttributePollTime(statNode, "dvsFilteredPixel", SSHS_LONG, 2);
-			sshsNodeAddAttributeReadModifier(
-				statNode, "dvsFilteredPixel", SSHS_LONG, moduleData->moduleState, &statisticsPassthrough);
+			sshsAttributeUpdaterAdd(
+				statNode, "dvsFilteredPixel", SSHS_LONG, &statisticsUpdater, moduleData->moduleState);
 		}
 
 		if (devInfo->dvsHasBackgroundActivityFilter) {
 			sshsNodeCreateLong(statNode, "dvsFilteredBA", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 				"Number of events filtered out by the Background Activity Filter.");
-			sshsNodeCreateAttributePollTime(statNode, "dvsFilteredBA", SSHS_LONG, 2);
-			sshsNodeAddAttributeReadModifier(
-				statNode, "dvsFilteredBA", SSHS_LONG, moduleData->moduleState, &statisticsPassthrough);
+			sshsAttributeUpdaterAdd(statNode, "dvsFilteredBA", SSHS_LONG, &statisticsUpdater, moduleData->moduleState);
 
 			sshsNodeCreateLong(statNode, "dvsFilteredRefractory", 0, 0, INT64_MAX,
 				SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 				"Number of events filtered out by the Refractory Period Filter.");
-			sshsNodeCreateAttributePollTime(statNode, "dvsFilteredRefractory", SSHS_LONG, 2);
-			sshsNodeAddAttributeReadModifier(
-				statNode, "dvsFilteredRefractory", SSHS_LONG, moduleData->moduleState, &statisticsPassthrough);
+			sshsAttributeUpdaterAdd(
+				statNode, "dvsFilteredRefractory", SSHS_LONG, &statisticsUpdater, moduleData->moduleState);
 		}
 	}
 }
@@ -1286,21 +1270,21 @@ static void biasConfigListener(sshsNode node, void *userData, enum sshs_node_att
 static void chipConfigSend(sshsNode node, caerModuleData moduleData, struct caer_davis_info *devInfo) {
 	// All chips have the same parameter address for the same setting!
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX0,
-		U32T(sshsNodeGetByte(node, "DigitalMux0")));
+		U32T(sshsNodeGetInt(node, "DigitalMux0")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX1,
-		U32T(sshsNodeGetByte(node, "DigitalMux1")));
+		U32T(sshsNodeGetInt(node, "DigitalMux1")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX2,
-		U32T(sshsNodeGetByte(node, "DigitalMux2")));
+		U32T(sshsNodeGetInt(node, "DigitalMux2")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX3,
-		U32T(sshsNodeGetByte(node, "DigitalMux3")));
+		U32T(sshsNodeGetInt(node, "DigitalMux3")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_ANALOGMUX0,
-		U32T(sshsNodeGetByte(node, "AnalogMux0")));
+		U32T(sshsNodeGetInt(node, "AnalogMux0")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_ANALOGMUX1,
-		U32T(sshsNodeGetByte(node, "AnalogMux1")));
+		U32T(sshsNodeGetInt(node, "AnalogMux1")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_ANALOGMUX2,
-		U32T(sshsNodeGetByte(node, "AnalogMux2")));
+		U32T(sshsNodeGetInt(node, "AnalogMux2")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_BIASMUX0,
-		U32T(sshsNodeGetByte(node, "BiasMux0")));
+		U32T(sshsNodeGetInt(node, "BiasMux0")));
 
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_RESETCALIBNEURON,
 		sshsNodeGetBool(node, "ResetCalibNeuron"));
@@ -1360,37 +1344,37 @@ static void chipConfigListener(sshsNode node, void *userData, enum sshs_node_att
 	struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 
 	if (event == SSHS_ATTRIBUTE_MODIFIED) {
-		if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "DigitalMux0")) {
+		if (changeType == SSHS_INT && caerStrEquals(changeKey, "DigitalMux0")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX0, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX0, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "DigitalMux1")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "DigitalMux1")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX1, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX1, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "DigitalMux2")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "DigitalMux2")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX2, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX2, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "DigitalMux3")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "DigitalMux3")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX3, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX3, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "AnalogMux0")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "AnalogMux0")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_ANALOGMUX0, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_ANALOGMUX0, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "AnalogMux1")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "AnalogMux1")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_ANALOGMUX1, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_ANALOGMUX1, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "AnalogMux2")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "AnalogMux2")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_ANALOGMUX2, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_ANALOGMUX2, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "BiasMux0")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "BiasMux0")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_BIASMUX0, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_BIASMUX0, U32T(changeValue.iint));
 		}
 		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "ResetCalibNeuron")) {
 			caerDeviceConfigSet(
@@ -1524,37 +1508,37 @@ static void dvsConfigSend(sshsNode node, caerModuleData moduleData, struct caer_
 
 	if (devInfo->dvsHasPixelFilter) {
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_0_ROW,
-			U32T(sshsNodeGetShort(node, "FilterPixel0Row")));
+			U32T(sshsNodeGetInt(node, "FilterPixel0Row")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_0_COLUMN,
-			U32T(sshsNodeGetShort(node, "FilterPixel0Column")));
+			U32T(sshsNodeGetInt(node, "FilterPixel0Column")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_1_ROW,
-			U32T(sshsNodeGetShort(node, "FilterPixel1Row")));
+			U32T(sshsNodeGetInt(node, "FilterPixel1Row")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_1_COLUMN,
-			U32T(sshsNodeGetShort(node, "FilterPixel1Column")));
+			U32T(sshsNodeGetInt(node, "FilterPixel1Column")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_2_ROW,
-			U32T(sshsNodeGetShort(node, "FilterPixel2Row")));
+			U32T(sshsNodeGetInt(node, "FilterPixel2Row")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_2_COLUMN,
-			U32T(sshsNodeGetShort(node, "FilterPixel2Column")));
+			U32T(sshsNodeGetInt(node, "FilterPixel2Column")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_3_ROW,
-			U32T(sshsNodeGetShort(node, "FilterPixel3Row")));
+			U32T(sshsNodeGetInt(node, "FilterPixel3Row")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_3_COLUMN,
-			U32T(sshsNodeGetShort(node, "FilterPixel3Column")));
+			U32T(sshsNodeGetInt(node, "FilterPixel3Column")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_4_ROW,
-			U32T(sshsNodeGetShort(node, "FilterPixel4Row")));
+			U32T(sshsNodeGetInt(node, "FilterPixel4Row")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_4_COLUMN,
-			U32T(sshsNodeGetShort(node, "FilterPixel4Column")));
+			U32T(sshsNodeGetInt(node, "FilterPixel4Column")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_5_ROW,
-			U32T(sshsNodeGetShort(node, "FilterPixel5Row")));
+			U32T(sshsNodeGetInt(node, "FilterPixel5Row")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_5_COLUMN,
-			U32T(sshsNodeGetShort(node, "FilterPixel5Column")));
+			U32T(sshsNodeGetInt(node, "FilterPixel5Column")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_6_ROW,
-			U32T(sshsNodeGetShort(node, "FilterPixel6Row")));
+			U32T(sshsNodeGetInt(node, "FilterPixel6Row")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_6_COLUMN,
-			U32T(sshsNodeGetShort(node, "FilterPixel6Column")));
+			U32T(sshsNodeGetInt(node, "FilterPixel6Column")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_7_ROW,
-			U32T(sshsNodeGetShort(node, "FilterPixel7Row")));
+			U32T(sshsNodeGetInt(node, "FilterPixel7Row")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_7_COLUMN,
-			U32T(sshsNodeGetShort(node, "FilterPixel7Column")));
+			U32T(sshsNodeGetInt(node, "FilterPixel7Column")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_AUTO_TRAIN,
 			sshsNodeGetBool(node, "FilterPixelAutoTrain"));
 	}
@@ -1572,13 +1556,13 @@ static void dvsConfigSend(sshsNode node, caerModuleData moduleData, struct caer_
 
 	if (devInfo->dvsHasROIFilter) {
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_ROI_START_COLUMN,
-			U32T(sshsNodeGetShort(node, "FilterROIStartColumn")));
+			U32T(sshsNodeGetInt(node, "FilterROIStartColumn")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_ROI_START_ROW,
-			U32T(sshsNodeGetShort(node, "FilterROIStartRow")));
+			U32T(sshsNodeGetInt(node, "FilterROIStartRow")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_ROI_END_COLUMN,
-			U32T(sshsNodeGetShort(node, "FilterROIEndColumn")));
+			U32T(sshsNodeGetInt(node, "FilterROIEndColumn")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_ROI_END_ROW,
-			U32T(sshsNodeGetShort(node, "FilterROIEndRow")));
+			U32T(sshsNodeGetInt(node, "FilterROIEndRow")));
 	}
 
 	if (devInfo->dvsHasSkipFilter) {
@@ -1615,69 +1599,69 @@ static void dvsConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 			caerDeviceConfigSet(
 				moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_EXTERNAL_AER_CONTROL, changeValue.boolean);
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel0Row")) {
-			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_0_ROW,
-				U32T(changeValue.ishort));
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel0Row")) {
+			caerDeviceConfigSet(
+				moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_0_ROW, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel0Column")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel0Column")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_0_COLUMN,
-				U32T(changeValue.ishort));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel1Row")) {
-			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_1_ROW,
-				U32T(changeValue.ishort));
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel1Row")) {
+			caerDeviceConfigSet(
+				moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_1_ROW, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel1Column")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel1Column")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_1_COLUMN,
-				U32T(changeValue.ishort));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel2Row")) {
-			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_2_ROW,
-				U32T(changeValue.ishort));
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel2Row")) {
+			caerDeviceConfigSet(
+				moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_2_ROW, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel2Column")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel2Column")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_2_COLUMN,
-				U32T(changeValue.ishort));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel3Row")) {
-			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_3_ROW,
-				U32T(changeValue.ishort));
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel3Row")) {
+			caerDeviceConfigSet(
+				moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_3_ROW, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel3Column")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel3Column")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_3_COLUMN,
-				U32T(changeValue.ishort));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel4Row")) {
-			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_4_ROW,
-				U32T(changeValue.ishort));
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel4Row")) {
+			caerDeviceConfigSet(
+				moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_4_ROW, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel4Column")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel4Column")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_4_COLUMN,
-				U32T(changeValue.ishort));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel5Row")) {
-			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_5_ROW,
-				U32T(changeValue.ishort));
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel5Row")) {
+			caerDeviceConfigSet(
+				moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_5_ROW, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel5Column")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel5Column")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_5_COLUMN,
-				U32T(changeValue.ishort));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel6Row")) {
-			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_6_ROW,
-				U32T(changeValue.ishort));
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel6Row")) {
+			caerDeviceConfigSet(
+				moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_6_ROW, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel6Column")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel6Column")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_6_COLUMN,
-				U32T(changeValue.ishort));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel7Row")) {
-			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_7_ROW,
-				U32T(changeValue.ishort));
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel7Row")) {
+			caerDeviceConfigSet(
+				moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_7_ROW, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterPixel7Column")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterPixel7Column")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_7_COLUMN,
-				U32T(changeValue.ishort));
+				U32T(changeValue.iint));
 		}
 		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "FilterPixelAutoTrain")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_AUTO_TRAIN,
@@ -1699,21 +1683,21 @@ static void dvsConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS,
 				DAVIS_CONFIG_DVS_FILTER_REFRACTORY_PERIOD_TIME, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterROIStartColumn")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterROIStartColumn")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_ROI_START_COLUMN,
-				U32T(changeValue.ishort));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterROIStartRow")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterROIStartRow")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_ROI_START_ROW,
-				U32T(changeValue.ishort));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterROIEndColumn")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterROIEndColumn")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_ROI_END_COLUMN,
-				U32T(changeValue.ishort));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "FilterROIEndRow")) {
-			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_ROI_END_ROW,
-				U32T(changeValue.ishort));
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "FilterROIEndRow")) {
+			caerDeviceConfigSet(
+				moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_ROI_END_ROW, U32T(changeValue.iint));
 		}
 		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "FilterSkipEvents")) {
 			caerDeviceConfigSet(
@@ -1763,13 +1747,13 @@ static void apsConfigSend(sshsNode node, caerModuleData moduleData, struct caer_
 	}
 
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_START_COLUMN_0,
-		U32T(sshsNodeGetShort(node, "StartColumn0")));
+		U32T(sshsNodeGetInt(node, "StartColumn0")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_START_ROW_0,
-		U32T(sshsNodeGetShort(node, "StartRow0")));
+		U32T(sshsNodeGetInt(node, "StartRow0")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_END_COLUMN_0,
-		U32T(sshsNodeGetShort(node, "EndColumn0")));
+		U32T(sshsNodeGetInt(node, "EndColumn0")));
 	caerDeviceConfigSet(
-		moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_END_ROW_0, U32T(sshsNodeGetShort(node, "EndRow0")));
+		moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_END_ROW_0, U32T(sshsNodeGetInt(node, "EndRow0")));
 
 	caerDeviceConfigSet(
 		moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE, U32T(sshsNodeGetInt(node, "Exposure")));
@@ -1781,15 +1765,15 @@ static void apsConfigSend(sshsNode node, caerModuleData moduleData, struct caer_
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_TRANSFER,
 			U32T(sshsNodeGetInt(node, "TransferTime")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_RSFDSETTLE,
-			U32T(sshsNodeGetShort(node, "RSFDSettleTime")));
+			U32T(sshsNodeGetInt(node, "RSFDSettleTime")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSPDRESET,
-			U32T(sshsNodeGetShort(node, "GSPDResetTime")));
+			U32T(sshsNodeGetInt(node, "GSPDResetTime")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSRESETFALL,
-			U32T(sshsNodeGetShort(node, "GSResetFallTime")));
+			U32T(sshsNodeGetInt(node, "GSResetFallTime")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSTXFALL,
-			U32T(sshsNodeGetShort(node, "GSTXFallTime")));
+			U32T(sshsNodeGetInt(node, "GSTXFallTime")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSFDRESET,
-			U32T(sshsNodeGetShort(node, "GSFDResetTime")));
+			U32T(sshsNodeGetInt(node, "GSFDResetTime")));
 	}
 
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_AUTOEXPOSURE,
@@ -1818,21 +1802,21 @@ static void apsConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 			caerDeviceConfigSet(
 				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_GLOBAL_SHUTTER, changeValue.boolean);
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "StartColumn0")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "StartColumn0")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_START_COLUMN_0, U32T(changeValue.ishort));
+				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_START_COLUMN_0, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "StartRow0")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "StartRow0")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_START_ROW_0, U32T(changeValue.ishort));
+				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_START_ROW_0, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "EndColumn0")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "EndColumn0")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_END_COLUMN_0, U32T(changeValue.ishort));
+				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_END_COLUMN_0, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "EndRow0")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "EndRow0")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_END_ROW_0, U32T(changeValue.ishort));
+				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_END_ROW_0, U32T(changeValue.iint));
 		}
 		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "Exposure")) {
 			caerDeviceConfigSet(
@@ -1844,27 +1828,27 @@ static void apsConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 		}
 		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "TransferTime")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_TRANSFER, U32T(changeValue.ishort));
+				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_TRANSFER, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "RSFDSettleTime")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "RSFDSettleTime")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_RSFDSETTLE, U32T(changeValue.ishort));
+				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_RSFDSETTLE, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "GSPDResetTime")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "GSPDResetTime")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSPDRESET, U32T(changeValue.ishort));
+				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSPDRESET, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "GSResetFallTime")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "GSResetFallTime")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSRESETFALL, U32T(changeValue.ishort));
+				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSRESETFALL, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "GSTXFallTime")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "GSTXFallTime")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSTXFALL, U32T(changeValue.ishort));
+				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSTXFALL, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "GSFDResetTime")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "GSFDResetTime")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSFDRESET, U32T(changeValue.ishort));
+				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS640H_CONFIG_APS_GSFDRESET, U32T(changeValue.iint));
 		}
 		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "Run")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_RUN, changeValue.boolean);
@@ -1887,23 +1871,23 @@ static void apsConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 static void imuConfigSend(sshsNode node, caerModuleData moduleData, struct caer_davis_info *devInfo) {
 	if (devInfo->imuType != 0) {
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_SAMPLE_RATE_DIVIDER,
-			U32T(sshsNodeGetShort(node, "SampleRateDivider")));
+			U32T(sshsNodeGetInt(node, "SampleRateDivider")));
 
 		if (devInfo->imuType == 2) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_ACCEL_DLPF,
-				U32T(sshsNodeGetByte(node, "AccelDLPF")));
+				U32T(sshsNodeGetInt(node, "AccelDLPF")));
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_GYRO_DLPF,
-				U32T(sshsNodeGetByte(node, "GyroDLPF")));
+				U32T(sshsNodeGetInt(node, "GyroDLPF")));
 		}
 		else {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_DIGITAL_LOW_PASS_FILTER,
-				U32T(sshsNodeGetByte(node, "DigitalLowPassFilter")));
+				U32T(sshsNodeGetInt(node, "DigitalLowPassFilter")));
 		}
 
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_ACCEL_FULL_SCALE,
-			U32T(sshsNodeGetByte(node, "AccelFullScale")));
+			U32T(sshsNodeGetInt(node, "AccelFullScale")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_GYRO_FULL_SCALE,
-			U32T(sshsNodeGetByte(node, "GyroFullScale")));
+			U32T(sshsNodeGetInt(node, "GyroFullScale")));
 
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_RUN_ACCELEROMETER,
 			sshsNodeGetBool(node, "RunAccel"));
@@ -1921,29 +1905,29 @@ static void imuConfigListener(sshsNode node, void *userData, enum sshs_node_attr
 	caerModuleData moduleData = userData;
 
 	if (event == SSHS_ATTRIBUTE_MODIFIED) {
-		if (changeType == SSHS_SHORT && caerStrEquals(changeKey, "SampleRateDivider")) {
+		if (changeType == SSHS_INT && caerStrEquals(changeKey, "SampleRateDivider")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_SAMPLE_RATE_DIVIDER,
-				U32T(changeValue.ibyte));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "DigitalLowPassFilter")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "DigitalLowPassFilter")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_DIGITAL_LOW_PASS_FILTER,
-				U32T(changeValue.ibyte));
+				U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "AccelDLPF")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "AccelDLPF")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_ACCEL_DLPF, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_ACCEL_DLPF, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "AccelFullScale")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "AccelFullScale")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_ACCEL_FULL_SCALE, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_ACCEL_FULL_SCALE, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "GyroDLPF")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "GyroDLPF")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_GYRO_DLPF, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_GYRO_DLPF, U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_BYTE && caerStrEquals(changeKey, "GyroFullScale")) {
+		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "GyroFullScale")) {
 			caerDeviceConfigSet(
-				moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_GYRO_FULL_SCALE, U32T(changeValue.ibyte));
+				moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_GYRO_FULL_SCALE, U32T(changeValue.iint));
 		}
 		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "RunAccel")) {
 			caerDeviceConfigSet(
@@ -2084,61 +2068,66 @@ static void logLevelListener(sshsNode node, void *userData, enum sshs_node_attri
 
 	caerModuleData moduleData = userData;
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BYTE && caerStrEquals(changeKey, "logLevel")) {
+	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_INT && caerStrEquals(changeKey, "logLevel")) {
 		caerDeviceConfigSet(
-			moduleData->moduleState, CAER_HOST_CONFIG_LOG, CAER_HOST_CONFIG_LOG_LEVEL, U32T(changeValue.ibyte));
+			moduleData->moduleState, CAER_HOST_CONFIG_LOG, CAER_HOST_CONFIG_LOG_LEVEL, U32T(changeValue.iint));
 	}
 }
 
-static void statisticsPassthrough(
-	void *userData, const char *key, enum sshs_node_attr_value_type type, union sshs_node_attr_value *value) {
+static union sshs_node_attr_value statisticsUpdater(
+	void *userData, const char *key, enum sshs_node_attr_value_type type) {
 	UNUSED_ARGUMENT(type); // We know all statistics are always LONG.
 
-	caerDeviceHandle handle = userData;
-
-	uint64_t statisticValue = 0;
+	caerDeviceHandle handle                   = userData;
+	union sshs_node_attr_value statisticValue = {.ilong = 0};
 
 	if (caerStrEquals(key, "muxDroppedExtInput")) {
-		caerDeviceConfigGet64(handle, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_STATISTICS_EXTINPUT_DROPPED, &statisticValue);
+		caerDeviceConfigGet64(
+			handle, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_STATISTICS_EXTINPUT_DROPPED, (uint64_t *) &statisticValue.ilong);
 	}
 	else if (caerStrEquals(key, "muxDroppedDVS")) {
-		caerDeviceConfigGet64(handle, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_STATISTICS_DVS_DROPPED, &statisticValue);
+		caerDeviceConfigGet64(
+			handle, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_STATISTICS_DVS_DROPPED, (uint64_t *) &statisticValue.ilong);
 	}
 	else if (caerStrEquals(key, "dvsEventsRow")) {
-		caerDeviceConfigGet64(handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_EVENTS_ROW, &statisticValue);
+		caerDeviceConfigGet64(
+			handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_EVENTS_ROW, (uint64_t *) &statisticValue.ilong);
 	}
 	else if (caerStrEquals(key, "dvsEventsColumn")) {
-		caerDeviceConfigGet64(handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_EVENTS_COLUMN, &statisticValue);
+		caerDeviceConfigGet64(
+			handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_EVENTS_COLUMN, (uint64_t *) &statisticValue.ilong);
 	}
 	else if (caerStrEquals(key, "dvsEventsDropped")) {
-		caerDeviceConfigGet64(handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_EVENTS_DROPPED, &statisticValue);
+		caerDeviceConfigGet64(
+			handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_EVENTS_DROPPED, (uint64_t *) &statisticValue.ilong);
 	}
 	else if (caerStrEquals(key, "dvsFilteredPixel")) {
-		caerDeviceConfigGet64(handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_FILTERED_PIXELS, &statisticValue);
+		caerDeviceConfigGet64(
+			handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_FILTERED_PIXELS, (uint64_t *) &statisticValue.ilong);
 	}
 	else if (caerStrEquals(key, "dvsFilteredBA")) {
-		caerDeviceConfigGet64(
-			handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_FILTERED_BACKGROUND_ACTIVITY, &statisticValue);
+		caerDeviceConfigGet64(handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_FILTERED_BACKGROUND_ACTIVITY,
+			(uint64_t *) &statisticValue.ilong);
 	}
 	else if (caerStrEquals(key, "dvsFilteredRefractory")) {
-		caerDeviceConfigGet64(
-			handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_FILTERED_REFRACTORY_PERIOD, &statisticValue);
+		caerDeviceConfigGet64(handle, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_STATISTICS_FILTERED_REFRACTORY_PERIOD,
+			(uint64_t *) &statisticValue.ilong);
 	}
 
-	value->ilong = I64T(statisticValue);
+	return (statisticValue);
 }
 
-static void apsExposurePassthrough(
-	void *userData, const char *key, enum sshs_node_attr_value_type type, union sshs_node_attr_value *value) {
+static union sshs_node_attr_value apsExposureUpdater(
+	void *userData, const char *key, enum sshs_node_attr_value_type type) {
 	UNUSED_ARGUMENT(key);  // This is for the Exposure key only.
 	UNUSED_ARGUMENT(type); // We know Exposure is always INT.
 
-	caerDeviceHandle handle = userData;
+	caerDeviceHandle handle                         = userData;
+	union sshs_node_attr_value currentExposureValue = {.iint = 0};
 
-	uint32_t currentExposureValue = 0;
-	caerDeviceConfigGet(handle, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE, &currentExposureValue);
+	caerDeviceConfigGet(handle, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE, (uint32_t *) &currentExposureValue.iint);
 
-	value->iint = I32T(currentExposureValue);
+	return (currentExposureValue);
 }
 
 static void createVDACBiasSetting(sshsNode biasNode, const char *biasName, uint8_t voltageValue, uint8_t currentValue) {
@@ -2153,9 +2142,9 @@ static void createVDACBiasSetting(sshsNode biasNode, const char *biasName, uint8
 	sshsNode biasConfigNode = sshsGetRelativeNode(biasNode, biasNameFull);
 
 	// Add bias settings.
-	sshsNodeCreateByte(biasConfigNode, "voltageValue", I8T(voltageValue), 0, 63, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(biasConfigNode, "voltageValue", I8T(voltageValue), 0, 63, SSHS_FLAGS_NORMAL,
 		"Voltage, as a fraction of 1/64th of VDD=3.3V.");
-	sshsNodeCreateByte(
+	sshsNodeCreateInt(
 		biasConfigNode, "currentValue", I8T(currentValue), 0, 7, SSHS_FLAGS_NORMAL, "Current that drives the voltage.");
 }
 
@@ -2176,8 +2165,8 @@ static uint16_t generateVDACBiasParent(sshsNode biasNode, const char *biasName) 
 static uint16_t generateVDACBias(sshsNode biasNode) {
 	// Build up bias value from all its components.
 	struct caer_bias_vdac biasValue = {
-		.voltageValue = U8T(sshsNodeGetByte(biasNode, "voltageValue")),
-		.currentValue = U8T(sshsNodeGetByte(biasNode, "currentValue")),
+		.voltageValue = U8T(sshsNodeGetInt(biasNode, "voltageValue")),
+		.currentValue = U8T(sshsNodeGetInt(biasNode, "currentValue")),
 	};
 
 	return (caerBiasVDACGenerate(biasValue));
@@ -2196,17 +2185,17 @@ static void createCoarseFineBiasSetting(sshsNode biasNode, const char *biasName,
 	sshsNode biasConfigNode = sshsGetRelativeNode(biasNode, biasNameFull);
 
 	// Add bias settings.
-	sshsNodeCreateByte(biasConfigNode, "coarseValue", I8T(coarseValue), 0, 7, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(biasConfigNode, "coarseValue", I8T(coarseValue), 0, 7, SSHS_FLAGS_NORMAL,
 		"Coarse current value (big adjustments).");
-	sshsNodeCreateShort(biasConfigNode, "fineValue", I16T(fineValue), 0, 255, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(biasConfigNode, "fineValue", I16T(fineValue), 0, 255, SSHS_FLAGS_NORMAL,
 		"Fine current value (small adjustments).");
 	sshsNodeCreateBool(biasConfigNode, "enabled", enabled, SSHS_FLAGS_NORMAL, "Bias enabled.");
 	sshsNodeCreateString(biasConfigNode, "sex", sex, 1, 1, SSHS_FLAGS_NORMAL, "Bias sex.");
-	sshsNodeCreateAttributeListOptions(biasConfigNode, "sex", SSHS_STRING, "N,P", false);
+	sshsNodeCreateAttributeListOptions(biasConfigNode, "sex", "N,P", false);
 	sshsNodeCreateString(biasConfigNode, "type", type, 6, 7, SSHS_FLAGS_NORMAL, "Bias type.");
-	sshsNodeCreateAttributeListOptions(biasConfigNode, "type", SSHS_STRING, "Normal,Cascode", false);
+	sshsNodeCreateAttributeListOptions(biasConfigNode, "type", "Normal,Cascode", false);
 	sshsNodeCreateString(biasConfigNode, "currentLevel", "Normal", 3, 6, SSHS_FLAGS_NORMAL, "Bias current level.");
-	sshsNodeCreateAttributeListOptions(biasConfigNode, "currentLevel", SSHS_STRING, "Normal,Low", false);
+	sshsNodeCreateAttributeListOptions(biasConfigNode, "currentLevel", "Normal,Low", false);
 }
 
 static uint16_t generateCoarseFineBiasParent(sshsNode biasNode, const char *biasName) {
@@ -2230,8 +2219,8 @@ static uint16_t generateCoarseFineBias(sshsNode biasNode) {
 	char *currentLevelString = sshsNodeGetString(biasNode, "currentLevel");
 
 	struct caer_bias_coarsefine biasValue = {
-		.coarseValue        = U8T(sshsNodeGetByte(biasNode, "coarseValue")),
-		.fineValue          = U8T(sshsNodeGetShort(biasNode, "fineValue")),
+		.coarseValue        = U8T(sshsNodeGetInt(biasNode, "coarseValue")),
+		.fineValue          = U8T(sshsNodeGetInt(biasNode, "fineValue")),
 		.enabled            = sshsNodeGetBool(biasNode, "enabled"),
 		.sexN               = caerStrEquals(sexString, "N"),
 		.typeNormal         = caerStrEquals(typeString, "Normal"),
@@ -2259,18 +2248,16 @@ static void createShiftedSourceBiasSetting(sshsNode biasNode, const char *biasNa
 	sshsNode biasConfigNode = sshsGetRelativeNode(biasNode, biasNameFull);
 
 	// Add bias settings.
-	sshsNodeCreateByte(
+	sshsNodeCreateInt(
 		biasConfigNode, "refValue", I8T(refValue), 0, 63, SSHS_FLAGS_NORMAL, "Shifted-source bias level.");
-	sshsNodeCreateByte(biasConfigNode, "regValue", I8T(regValue), 0, 63, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(biasConfigNode, "regValue", I8T(regValue), 0, 63, SSHS_FLAGS_NORMAL,
 		"Shifted-source bias current for buffer amplifier.");
 	sshsNodeCreateString(
 		biasConfigNode, "operatingMode", operatingMode, 3, 13, SSHS_FLAGS_NORMAL, "Shifted-source operating mode.");
-	sshsNodeCreateAttributeListOptions(
-		biasConfigNode, "operatingMode", SSHS_STRING, "ShiftedSource,HiZ,TiedToRail", false);
+	sshsNodeCreateAttributeListOptions(biasConfigNode, "operatingMode", "ShiftedSource,HiZ,TiedToRail", false);
 	sshsNodeCreateString(
 		biasConfigNode, "voltageLevel", voltageLevel, 9, 11, SSHS_FLAGS_NORMAL, "Shifted-source voltage level.");
-	sshsNodeCreateAttributeListOptions(
-		biasConfigNode, "voltageLevel", SSHS_STRING, "SplitGate,SingleDiode,DoubleDiode", false);
+	sshsNodeCreateAttributeListOptions(biasConfigNode, "voltageLevel", "SplitGate,SingleDiode,DoubleDiode", false);
 }
 
 static uint16_t generateShiftedSourceBiasParent(sshsNode biasNode, const char *biasName) {
@@ -2293,8 +2280,8 @@ static uint16_t generateShiftedSourceBias(sshsNode biasNode) {
 	char *voltageLevelString  = sshsNodeGetString(biasNode, "voltageLevel");
 
 	struct caer_bias_shiftedsource biasValue = {
-		.refValue      = U8T(sshsNodeGetByte(biasNode, "refValue")),
-		.regValue      = U8T(sshsNodeGetByte(biasNode, "regValue")),
+		.refValue      = U8T(sshsNodeGetInt(biasNode, "refValue")),
+		.regValue      = U8T(sshsNodeGetInt(biasNode, "regValue")),
 		.operatingMode = (caerStrEquals(operatingModeString, "HiZ"))
 							 ? (HI_Z)
 							 : ((caerStrEquals(operatingModeString, "TiedToRail")) ? (TIED_TO_RAIL) : (SHIFTED_SOURCE)),

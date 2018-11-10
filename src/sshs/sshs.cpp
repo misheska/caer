@@ -1,17 +1,83 @@
 #include "sshs_internal.hpp"
+
+#include <atomic>
 #include <boost/tokenizer.hpp>
 #include <iostream>
 #include <mutex>
 #include <regex>
+#include <vector>
 
+class sshs_attribute_updater {
+private:
+	sshsNode node;
+	std::string key;
+	enum sshs_node_attr_value_type type;
+	sshsAttributeUpdater updater;
+	void *userData;
+
+public:
+	sshs_attribute_updater(sshsNode _node, const std::string &_key, enum sshs_node_attr_value_type _type,
+		sshsAttributeUpdater _updater, void *_userData) :
+		node(_node),
+		key(_key),
+		type(_type),
+		updater(_updater),
+		userData(_userData) {
+	}
+
+	sshsNode getNode() const noexcept {
+		return (node);
+	}
+
+	const std::string &getKey() const noexcept {
+		return (key);
+	}
+
+	enum sshs_node_attr_value_type getType() const noexcept {
+		return (type);
+	}
+
+	sshsAttributeUpdater getUpdater() const noexcept {
+		return (updater);
+	}
+
+	void *getUserData() const noexcept {
+		return (userData);
+	}
+
+	// Comparison operators.
+	bool operator==(const sshs_attribute_updater &rhs) const noexcept {
+		return ((node == rhs.node) && (key == rhs.key) && (type == rhs.type) && (updater == rhs.updater)
+				&& (userData == rhs.userData));
+	}
+
+	bool operator!=(const sshs_attribute_updater &rhs) const noexcept {
+		return (!this->operator==(rhs));
+	}
+};
+
+// struct for C compatibility
 struct sshs_struct {
+public:
+	// Data root node. Cannot be deleted.
 	sshsNode root;
+	// Global attribute updaters.
+	std::vector<sshs_attribute_updater> attributeUpdaters;
+	std::mutex attributeUpdatersLock;
+	// Global node listener.
+	std::atomic<sshsNodeChangeListener> globalNodeListenerFunction;
+	std::atomic<void *> globalNodeListenerUserData;
+	// Global attribute listener.
+	std::atomic<sshsAttributeChangeListener> globalAttributeListenerFunction;
+	std::atomic<void *> globalAttributeListenerUserData;
+	// Lock to serialize setting of global listeners.
+	std::mutex globalListenersLock;
 };
 
 static void sshsGlobalInitialize(void);
 static void sshsGlobalErrorLogCallbackInitialize(void);
 static void sshsGlobalErrorLogCallbackSetInternal(sshsErrorLogCallback error_log_cb);
-static void sshsDefaultErrorLogCallback(const char *msg);
+static void sshsDefaultErrorLogCallback(const char *msg, bool fatal);
 static bool sshsCheckAbsoluteNodePath(const std::string &absolutePath);
 static bool sshsCheckRelativeNodePath(const std::string &relativePath);
 
@@ -66,7 +132,16 @@ sshs sshsNew(void) {
 	sshsMemoryCheck(newSshs, __func__);
 
 	// Create root node.
-	newSshs->root = sshsNodeNew("", nullptr);
+	newSshs->root = sshsNodeNew("", nullptr, newSshs);
+
+	// Initialize C++ objects using placement new.
+	new (&newSshs->attributeUpdaters) std::vector<sshs_attribute_updater>();
+	new (&newSshs->attributeUpdatersLock) std::mutex();
+	new (&newSshs->globalNodeListenerFunction) std::atomic<sshsNodeChangeListener>(nullptr);
+	new (&newSshs->globalNodeListenerUserData) std::atomic<void *>(nullptr);
+	new (&newSshs->globalAttributeListenerFunction) std::atomic<sshsAttributeChangeListener>(nullptr);
+	new (&newSshs->globalAttributeListenerUserData) std::atomic<void *>(nullptr);
+	new (&newSshs->globalListenersLock) std::mutex();
 
 	return (newSshs);
 }
@@ -199,36 +274,107 @@ sshsNode sshsGetRelativeNode(sshsNode node, const char *nodePathC) {
 	return (curr);
 }
 
-bool sshsBeginTransaction(sshs st, const char *nodePaths[], size_t nodePathsLength) {
-	// Check all node paths, then lock them.
-	for (size_t i = 0; i < nodePathsLength; i++) {
-		if (!sshsCheckAbsoluteNodePath(nodePaths[i])) {
-			errno = EINVAL;
-			return (false);
+void sshsAttributeUpdaterAdd(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
+	sshsAttributeUpdater updater, void *updaterUserData) {
+	sshs_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
+
+	sshs tree = sshsNodeGetGlobal(node);
+	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
+
+	// Check no other updater already exists that matches this one.
+	if (!findBool(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(), attrUpdater)) {
+		// Verify referenced attribute actually exists.
+		if (!sshsNodeAttributeExists(node, key, type)) {
+			sshsNodeErrorNoAttribute("sshsAttributeUpdaterAdd", key, type);
 		}
-	}
 
-	for (size_t i = 0; i < nodePathsLength; i++) {
-		sshsNodeTransactionLock(sshsGetNode(st, nodePaths[i]));
+		tree->attributeUpdaters.push_back(attrUpdater);
 	}
-
-	return (true);
 }
 
-bool sshsEndTransaction(sshs st, const char *nodePaths[], size_t nodePathsLength) {
-	// Check all node paths, then unlock them.
-	for (size_t i = 0; i < nodePathsLength; i++) {
-		if (!sshsCheckAbsoluteNodePath(nodePaths[i])) {
-			errno = EINVAL;
-			return (false);
+void sshsAttributeUpdaterRemove(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
+	sshsAttributeUpdater updater, void *updaterUserData) {
+	sshs_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
+
+	sshs tree = sshsNodeGetGlobal(node);
+	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
+
+	tree->attributeUpdaters.erase(
+		std::remove(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(), attrUpdater),
+		tree->attributeUpdaters.end());
+}
+
+void sshsAttributeUpdaterRemoveAllForNode(sshsNode node) {
+	sshs tree = sshsNodeGetGlobal(node);
+	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
+
+	tree->attributeUpdaters.erase(std::remove_if(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(),
+									  [&node](const sshs_attribute_updater &up) { return (up.getNode() == node); }),
+		tree->attributeUpdaters.end());
+}
+
+void sshsAttributeUpdaterRemoveAll(sshs tree) {
+	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
+
+	tree->attributeUpdaters.clear();
+}
+
+bool sshsAttributeUpdaterRun(sshs tree) {
+	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
+
+	bool allSuccess = true;
+
+	for (const auto &up : tree->attributeUpdaters) {
+		union sshs_node_attr_value newValue = (*up.getUpdater())(up.getUserData(), up.getKey().c_str(), up.getType());
+
+		if (!sshsNodePutAttribute(up.getNode(), up.getKey().c_str(), up.getType(), newValue)) {
+			allSuccess = false;
 		}
 	}
 
-	for (size_t i = 0; i < nodePathsLength; i++) {
-		sshsNodeTransactionUnlock(sshsGetNode(st, nodePaths[i]));
-	}
+	return (allSuccess);
+}
 
-	return (true);
+void sshsGlobalNodeListenerSet(sshs tree, sshsNodeChangeListener node_changed, void *userData) {
+	std::lock_guard<std::mutex> lock(tree->globalListenersLock);
+
+	// Ensure function is never called with old user data.
+	tree->globalNodeListenerUserData.store(nullptr);
+
+	// Update function.
+	tree->globalNodeListenerFunction.store(node_changed);
+
+	// Associate new user data.
+	tree->globalNodeListenerUserData.store(userData);
+}
+
+sshsNodeChangeListener sshsGlobalNodeListenerGetFunction(sshs tree) {
+	return (tree->globalNodeListenerFunction.load(std::memory_order_relaxed));
+}
+
+void *sshsGlobalNodeListenerGetUserData(sshs tree) {
+	return (tree->globalNodeListenerUserData.load(std::memory_order_relaxed));
+}
+
+void sshsGlobalAttributeListenerSet(sshs tree, sshsAttributeChangeListener attribute_changed, void *userData) {
+	std::lock_guard<std::mutex> lock(tree->globalListenersLock);
+
+	// Ensure function is never called with old user data.
+	tree->globalAttributeListenerUserData.store(nullptr);
+
+	// Update function.
+	tree->globalAttributeListenerFunction.store(attribute_changed);
+
+	// Associate new user data.
+	tree->globalAttributeListenerUserData.store(userData);
+}
+
+sshsAttributeChangeListener sshsGlobalAttributeListenerGetFunction(sshs tree) {
+	return (tree->globalAttributeListenerFunction.load(std::memory_order_relaxed));
+}
+
+void *sshsGlobalAttributeListenerGetUserData(sshs tree) {
+	return (tree->globalAttributeListenerUserData.load(std::memory_order_relaxed));
 }
 
 #define ALLOWED_CHARS_REGEXP "([a-zA-Z-_\\d\\.]+/)"
@@ -237,14 +383,14 @@ static const std::regex sshsRelativeNodePathRegexp("^" ALLOWED_CHARS_REGEXP "+$"
 
 static bool sshsCheckAbsoluteNodePath(const std::string &absolutePath) {
 	if (absolutePath.empty()) {
-		(*sshsGetGlobalErrorLogCallback())("Absolute node path cannot be empty.");
+		(*sshsGetGlobalErrorLogCallback())("Absolute node path cannot be empty.", false);
 		return (false);
 	}
 
 	if (!std::regex_match(absolutePath, sshsAbsoluteNodePathRegexp)) {
 		boost::format errorMsg = boost::format("Invalid absolute node path format: '%s'.") % absolutePath;
 
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str());
+		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str(), false);
 
 		return (false);
 	}
@@ -254,14 +400,14 @@ static bool sshsCheckAbsoluteNodePath(const std::string &absolutePath) {
 
 static bool sshsCheckRelativeNodePath(const std::string &relativePath) {
 	if (relativePath.empty()) {
-		(*sshsGetGlobalErrorLogCallback())("Relative node path cannot be empty.");
+		(*sshsGetGlobalErrorLogCallback())("Relative node path cannot be empty.", false);
 		return (false);
 	}
 
 	if (!std::regex_match(relativePath, sshsRelativeNodePathRegexp)) {
 		boost::format errorMsg = boost::format("Invalid relative node path format: '%s'.") % relativePath;
 
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str());
+		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str(), false);
 
 		return (false);
 	}
@@ -269,6 +415,10 @@ static bool sshsCheckRelativeNodePath(const std::string &relativePath) {
 	return (true);
 }
 
-static void sshsDefaultErrorLogCallback(const char *msg) {
+static void sshsDefaultErrorLogCallback(const char *msg, bool fatal) {
 	std::cerr << msg << std::endl;
+
+	if (fatal) {
+		exit(EXIT_FAILURE);
+	}
 }

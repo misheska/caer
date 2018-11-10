@@ -560,7 +560,7 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 			break;
 		}
 
-		case CAER_CONFIG_GET_TYPES: {
+		case CAER_CONFIG_GET_TYPE: {
 			std::shared_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
 
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
@@ -570,42 +570,23 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 			// This cannot fail, since we know the node exists from above.
 			sshsNode wantedNode = sshsGetNode(configStore, (const char *) node);
 
-			// Check if any keys match the given one and return its types.
-			size_t numTypes;
-			enum sshs_node_attr_value_type *attrTypes
-				= sshsNodeGetAttributeTypes(wantedNode, (const char *) key, &numTypes);
+			// Check if any keys match the given one and return its type.
+			enum sshs_node_attr_value_type attrType = sshsNodeGetAttributeType(wantedNode, (const char *) key);
 
 			// No attributes for specified key, return empty.
-			if (attrTypes == NULL) {
+			if (attrType == SSHS_UNKNOWN) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Node has no attributes with specified key.");
 
 				break;
 			}
 
-			// We need to return a big string with all of the attribute types,
+			// We need to return a string with the attribute type,
 			// separated by a NUL character.
-			size_t typesLength = 0;
-
-			for (size_t i = 0; i < numTypes; i++) {
-				const char *typeString = sshsHelperTypeToStringConverter(attrTypes[i]);
-				typesLength += strlen(typeString) + 1; // +1 for terminating NUL byte.
-			}
-
-			// Allocate a buffer for the types and copy them over.
-			char typesBuffer[typesLength];
-
-			for (size_t i = 0, acc = 0; i < numTypes; i++) {
-				const char *typeString = sshsHelperTypeToStringConverter(attrTypes[i]);
-				size_t len             = strlen(typeString) + 1;
-				memcpy(typesBuffer + acc, typeString, len);
-				acc += len;
-			}
-
-			free(attrTypes);
+			const char *typeStr = sshsHelperTypeToStringConverter(attrType);
 
 			caerConfigSendResponse(
-				client, CAER_CONFIG_GET_TYPES, SSHS_STRING, (const uint8_t *) typesBuffer, typesLength);
+				client, CAER_CONFIG_GET_TYPE, SSHS_STRING, (const uint8_t *) typeStr, strlen(typeStr) + 1);
 
 			break;
 		}
@@ -634,18 +615,7 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 
 			switch (type) {
 				case SSHS_BOOL:
-				case SSHS_BYTE:
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%" PRIi8, ranges.min.ibyteRange)
-							  + 1; // Terminating NUL byte.
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%" PRIi8, ranges.max.ibyteRange)
-							  + 1; // Terminating NUL byte.
-					break;
-
-				case SSHS_SHORT:
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%" PRIi16, ranges.min.ishortRange)
-							  + 1; // Terminating NUL byte.
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%" PRIi16, ranges.max.ishortRange)
-							  + 1; // Terminating NUL byte.
+					memcpy(buf, "0\00\0", 4);
 					break;
 
 				case SSHS_INT:
@@ -811,11 +781,11 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 			for (size_t i = 0; i < rootNodesSize; i++) {
 				sshsNode mNode = rootNodes[i];
 
-				if (!sshsNodeAttributeExists(mNode, "moduleId", SSHS_SHORT)) {
+				if (!sshsNodeAttributeExists(mNode, "moduleId", SSHS_INT)) {
 					continue;
 				}
 
-				int16_t moduleID = sshsNodeGetShort(mNode, "moduleId");
+				int16_t moduleID = I16T(sshsNodeGetInt(mNode, "moduleId"));
 				usedModuleIDs.push_back(moduleID);
 			}
 
@@ -856,7 +826,7 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 				// if their outputs are undefined (-1).
 				if (sshsExistsRelativeNode(moduleSysNode, "outputStreams/0/")) {
 					sshsNode outputNode0    = sshsGetRelativeNode(moduleSysNode, "outputStreams/0/");
-					int16_t outputNode0Type = sshsNodeGetShort(outputNode0, "type");
+					int32_t outputNode0Type = sshsNodeGetInt(outputNode0, "type");
 
 					if (outputNode0Type == -1) {
 						sshsNodeCreate(newModuleNode, "moduleOutput", "", 0, 1024, SSHS_FLAGS_NORMAL,

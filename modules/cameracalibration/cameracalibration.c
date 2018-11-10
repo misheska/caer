@@ -1,11 +1,11 @@
+#include <libcaer/events/frame.h>
+#include <libcaer/events/polarity.h>
+
 #include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/mainloop.h"
 
 #include "calibration_settings.h"
 #include "calibration_wrapper.h"
-
-#include <libcaer/events/frame.h>
-#include <libcaer/events/polarity.h>
 
 struct CameraCalibrationState_struct {
 	struct CameraCalibrationSettings_struct settings; // Struct containing all settings (shared)
@@ -67,7 +67,7 @@ static void caerCameraCalibrationConfigInit(sshsNode moduleNode) {
 	sshsNodeCreateString(
 		moduleNode, "calibrationPattern", "chessboard", 10, 21, SSHS_FLAGS_NORMAL, "Pattern to run calibration with.");
 	sshsNodeCreateAttributeListOptions(
-		moduleNode, "calibrationPattern", SSHS_STRING, "chessboard,circlesGrid,asymmetricCirclesGrid", false);
+		moduleNode, "calibrationPattern", "chessboard,circlesGrid,asymmetricCirclesGrid", false);
 	sshsNodeCreateInt(moduleNode, "boardWidth", 9, 1, 64, SSHS_FLAGS_NORMAL, "The size of the board (width).");
 	sshsNodeCreateInt(moduleNode, "boardHeigth", 5, 1, 64, SSHS_FLAGS_NORMAL, "The size of the board (heigth).");
 	sshsNodeCreateFloat(moduleNode, "boardSquareSize", 1.0f, 0.0f, 1000.0f, SSHS_FLAGS_NORMAL,
@@ -84,9 +84,10 @@ static void caerCameraCalibrationConfigInit(sshsNode moduleNode) {
 		"Do undistortion of incoming images using calibration loaded from file.");
 	sshsNodeCreateString(moduleNode, "loadFileName", "camera_calib.xml", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
 		"The name of the file from which to load the calibration settings for undistortion.");
-	sshsNodeCreateBool(moduleNode, "fitAllPixels", false, SSHS_FLAGS_NORMAL, "Whether to fit all the input pixels "
-																			 "(black borders) or maximize the image, "
-																			 "at the cost of loosing some pixels.");
+	sshsNodeCreateBool(moduleNode, "fitAllPixels", false, SSHS_FLAGS_NORMAL,
+		"Whether to fit all the input pixels "
+		"(black borders) or maximize the image, "
+		"at the cost of loosing some pixels.");
 }
 
 static bool caerCameraCalibrationInit(caerModuleData moduleData) {
@@ -111,8 +112,8 @@ static bool caerCameraCalibrationInit(caerModuleData moduleData) {
 	// Update all settings.
 	CameraCalibrationState state = moduleData->moduleState;
 
-	state->settings.imageWidth  = U32T(sshsNodeGetShort(sourceInfo, "frameSizeX"));
-	state->settings.imageHeigth = U32T(sshsNodeGetShort(sourceInfo, "frameSizeY"));
+	state->settings.imageWidth  = U32T(sshsNodeGetInt(sourceInfo, "frameSizeX"));
+	state->settings.imageHeigth = U32T(sshsNodeGetInt(sourceInfo, "frameSizeY"));
 
 	updateSettings(moduleData);
 
@@ -160,9 +161,10 @@ static void updateSettings(caerModuleData moduleData) {
 		state->settings.calibrationPattern = CAMCALIB_ASYMMETRIC_CIRCLES_GRID;
 	}
 	else {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Invalid calibration pattern defined. Select one of: 'chessboard', "
-												  "'circlesGrid' or 'asymmetricCirclesGrid'. Defaulting to "
-												  "'chessboard'.");
+		caerModuleLog(moduleData, CAER_LOG_ERROR,
+			"Invalid calibration pattern defined. Select one of: 'chessboard', "
+			"'circlesGrid' or 'asymmetricCirclesGrid'. Defaulting to "
+			"'chessboard'.");
 
 		state->settings.calibrationPattern = CAMCALIB_CHESSBOARD;
 	}

@@ -3,6 +3,7 @@
 
 // Implementation relevant common includes.
 #include "caer-sdk/sshs/sshs.h"
+
 #include <boost/format.hpp>
 #include <cstring>
 #include <stdexcept>
@@ -10,12 +11,38 @@
 
 // C linkage to guarantee no name mangling.
 extern "C" {
-// Internal functions.
-sshsNode sshsNodeNew(const char *nodeName, sshsNode parent);
+// Internal node functions.
+sshsNode sshsNodeNew(const char *nodeName, sshsNode parent, sshs global);
+/**
+ * This returns a reference to a node, and as such must be carefully mediated with
+ * any sshsNodeRemoveNode() calls.
+ */
 sshsNode sshsNodeAddChild(sshsNode node, const char *childName);
+/**
+ * This returns a reference to a node, and as such must be carefully mediated with
+ * any sshsNodeRemoveNode() calls.
+ */
 sshsNode sshsNodeGetChild(sshsNode node, const char *childName);
-void sshsNodeTransactionLock(sshsNode node);
-void sshsNodeTransactionUnlock(sshsNode node);
+/**
+ * Get link to global SSHS tree.
+ */
+sshs sshsNodeGetGlobal(sshsNode node);
+
+// Internal global functions.
+sshsNodeChangeListener sshsGlobalNodeListenerGetFunction(sshs tree);
+void *sshsGlobalNodeListenerGetUserData(sshs tree);
+sshsAttributeChangeListener sshsGlobalAttributeListenerGetFunction(sshs tree);
+void *sshsGlobalAttributeListenerGetUserData(sshs tree);
+}
+
+template<typename InIter, typename Elem> static inline bool findBool(InIter begin, InIter end, const Elem &val) {
+	const auto result = std::find(begin, end, val);
+
+	if (result == end) {
+		return (false);
+	}
+
+	return (true);
 }
 
 // Terminate process on failed memory allocation.
@@ -23,9 +50,7 @@ template<typename T> static inline void sshsMemoryCheck(T *ptr, const std::strin
 	if (ptr == nullptr) {
 		boost::format errorMsg = boost::format("%s(): unable to allocate memory.") % funcName;
 
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str());
-
-		exit(EXIT_FAILURE);
+		(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str(), true);
 	}
 }
 
@@ -34,8 +59,6 @@ private:
 	enum sshs_node_attr_value_type type;
 	union {
 		bool boolean;
-		int8_t ibyte;
-		int16_t ishort;
 		int32_t iint;
 		int64_t ilong;
 		float ffloat;
@@ -64,32 +87,6 @@ public:
 	void setBool(bool v) noexcept {
 		type          = SSHS_BOOL;
 		value.boolean = v;
-	}
-
-	int8_t getByte() const {
-		if (type != SSHS_BYTE) {
-			throw std::runtime_error("SSHS: value type does not match requested type.");
-		}
-
-		return (value.ibyte);
-	}
-
-	void setByte(int8_t v) noexcept {
-		type        = SSHS_BYTE;
-		value.ibyte = v;
-	}
-
-	int16_t getShort() const {
-		if (type != SSHS_SHORT) {
-			throw std::runtime_error("SSHS: value type does not match requested type.");
-		}
-
-		return (value.ishort);
-	}
-
-	void setShort(int16_t v) noexcept {
-		type         = SSHS_SHORT;
-		value.ishort = v;
 	}
 
 	int32_t getInt() const {
@@ -163,12 +160,6 @@ public:
 				// No check for bool, because no range exists.
 				return (true);
 
-			case SSHS_BYTE:
-				return (value.ibyte >= ranges.min.ibyteRange && value.ibyte <= ranges.max.ibyteRange);
-
-			case SSHS_SHORT:
-				return (value.ishort >= ranges.min.ishortRange && value.ishort <= ranges.max.ishortRange);
-
 			case SSHS_INT:
 				return (value.iint >= ranges.min.iintRange && value.iint <= ranges.max.iintRange);
 
@@ -195,14 +186,6 @@ public:
 		switch (tu) {
 			case SSHS_BOOL:
 				setBool(vu.boolean);
-				break;
-
-			case SSHS_BYTE:
-				setByte(vu.ibyte);
-				break;
-
-			case SSHS_SHORT:
-				setShort(vu.ishort);
 				break;
 
 			case SSHS_INT:
@@ -238,14 +221,6 @@ public:
 		switch (type) {
 			case SSHS_BOOL:
 				vu.boolean = getBool();
-				break;
-
-			case SSHS_BYTE:
-				vu.ibyte = getByte();
-				break;
-
-			case SSHS_SHORT:
-				vu.ishort = getShort();
 				break;
 
 			case SSHS_INT:
@@ -289,12 +264,6 @@ public:
 			case SSHS_BOOL:
 				return (getBool() == rhs.getBool());
 
-			case SSHS_BYTE:
-				return (getByte() == rhs.getByte());
-
-			case SSHS_SHORT:
-				return (getShort() == rhs.getShort());
-
 			case SSHS_INT:
 				return (getInt() == rhs.getInt());
 
@@ -326,5 +295,19 @@ const std::string &sshsHelperCppTypeToStringConverter(enum sshs_node_attr_value_
 enum sshs_node_attr_value_type sshsHelperCppStringToTypeConverter(const std::string &typeString);
 std::string sshsHelperCppValueToStringConverter(const sshs_value &val);
 sshs_value sshsHelperCppStringToValueConverter(enum sshs_node_attr_value_type type, const std::string &valueString);
+
+// We don't care about unlocking anything here, as we exit hard on error anyway.
+static inline void sshsNodeError(const std::string &funcName, const std::string &key,
+	enum sshs_node_attr_value_type type, const std::string &msg, bool fatal = true) {
+	boost::format errorMsg = boost::format("%s(): attribute '%s' (type '%s'): %s.") % funcName % key
+							 % sshsHelperCppTypeToStringConverter(type) % msg;
+
+	(*sshsGetGlobalErrorLogCallback())(errorMsg.str().c_str(), fatal);
+}
+
+static inline void sshsNodeErrorNoAttribute(
+	const std::string &funcName, const std::string &key, enum sshs_node_attr_value_type type) {
+	sshsNodeError(funcName, key, type, "attribute doesn't exist, you must create it first");
+}
 
 #endif /* SSHS_INTERNAL_HPP_ */

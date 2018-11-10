@@ -1,15 +1,14 @@
 #include "module.h"
 
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/format.hpp>
 #include <iterator>
 #include <mutex>
 #include <regex>
 #include <thread>
 #include <vector>
-
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/format.hpp>
 
 static struct {
 	std::vector<boost::filesystem::path> modulePaths;
@@ -23,7 +22,7 @@ static void caerModuleLogLevelListener(sshsNode node, void *userData, enum sshs_
 
 void caerModuleConfigInit(sshsNode moduleNode) {
 	// Per-module log level support. Initialize with global log level value.
-	sshsNodeCreateByte(moduleNode, "logLevel", caerLogLevelGet(), CAER_LOG_EMERGENCY, CAER_LOG_DEBUG, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(moduleNode, "logLevel", caerLogLevelGet(), CAER_LOG_EMERGENCY, CAER_LOG_DEBUG, SSHS_FLAGS_NORMAL,
 		"Module-specific log-level.");
 
 	// Initialize shutdown controls. By default modules always run.
@@ -255,7 +254,7 @@ caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, ss
 	caerModuleConfigInit(moduleNode);
 
 	// Per-module log level support.
-	uint8_t logLevel = U8T(sshsNodeGetByte(moduleData->moduleNode, "logLevel"));
+	uint8_t logLevel = U8T(sshsNodeGetInt(moduleData->moduleNode, "logLevel"));
 
 	moduleData->moduleLogLevel.store(logLevel, std::memory_order_relaxed);
 	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleLogLevelListener);
@@ -302,8 +301,8 @@ static void caerModuleLogLevelListener(sshsNode node, void *userData, enum sshs_
 
 	caerModuleData data = (caerModuleData) userData;
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BYTE && caerStrEquals(changeKey, "logLevel")) {
-		atomic_store(&data->moduleLogLevel, U8T(changeValue.ibyte));
+	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_INT && caerStrEquals(changeKey, "logLevel")) {
+		atomic_store(&data->moduleLogLevel, U8T(changeValue.iint));
 	}
 }
 
