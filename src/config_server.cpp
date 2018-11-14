@@ -615,7 +615,8 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 
 			switch (type) {
 				case SSHS_BOOL:
-					memcpy(buf, "0\00\0", 4);
+					bufLen = 4;
+					memcpy(buf, "0\00\0", bufLen);
 					break;
 
 				case SSHS_INT:
