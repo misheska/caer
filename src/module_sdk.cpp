@@ -1,4 +1,5 @@
 #include "caer-sdk/module.h"
+
 #include <stdarg.h>
 
 bool caerModuleSetSubSystemString(caerModuleData moduleData, const char *subSystemString) {
@@ -41,8 +42,7 @@ void caerModuleConfigDefaultListener(sshsNode node, void *userData, enum sshs_no
 void caerModuleLog(caerModuleData moduleData, enum caer_log_level logLevel, const char *format, ...) {
 	va_list argumentList;
 	va_start(argumentList, format);
-	caerLogVAFull(caerLogFileDescriptorsGetFirst(), caerLogFileDescriptorsGetSecond(),
-		moduleData->moduleLogLevel.load(std::memory_order_relaxed), logLevel, moduleData->moduleSubSystemString, format,
-		argumentList);
+	caerLogVAFull(moduleData->moduleLogLevel.load(std::memory_order_relaxed), logLevel,
+		moduleData->moduleSubSystemString, format, argumentList);
 	va_end(argumentList);
 }
