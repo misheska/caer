@@ -856,8 +856,13 @@ static bool sshsNodeToXML(sshsNode node, int fd, bool recursive) {
 	xmlTree.put_child("sshs.node", sshsNodeGenerateXML(node, recursive));
 
 	try {
+#if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) < 56
+		boost::property_tree::xml_parser::xml_writer_settings<boost::property_tree::ptree::key_type> xmlIndent(
+			" ", XML_INDENT_SPACES);
+#else
 		boost::property_tree::xml_parser::xml_writer_settings<boost::property_tree::ptree::key_type> xmlIndent(
 			' ', XML_INDENT_SPACES);
+#endif
 
 		// We manually call write_xml_element() here instead of write_xml() because
 		// the latter always prepends the XML declaration, which we don't want.
