@@ -216,9 +216,48 @@ private:
 	}
 };
 
+class ConfigUpdater {
+private:
+	std::thread updateThread;
+	std::atomic_bool runThread;
+	sshs configTree;
+
+public:
+	ConfigUpdater(sshs tree) : configTree(tree) {
+		threadStart();
+	}
+
+	void stop() {
+		threadStop();
+	}
+
+private:
+	void threadStart() {
+		runThread.store(true);
+
+		updateThread = std::thread([this]() {
+			// Set thread name.
+			portable_thread_set_name("ConfigUpdater");
+
+			while (runThread.load()) {
+				sshsAttributeUpdaterRun(configTree);
+
+				std::this_thread::sleep_for(std::chrono::seconds(1));
+			}
+		});
+	}
+
+	void threadStop() {
+		runThread.store(false);
+
+		updateThread.join();
+	}
+};
+
 static struct {
 	std::unique_ptr<ConfigServer> server;
 	std::shared_timed_mutex operationsSharedMutex;
+	std::unique_ptr<ConfigUpdater> configUpdater;
 } glConfigServerData;
 
 void caerConfigServerStart(void) {
@@ -245,9 +284,15 @@ void caerConfigServerStart(void) {
 
 	// Successfully started thread.
 	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Thread created successfully.");
+
+	// Start Config Updater thread.
+	glConfigServerData.configUpdater = std::make_unique<ConfigUpdater>(sshsGetGlobal());
 }
 
 void caerConfigServerStop(void) {
+	// Stop Config Updater thread.
+	glConfigServerData.configUpdater->stop();
+
 	try {
 		glConfigServerData.server->stop();
 	}
