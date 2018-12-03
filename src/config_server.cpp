@@ -216,9 +216,48 @@ private:
 	}
 };
 
+class ConfigUpdater {
+private:
+	std::thread updateThread;
+	std::atomic_bool runThread;
+	sshs configTree;
+
+public:
+	ConfigUpdater(sshs tree) : configTree(tree) {
+		threadStart();
+	}
+
+	void stop() {
+		threadStop();
+	}
+
+private:
+	void threadStart() {
+		runThread.store(true);
+
+		updateThread = std::thread([this]() {
+			// Set thread name.
+			portable_thread_set_name("ConfigUpdater");
+
+			while (runThread.load()) {
+				sshsAttributeUpdaterRun(configTree);
+
+				std::this_thread::sleep_for(std::chrono::seconds(1));
+			}
+		});
+	}
+
+	void threadStop() {
+		runThread.store(false);
+
+		updateThread.join();
+	}
+};
+
 static struct {
 	std::unique_ptr<ConfigServer> server;
 	std::shared_timed_mutex operationsSharedMutex;
+	std::unique_ptr<ConfigUpdater> configUpdater;
 } glConfigServerData;
 
 void caerConfigServerStart(void) {
@@ -231,35 +270,41 @@ void caerConfigServerStart(void) {
 	sshsNodeCreate(serverNode, "portNumber", 4040, 1, UINT16_MAX, SSHS_FLAGS_NORMAL,
 		"Port to listen on for configuration server connections.");
 
-	// Start the thread.
+	// Start the threads.
 	try {
 		glConfigServerData.server = std::make_unique<ConfigServer>(
 			asioIP::address::from_string(sshsNodeGetStdString(serverNode, "ipAddress")),
 			sshsNodeGetInt(serverNode, "portNumber"));
+
+		// Start Config Updater thread.
+		glConfigServerData.configUpdater = std::make_unique<ConfigUpdater>(sshsGetGlobal());
 	}
 	catch (const std::system_error &ex) {
-		// Failed to create thread.
-		logger::log(logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to create thread. Error: %s.", ex.what());
+		// Failed to create threads.
+		logger::log(logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to create threads. Error: %s.", ex.what());
 		exit(EXIT_FAILURE);
 	}
 
-	// Successfully started thread.
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Thread created successfully.");
+	// Successfully started threads.
+	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads created successfully.");
 }
 
 void caerConfigServerStop(void) {
 	try {
+		// Stop Config Updater thread.
+		glConfigServerData.configUpdater->stop();
+
 		glConfigServerData.server->stop();
 	}
 	catch (const std::system_error &ex) {
-		// Failed to join thread.
+		// Failed to join threads.
 		logger::log(
-			logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to terminate thread. Error: %s.", ex.what());
+			logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to terminate threads. Error: %s.", ex.what());
 		exit(EXIT_FAILURE);
 	}
 
-	// Successfully joined thread.
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Thread terminated successfully.");
+	// Successfully joined threads.
+	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads terminated successfully.");
 }
 
 // The response from the server follows a simplified version of the request
