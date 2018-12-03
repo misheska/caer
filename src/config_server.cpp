@@ -270,41 +270,41 @@ void caerConfigServerStart(void) {
 	sshsNodeCreate(serverNode, "portNumber", 4040, 1, UINT16_MAX, SSHS_FLAGS_NORMAL,
 		"Port to listen on for configuration server connections.");
 
-	// Start the thread.
+	// Start the threads.
 	try {
 		glConfigServerData.server = std::make_unique<ConfigServer>(
 			asioIP::address::from_string(sshsNodeGetStdString(serverNode, "ipAddress")),
 			sshsNodeGetInt(serverNode, "portNumber"));
+
+		// Start Config Updater thread.
+		glConfigServerData.configUpdater = std::make_unique<ConfigUpdater>(sshsGetGlobal());
 	}
 	catch (const std::system_error &ex) {
-		// Failed to create thread.
-		logger::log(logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to create thread. Error: %s.", ex.what());
+		// Failed to create threads.
+		logger::log(logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to create threads. Error: %s.", ex.what());
 		exit(EXIT_FAILURE);
 	}
 
-	// Successfully started thread.
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Thread created successfully.");
-
-	// Start Config Updater thread.
-	glConfigServerData.configUpdater = std::make_unique<ConfigUpdater>(sshsGetGlobal());
+	// Successfully started threads.
+	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads created successfully.");
 }
 
 void caerConfigServerStop(void) {
-	// Stop Config Updater thread.
-	glConfigServerData.configUpdater->stop();
-
 	try {
+		// Stop Config Updater thread.
+		glConfigServerData.configUpdater->stop();
+
 		glConfigServerData.server->stop();
 	}
 	catch (const std::system_error &ex) {
-		// Failed to join thread.
+		// Failed to join threads.
 		logger::log(
-			logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to terminate thread. Error: %s.", ex.what());
+			logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to terminate threads. Error: %s.", ex.what());
 		exit(EXIT_FAILURE);
 	}
 
-	// Successfully joined thread.
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Thread terminated successfully.");
+	// Successfully joined threads.
+	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads terminated successfully.");
 }
 
 // The response from the server follows a simplified version of the request
