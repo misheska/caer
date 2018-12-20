@@ -266,7 +266,11 @@ bool Calibration::saveCameraParams(
 				flag & CALIB_FIX_K6 ? " +fix_k6" : "");
 		}
 
+#if (CV_VERSION_MAJOR >= 4) || (CV_VERSION_MAJOR == 3 && CV_VERSION_MINOR >= 2)
+		fs.writeComment(buf, 0);
+#else
 		cvWriteComment(*fs, buf, 0);
+#endif
 	}
 
 	fs << "flags" << flag;
