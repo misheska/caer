@@ -1879,7 +1879,7 @@ static void caerMainloopSegfaultHandler(int signum) {
 #elif defined(OS_LINUX)
 	void *traces[128];
 	int tracesActualNum = backtrace(traces, 128);
-	backtrace_symbols_fd(traces, tracesActualNum, STDOUT_FILENO);
+	backtrace_symbols_fd(traces, tracesActualNum, STDERR_FILENO);
 #endif
 
 	raise(signum);
