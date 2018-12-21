@@ -1,11 +1,12 @@
-#include <caer-sdk/cross/c11threads_posix.h>
-#include <caer-sdk/mainloop.h>
-
 #include <libcaer/events/imu6.h>
 #include <libcaer/events/packetContainer.h>
 #include <libcaer/events/polarity.h>
 #include <libcaer/events/special.h>
+
 #include <libcaer/devices/dvs132s.h>
+
+#include <caer-sdk/cross/c11threads_posix.h>
+#include <caer-sdk/mainloop.h>
 
 static void caerInputDVS132SConfigInit(sshsNode moduleNode);
 static bool caerInputDVS132SInit(caerModuleData moduleData);
@@ -334,30 +335,30 @@ static void createDefaultBiasConfiguration(caerModuleData moduleData) {
 	sshsNodeCreateBool(biasNode, "BiasEnable", true, SSHS_FLAGS_NORMAL, "Enable bias generator to power chip.");
 
 	sshsNodeCreateInt(
-		biasNode, "PrBp", 1 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL, "Bias PrBp (in pAmp) - Photoreceptor bandwidth.");
+		biasNode, "PrBp", 100 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL, "Bias PrBp (in pAmp) - Photoreceptor bandwidth.");
 
 	sshsNodeCreateInt(
 		biasNode, "PrSFBpCoarse", 1, 0, 1023, SSHS_FLAGS_NORMAL, "Bias PrSFBp (in pAmp) - Photoreceptor bandwidth.");
 	sshsNodeCreateInt(
-		biasNode, "PrSFBpFine", 10, 0, 1023, SSHS_FLAGS_NORMAL, "Bias PrSFBp (in pAmp) - Photoreceptor bandwidth.");
+		biasNode, "PrSFBpFine", 1, 0, 1023, SSHS_FLAGS_NORMAL, "Bias PrSFBp (in pAmp) - Photoreceptor bandwidth.");
 
-	sshsNodeCreateInt(biasNode, "BlPuBp", 10 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL,
-		"Bias BlPuBp (in pAmp) - Bitline pull-up strength.");
+	sshsNodeCreateInt(
+		biasNode, "BlPuBp", 0, 0, 1000000, SSHS_FLAGS_NORMAL, "Bias BlPuBp (in pAmp) - Bitline pull-up strength.");
 	sshsNodeCreateInt(biasNode, "BiasBufBp", 10 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL,
 		"Bias BiasBufBp (in pAmp) - P type bias buffer strength.");
 	sshsNodeCreateInt(
 		biasNode, "OffBn", 200, 0, 1000000, SSHS_FLAGS_NORMAL, "Bias OffBn (in pAmp) - Comparator OFF threshold.");
-	sshsNodeCreateInt(biasNode, "DiffBn", 4 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(biasNode, "DiffBn", 10 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL,
 		"Bias DiffBn (in pAmp) - Delta amplifier strength.");
 	sshsNodeCreateInt(
-		biasNode, "OnBn", 40 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL, "Bias OnBn (in pAmp) - Comparator ON threshold.");
-	sshsNodeCreateInt(biasNode, "CasBn", 40 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL,
+		biasNode, "OnBn", 400 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL, "Bias OnBn (in pAmp) - Comparator ON threshold.");
+	sshsNodeCreateInt(biasNode, "CasBn", 400 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL,
 		"Bias CasBn (in pAmp) - Cascode for delta amplifier and comparator.");
 	sshsNodeCreateInt(biasNode, "DPBn", 100 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL,
 		"Bias DPBn (in pAmp) - In-pixel direct path current limit.");
 	sshsNodeCreateInt(biasNode, "BiasBufBn", 10 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL,
 		"Bias BiasBufBn (in pAmp) - N type bias buffer strength.");
-	sshsNodeCreateInt(biasNode, "ABufBn", 100 * 1000, 0, 1000000, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(biasNode, "ABufBn", 0, 0, 1000000, SSHS_FLAGS_NORMAL,
 		"Bias ABufBn (in pAmp) - Diagnostic analog buffer strength.");
 }
 
