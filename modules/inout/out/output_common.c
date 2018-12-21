@@ -67,20 +67,24 @@
  */
 
 #include "output_common.h"
+
 #include "caer-sdk/buffers.h"
 #include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/cross/portable_threads.h"
+#include "caer-sdk/cross/portable_time.h"
 #include "caer-sdk/mainloop.h"
+
 #include "ext/net_rw.h"
 
 #ifdef ENABLE_INOUT_PNG_COMPRESSION
-#include <png.h>
+#	include <png.h>
 #endif
 
 #include <libcaer/events/common.h>
 #include <libcaer/events/frame.h>
 #include <libcaer/events/packetContainer.h>
 #include <libcaer/events/special.h>
+
 #include <stdatomic.h>
 
 static void caerOutputCommonConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
@@ -423,8 +427,9 @@ static int packetsFirstTimestampThenTypeCmp(const void *a, const void *b) {
 
 static void sendEventPacket(outputCommonState state, caerEventPacketHeader packet) {
 	// Calculate total size of packet, in bytes.
-	size_t packetSize = CAER_EVENT_PACKET_HEADER_SIZE + (size_t)(caerEventPacketHeaderGetEventNumber(packet)
-																 * caerEventPacketHeaderGetEventSize(packet));
+	size_t packetSize
+		= CAER_EVENT_PACKET_HEADER_SIZE
+		  + (size_t)(caerEventPacketHeaderGetEventNumber(packet) * caerEventPacketHeaderGetEventSize(packet));
 
 	// Statistics support.
 	state->statistics.packetsNumber++;
@@ -1231,33 +1236,22 @@ static void writeFileHeader(outputCommonState state) {
 	writeUntilDone(state->fileIO, (const uint8_t *) state->sourceInfoString, strlen(state->sourceInfoString));
 
 	// First prepend the time.
-	time_t currentTimeEpoch = time(NULL);
+	struct tm currentTimeStruct = portable_clock_localtime();
 
 #if defined(OS_WINDOWS)
-	// localtime() is thread-safe on Windows (and there is no localtime_r() at all).
-	struct tm *currentTime = localtime(&currentTimeEpoch);
-
 	// Windows doesn't support %z (numerical timezone), so no TZ info here.
 	// Following time format uses exactly 34 characters (20 separators/characters,
 	// 4 year, 2 month, 2 day, 2 hours, 2 minutes, 2 seconds).
 	size_t currentTimeStringLength = 34;
 	char currentTimeString[currentTimeStringLength + 1]; // + 1 for terminating NUL byte.
-	strftime(currentTimeString, currentTimeStringLength + 1, "#Start-Time: %Y-%m-%d %H:%M:%S\r\n", currentTime);
+	strftime(currentTimeString, currentTimeStringLength + 1, "#Start-Time: %Y-%m-%d %H:%M:%S\r\n", &currentTimeStruct);
 #else
-	// From localtime_r() man-page: "According to POSIX.1-2004, localtime()
-	// is required to behave as though tzset(3) was called, while
-	// localtime_r() does not have this requirement."
-	// So we make sure to call it here, to be portable.
-	tzset();
-
-	struct tm currentTime;
-	localtime_r(&currentTimeEpoch, &currentTime);
-
 	// Following time format uses exactly 44 characters (25 separators/characters,
 	// 4 year, 2 month, 2 day, 2 hours, 2 minutes, 2 seconds, 5 time-zone).
 	size_t currentTimeStringLength = 44;
 	char currentTimeString[currentTimeStringLength + 1]; // + 1 for terminating NUL byte.
-	strftime(currentTimeString, currentTimeStringLength + 1, "#Start-Time: %Y-%m-%d %H:%M:%S (TZ%z)\r\n", &currentTime);
+	strftime(currentTimeString, currentTimeStringLength + 1, "#Start-Time: %Y-%m-%d %H:%M:%S (TZ%z)\r\n",
+		&currentTimeStruct);
 #endif
 
 	writeUntilDone(state->fileIO, (const uint8_t *) currentTimeString, currentTimeStringLength);

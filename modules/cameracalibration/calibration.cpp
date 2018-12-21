@@ -226,26 +226,10 @@ bool Calibration::saveCameraParams(
 		return (false);
 	}
 
-	time_t currentTimeEpoch = time(NULL);
-
-#if defined(OS_WINDOWS)
-	// localtime() is thread-safe on Windows (and there is no localtime_r() at all).
-	struct tm *currentTime = localtime(&currentTimeEpoch);
-#else
-	// From localtime_r() man-page: "According to POSIX.1-2004, localtime()
-	// is required to behave as though tzset(3) was called, while
-	// localtime_r() does not have this requirement."
-	// So we make sure to call it here, to be portable.
-	tzset();
-
-	struct tm currentTimeStruct;
-	struct tm *currentTime = &currentTimeStruct;
-
-	localtime_r(&currentTimeEpoch, currentTime);
-#endif
+	struct tm currentTimeStruct = portable_clock_localtime();
 
 	char buf[1024];
-	strftime(buf, sizeof(buf) - 1, "%c", currentTime);
+	strftime(buf, sizeof(buf) - 1, "%c", &currentTimeStruct);
 
 	fs << "calibration_time" << buf;
 

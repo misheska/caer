@@ -1,4 +1,5 @@
 #include "caer-sdk/cross/portable_io.h"
+#include "caer-sdk/cross/portable_time.h"
 #include "caer-sdk/mainloop.h"
 
 #include "output_common.h"
@@ -62,29 +63,13 @@ static char *getUserHomeDirectory(caerModuleData moduleData) {
 
 static char *getFullFilePath(caerModuleData moduleData, const char *directory, const char *prefix) {
 	// First get time suffix string.
-	time_t currentTimeEpoch = time(NULL);
-
-#if defined(OS_WINDOWS)
-	// localtime() is thread-safe on Windows (and there is no localtime_r() at all).
-	struct tm *currentTime = localtime(&currentTimeEpoch);
-#else
-	// From localtime_r() man-page: "According to POSIX.1-2004, localtime()
-	// is required to behave as though tzset(3) was called, while
-	// localtime_r() does not have this requirement."
-	// So we make sure to call it here, to be portable.
-	tzset();
-
-	struct tm currentTimeStruct;
-	struct tm *currentTime = &currentTimeStruct;
-
-	localtime_r(&currentTimeEpoch, currentTime);
-#endif
+	struct tm currentTimeStruct = portable_clock_localtime();
 
 	// Following time format uses exactly 19 characters (5 separators,
 	// 4 year, 2 month, 2 day, 2 hours, 2 minutes, 2 seconds).
 	size_t currentTimeStringLength = 19;
 	char currentTimeString[currentTimeStringLength + 1]; // + 1 for terminating NUL byte.
-	strftime(currentTimeString, currentTimeStringLength + 1, "%Y_%m_%d_%H_%M_%S", currentTime);
+	strftime(currentTimeString, currentTimeStringLength + 1, "%Y_%m_%d_%H_%M_%S", &currentTimeStruct);
 
 	if (caerStrEquals(prefix, "")) {
 		// If the prefix is the empty string, use a minimal one.
