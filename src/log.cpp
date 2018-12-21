@@ -69,12 +69,16 @@ void caerLogInit(void) {
 }
 
 static void caerLogMessagesToSSHS(const char *msg, size_t msgLength) {
-	UNUSED_ARGUMENT(msgLength);
-
 	sshsNode logNode = sshsGetNode(sshsGetGlobal(), "/caer/logger/");
 
 	sshs_node_attr_value logMessage;
 	logMessage.string = const_cast<char *>(msg);
+
+	// Remove trailing newline (replace with NUL terminator).
+	// HACK: this works by bypassing const on the input message.
+	// We do know this is fine due to caerLog() putting msg in RW memory
+	// and passing it to the callback last by design.
+	logMessage.string[msgLength - 1] = '\0';
 
 	sshsNodeUpdateReadOnlyAttribute(logNode, "lastLogMessage", SSHS_STRING, logMessage);
 }
