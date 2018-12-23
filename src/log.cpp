@@ -51,8 +51,8 @@ void caerLogInit(void) {
 
 	sshsNodeAddAttributeListener(logNode, nullptr, &caerLogLevelListener);
 
-	// Switch log messages to the log file only.
-	caerLogFileDescriptorsSet(CAER_LOG_FILE_FD, -1);
+	// Switch log messages to log file and stderr.
+	caerLogFileDescriptorsSet(CAER_LOG_FILE_FD, STDERR_FILENO);
 
 	// Make sure log file gets flushed at exit time.
 	atexit(&caerLogShutDownWriteBack);

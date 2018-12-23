@@ -34,6 +34,7 @@ SET(CAER_SRC_FILES
 	config_server.cpp
 	module.cpp
 	mainloop.cpp
+	service.cpp
 	main.cpp)
 
 # Set full RPATH
