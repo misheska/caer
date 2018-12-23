@@ -120,26 +120,11 @@ void caerConfigInit(int argc, char *argv[]) {
 		auto iter = configOverrides.begin();
 
 		while (iter != configOverrides.end()) {
-			bool nodeExists = sshsExistsNode(sshsGetGlobal(), iter[0].c_str());
-
-			// Only allow operations on existing nodes.
-			if (!nodeExists) {
-				std::cout << "SSHS: node '" << iter[0] << "' doesn't exist on override." << std::endl;
-
-				iter += 4;
-				continue;
-			}
-
-			// This cannot fail, since we know the node exists from above.
+			// Get node.
 			sshsNode node = sshsGetNode(sshsGetGlobal(), iter[0].c_str());
 
-			// Check if attribute exists. Only allow operations on existing attributes!
-			bool attrExists
-				= sshsNodeAttributeExists(node, iter[1].c_str(), sshsHelperStringToTypeConverter(iter[2].c_str()));
-
-			if (!attrExists) {
-				std::cout << "SSHS: attribute '" << iter[1] << "' of type '" << iter[2]
-						  << "' doesn't exist on override." << std::endl;
+			if (node == nullptr) {
+				std::cout << "SSHS: invalid node path specification '" << iter[0] << "' on override." << std::endl;
 
 				iter += 4;
 				continue;

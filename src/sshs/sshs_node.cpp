@@ -1099,7 +1099,7 @@ bool sshsNodeStringToAttributeConverter(sshsNode node, const char *key, const ch
 
 	// IFF attribute already exists, we update it using sshsNodePut(), else
 	// we create the attribute with maximum range and a default description.
-	// These XMl-loaded attributes are also marked NO_EXPORT.
+	// These XML-loaded attributes are also marked NO_EXPORT.
 	// This happens on XML load only. More restrictive ranges and flags can be
 	// enabled later by calling sshsNodeCreate*() again as needed.
 	bool result = false;
