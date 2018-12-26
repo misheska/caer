@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 static int CAER_LOG_FILE_FD = -1;
+static sshsNode logNode     = nullptr;
 
 static void caerLogShutDownWriteBack(void);
 static void caerLogSSHSLogger(const char *msg, bool fatal);
@@ -18,7 +19,7 @@ static void caerLogLevelListener(sshsNode node, void *userData, enum sshs_node_a
 	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
 
 void caerLogInit(void) {
-	sshsNode logNode = sshsGetNode(sshsGetGlobal(), "/caer/logger/");
+	logNode = sshsGetNode(sshsGetGlobal(), "/caer/logger/");
 
 	// Ensure default log file and value are present.
 	char *userHome                       = portable_get_user_home_directory();
@@ -65,12 +66,10 @@ void caerLogInit(void) {
 	sshsSetGlobalErrorLogCallback(&caerLogSSHSLogger);
 
 	// Log sub-system initialized fully and correctly, log this.
-	caerLog(CAER_LOG_NOTICE, "Logger", "Initialization successful with log-level %" PRIu8 ".", logLevel);
+	caerLog(CAER_LOG_DEBUG, "Logger", "Started with log file '%s', log-level %d.", logFile.c_str(), logLevel);
 }
 
 static void caerLogMessagesToSSHS(const char *msg, size_t msgLength) {
-	sshsNode logNode = sshsGetNode(sshsGetGlobal(), "/caer/logger/");
-
 	sshs_node_attr_value logMessage;
 	logMessage.string = const_cast<char *>(msg);
 
@@ -84,7 +83,7 @@ static void caerLogMessagesToSSHS(const char *msg, size_t msgLength) {
 }
 
 static void caerLogShutDownWriteBack(void) {
-	caerLog(CAER_LOG_DEBUG, "Logger", "Shutting down ...");
+	caerLog(CAER_LOG_DEBUG, "Logger", "Shutting down, flushing outputs.");
 
 	// Flush interactive outputs.
 	fflush(stdout);
@@ -112,6 +111,6 @@ static void caerLogLevelListener(sshsNode node, void *userData, enum sshs_node_a
 	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_INT && caerStrEquals(changeKey, "logLevel")) {
 		// Update the global log level asynchronously.
 		caerLogLevelSet((enum caer_log_level) changeValue.iint);
-		caerLog(CAER_LOG_DEBUG, "Logger", "Log-level set to %" PRIi32 ".", changeValue.iint);
+		caerLog(CAER_LOG_DEBUG, "Logger", "Log-level set to %d.", changeValue.iint);
 	}
 }
