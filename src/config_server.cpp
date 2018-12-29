@@ -70,7 +70,7 @@ public:
 
 	/**
 	 * Startup handler needs following signature:
-	 * void (boost::system::error_code)
+	 * void (const boost::system::error_code &)
 	 */
 	template<typename StartupHandler> void start(StartupHandler &&stHandler) {
 		if (sslConnection) {
@@ -83,7 +83,7 @@ public:
 
 	/**
 	 * Write handler needs following signature:
-	 * void (boost::system::error_code, std::size_t)
+	 * void (const boost::system::error_code &, size_t)
 	 */
 	template<typename WriteHandler> void write(const asio::const_buffer &buf, WriteHandler &&wrHandler) {
 		if (sslConnection) {
@@ -96,7 +96,7 @@ public:
 
 	/**
 	 * Read handler needs following signature:
-	 * void (boost::system::error_code, std::size_t)
+	 * void (const boost::system::error_code &, size_t)
 	 */
 	template<typename ReadHandler> void read(const asio::mutable_buffer &buf, ReadHandler &&rdHandler) {
 		if (sslConnection) {
@@ -169,8 +169,8 @@ public:
 	void writeResponse(size_t dataLength) {
 		auto self(shared_from_this());
 
-		socket.write(asio::buffer(data, dataLength),
-			[this, self](const boost::system::error_code &error, std::size_t /*length*/) {
+		socket.write(
+			asio::buffer(data, dataLength), [this, self](const boost::system::error_code &error, size_t /*length*/) {
 				if (error) {
 					handleError(error, "Failed to write response");
 				}
@@ -186,7 +186,7 @@ private:
 		auto self(shared_from_this());
 
 		socket.read(asio::buffer(data, CAER_CONFIG_SERVER_HEADER_SIZE),
-			[this, self](const boost::system::error_code &error, std::size_t /*length*/) {
+			[this, self](const boost::system::error_code &error, size_t /*length*/) {
 				if (error) {
 					handleError(error, "Failed to read header");
 				}
@@ -220,7 +220,7 @@ private:
 		auto self(shared_from_this());
 
 		socket.read(asio::buffer(data + CAER_CONFIG_SERVER_HEADER_SIZE, dataLength),
-			[this, self](const boost::system::error_code &error, std::size_t /*length*/) {
+			[this, self](const boost::system::error_code &error, size_t /*length*/) {
 				if (error) {
 					handleError(error, "Failed to read data");
 				}
