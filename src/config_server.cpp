@@ -11,6 +11,7 @@
 #include <atomic>
 #include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/format.hpp>
 #include <memory>
 #include <mutex>
@@ -23,9 +24,10 @@
 #include <vector>
 namespace logger = libcaer::log;
 
-namespace asio   = boost::asio;
-namespace asioIP = boost::asio::ip;
-using asioTCP    = boost::asio::ip::tcp;
+namespace asio    = boost::asio;
+namespace asioSSL = boost::asio::ssl;
+namespace asioIP  = boost::asio::ip;
+using asioTCP     = boost::asio::ip::tcp;
 
 #define CONFIG_SERVER_NAME "Config Server"
 
@@ -35,24 +37,129 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 	const uint8_t *extra, size_t extraLength, const uint8_t *node, size_t nodeLength, const uint8_t *key,
 	size_t keyLength, const uint8_t *value, size_t valueLength);
 
+class TCPSSLOrderedSocket {
+private:
+	asioSSL::stream<asioTCP::socket> socket;
+	bool sslConnection;
+
+public:
+	TCPSSLOrderedSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
+		socket(std::move(s), sslContext),
+		sslConnection(sslEnabled) {
+	}
+
+	~TCPSSLOrderedSocket() {
+		// Shutdown SSL cleanly.
+		if (sslConnection) {
+			socket.shutdown();
+		}
+
+		// Then close underlying socket cleanly.
+		// TCP shutdown() should be called for portability.
+		next_layer().shutdown(asioTCP::socket::shutdown_both);
+		next_layer().close();
+	}
+
+	const asioTCP::socket &next_layer() const {
+		return (socket.next_layer());
+	}
+
+	asioTCP::socket &next_layer() {
+		return (socket.next_layer());
+	}
+
+	/**
+	 * Startup handler needs following signature:
+	 * void (boost::system::error_code)
+	 */
+	template<typename StartupHandler> void start(StartupHandler &&stHandler) {
+		if (sslConnection) {
+			socket.async_handshake(asioSSL::stream_base::server, stHandler);
+		}
+		else {
+			stHandler(boost::system::error_code());
+		}
+	}
+
+	/**
+	 * Write handler needs following signature:
+	 * void (boost::system::error_code, std::size_t)
+	 */
+	template<typename WriteHandler> void write(const asio::const_buffer &buf, WriteHandler &&wrHandler) {
+		if (sslConnection) {
+			asio::async_write(socket, buf, wrHandler);
+		}
+		else {
+			asio::async_write(next_layer(), buf, wrHandler);
+		}
+	}
+
+	/**
+	 * Read handler needs following signature:
+	 * void (boost::system::error_code, std::size_t)
+	 */
+	template<typename ReadHandler> void read(const asio::mutable_buffer &buf, ReadHandler &&rdHandler) {
+		if (sslConnection) {
+			asio::async_read(socket, buf, rdHandler);
+		}
+		else {
+			asio::async_read(next_layer(), buf, rdHandler);
+		}
+	}
+
+	asioTCP::endpoint local_endpoint() const {
+		return (next_layer().local_endpoint());
+	}
+
+	asioIP::address local_address() const {
+		return (local_endpoint().address());
+	}
+
+	uint16_t local_port() const {
+		return (local_endpoint().port());
+	}
+
+	asioTCP::endpoint remote_endpoint() const {
+		return (next_layer().remote_endpoint());
+	}
+
+	asioIP::address remote_address() const {
+		return (remote_endpoint().address());
+	}
+
+	uint16_t remote_port() const {
+		return (remote_endpoint().port());
+	}
+};
+
 class ConfigServerConnection : public std::enable_shared_from_this<ConfigServerConnection> {
 private:
-	asioTCP::socket socket;
+	TCPSSLOrderedSocket socket;
 	uint8_t data[CAER_CONFIG_SERVER_BUFFER_SIZE];
 
 public:
-	ConfigServerConnection(asioTCP::socket s) : socket(std::move(s)) {
+	ConfigServerConnection(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
+		socket(std::move(s), sslEnabled, sslContext) {
 		logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "New connection from client %s:%d.",
-			socket.remote_endpoint().address().to_string().c_str(), socket.remote_endpoint().port());
+			socket.remote_address().to_string().c_str(), socket.remote_port());
 	}
 
 	~ConfigServerConnection() {
 		logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Closing connection from client %s:%d.",
-			socket.remote_endpoint().address().to_string().c_str(), socket.remote_endpoint().port());
+			socket.remote_address().to_string().c_str(), socket.remote_port());
 	}
 
 	void start() {
-		readHeader();
+		auto self(shared_from_this());
+
+		socket.start([this, self](const boost::system::error_code &error) {
+			if (error) {
+				handleError(error, "Failed SSL handshake");
+			}
+			else {
+				readHeader();
+			}
+		});
 	}
 
 	uint8_t *getData() {
@@ -62,7 +169,7 @@ public:
 	void writeResponse(size_t dataLength) {
 		auto self(shared_from_this());
 
-		asio::async_write(socket, asio::buffer(data, dataLength),
+		socket.write(asio::buffer(data, dataLength),
 			[this, self](const boost::system::error_code &error, std::size_t /*length*/) {
 				if (error) {
 					handleError(error, "Failed to write response");
@@ -78,7 +185,7 @@ private:
 	void readHeader() {
 		auto self(shared_from_this());
 
-		asio::async_read(socket, asio::buffer(data, CAER_CONFIG_SERVER_HEADER_SIZE),
+		socket.read(asio::buffer(data, CAER_CONFIG_SERVER_HEADER_SIZE),
 			[this, self](const boost::system::error_code &error, std::size_t /*length*/) {
 				if (error) {
 					handleError(error, "Failed to read header");
@@ -100,8 +207,7 @@ private:
 					if (readLength > (CAER_CONFIG_SERVER_BUFFER_SIZE - CAER_CONFIG_SERVER_HEADER_SIZE)) {
 						logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME,
 							"Client %s:%d: read length error (%d bytes requested).",
-							socket.remote_endpoint().address().to_string().c_str(), socket.remote_endpoint().port(),
-							readLength);
+							socket.remote_address().to_string().c_str(), socket.remote_port(), readLength);
 						return;
 					}
 
@@ -113,7 +219,7 @@ private:
 	void readData(size_t dataLength) {
 		auto self(shared_from_this());
 
-		asio::async_read(socket, asio::buffer(data + CAER_CONFIG_SERVER_HEADER_SIZE, dataLength),
+		socket.read(asio::buffer(data + CAER_CONFIG_SERVER_HEADER_SIZE, dataLength),
 			[this, self](const boost::system::error_code &error, std::size_t /*length*/) {
 				if (error) {
 					handleError(error, "Failed to read data");
@@ -152,12 +258,12 @@ private:
 		if (error == asio::error::eof) {
 			// Handle EOF separately.
 			logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Client %s:%d: connection closed.",
-				socket.remote_endpoint().address().to_string().c_str(), socket.remote_endpoint().port());
+				socket.remote_address().to_string().c_str(), socket.remote_port());
 		}
 		else {
 			logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME, "Client %s:%d: %s. Error: %s (%d).",
-				socket.remote_endpoint().address().to_string().c_str(), socket.remote_endpoint().port(), message,
-				error.message().c_str(), error.value());
+				socket.remote_address().to_string().c_str(), socket.remote_port(), message, error.message().c_str(),
+				error.value());
 		}
 	}
 };
@@ -165,14 +271,38 @@ private:
 class ConfigServer {
 private:
 	asio::io_service ioService;
+	asioSSL::context sslContext;
 	asioTCP::acceptor acceptor;
-	asioTCP::socket socket;
 	std::thread ioThread;
+	bool sslConnection;
 
 public:
-	ConfigServer(const asioIP::address &listenAddress, unsigned short listenPort) :
+	ConfigServer() : sslContext(asioSSL::context::tlsv12_server), acceptor(ioService), sslConnection(false) {
+	}
+
+	ConfigServer(const asioIP::address &listenAddress, unsigned short listenPort, bool sslEnabled,
+		const std::string &sslCertFile, const std::string &sslKeyFile, bool sslVerification,
+		const std::string &sslVerifyFile) :
+		sslContext(asioSSL::context::tlsv12_server),
 		acceptor(ioService, asioTCP::endpoint(listenAddress, listenPort)),
-		socket(ioService) {
+		sslConnection(sslEnabled) {
+		if (sslEnabled) {
+			sslContext.set_options(
+				boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use);
+
+			sslContext.use_certificate_chain_file(sslCertFile);
+			sslContext.use_private_key_file(sslKeyFile, boost::asio::ssl::context::pem);
+
+			if (sslVerification) {
+				sslContext.set_verify_mode(
+					asioSSL::context::verify_peer | asioSSL::context::verify_fail_if_no_peer_cert);
+
+				sslContext.load_verify_file(sslVerifyFile);
+			}
+		}
+	}
+
+	void start() {
 		acceptStart();
 
 		threadStart();
@@ -184,13 +314,13 @@ public:
 
 private:
 	void acceptStart() {
-		acceptor.async_accept(socket, [this](const boost::system::error_code &error) {
+		acceptor.async_accept([this](const boost::system::error_code &error, asioTCP::socket socket) {
 			if (error) {
 				logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
 					"Failed to accept new connection. Error: %s (%d).", error.message().c_str(), error.value());
 			}
 			else {
-				std::make_shared<ConfigServerConnection>(std::move(socket))->start();
+				std::make_shared<ConfigServerConnection>(std::move(socket), sslConnection, sslContext)->start();
 			}
 
 			acceptStart();
@@ -223,7 +353,13 @@ private:
 	sshs configTree;
 
 public:
+	ConfigUpdater() : ConfigUpdater(sshsGetGlobal()) {
+	}
+
 	ConfigUpdater(sshs tree) : configTree(tree) {
+	}
+
+	void start() {
 		threadStart();
 	}
 
@@ -255,8 +391,8 @@ private:
 };
 
 static struct {
-	std::unique_ptr<ConfigServer> server;
-	std::unique_ptr<ConfigUpdater> configUpdater;
+	ConfigServer server;
+	ConfigUpdater configUpdater;
 } glConfigServerData;
 
 void caerConfigServerStart(void) {
@@ -266,17 +402,33 @@ void caerConfigServerStart(void) {
 	// Ensure default values are present.
 	sshsNodeCreate(serverNode, "ipAddress", "127.0.0.1", 7, 15, SSHS_FLAGS_NORMAL,
 		"IPv4 address to listen on for configuration server connections.");
-	sshsNodeCreate(serverNode, "portNumber", 4040, 1, UINT16_MAX, SSHS_FLAGS_NORMAL,
+	sshsNodeCreate(serverNode, "portNumber", CAER_CONFIG_SERVER_DEFAULT_PORT, 1, UINT16_MAX, SSHS_FLAGS_NORMAL,
 		"Port to listen on for configuration server connections.");
+
+	sshsNodeCreate(
+		serverNode, "ssl", false, SSHS_FLAGS_NORMAL, "Require SSL encryption for config-server communication.");
+	sshsNodeCreate(serverNode, "sslCertFile", "/etc/ssl/caer.pem", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+		"Path to SSL certificate file (PEM format).");
+	sshsNodeCreate(serverNode, "sslKeyFile", "/etc/ssl/caer.key", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+		"Path to SSL private key file (PEM format).");
+
+	sshsNodeCreate(serverNode, "sslVerify", false, SSHS_FLAGS_NORMAL, "Require SSL certificate verification.");
+	sshsNodeCreate(serverNode, "sslVerifyFile", "/etc/ssl/rootCA.pem", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+		"Path to SSL certificate authority file for verification (PEM format).");
 
 	// Start the threads.
 	try {
-		glConfigServerData.server = std::make_unique<ConfigServer>(
-			asioIP::address::from_string(sshsNodeGetStdString(serverNode, "ipAddress")),
-			sshsNodeGetInt(serverNode, "portNumber"));
+		new (&glConfigServerData.server)
+			ConfigServer(asioIP::address::from_string(sshsNodeGetStdString(serverNode, "ipAddress")),
+				U16T(sshsNodeGetInt(serverNode, "portNumber")), sshsNodeGetBool(serverNode, "ssl"),
+				sshsNodeGetStdString(serverNode, "sslCertFile"), sshsNodeGetStdString(serverNode, "sslKeyFile"),
+				sshsNodeGetBool(serverNode, "sslVerify"), sshsNodeGetStdString(serverNode, "sslVerifyFile"));
 
-		// Start Config Updater thread.
-		glConfigServerData.configUpdater = std::make_unique<ConfigUpdater>(sshsGetGlobal());
+		new (&glConfigServerData.configUpdater) ConfigUpdater(sshsGetGlobal());
+
+		glConfigServerData.server.start();
+
+		glConfigServerData.configUpdater.start();
 	}
 	catch (const std::system_error &ex) {
 		// Failed to create threads.
@@ -291,9 +443,9 @@ void caerConfigServerStart(void) {
 void caerConfigServerStop(void) {
 	try {
 		// Stop Config Updater thread.
-		glConfigServerData.configUpdater->stop();
+		glConfigServerData.configUpdater.stop();
 
-		glConfigServerData.server->stop();
+		glConfigServerData.server.stop();
 	}
 	catch (const std::system_error &ex) {
 		// Failed to join threads.

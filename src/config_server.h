@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+#define CAER_CONFIG_SERVER_DEFAULT_PORT 4040
+
 // Control message format: 1 byte ACTION, 1 byte TYPE, 2 bytes EXTRA_LEN,
 // 2 bytes NODE_LEN, 2 bytes KEY_LEN, 2 bytes VALUE_LEN, then up to 4086
 // bytes split between EXTRA, NODE, KEY, VALUE (with 4 bytes for NUL).
