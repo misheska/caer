@@ -1,3 +1,4 @@
+#include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/utils.h"
 
 #include "src/config_server.h"
@@ -5,6 +6,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
@@ -12,53 +14,13 @@
 #include <string>
 #include <vector>
 
-namespace asio   = boost::asio;
-namespace asioIP = boost::asio::ip;
-using asioTCP    = boost::asio::ip::tcp;
-namespace po     = boost::program_options;
-
-#if defined(OS_UNIX) && OS_UNIX == 1
-#	include <pwd.h>
-#	include <sys/types.h>
-#endif
+namespace asio    = boost::asio;
+namespace asioSSL = boost::asio::ssl;
+namespace asioIP  = boost::asio::ip;
+using asioTCP     = boost::asio::ip::tcp;
+namespace po      = boost::program_options;
 
 #define CAERCTL_HISTORY_FILE_NAME ".caer-ctl.history"
-
-static inline boost::filesystem::path getHomeDirectory() {
-	// First query main environment variables: HOME on Unix, USERPROFILE on Windows.
-	const char *homeDir = getenv("HOME");
-
-	if (homeDir || (homeDir = getenv("USERPROFILE"))) {
-		return (boost::filesystem::path(std::string(homeDir)));
-	}
-
-// Unix: try to get it from the user data storage.
-#if defined(OS_UNIX) && OS_UNIX == 1
-	struct passwd userPasswd;
-	struct passwd *userPasswdPtr;
-	char userPasswdBuf[2048];
-
-	if (getpwuid_r(getuid(), &userPasswd, userPasswdBuf, sizeof(userPasswdBuf), &userPasswdPtr) == 0) {
-		return (boost::filesystem::path(std::string(userPasswd.pw_dir)));
-	}
-#endif
-
-#if defined(OS_WINDOWS) && OS_WINDOWS == 1
-	// Windows: try to get HOMEDRIVE and HOMEPATH from environment and concatenate them.
-	const char *homeDrive = getenv("HOMEDRIVE");
-	const char *homePath  = getenv("HOMEPATH");
-
-	if (homeDrive && homePath) {
-		std::string winHome(homeDrive);
-		winHome += homePath;
-		return (boost::filesystem::path(winHome));
-	}
-#endif
-
-	// No clue about home directory.
-	throw boost::filesystem::filesystem_error("Unable to get home directory.",
-		boost::system::errc::make_error_code(boost::system::errc::no_such_file_or_directory));
-}
 
 static void handleInputLine(const char *buf, size_t bufLength);
 static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoComplete);
@@ -163,7 +125,9 @@ int main(int argc, char *argv[]) {
 	boost::filesystem::path commandHistoryFilePath;
 
 	try {
-		commandHistoryFilePath = getHomeDirectory();
+		char *userHome         = portable_get_user_home_directory();
+		commandHistoryFilePath = userHome;
+		free(userHome);
 	}
 	catch (const boost::filesystem::filesystem_error &) {
 		std::cerr << "Failed to get home directory for history file, using current working directory." << std::endl;
