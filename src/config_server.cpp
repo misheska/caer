@@ -256,7 +256,6 @@ private:
 
 static struct {
 	std::unique_ptr<ConfigServer> server;
-	std::shared_timed_mutex operationsSharedMutex;
 	std::unique_ptr<ConfigUpdater> configUpdater;
 } glConfigServerData;
 
@@ -400,8 +399,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 
 	switch (action) {
 		case CAER_CONFIG_NODE_EXISTS: {
-			std::shared_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			// We only need the node name here. Type is not used (ignored)!
 			bool result = sshsExistsNode(configStore, (const char *) node);
 
@@ -412,8 +409,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		}
 
 		case CAER_CONFIG_ATTR_EXISTS: {
-			std::shared_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -432,8 +427,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		}
 
 		case CAER_CONFIG_GET: {
-			std::shared_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -450,7 +443,7 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 
 			char *resultStr = sshsHelperValueToStringConverter((enum sshs_node_attr_value_type) type, result);
 
-			if (resultStr == NULL) {
+			if (resultStr == nullptr) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Failed to allocate memory for value string.");
 			}
@@ -471,8 +464,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		}
 
 		case CAER_CONFIG_PUT: {
-			std::unique_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -512,8 +503,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		}
 
 		case CAER_CONFIG_GET_CHILDREN: {
-			std::shared_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -526,7 +515,7 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 			const char **childNames = sshsNodeGetChildNames(wantedNode, &numNames);
 
 			// No children at all, return empty.
-			if (childNames == NULL) {
+			if (childNames == nullptr) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Node has no children.");
 
@@ -559,8 +548,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		}
 
 		case CAER_CONFIG_GET_ATTRIBUTES: {
-			std::shared_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -573,7 +560,7 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 			const char **attrKeys = sshsNodeGetAttributeKeys(wantedNode, &numKeys);
 
 			// No attributes at all, return empty.
-			if (attrKeys == NULL) {
+			if (attrKeys == nullptr) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Node has no attributes.");
 
@@ -606,8 +593,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		}
 
 		case CAER_CONFIG_GET_TYPE: {
-			std::shared_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -637,8 +622,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		}
 
 		case CAER_CONFIG_GET_RANGES: {
-			std::shared_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -665,37 +648,37 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 					break;
 
 				case SSHS_INT:
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%" PRIi32, ranges.min.iintRange)
+					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%" PRIi32, ranges.min.iintRange)
 							  + 1; // Terminating NUL byte.
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%" PRIi32, ranges.max.iintRange)
+					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%" PRIi32, ranges.max.iintRange)
 							  + 1; // Terminating NUL byte.
 					break;
 
 				case SSHS_LONG:
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%" PRIi64, ranges.min.ilongRange)
+					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%" PRIi64, ranges.min.ilongRange)
 							  + 1; // Terminating NUL byte.
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%" PRIi64, ranges.max.ilongRange)
+					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%" PRIi64, ranges.max.ilongRange)
 							  + 1; // Terminating NUL byte.
 					break;
 
 				case SSHS_FLOAT:
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%g", (double) ranges.min.ffloatRange)
+					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%g", (double) ranges.min.ffloatRange)
 							  + 1; // Terminating NUL byte.
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%g", (double) ranges.max.ffloatRange)
+					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%g", (double) ranges.max.ffloatRange)
 							  + 1; // Terminating NUL byte.
 					break;
 
 				case SSHS_DOUBLE:
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%g", ranges.min.ddoubleRange)
+					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%g", ranges.min.ddoubleRange)
 							  + 1; // Terminating NUL byte.
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%g", ranges.max.ddoubleRange)
+					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%g", ranges.max.ddoubleRange)
 							  + 1; // Terminating NUL byte.
 					break;
 
 				case SSHS_STRING:
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%zu", ranges.min.stringRange)
+					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%zu", ranges.min.stringRange)
 							  + 1; // Terminating NUL byte.
-					bufLen += snprintf(buf + bufLen, 256 - bufLen, "%zu", ranges.max.stringRange)
+					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%zu", ranges.max.stringRange)
 							  + 1; // Terminating NUL byte.
 					break;
 			}
@@ -706,8 +689,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		}
 
 		case CAER_CONFIG_GET_FLAGS: {
-			std::shared_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -745,8 +726,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		}
 
 		case CAER_CONFIG_GET_DESCRIPTION: {
-			std::shared_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -770,8 +749,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		}
 
 		case CAER_CONFIG_ADD_MODULE: {
-			std::unique_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			if (nodeLength == 0) {
 				// Disallow empty strings.
 				caerConfigSendError(client, "Name cannot be empty.");
@@ -892,8 +869,6 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 		}
 
 		case CAER_CONFIG_REMOVE_MODULE: {
-			std::unique_lock<std::shared_timed_mutex> lock(glConfigServerData.operationsSharedMutex);
-
 			if (nodeLength == 0) {
 				// Disallow empty strings.
 				caerConfigSendError(client, "Name cannot be empty.");
