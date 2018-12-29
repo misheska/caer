@@ -41,20 +41,22 @@ class TCPSSLOrderedSocket {
 private:
 	asioSSL::stream<asioTCP::socket> socket;
 	bool sslConnection;
+	bool sslInitialized;
 
 public:
 	TCPSSLOrderedSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
 		socket(std::move(s), sslContext),
-		sslConnection(sslEnabled) {
+		sslConnection(sslEnabled),
+		sslInitialized(false) {
 	}
 
 	~TCPSSLOrderedSocket() {
-		// Shutdown SSL cleanly.
-		if (sslConnection) {
+		// Shutdown SSL cleanly, if enabled and initialized successfully.
+		if (sslConnection && sslInitialized) {
 			socket.shutdown();
 		}
 
-		// Then close underlying socket cleanly.
+		// Close underlying TCP socket cleanly.
 		// TCP shutdown() should be called for portability.
 		next_layer().shutdown(asioTCP::socket::shutdown_both);
 		next_layer().close();
@@ -74,7 +76,14 @@ public:
 	 */
 	template<typename StartupHandler> void start(StartupHandler &&stHandler) {
 		if (sslConnection) {
-			socket.async_handshake(asioSSL::stream_base::server, stHandler);
+			socket.async_handshake(
+				asioSSL::stream_base::server, [this, stHandler](const boost::system::error_code &error) {
+					if (!error) {
+						sslInitialized = true;
+					}
+
+					stHandler(error);
+				});
 		}
 		else {
 			stHandler(boost::system::error_code());
@@ -287,17 +296,43 @@ public:
 		acceptor(ioService, asioTCP::endpoint(listenAddress, listenPort)),
 		sslConnection(sslEnabled) {
 		if (sslEnabled) {
+			try {
+				sslContext.use_certificate_chain_file(sslCertFile);
+			}
+			catch (const boost::system::system_error &ex) {
+				logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
+					"Failed to load certificate file (error '%s'), disabling SSL.", ex.what());
+				sslConnection = false;
+				return;
+			}
+
+			try {
+				sslContext.use_private_key_file(sslKeyFile, boost::asio::ssl::context::pem);
+			}
+			catch (const boost::system::system_error &ex) {
+				logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
+					"Failed to load private key file (error '%s'), disabling SSL.", ex.what());
+				sslConnection = false;
+				return;
+			}
+
 			sslContext.set_options(
 				boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use);
 
-			sslContext.use_certificate_chain_file(sslCertFile);
-			sslContext.use_private_key_file(sslKeyFile, boost::asio::ssl::context::pem);
-
 			if (sslVerification) {
+				try {
+					sslContext.load_verify_file(sslVerifyFile);
+				}
+				catch (const boost::system::system_error &ex) {
+					logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
+						"Failed to load certificate authority verification file (error '%s'), disabling SSL "
+						"verification.",
+						ex.what());
+					return;
+				}
+
 				sslContext.set_verify_mode(
 					asioSSL::context::verify_peer | asioSSL::context::verify_fail_if_no_peer_cert);
-
-				sslContext.load_verify_file(sslVerifyFile);
 			}
 		}
 	}
