@@ -56,7 +56,9 @@ static const struct {
 static const size_t actionsLength = sizeof(actions) / sizeof(actions[0]);
 
 static asio::io_service ioService;
-static asioTCP::socket netSocket(ioService);
+static asioSSL::context sslContext(asioSSL::context::tlsv12_client);
+static asioSSL::stream<asioTCP::socket> sslSocket(ioService, sslContext);
+static bool sslConnection = false;
 
 [[noreturn]] static inline void printHelpAndExit(po::options_description &desc) {
 	std::cout << std::endl << desc << std::endl;
@@ -67,8 +69,10 @@ int main(int argc, char *argv[]) {
 	// Allowed command-line options for caer-ctl.
 	po::options_description cliDescription("Command-line options");
 	cliDescription.add_options()("help,h", "print help text")("ipaddress,i", po::value<std::string>(),
-		"IP-address or hostname to connect to")("port,p", po::value<std::string>(), "port to connect to")("script,s",
-		po::value<std::vector<std::string>>()->multitoken(),
+		"IP-address or hostname to connect to")("port,p", po::value<std::string>(), "port to connect to")("ssl",
+		po::value<std::string>()->implicit_value(""),
+		"enable SSL for connection (no argument uses default CA for verification, or pass path to specific CA file)")(
+		"script,s", po::value<std::vector<std::string>>()->multitoken(),
 		"script mode, sends the given command directly to the server as if typed in and exits.\n"
 		"Format: <action> <node> [<attribute> <type> [<value>]]\nExample: set /caer/logger/ logLevel byte 7");
 
@@ -95,6 +99,30 @@ int main(int argc, char *argv[]) {
 	std::string portNumber("4040");
 	if (cliVarMap.count("port")) {
 		portNumber = cliVarMap["port"].as<std::string>();
+	}
+
+	if (cliVarMap.count("ssl")) {
+		sslConnection = true;
+
+		std::string sslVerifyFile = cliVarMap["ssl"].as<std::string>();
+
+		if (sslVerifyFile.empty()) {
+			sslContext.set_default_verify_paths();
+		}
+		else {
+			try {
+				sslContext.load_verify_file(sslVerifyFile);
+			}
+			catch (const boost::system::system_error &ex) {
+				boost::format exMsg
+					= boost::format("Failed load SSL CA verification file '%s', error message is:\n\t%s.")
+					  % sslVerifyFile % ex.what();
+				std::cerr << exMsg.str() << std::endl;
+				return (EXIT_FAILURE);
+			}
+		}
+
+		sslContext.set_verify_mode(asioSSL::context::verify_peer);
 	}
 
 	bool scriptMode = false;
@@ -139,13 +167,25 @@ int main(int argc, char *argv[]) {
 	// Connect to the remote cAER config server.
 	try {
 		asioTCP::resolver resolver(ioService);
-		asio::connect(netSocket, resolver.resolve({ipAddress, portNumber}));
+		asio::connect(sslSocket.next_layer(), resolver.resolve({ipAddress, portNumber}));
 	}
 	catch (const boost::system::system_error &ex) {
 		boost::format exMsg = boost::format("Failed to connect to %s:%s, error message is:\n\t%s.") % ipAddress
 							  % portNumber % ex.what();
 		std::cerr << exMsg.str() << std::endl;
 		return (EXIT_FAILURE);
+	}
+
+	// SSL connection support.
+	if (sslConnection) {
+		try {
+			sslSocket.handshake(asioSSL::stream_base::client);
+		}
+		catch (const boost::system::system_error &ex) {
+			boost::format exMsg = boost::format("Failed SSL handshake, error message is:\n\t%s.") % ex.what();
+			std::cerr << exMsg.str() << std::endl;
+			return (EXIT_FAILURE);
+		}
 	}
 
 	// Load command history file.
@@ -209,7 +249,38 @@ int main(int argc, char *argv[]) {
 	// Save command history file.
 	linenoiseHistorySave(commandHistoryFilePath.string().c_str());
 
+	// Close SSL connection properly.
+	if (sslConnection) {
+		boost::system::error_code error;
+		sslSocket.shutdown(error);
+
+		// EOF is expected for good SSL shutdown. See:
+		// https://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
+		if (error != asio::error::eof) {
+			boost::format errMsg = boost::format("Failed SSL shutdown, error message is:\n\t%s.") % error.message();
+			std::cerr << errMsg.str() << std::endl;
+		}
+	}
+
 	return (EXIT_SUCCESS);
+}
+
+static inline void asioSocketWrite(const asio::const_buffer &buf) {
+	if (sslConnection) {
+		asio::write(sslSocket, buf);
+	}
+	else {
+		asio::write(sslSocket.next_layer(), buf);
+	}
+}
+
+static inline void asioSocketRead(const asio::mutable_buffer &buf) {
+	if (sslConnection) {
+		asio::read(sslSocket, buf);
+	}
+	else {
+		asio::read(sslSocket.next_layer(), buf);
+	}
 }
 
 static inline void setExtraLen(uint8_t *buf, uint16_t extraLen) {
@@ -477,7 +548,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 
 	// Send formatted command to configuration server.
 	try {
-		asio::write(netSocket, asio::buffer(dataBuffer, dataBufferLength));
+		asioSocketWrite(asio::buffer(dataBuffer, dataBufferLength));
 	}
 	catch (const boost::system::system_error &ex) {
 		boost::format exMsg
@@ -491,7 +562,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	// up to 4092 bytes of MSG, for a maximum total of 4096 bytes again.
 	// MSG must be NUL terminated, and the NUL byte shall be part of the length.
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer, 4));
+		asioSocketRead(asio::buffer(dataBuffer, 4));
 	}
 	catch (const boost::system::system_error &ex) {
 		boost::format exMsg
@@ -507,7 +578,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 
 	// Total length to get for response.
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer + 4, msgLength));
+		asioSocketRead(asio::buffer(dataBuffer + 4, msgLength));
 	}
 	catch (const boost::system::system_error &ex) {
 		boost::format exMsg
@@ -741,7 +812,7 @@ static void nodeCompletion(const char *buf, size_t bufLength, linenoiseCompletio
 	dataBuffer[CAER_CONFIG_SERVER_HEADER_SIZE + lastNodeLength] = '\0';
 
 	try {
-		asio::write(netSocket, asio::buffer(dataBuffer, CAER_CONFIG_SERVER_HEADER_SIZE + lastNodeLength + 1));
+		asioSocketWrite(asio::buffer(dataBuffer, CAER_CONFIG_SERVER_HEADER_SIZE + lastNodeLength + 1));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -749,7 +820,7 @@ static void nodeCompletion(const char *buf, size_t bufLength, linenoiseCompletio
 	}
 
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer, 4));
+		asioSocketRead(asio::buffer(dataBuffer, 4));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -763,7 +834,7 @@ static void nodeCompletion(const char *buf, size_t bufLength, linenoiseCompletio
 
 	// Total length to get for response.
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer + 4, msgLength));
+		asioSocketRead(asio::buffer(dataBuffer + 4, msgLength));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -805,7 +876,7 @@ static void keyCompletion(const char *buf, size_t bufLength, linenoiseCompletion
 	dataBuffer[CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength] = '\0';
 
 	try {
-		asio::write(netSocket, asio::buffer(dataBuffer, CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1));
+		asioSocketWrite(asio::buffer(dataBuffer, CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -813,7 +884,7 @@ static void keyCompletion(const char *buf, size_t bufLength, linenoiseCompletion
 	}
 
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer, 4));
+		asioSocketRead(asio::buffer(dataBuffer, 4));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -827,7 +898,7 @@ static void keyCompletion(const char *buf, size_t bufLength, linenoiseCompletion
 
 	// Total length to get for response.
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer + 4, msgLength));
+		asioSocketRead(asio::buffer(dataBuffer + 4, msgLength));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -873,7 +944,7 @@ static void typeCompletion(const char *buf, size_t bufLength, linenoiseCompletio
 	dataBuffer[CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1 + keyStringLength] = '\0';
 
 	try {
-		asio::write(netSocket,
+		asioSocketWrite(
 			asio::buffer(dataBuffer, CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1 + keyStringLength + 1));
 	}
 	catch (const boost::system::system_error &) {
@@ -882,7 +953,7 @@ static void typeCompletion(const char *buf, size_t bufLength, linenoiseCompletio
 	}
 
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer, 4));
+		asioSocketRead(asio::buffer(dataBuffer, 4));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -896,7 +967,7 @@ static void typeCompletion(const char *buf, size_t bufLength, linenoiseCompletio
 
 	// Total length to get for response.
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer + 4, msgLength));
+		asioSocketRead(asio::buffer(dataBuffer + 4, msgLength));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -960,7 +1031,7 @@ static void valueCompletion(const char *buf, size_t bufLength, linenoiseCompleti
 	dataBuffer[CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1 + keyStringLength] = '\0';
 
 	try {
-		asio::write(netSocket,
+		asioSocketWrite(
 			asio::buffer(dataBuffer, CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1 + keyStringLength + 1));
 	}
 	catch (const boost::system::system_error &) {
@@ -969,7 +1040,7 @@ static void valueCompletion(const char *buf, size_t bufLength, linenoiseCompleti
 	}
 
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer, 4));
+		asioSocketRead(asio::buffer(dataBuffer, 4));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -982,7 +1053,7 @@ static void valueCompletion(const char *buf, size_t bufLength, linenoiseCompleti
 
 	// Total length to get for response.
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer + 4, msgLength));
+		asioSocketRead(asio::buffer(dataBuffer + 4, msgLength));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
