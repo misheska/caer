@@ -71,8 +71,11 @@ int main(int argc, char *argv[]) {
 	cliDescription.add_options()("help,h", "print help text")("ipaddress,i", po::value<std::string>(),
 		"IP-address or hostname to connect to")("port,p", po::value<std::string>(), "port to connect to")("ssl",
 		po::value<std::string>()->implicit_value(""),
-		"enable SSL for connection (no argument uses default CA for verification, or pass path to specific CA file)")(
-		"script,s", po::value<std::vector<std::string>>()->multitoken(),
+		"enable SSL for connection (no argument uses default CA for verification, or pass a path to a specific CA file "
+		"in the PEM format)")(
+		"sslcert", po::value<std::string>(), "SSL certificate file for client authentication (PEM format)")(
+		"sslkey", po::value<std::string>(), "SSL key file for client authentication (PEM format)")("script,s",
+		po::value<std::vector<std::string>>()->multitoken(),
 		"script mode, sends the given command directly to the server as if typed in and exits.\n"
 		"Format: <action> <node> [<attribute> <type> [<value>]]\nExample: set /caer/logger/ logLevel byte 7");
 
@@ -104,6 +107,39 @@ int main(int argc, char *argv[]) {
 	if (cliVarMap.count("ssl")) {
 		sslConnection = true;
 
+		// Client-side SSL authentication support.
+		if (cliVarMap.count("sslcert")) {
+			std::string sslCertFile = cliVarMap["sslcert"].as<std::string>();
+
+			try {
+				sslContext.use_certificate_chain_file(sslCertFile);
+			}
+			catch (const boost::system::system_error &ex) {
+				boost::format exMsg
+					= boost::format("Failed to load SSL client certificate file '%s', error message is:\n\t%s.")
+					  % sslCertFile % ex.what();
+				std::cerr << exMsg.str() << std::endl;
+				return (EXIT_FAILURE);
+			}
+		}
+
+		if (cliVarMap.count("sslkey")) {
+			std::string sslKeyFile = cliVarMap["sslkey"].as<std::string>();
+
+			try {
+				sslContext.use_private_key_file(sslKeyFile, boost::asio::ssl::context::pem);
+			}
+			catch (const boost::system::system_error &ex) {
+				boost::format exMsg = boost::format("Failed to load SSL client key file '%s', error message is:\n\t%s.")
+									  % sslKeyFile % ex.what();
+				std::cerr << exMsg.str() << std::endl;
+				return (EXIT_FAILURE);
+			}
+		}
+
+		sslContext.set_options(
+			boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use);
+
 		std::string sslVerifyFile = cliVarMap["ssl"].as<std::string>();
 
 		if (sslVerifyFile.empty()) {
@@ -115,7 +151,7 @@ int main(int argc, char *argv[]) {
 			}
 			catch (const boost::system::system_error &ex) {
 				boost::format exMsg
-					= boost::format("Failed load SSL CA verification file '%s', error message is:\n\t%s.")
+					= boost::format("Failed to load SSL CA verification file '%s', error message is:\n\t%s.")
 					  % sslVerifyFile % ex.what();
 				std::cerr << exMsg.str() << std::endl;
 				return (EXIT_FAILURE);
@@ -123,7 +159,9 @@ int main(int argc, char *argv[]) {
 		}
 
 		sslContext.set_verify_mode(asioSSL::context::verify_peer);
-		sslSocket.set_verify_mode(asioSSL::context::verify_peer);
+
+		// Rebuild SSL socket, so it picks up changes to SSL context above.
+		new (&sslSocket) asioSSL::stream<asioTCP::socket>(ioService, sslContext);
 	}
 
 	bool scriptMode = false;
