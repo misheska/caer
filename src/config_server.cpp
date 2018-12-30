@@ -163,7 +163,7 @@ public:
 
 		socket.start([this, self](const boost::system::error_code &error) {
 			if (error) {
-				handleError(error, "Failed SSL handshake");
+				handleError(error, "Failed startup (SSL handshake)");
 			}
 			else {
 				readHeader();
@@ -290,7 +290,7 @@ public:
 	}
 
 	ConfigServer(const asioIP::address &listenAddress, unsigned short listenPort, bool sslEnabled,
-		const std::string &sslCertFile, const std::string &sslKeyFile, bool sslVerification,
+		const std::string &sslCertFile, const std::string &sslKeyFile, bool sslClientVerification,
 		const std::string &sslVerifyFile) :
 		sslContext(asioSSL::context::tlsv12_server),
 		acceptor(ioService, asioTCP::endpoint(listenAddress, listenPort)),
@@ -319,16 +319,21 @@ public:
 			sslContext.set_options(
 				boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use);
 
-			if (sslVerification) {
-				try {
-					sslContext.load_verify_file(sslVerifyFile);
+			if (sslClientVerification) {
+				if (sslVerifyFile.empty()) {
+					sslContext.set_default_verify_paths();
 				}
-				catch (const boost::system::system_error &ex) {
-					logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
-						"Failed to load certificate authority verification file (error '%s'), disabling SSL "
-						"verification.",
-						ex.what());
-					return;
+				else {
+					try {
+						sslContext.load_verify_file(sslVerifyFile);
+					}
+					catch (const boost::system::system_error &ex) {
+						logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
+							"Failed to load certificate authority verification file (error '%s'), disabling SSL "
+							"client verification.",
+							ex.what());
+						return;
+					}
 				}
 
 				sslContext.set_verify_mode(
@@ -442,14 +447,15 @@ void caerConfigServerStart(void) {
 
 	sshsNodeCreate(
 		serverNode, "ssl", false, SSHS_FLAGS_NORMAL, "Require SSL encryption for config-server communication.");
-	sshsNodeCreate(serverNode, "sslCertFile", "/etc/ssl/caer.pem", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
-		"Path to SSL certificate file (PEM format).");
-	sshsNodeCreate(serverNode, "sslKeyFile", "/etc/ssl/caer.key", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
-		"Path to SSL private key file (PEM format).");
+	sshsNodeCreate(
+		serverNode, "sslCertFile", "", 0, PATH_MAX, SSHS_FLAGS_NORMAL, "Path to SSL certificate file (PEM format).");
+	sshsNodeCreate(
+		serverNode, "sslKeyFile", "", 0, PATH_MAX, SSHS_FLAGS_NORMAL, "Path to SSL private key file (PEM format).");
 
-	sshsNodeCreate(serverNode, "sslVerify", false, SSHS_FLAGS_NORMAL, "Require SSL certificate verification.");
-	sshsNodeCreate(serverNode, "sslVerifyFile", "/etc/ssl/rootCA.pem", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
-		"Path to SSL certificate authority file for verification (PEM format).");
+	sshsNodeCreate(
+		serverNode, "sslClientVerification", false, SSHS_FLAGS_NORMAL, "Require SSL client certificate verification.");
+	sshsNodeCreate(serverNode, "sslClientVerificationFile", "", 0, PATH_MAX, SSHS_FLAGS_NORMAL,
+		"Path to SSL CA file for client verification (PEM format). Leave empty to use system defaults.");
 
 	// Start the threads.
 	try {
@@ -457,7 +463,8 @@ void caerConfigServerStart(void) {
 			ConfigServer(asioIP::address::from_string(sshsNodeGetStdString(serverNode, "ipAddress")),
 				U16T(sshsNodeGetInt(serverNode, "portNumber")), sshsNodeGetBool(serverNode, "ssl"),
 				sshsNodeGetStdString(serverNode, "sslCertFile"), sshsNodeGetStdString(serverNode, "sslKeyFile"),
-				sshsNodeGetBool(serverNode, "sslVerify"), sshsNodeGetStdString(serverNode, "sslVerifyFile"));
+				sshsNodeGetBool(serverNode, "sslClientVerification"),
+				sshsNodeGetStdString(serverNode, "sslClientVerificationFile"));
 
 		new (&glConfigServerData.configUpdater) ConfigUpdater(sshsGetGlobal());
 
