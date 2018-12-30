@@ -123,6 +123,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		sslContext.set_verify_mode(asioSSL::context::verify_peer);
+		sslSocket.set_verify_mode(asioSSL::context::verify_peer);
 	}
 
 	bool scriptMode = false;
