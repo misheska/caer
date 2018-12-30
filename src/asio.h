@@ -3,6 +3,9 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
+#include <deque>
+#include <functional>
+#include <utility>
 
 namespace asio    = boost::asio;
 namespace asioSSL = boost::asio::ssl;
@@ -110,6 +113,49 @@ public:
 
 	uint16_t remote_port() const {
 		return (remote_endpoint().port());
+	}
+};
+
+class TCPSSLWriteOrderedSocket : public TCPSSLSocket {
+public:
+	TCPSSLWriteOrderedSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
+		TCPSSLSocket(std::move(s), sslEnabled, sslContext) {
+	}
+
+	/**
+	 * Write handler needs following signature:
+	 * void (const boost::system::error_code &, size_t)
+	 */
+	template<typename WriteHandler> void write(const asio::const_buffer &buf, WriteHandler &&wrHandler) {
+		bool writeInProgress = writesOutstanding();
+
+		writeQueue.emplace_back(buf, wrHandler);
+
+		if (!writeInProgress) {
+			orderedWrite();
+		}
+	}
+
+	bool writesOutstanding() {
+		return (!writeQueue.empty());
+	}
+
+private:
+	std::deque<std::pair<asio::const_buffer, std::function<void(const boost::system::error_code &, size_t)>>>
+		writeQueue;
+
+	void orderedWrite() {
+		TCPSSLSocket::write(writeQueue.front().first, [this](const boost::system::error_code &error, size_t length) {
+			writeQueue.front().second(error, length);
+
+			if (!error) {
+				writeQueue.pop_front();
+
+				if (writesOutstanding()) {
+					orderedWrite();
+				}
+			}
+		});
 	}
 };
 
