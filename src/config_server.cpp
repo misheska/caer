@@ -30,13 +30,57 @@ namespace asioSSL = boost::asio::ssl;
 namespace asioIP  = boost::asio::ip;
 using asioTCP     = boost::asio::ip::tcp;
 
-#define CONFIG_SERVER_NAME "Config Server"
+#define CONFIG_SERVER_NAME "ConfigServer"
 
 class ConfigServerConnection;
 
 static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> client, uint8_t action, uint8_t type,
 	const uint8_t *extra, size_t extraLength, const uint8_t *node, size_t nodeLength, const uint8_t *key,
 	size_t keyLength, const uint8_t *value, size_t valueLength);
+
+class ConfigUpdater {
+private:
+	std::thread updateThread;
+	std::atomic_bool runThread;
+	sshs configTree;
+
+public:
+	ConfigUpdater() : ConfigUpdater(sshsGetGlobal()) {
+	}
+
+	ConfigUpdater(sshs tree) : configTree(tree) {
+	}
+
+	void start() {
+		threadStart();
+	}
+
+	void stop() {
+		threadStop();
+	}
+
+private:
+	void threadStart() {
+		runThread.store(true);
+
+		updateThread = std::thread([this]() {
+			// Set thread name.
+			portable_thread_set_name("ConfigUpdater");
+
+			while (runThread.load()) {
+				sshsAttributeUpdaterRun(configTree);
+
+				std::this_thread::sleep_for(std::chrono::seconds(1));
+			}
+		});
+	}
+
+	void threadStop() {
+		runThread.store(false);
+
+		updateThread.join();
+	}
+};
 
 class ConfigServerConnection : public std::enable_shared_from_this<ConfigServerConnection> {
 private:
@@ -267,7 +311,7 @@ private:
 	void threadStart() {
 		ioThread = std::thread([this]() {
 			// Set thread name.
-			portable_thread_set_name("ConfigServer");
+			portable_thread_set_name(CONFIG_SERVER_NAME);
 
 			// Run IO service.
 			while (!ioService.stopped()) {
@@ -280,50 +324,6 @@ private:
 		ioService.stop();
 
 		ioThread.join();
-	}
-};
-
-class ConfigUpdater {
-private:
-	std::thread updateThread;
-	std::atomic_bool runThread;
-	sshs configTree;
-
-public:
-	ConfigUpdater() : ConfigUpdater(sshsGetGlobal()) {
-	}
-
-	ConfigUpdater(sshs tree) : configTree(tree) {
-	}
-
-	void start() {
-		threadStart();
-	}
-
-	void stop() {
-		threadStop();
-	}
-
-private:
-	void threadStart() {
-		runThread.store(true);
-
-		updateThread = std::thread([this]() {
-			// Set thread name.
-			portable_thread_set_name("ConfigUpdater");
-
-			while (runThread.load()) {
-				sshsAttributeUpdaterRun(configTree);
-
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-			}
-		});
-	}
-
-	void threadStop() {
-		runThread.store(false);
-
-		updateThread.join();
 	}
 };
 
