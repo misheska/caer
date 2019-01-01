@@ -15,14 +15,13 @@
 #include <boost/asio/ssl.hpp>
 #include <boost/format.hpp>
 #include <memory>
-#include <mutex>
 #include <new>
 #include <regex>
-#include <shared_mutex>
 #include <string>
 #include <system_error>
 #include <thread>
 #include <vector>
+
 namespace logger = libcaer::log;
 
 namespace asio    = boost::asio;
@@ -32,11 +31,15 @@ using asioTCP     = boost::asio::ip::tcp;
 
 #define CONFIG_SERVER_NAME "ConfigServer"
 
+class ConfigUpdater;
+class ConfigServer;
 class ConfigServerConnection;
 
 static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> client, uint8_t action, uint8_t type,
 	const uint8_t *extra, size_t extraLength, const uint8_t *node, size_t nodeLength, const uint8_t *key,
 	size_t keyLength, const uint8_t *value, size_t valueLength);
+static void caerConfigServerRestartListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
+	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
 
 class ConfigUpdater {
 private:
@@ -51,15 +54,6 @@ public:
 	ConfigUpdater(sshs tree) : configTree(tree) {
 	}
 
-	void start() {
-		threadStart();
-	}
-
-	void stop() {
-		threadStop();
-	}
-
-private:
 	void threadStart() {
 		runThread.store(true);
 
@@ -220,22 +214,82 @@ private:
 
 class ConfigServer {
 private:
-	asio::io_service ioService;
-	asioSSL::context sslContext;
-	asioTCP::acceptor acceptor;
+	bool ioThreadRun;
 	std::thread ioThread;
-	bool sslConnection;
+	asio::io_service ioService;
+	asioTCP::acceptor acceptor;
+
+	asioSSL::context sslContext;
+	bool sslEnabled;
+
+	std::vector<std::shared_ptr<ConfigServerConnection>> clients;
 
 public:
-	ConfigServer() : sslContext(asioSSL::context::tlsv12_server), acceptor(ioService), sslConnection(false) {
+	ConfigServer() :
+		ioThreadRun(false),
+		acceptor(ioService),
+		sslContext(asioSSL::context::tlsv12_server),
+		sslEnabled(false) {
 	}
 
-	ConfigServer(const asioIP::address &listenAddress, unsigned short listenPort, bool sslEnabled,
+	void threadStart() {
+		ioThread = std::thread([this]() {
+			// Set thread name.
+			portable_thread_set_name(CONFIG_SERVER_NAME);
+
+			sshsNode serverNode = sshsGetNode(sshsGetGlobal(), "/caer/server/");
+
+			ioThreadRun = true;
+
+			while (ioThreadRun) {
+				// Configure server.
+				serviceConfigure(asioIP::address::from_string(sshsNodeGetStdString(serverNode, "ipAddress")),
+					U16T(sshsNodeGetInt(serverNode, "portNumber")), sshsNodeGetBool(serverNode, "ssl"),
+					sshsNodeGetStdString(serverNode, "sslCertFile"), sshsNodeGetStdString(serverNode, "sslKeyFile"),
+					sshsNodeGetBool(serverNode, "sslClientVerification"),
+					sshsNodeGetStdString(serverNode, "sslClientVerificationFile"));
+
+				// Start server.
+				serviceStart();
+
+				// Ready for next time.
+				ioService.restart();
+			}
+		});
+	}
+
+	void serviceRestart() {
+		ioService.post([this]() { serviceStop(); });
+	}
+
+	void threadStop() {
+		ioService.post([this]() {
+			ioThreadRun = false;
+			serviceStop();
+		});
+
+		ioThread.join();
+	}
+
+	void removeClient(std::shared_ptr<ConfigServerConnection> &client) {
+		clients.erase(std::remove(clients.begin(), clients.end(), client), clients.end());
+	}
+
+private:
+	void serviceConfigure(const asioIP::address &listenAddress, unsigned short listenPort, bool sslOn,
 		const std::string &sslCertFile, const std::string &sslKeyFile, bool sslClientVerification,
-		const std::string &sslVerifyFile) :
-		sslContext(asioSSL::context::tlsv12_server),
-		acceptor(ioService, asioTCP::endpoint(listenAddress, listenPort)),
-		sslConnection(sslEnabled) {
+		const std::string &sslVerifyFile) {
+		// Configure acceptor.
+		auto endpoint = asioTCP::endpoint(listenAddress, listenPort);
+
+		acceptor.open(endpoint.protocol());
+		acceptor.set_option(asioTCP::socket::reuse_address(true));
+		acceptor.bind(endpoint);
+		acceptor.listen();
+
+		// Configure SSL support.
+		sslEnabled = sslOn;
+
 		if (sslEnabled) {
 			try {
 				sslContext.use_certificate_chain_file(sslCertFile);
@@ -243,7 +297,7 @@ public:
 			catch (const boost::system::system_error &ex) {
 				logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
 					"Failed to load certificate file (error '%s'), disabling SSL.", ex.what());
-				sslConnection = false;
+				sslEnabled = false;
 				return;
 			}
 
@@ -253,12 +307,15 @@ public:
 			catch (const boost::system::system_error &ex) {
 				logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
 					"Failed to load private key file (error '%s'), disabling SSL.", ex.what());
-				sslConnection = false;
+				sslEnabled = false;
 				return;
 			}
 
 			sslContext.set_options(
 				boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use);
+
+			// Default: no client verification enforced.
+			sslContext.set_verify_mode(asioSSL::context::verify_peer);
 
 			if (sslClientVerification) {
 				if (sslVerifyFile.empty()) {
@@ -283,67 +340,69 @@ public:
 		}
 	}
 
-	void start() {
+	void serviceStart() {
+		logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Starting configuration server service.");
+
+		// Start accepting connections.
 		acceptStart();
 
-		threadStart();
+		// Run IO service.
+		ioService.run();
 	}
 
-	void stop() {
-		threadStop();
+	void serviceStop() {
+		// Stop accepting connections.
+		acceptor.close();
+
+		// Close all open connections, hard.
+
+		logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Stopping configuration server service.");
 	}
 
-private:
 	void acceptStart() {
 		acceptor.async_accept([this](const boost::system::error_code &error, asioTCP::socket socket) {
 			if (error) {
-				logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
-					"Failed to accept new connection. Error: %s (%d).", error.message().c_str(), error.value());
+				// Ignore cancel error, normal on shutdown.
+				if (error != asio::error::operation_aborted) {
+					logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
+						"Failed to accept new connection. Error: %s (%d).", error.message().c_str(), error.value());
+				}
 			}
 			else {
-				std::make_shared<ConfigServerConnection>(std::move(socket), sslConnection, sslContext)->start();
-			}
+				auto client = std::make_shared<ConfigServerConnection>(std::move(socket), sslEnabled, sslContext);
 
-			acceptStart();
-		});
-	}
+				clients.push_back(client);
 
-	void threadStart() {
-		ioThread = std::thread([this]() {
-			// Set thread name.
-			portable_thread_set_name(CONFIG_SERVER_NAME);
+				client->start();
 
-			// Run IO service.
-			while (!ioService.stopped()) {
-				ioService.run();
+				acceptStart();
 			}
 		});
-	}
-
-	void threadStop() {
-		ioService.stop();
-
-		ioThread.join();
 	}
 };
 
 static struct {
+	ConfigUpdater updater;
 	ConfigServer server;
-	ConfigUpdater configUpdater;
-} glConfigServerData;
+} globalConfigData;
 
 void caerConfigServerStart(void) {
 	// Get the right configuration node first.
 	sshsNode serverNode = sshsGetNode(sshsGetGlobal(), "/caer/server/");
 
-	// Ensure default values are present.
-	sshsNodeCreate(serverNode, "ipAddress", "127.0.0.1", 7, 15, SSHS_FLAGS_NORMAL,
-		"IPv4 address to listen on for configuration server connections.");
+	// Support restarting the config server.
+	sshsNodeCreate(serverNode, "restart", false, SSHS_FLAGS_NOTIFY_ONLY | SSHS_FLAGS_NO_EXPORT,
+		"Restart configuration server, disconnects all clients and reloads itself.");
+
+	// Ensure default values are present for IP/Port.
+	sshsNodeCreate(serverNode, "ipAddress", "127.0.0.1", 2, 39, SSHS_FLAGS_NORMAL,
+		"IP address to listen on for configuration server connections.");
 	sshsNodeCreate(serverNode, "portNumber", CAER_CONFIG_SERVER_DEFAULT_PORT, 1, UINT16_MAX, SSHS_FLAGS_NORMAL,
 		"Port to listen on for configuration server connections.");
 
+	// Default values for SSL encryption support.
 	sshsNodeCreate(
-		serverNode, "ssl", false, SSHS_FLAGS_NORMAL, "Require SSL encryption for config-server communication.");
+		serverNode, "ssl", false, SSHS_FLAGS_NORMAL, "Require SSL encryption for configuration server communication.");
 	sshsNodeCreate(
 		serverNode, "sslCertFile", "", 0, PATH_MAX, SSHS_FLAGS_NORMAL, "Path to SSL certificate file (PEM format).");
 	sshsNodeCreate(
@@ -354,20 +413,11 @@ void caerConfigServerStart(void) {
 	sshsNodeCreate(serverNode, "sslClientVerificationFile", "", 0, PATH_MAX, SSHS_FLAGS_NORMAL,
 		"Path to SSL CA file for client verification (PEM format). Leave empty to use system defaults.");
 
-	// Start the threads.
 	try {
-		new (&glConfigServerData.server)
-			ConfigServer(asioIP::address::from_string(sshsNodeGetStdString(serverNode, "ipAddress")),
-				U16T(sshsNodeGetInt(serverNode, "portNumber")), sshsNodeGetBool(serverNode, "ssl"),
-				sshsNodeGetStdString(serverNode, "sslCertFile"), sshsNodeGetStdString(serverNode, "sslKeyFile"),
-				sshsNodeGetBool(serverNode, "sslClientVerification"),
-				sshsNodeGetStdString(serverNode, "sslClientVerificationFile"));
+		// Start threads.
+		globalConfigData.server.threadStart();
 
-		new (&glConfigServerData.configUpdater) ConfigUpdater(sshsGetGlobal());
-
-		glConfigServerData.server.start();
-
-		glConfigServerData.configUpdater.start();
+		globalConfigData.updater.threadStart();
 	}
 	catch (const std::system_error &ex) {
 		// Failed to create threads.
@@ -375,16 +425,24 @@ void caerConfigServerStart(void) {
 		exit(EXIT_FAILURE);
 	}
 
+	// Listen for restart commands.
+	sshsNodeAddAttributeListener(serverNode, nullptr, &caerConfigServerRestartListener);
+
 	// Successfully started threads.
 	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads created successfully.");
 }
 
 void caerConfigServerStop(void) {
-	try {
-		// Stop Config Updater thread.
-		glConfigServerData.configUpdater.stop();
+	sshsNode serverNode = sshsGetNode(sshsGetGlobal(), "/caer/server/");
 
-		glConfigServerData.server.stop();
+	// Remove restart listener first.
+	sshsNodeRemoveAttributeListener(serverNode, nullptr, &caerConfigServerRestartListener);
+
+	try {
+		// Stop threads.
+		globalConfigData.server.threadStop();
+
+		globalConfigData.updater.threadStop();
 	}
 	catch (const std::system_error &ex) {
 		// Failed to join threads.
@@ -1003,5 +1061,15 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 
 			break;
 		}
+	}
+}
+
+static void caerConfigServerRestartListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
+	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+	UNUSED_ARGUMENT(userData);
+
+	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BOOL && caerStrEquals(changeKey, "restart")
+		&& changeValue.boolean) {
+		globalConfigData.server.serviceRestart();
 	}
 }
