@@ -5,8 +5,8 @@
 #include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/cross/portable_threads.h"
 
+#include "../module.h"
 #include "asio.h"
-#include "mainloop.h"
 
 #include <algorithm>
 #include <atomic>
@@ -1066,6 +1066,7 @@ static void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection
 
 static void caerConfigServerRestartListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
 	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
 
 	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BOOL && caerStrEquals(changeKey, "restart")

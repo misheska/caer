@@ -1,5 +1,5 @@
 #include "config.h"
-#include "config_server.h"
+#include "config_server/config_server.h"
 #include "log.h"
 #include "mainloop.h"
 #include "service.h"
