@@ -36,6 +36,8 @@ public:
 
 	void start();
 	void close();
+	void addToPushClients();
+
 	uint8_t *getData();
 	void writeResponse(size_t dataLength);
 

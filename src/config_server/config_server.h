@@ -20,6 +20,7 @@ private:
 	bool sslEnabled;
 
 	std::vector<ConfigServerConnection *> clients;
+	std::vector<ConfigServerConnection *> pushClients;
 
 public:
 	ConfigServer();
@@ -27,7 +28,9 @@ public:
 	void threadStart();
 	void serviceRestart();
 	void threadStop();
+
 	void removeClient(ConfigServerConnection *client);
+	void addPushClient(ConfigServerConnection *pushClient);
 
 private:
 	void serviceConfigure();

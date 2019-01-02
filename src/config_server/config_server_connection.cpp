@@ -37,6 +37,10 @@ void ConfigServerConnection::close() {
 	socket.close();
 }
 
+void ConfigServerConnection::addToPushClients() {
+	parent->addPushClient(this);
+}
+
 uint8_t *ConfigServerConnection::getData() {
 	return (data);
 }

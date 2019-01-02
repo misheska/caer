@@ -607,6 +607,15 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			break;
 		}
 
+		case CAER_CONFIG_ADD_TO_PUSH_CLIENTS: {
+			client->addToPushClients();
+
+			// Send back confirmation to the client.
+			caerConfigSendBoolResponse(client, CAER_CONFIG_ADD_TO_PUSH_CLIENTS, true);
+
+			break;
+		}
+
 		default: {
 			// Unknown action, send error back to client.
 			caerConfigSendError(client, "Unknown action.");
