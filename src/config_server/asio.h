@@ -15,14 +15,18 @@ using asioTCP     = boost::asio::ip::tcp;
 class TCPTLSSocket {
 private:
 	asioSSL::stream<asioTCP::socket> socket;
+	bool socketClosed;
+	asioTCP::endpoint localEndpoint;
+	asioTCP::endpoint remoteEndpoint;
 	bool sslConnection;
-	bool closed;
 
 public:
 	TCPTLSSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
 		socket(std::move(s), sslContext),
-		sslConnection(sslEnabled),
-		closed(false) {
+		socketClosed(false),
+		localEndpoint(socket.next_layer().local_endpoint()),
+		remoteEndpoint(socket.next_layer().remote_endpoint()),
+		sslConnection(sslEnabled) {
 	}
 
 	~TCPTLSSocket() {
@@ -39,11 +43,11 @@ public:
 		// whole thing much more complex. Since shutdown only really
 		// protects against a truncation attack, and it is not a problem
 		// for our protocol, we can safely ignore it.
-		if (!closed) {
-			next_layer().shutdown(asioTCP::socket::shutdown_both);
-			next_layer().close();
+		if (!socketClosed) {
+			baseSocket().shutdown(asioTCP::socket::shutdown_both);
+			baseSocket().close();
 
-			closed = true;
+			socketClosed = true;
 		}
 	}
 
@@ -69,7 +73,7 @@ public:
 			asio::async_write(socket, buf, wrHandler);
 		}
 		else {
-			asio::async_write(next_layer(), buf, wrHandler);
+			asio::async_write(baseSocket(), buf, wrHandler);
 		}
 	}
 
@@ -82,12 +86,12 @@ public:
 			asio::async_read(socket, buf, rdHandler);
 		}
 		else {
-			asio::async_read(next_layer(), buf, rdHandler);
+			asio::async_read(baseSocket(), buf, rdHandler);
 		}
 	}
 
 	asioTCP::endpoint local_endpoint() const {
-		return (next_layer().local_endpoint());
+		return (localEndpoint);
 	}
 
 	asioIP::address local_address() const {
@@ -99,7 +103,7 @@ public:
 	}
 
 	asioTCP::endpoint remote_endpoint() const {
-		return (next_layer().remote_endpoint());
+		return (remoteEndpoint);
 	}
 
 	asioIP::address remote_address() const {
@@ -111,11 +115,7 @@ public:
 	}
 
 private:
-	const asioTCP::socket &next_layer() const {
-		return (socket.next_layer());
-	}
-
-	asioTCP::socket &next_layer() {
+	asioTCP::socket &baseSocket() {
 		return (socket.next_layer());
 	}
 };
