@@ -12,37 +12,39 @@ namespace asioSSL = boost::asio::ssl;
 namespace asioIP  = boost::asio::ip;
 using asioTCP     = boost::asio::ip::tcp;
 
-class TCPSSLSocket {
+class TCPTLSSocket {
 private:
 	asioSSL::stream<asioTCP::socket> socket;
 	bool sslConnection;
-	bool sslInitialized;
+	bool closed;
 
 public:
-	TCPSSLSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
+	TCPTLSSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
 		socket(std::move(s), sslContext),
 		sslConnection(sslEnabled),
-		sslInitialized(false) {
+		closed(false) {
 	}
 
-	~TCPSSLSocket() {
-		// Shutdown SSL cleanly, if enabled and initialized successfully.
-		if (sslConnection && sslInitialized) {
-			socket.shutdown();
-		}
+	~TCPTLSSocket() {
+		close();
+	}
 
+	void close() {
 		// Close underlying TCP socket cleanly.
 		// TCP shutdown() should be called for portability.
-		next_layer().shutdown(asioTCP::socket::shutdown_both);
-		next_layer().close();
-	}
+		// Note: no TLS shutdown, as the ASIO implementation does not
+		// easily allow to just send a close_notify and close the socket.
+		// It waits on reply from the other side, which we can't and don't
+		// want to guarantee. There is a workaround, but it makes the
+		// whole thing much more complex. Since shutdown only really
+		// protects against a truncation attack, and it is not a problem
+		// for our protocol, we can safely ignore it.
+		if (!closed) {
+			next_layer().shutdown(asioTCP::socket::shutdown_both);
+			next_layer().close();
 
-	const asioTCP::socket &next_layer() const {
-		return (socket.next_layer());
-	}
-
-	asioTCP::socket &next_layer() {
-		return (socket.next_layer());
+			closed = true;
+		}
 	}
 
 	/**
@@ -51,14 +53,7 @@ public:
 	 */
 	template<typename StartupHandler> void start(StartupHandler &&stHandler) {
 		if (sslConnection) {
-			socket.async_handshake(
-				asioSSL::stream_base::server, [this, stHandler](const boost::system::error_code &error) {
-					if (!error) {
-						sslInitialized = true;
-					}
-
-					stHandler(error);
-				});
+			socket.async_handshake(asioSSL::stream_base::server, stHandler);
 		}
 		else {
 			stHandler(boost::system::error_code());
@@ -114,12 +109,21 @@ public:
 	uint16_t remote_port() const {
 		return (remote_endpoint().port());
 	}
+
+private:
+	const asioTCP::socket &next_layer() const {
+		return (socket.next_layer());
+	}
+
+	asioTCP::socket &next_layer() {
+		return (socket.next_layer());
+	}
 };
 
-class TCPSSLWriteOrderedSocket : public TCPSSLSocket {
+class TCPTLSWriteOrderedSocket : public TCPTLSSocket {
 public:
-	TCPSSLWriteOrderedSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
-		TCPSSLSocket(std::move(s), sslEnabled, sslContext) {
+	TCPTLSWriteOrderedSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
+		TCPTLSSocket(std::move(s), sslEnabled, sslContext) {
 	}
 
 	/**
@@ -145,7 +149,7 @@ private:
 		writeQueue;
 
 	void orderedWrite() {
-		TCPSSLSocket::write(writeQueue.front().first, [this](const boost::system::error_code &error, size_t length) {
+		TCPTLSSocket::write(writeQueue.front().first, [this](const boost::system::error_code &error, size_t length) {
 			writeQueue.front().second(error, length);
 
 			if (!error) {

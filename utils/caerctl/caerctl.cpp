@@ -1,7 +1,7 @@
 #include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/utils.h"
 
-#include "src/config_server/config_server.h"
+#include "src/config_server/config_server_actions.h"
 #include "utils/ext/linenoise-ng/linenoise.h"
 
 #include <boost/algorithm/string/join.hpp>

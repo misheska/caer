@@ -31,6 +31,8 @@ ENDIF()
 SET(CAER_SRC_FILES
 	log.cpp
 	config.cpp
+	config_server/config_server_actions.cpp
+	config_server/config_server_connection.cpp
 	config_server/config_server.cpp
 	module.cpp
 	mainloop.cpp
