@@ -3,6 +3,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
+#include <boost/version.hpp>
 #include <deque>
 #include <functional>
 #include <utility>
@@ -22,11 +23,18 @@ private:
 
 public:
 	TCPTLSSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
+#if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 66
 		socket(std::move(s), sslContext),
+#else
+		socket(s.get_io_service(), sslContext),
+#endif
 		socketClosed(false),
 		localEndpoint(socket.next_layer().local_endpoint()),
 		remoteEndpoint(socket.next_layer().remote_endpoint()),
 		sslConnection(sslEnabled) {
+#if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) < 66
+		socket.next_layer() = std::move(s);
+#endif
 	}
 
 	~TCPTLSSocket() {
@@ -69,11 +77,13 @@ public:
 	 * void (const boost::system::error_code &, size_t)
 	 */
 	template<typename WriteHandler> void write(const asio::const_buffer &buf, WriteHandler &&wrHandler) {
+		const asio::const_buffers_1 buf2(buf);
+
 		if (sslConnection) {
-			asio::async_write(socket, buf, wrHandler);
+			asio::async_write(socket, buf2, wrHandler);
 		}
 		else {
-			asio::async_write(baseSocket(), buf, wrHandler);
+			asio::async_write(baseSocket(), buf2, wrHandler);
 		}
 	}
 
@@ -82,11 +92,13 @@ public:
 	 * void (const boost::system::error_code &, size_t)
 	 */
 	template<typename ReadHandler> void read(const asio::mutable_buffer &buf, ReadHandler &&rdHandler) {
+		const asio::mutable_buffers_1 buf2(buf);
+
 		if (sslConnection) {
-			asio::async_read(socket, buf, rdHandler);
+			asio::async_read(socket, buf2, rdHandler);
 		}
 		else {
-			asio::async_read(baseSocket(), buf, rdHandler);
+			asio::async_read(baseSocket(), buf2, rdHandler);
 		}
 	}
 

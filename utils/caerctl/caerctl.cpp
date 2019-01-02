@@ -305,20 +305,24 @@ int main(int argc, char *argv[]) {
 }
 
 static inline void asioSocketWrite(const asio::const_buffer &buf) {
+	const asio::const_buffers_1 buf2(buf);
+
 	if (sslConnection) {
-		asio::write(sslSocket, buf);
+		asio::write(sslSocket, buf2);
 	}
 	else {
-		asio::write(sslSocket.next_layer(), buf);
+		asio::write(sslSocket.next_layer(), buf2);
 	}
 }
 
 static inline void asioSocketRead(const asio::mutable_buffer &buf) {
+	const asio::mutable_buffers_1 buf2(buf);
+
 	if (sslConnection) {
-		asio::read(sslSocket, buf);
+		asio::read(sslSocket, buf2);
 	}
 	else {
-		asio::read(sslSocket.next_layer(), buf);
+		asio::read(sslSocket.next_layer(), buf2);
 	}
 }
 

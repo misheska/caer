@@ -6,6 +6,7 @@
 #include "config_updater.h"
 
 #include <algorithm>
+#include <boost/version.hpp>
 #include <string>
 #include <system_error>
 
@@ -17,6 +18,7 @@ static void caerConfigServerRestartListener(sshsNode node, void *userData, enum 
 ConfigServer::ConfigServer() :
 	ioThreadRun(false),
 	acceptor(ioService),
+	acceptorNewSocket(ioService),
 	sslContext(asioSSL::context::tlsv12_server),
 	sslEnabled(false) {
 }
@@ -36,7 +38,11 @@ void ConfigServer::threadStart() {
 			serviceStart();
 
 			// Ready for next time.
+#if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 66
 			ioService.restart();
+#else
+			ioService.reset();
+#endif
 		}
 	});
 }
@@ -154,7 +160,7 @@ void ConfigServer::serviceStop() {
 }
 
 void ConfigServer::acceptStart() {
-	acceptor.async_accept([this](const boost::system::error_code &error, asioTCP::socket socket) {
+	acceptor.async_accept(acceptorNewSocket, [this](const boost::system::error_code &error) {
 		if (error) {
 			// Ignore cancel error, normal on shutdown.
 			if (error != asio::error::operation_aborted) {
@@ -163,7 +169,8 @@ void ConfigServer::acceptStart() {
 			}
 		}
 		else {
-			auto client = std::make_shared<ConfigServerConnection>(std::move(socket), sslEnabled, sslContext, this);
+			auto client
+				= std::make_shared<ConfigServerConnection>(std::move(acceptorNewSocket), sslEnabled, sslContext, this);
 
 			clients.push_back(client.get());
 

@@ -15,6 +15,7 @@ private:
 	std::thread ioThread;
 	asio::io_service ioService;
 	asioTCP::acceptor acceptor;
+	asioTCP::socket acceptorNewSocket;
 
 	asioSSL::context sslContext;
 	bool sslEnabled;
