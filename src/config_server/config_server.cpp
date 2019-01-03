@@ -61,12 +61,17 @@ void ConfigServer::threadStop() {
 }
 
 void ConfigServer::removeClient(ConfigServerConnection *client) {
-	pushClients.erase(std::remove(pushClients.begin(), pushClients.end(), client), pushClients.end());
+	removePushClient(client);
+
 	clients.erase(std::remove(clients.begin(), clients.end(), client), clients.end());
 }
 
 void ConfigServer::addPushClient(ConfigServerConnection *pushClient) {
 	pushClients.push_back(pushClient);
+}
+
+void ConfigServer::removePushClient(ConfigServerConnection *pushClient) {
+	pushClients.erase(std::remove(pushClients.begin(), pushClients.end(), pushClient), pushClients.end());
 }
 
 void ConfigServer::serviceConfigure() {

@@ -36,7 +36,9 @@ public:
 
 	void start();
 	void close();
-	void addToPushClients();
+
+	void addPushClient();
+	void removePushClient();
 
 	uint8_t *getData();
 	void writeResponse(size_t dataLength);

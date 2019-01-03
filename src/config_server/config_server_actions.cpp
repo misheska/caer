@@ -607,11 +607,20 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			break;
 		}
 
-		case CAER_CONFIG_ADD_TO_PUSH_CLIENTS: {
-			client->addToPushClients();
+		case CAER_CONFIG_ADD_PUSH_CLIENT: {
+			client->addPushClient();
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, CAER_CONFIG_ADD_TO_PUSH_CLIENTS, true);
+			caerConfigSendBoolResponse(client, CAER_CONFIG_ADD_PUSH_CLIENT, true);
+
+			break;
+		}
+
+		case CAER_CONFIG_REMOVE_PUSH_CLIENT: {
+			client->removePushClient();
+
+			// Send back confirmation to the client.
+			caerConfigSendBoolResponse(client, CAER_CONFIG_REMOVE_PUSH_CLIENT, true);
 
 			break;
 		}

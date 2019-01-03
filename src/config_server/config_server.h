@@ -32,6 +32,7 @@ public:
 
 	void removeClient(ConfigServerConnection *client);
 	void addPushClient(ConfigServerConnection *pushClient);
+	void removePushClient(ConfigServerConnection *pushClient);
 
 private:
 	void serviceConfigure();
