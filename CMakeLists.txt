@@ -68,7 +68,7 @@ ENDIF()
 # boost.ASIO SSL needs OpenSSL too
 FIND_PACKAGE(OpenSSL REQUIRED)
 
-SET(CAER_LIBS ${CAER_LIBS} OpenSSL::SSL)
+SET(CAER_LIBS ${CAER_LIBS} ${OPENSSL_LIBRARIES})
 
 # Add local directory to include and library paths
 SET(CAER_INCDIRS ${CAER_INCDIRS} ${CMAKE_SOURCE_DIR}/)
