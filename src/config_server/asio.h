@@ -15,25 +15,25 @@ using asioTCP     = boost::asio::ip::tcp;
 
 class TCPTLSSocket {
 private:
-	asioSSL::stream<asioTCP::socket> socket;
-	bool socketClosed;
 	asioTCP::endpoint localEndpoint;
 	asioTCP::endpoint remoteEndpoint;
+	asioSSL::stream<asioTCP::socket> socket;
+	bool socketClosed;
 	bool sslConnection;
 
 public:
 	TCPTLSSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
+		localEndpoint(s.local_endpoint()),
+		remoteEndpoint(s.remote_endpoint()),
 #if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 66
 		socket(std::move(s), sslContext),
 #else
 		socket(s.get_io_service(), sslContext),
 #endif
 		socketClosed(false),
-		localEndpoint(socket.next_layer().local_endpoint()),
-		remoteEndpoint(socket.next_layer().remote_endpoint()),
 		sslConnection(sslEnabled) {
 #if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) < 66
-		socket.lowest_layer() = std::move(s);
+		socket.next_layer() = std::move(s);
 #endif
 	}
 
