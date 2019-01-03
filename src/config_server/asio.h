@@ -33,7 +33,7 @@ public:
 		remoteEndpoint(socket.next_layer().remote_endpoint()),
 		sslConnection(sslEnabled) {
 #if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) < 66
-		socket.next_layer() = std::move(s);
+		socket.lowest_layer() = std::move(s);
 #endif
 	}
 
