@@ -11,7 +11,10 @@
 
 class ConfigServer {
 private:
+	enum class IOThreadState { STARTING, RUNNING, STOPPING, STOPPED };
+
 	bool ioThreadRun;
+	IOThreadState ioThreadState;
 	std::thread ioThread;
 	asio::io_service ioService;
 	asioTCP::acceptor acceptor;

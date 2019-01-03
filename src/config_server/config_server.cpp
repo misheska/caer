@@ -16,7 +16,8 @@ static void caerConfigServerRestartListener(sshsNode node, void *userData, enum 
 	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
 
 ConfigServer::ConfigServer() :
-	ioThreadRun(false),
+	ioThreadRun(true),
+	ioThreadState(IOThreadState::STOPPED),
 	acceptor(ioService),
 	acceptorNewSocket(ioService),
 	sslContext(asioSSL::context::tlsv12_server),
@@ -28,34 +29,40 @@ void ConfigServer::threadStart() {
 		// Set thread name.
 		portable_thread_set_name(CONFIG_SERVER_NAME);
 
-		ioThreadRun = true;
-
 		while (ioThreadRun) {
+			ioThreadState = IOThreadState::STARTING;
+
+			// Ready for new run.
+#if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 66
+			ioService.restart();
+#else
+			ioService.reset();
+#endif
+
 			// Configure server.
 			serviceConfigure();
 
 			// Start server.
 			serviceStart();
 
-			// Ready for next time.
-#if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 66
-			ioService.restart();
-#else
-			ioService.reset();
-#endif
+			ioThreadState = IOThreadState::STOPPED;
 		}
 	});
 }
 
 void ConfigServer::serviceRestart() {
-	ioService.post([this]() { serviceStop(); });
+	if (!ioService.stopped()) {
+		ioService.post([this]() { serviceStop(); });
+	}
 }
 
 void ConfigServer::threadStop() {
-	ioService.post([this]() {
-		ioThreadRun = false;
-		serviceStop();
-	});
+	if (!ioService.stopped()) {
+		ioService.post([this]() {
+			ioThreadRun = false;
+			serviceStop();
+		});
+	}
 
 	ioThread.join();
 }
@@ -148,11 +155,20 @@ void ConfigServer::serviceStart() {
 	// Start accepting connections.
 	acceptStart();
 
+	ioThreadState = IOThreadState::RUNNING;
+
 	// Run IO service.
 	ioService.run();
 }
 
 void ConfigServer::serviceStop() {
+	// Prevent multiple calls.
+	if (ioThreadState != IOThreadState::RUNNING) {
+		return;
+	}
+
+	ioThreadState = IOThreadState::STOPPING;
+
 	// Stop accepting connections.
 	acceptor.close();
 
