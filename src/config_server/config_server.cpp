@@ -14,6 +14,9 @@ namespace logger = libcaer::log;
 
 static void caerConfigServerRestartListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
 	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *userData,
+	enum sshs_node_attribute_events event, const char *changeKey, enum sshs_node_attr_value_type changeType,
+	union sshs_node_attr_value changeValue);
 
 ConfigServer::ConfigServer() :
 	ioThreadRun(true),
@@ -157,6 +160,8 @@ void ConfigServer::serviceStart() {
 
 	ioThreadState = IOThreadState::RUNNING;
 
+	sshsGlobalAttributeListenerSet(sshsGetGlobal(), &caerConfigServerGlobalAttributeChangeListener, this);
+
 	// Run IO service.
 	ioService.run();
 }
@@ -168,6 +173,8 @@ void ConfigServer::serviceStop() {
 	}
 
 	ioThreadState = IOThreadState::STOPPING;
+
+	sshsGlobalAttributeListenerSet(sshsGetGlobal(), nullptr, nullptr);
 
 	// Stop accepting connections.
 	acceptor.close();
@@ -285,4 +292,9 @@ static void caerConfigServerRestartListener(sshsNode node, void *userData, enum 
 		&& changeValue.boolean) {
 		globalConfigData.server.serviceRestart();
 	}
+}
+
+static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *userData,
+	enum sshs_node_attribute_events event, const char *changeKey, enum sshs_node_attr_value_type changeType,
+	union sshs_node_attr_value changeValue) {
 }
