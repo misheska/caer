@@ -297,4 +297,7 @@ static void caerConfigServerRestartListener(sshsNode node, void *userData, enum 
 static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *userData,
 	enum sshs_node_attribute_events event, const char *changeKey, enum sshs_node_attr_value_type changeType,
 	union sshs_node_attr_value changeValue) {
+	ConfigServer *cfg = static_cast<ConfigServer *>(userData);
+
+	auto buf = std::make_shared<std::array<uint8_t, CAER_CONFIG_SERVER_BUFFER_SIZE>>();
 }

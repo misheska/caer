@@ -45,15 +45,15 @@ void ConfigServerConnection::removePushClient() {
 	parent->removePushClient(this);
 }
 
-uint8_t *ConfigServerConnection::getData() {
+ConfigActionData &ConfigServerConnection::getData() {
 	return (data);
 }
 
-void ConfigServerConnection::writeResponse(size_t dataLength) {
+void ConfigServerConnection::writeResponse() {
 	auto self(shared_from_this());
 
-	socket.write(
-		asio::buffer(data, dataLength), [this, self](const boost::system::error_code &error, size_t /*length*/) {
+	socket.write(asio::buffer(data.getBuffer(), data.size()),
+		[this, self](const boost::system::error_code &error, size_t /*length*/) {
 			if (error) {
 				handleError(error, "Failed to write response");
 			}
@@ -67,70 +67,36 @@ void ConfigServerConnection::writeResponse(size_t dataLength) {
 void ConfigServerConnection::readHeader() {
 	auto self(shared_from_this());
 
-	socket.read(asio::buffer(data, CAER_CONFIG_SERVER_HEADER_SIZE),
+	socket.read(asio::buffer(data.getHeaderBuffer(), data.headerSize()),
 		[this, self](const boost::system::error_code &error, size_t /*length*/) {
 			if (error) {
 				handleError(error, "Failed to read header");
 			}
 			else {
-				// If we have enough data, we start parsing the lengths.
-				// The main header is 10 bytes.
-				// Decode length header fields (all in little-endian).
-				uint16_t extraLength = le16toh(*(uint16_t *) (data + 2));
-				uint16_t nodeLength  = le16toh(*(uint16_t *) (data + 4));
-				uint16_t keyLength   = le16toh(*(uint16_t *) (data + 6));
-				uint16_t valueLength = le16toh(*(uint16_t *) (data + 8));
-
-				// Total length to get for command.
-				size_t readLength = (size_t)(extraLength + nodeLength + keyLength + valueLength);
-
 				// Check for wrong (excessive) requested read length.
 				// Close connection by falling out of scope.
-				if (readLength > (CAER_CONFIG_SERVER_BUFFER_SIZE - CAER_CONFIG_SERVER_HEADER_SIZE)) {
+				if (data.dataSize() > (CAER_CONFIG_SERVER_BUFFER_SIZE - CAER_CONFIG_SERVER_HEADER_SIZE)) {
 					logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME,
 						"Client %s:%d: read length error (%d bytes requested).",
-						socket.remote_address().to_string().c_str(), socket.remote_port(), readLength);
+						socket.remote_address().to_string().c_str(), socket.remote_port(), data.dataSize());
 					return;
 				}
 
-				readData(readLength);
+				readData();
 			}
 		});
 }
 
-void ConfigServerConnection::readData(size_t dataLength) {
+void ConfigServerConnection::readData() {
 	auto self(shared_from_this());
 
-	socket.read(asio::buffer(data + CAER_CONFIG_SERVER_HEADER_SIZE, dataLength),
+	socket.read(asio::buffer(data.getDataBuffer(), data.dataSize()),
 		[this, self](const boost::system::error_code &error, size_t /*length*/) {
 			if (error) {
 				handleError(error, "Failed to read data");
 			}
 			else {
-				// Decode command header fields.
-				uint8_t action = data[0];
-				uint8_t type   = data[1];
-
-				// Decode length header fields (all in little-endian).
-				uint16_t extraLength = le16toh(*(uint16_t *) (data + 2));
-				uint16_t nodeLength  = le16toh(*(uint16_t *) (data + 4));
-				uint16_t keyLength   = le16toh(*(uint16_t *) (data + 6));
-				uint16_t valueLength = le16toh(*(uint16_t *) (data + 8));
-
-				// Now we have everything. The header fields are already
-				// fully decoded: handle request (and send back data eventually).
-				const uint8_t *extra = (extraLength == 0) ? (nullptr) : (data + CAER_CONFIG_SERVER_HEADER_SIZE);
-				const uint8_t *node
-					= (nodeLength == 0) ? (nullptr) : (data + CAER_CONFIG_SERVER_HEADER_SIZE + extraLength);
-				const uint8_t *key
-					= (keyLength == 0) ? (nullptr) : (data + CAER_CONFIG_SERVER_HEADER_SIZE + extraLength + nodeLength);
-				const uint8_t *value
-					= (valueLength == 0)
-						  ? (nullptr)
-						  : (data + CAER_CONFIG_SERVER_HEADER_SIZE + extraLength + nodeLength + keyLength);
-
-				caerConfigServerHandleRequest(
-					self, action, type, extra, extraLength, node, nodeLength, key, keyLength, value, valueLength);
+				caerConfigServerHandleRequest(self);
 			}
 		});
 }

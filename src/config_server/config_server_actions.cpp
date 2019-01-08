@@ -1,56 +1,45 @@
 #include "config_server_actions.h"
 
 #include "../module.h"
+#include "config_server_connection.h"
 
 #include <boost/algorithm/string.hpp>
 #include <regex>
 
 namespace logger = libcaer::log;
 
-// The response from the server follows a simplified version of the request
-// protocol. A byte for ACTION, a byte for TYPE, 2 bytes for MSG_LEN and then
-// up to 4092 bytes of MSG, for a maximum total of 4096 bytes again.
-// MSG must be NUL terminated, and the NUL byte shall be part of the length.
-static inline void setMsgLen(uint8_t *buf, uint16_t msgLen) {
-	*((uint16_t *) (buf + 2)) = htole16(msgLen);
+static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> client, const std::string &errorMsg) {
+	ConfigActionData response = client->getData();
+	response.reset();
+
+	response.setAction(caer_config_actions::CAER_CONFIG_ERROR);
+	response.setType(SSHS_STRING);
+	response.setNode(errorMsg);
+
+	client->writeResponse();
+
+	logger::log(
+		logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Sent back error message '%s' to client.", errorMsg.c_str());
 }
 
-static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> client, const char *errorMsg) {
-	size_t errorMsgLength = strlen(errorMsg);
-	size_t responseLength = 4 + errorMsgLength + 1; // +1 for terminating NUL byte.
+static inline void caerConfigSendResponse(std::shared_ptr<ConfigServerConnection> client, caer_config_actions action,
+	sshs_node_attr_value_type type, const std::string &message) {
+	ConfigActionData response = client->getData();
+	response.reset();
 
-	uint8_t *response = client->getData();
+	response.setAction(action);
+	response.setType(type);
+	response.setNode(message);
 
-	response[0] = CAER_CONFIG_ERROR;
-	response[1] = SSHS_STRING;
-	setMsgLen(response, (uint16_t)(errorMsgLength + 1));
-	memcpy(response + 4, errorMsg, errorMsgLength);
-	response[4 + errorMsgLength] = '\0';
-
-	client->writeResponse(responseLength);
-
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Sent back error message '%s' to client.", errorMsg);
-}
-
-static inline void caerConfigSendResponse(std::shared_ptr<ConfigServerConnection> client, uint8_t action, uint8_t type,
-	const uint8_t *msg, size_t msgLength) {
-	size_t responseLength = 4 + msgLength;
-
-	uint8_t *response = client->getData();
-
-	response[0] = action;
-	response[1] = type;
-	setMsgLen(response, (uint16_t) msgLength);
-	memcpy(response + 4, msg, msgLength);
-	// Msg must already be NUL terminated!
-
-	client->writeResponse(responseLength);
+	client->writeResponse();
 
 	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME,
-		"Sent back message to client: action=%" PRIu8 ", type=%" PRIu8 ", msgLength=%zu.", action, type, msgLength);
+		"Sent back message to client: action=%" PRIu8 ", type=%" PRIu8 ", msgLength=%zu.", action, type,
+		message.length());
 }
 
-static inline bool checkNodeExists(sshs configStore, const char *node, std::shared_ptr<ConfigServerConnection> client) {
+static inline bool checkNodeExists(
+	sshs configStore, const std::string &node, std::shared_ptr<ConfigServerConnection> client) {
 	bool nodeExists = sshsExistsNode(configStore, node);
 
 	// Only allow operations on existing nodes, this is for remote
@@ -63,8 +52,8 @@ static inline bool checkNodeExists(sshs configStore, const char *node, std::shar
 	return (nodeExists);
 }
 
-static inline bool checkAttributeExists(sshsNode wantedNode, const char *key, enum sshs_node_attr_value_type type,
-	std::shared_ptr<ConfigServerConnection> client) {
+static inline bool checkAttributeExists(sshsNode wantedNode, const std::string &key,
+	enum sshs_node_attr_value_type type, std::shared_ptr<ConfigServerConnection> client) {
 	// Check if attribute exists. Only allow operations on existing attributes!
 	bool attrExists = sshsNodeAttributeExists(wantedNode, key, type);
 
@@ -78,79 +67,75 @@ static inline bool checkAttributeExists(sshsNode wantedNode, const char *key, en
 }
 
 static inline void caerConfigSendBoolResponse(
-	std::shared_ptr<ConfigServerConnection> client, uint8_t action, bool result) {
+	std::shared_ptr<ConfigServerConnection> client, caer_config_actions action, bool result) {
 	// Send back result to client. Format is the same as incoming data.
-	const uint8_t *sendResult = (const uint8_t *) ((result) ? ("true") : ("false"));
-	size_t sendResultLength   = (result) ? (5) : (6);
-	caerConfigSendResponse(client, action, SSHS_BOOL, sendResult, sendResultLength);
+	caerConfigSendResponse(client, action, SSHS_BOOL, ((result) ? ("true") : ("false")));
 }
 
-void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> client, uint8_t action, uint8_t type,
-	const uint8_t *extra, size_t extraLength, const uint8_t *node, size_t nodeLength, const uint8_t *key,
-	size_t keyLength, const uint8_t *value, size_t valueLength) {
-	UNUSED_ARGUMENT(extra);
+void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> client) {
+	ConfigActionData data = client->getData();
+
+	caer_config_actions action     = data.getAction();
+	sshs_node_attr_value_type type = data.getType();
 
 	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME,
 		"Handling request: action=%" PRIu8 ", type=%" PRIu8
 		", extraLength=%zu, nodeLength=%zu, keyLength=%zu, valueLength=%zu.",
-		action, type, extraLength, nodeLength, keyLength, valueLength);
+		action, type, data.getExtraLength(), data.getNodeLength(), data.getKeyLength(), data.getValueLength());
 
 	// Interpretation of data is up to each action individually.
 	sshs configStore = sshsGetGlobal();
 
 	switch (action) {
-		case CAER_CONFIG_NODE_EXISTS: {
+		case caer_config_actions::CAER_CONFIG_NODE_EXISTS: {
 			// We only need the node name here. Type is not used (ignored)!
-			bool result = sshsExistsNode(configStore, (const char *) node);
+			bool result = sshsExistsNode(configStore, data.getNode());
 
 			// Send back result to client. Format is the same as incoming data.
-			caerConfigSendBoolResponse(client, CAER_CONFIG_NODE_EXISTS, result);
+			caerConfigSendBoolResponse(client, caer_config_actions::CAER_CONFIG_NODE_EXISTS, result);
 
 			break;
 		}
 
-		case CAER_CONFIG_ATTR_EXISTS: {
-			if (!checkNodeExists(configStore, (const char *) node, client)) {
+		case caer_config_actions::CAER_CONFIG_ATTR_EXISTS: {
+			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, (const char *) node);
+			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
 
 			// Check if attribute exists.
-			bool result
-				= sshsNodeAttributeExists(wantedNode, (const char *) key, (enum sshs_node_attr_value_type) type);
+			bool result = sshsNodeAttributeExists(wantedNode, data.getKey(), type);
 
 			// Send back result to client. Format is the same as incoming data.
-			caerConfigSendBoolResponse(client, CAER_CONFIG_ATTR_EXISTS, result);
+			caerConfigSendBoolResponse(client, caer_config_actions::CAER_CONFIG_ATTR_EXISTS, result);
 
 			break;
 		}
 
-		case CAER_CONFIG_GET: {
-			if (!checkNodeExists(configStore, (const char *) node, client)) {
+		case caer_config_actions::CAER_CONFIG_GET: {
+			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, (const char *) node);
+			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
 
-			if (!checkAttributeExists(wantedNode, (const char *) key, (enum sshs_node_attr_value_type) type, client)) {
+			if (!checkAttributeExists(wantedNode, data.getKey(), type, client)) {
 				break;
 			}
 
-			union sshs_node_attr_value result
-				= sshsNodeGetAttribute(wantedNode, (const char *) key, (enum sshs_node_attr_value_type) type);
+			union sshs_node_attr_value result = sshsNodeGetAttribute(wantedNode, data.getKey(), type);
 
-			char *resultStr = sshsHelperValueToStringConverter((enum sshs_node_attr_value_type) type, result);
+			char *resultStr = sshsHelperValueToStringConverter(type, result);
 
 			if (resultStr == nullptr) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Failed to allocate memory for value string.");
 			}
 			else {
-				caerConfigSendResponse(
-					client, CAER_CONFIG_GET, type, (const uint8_t *) resultStr, strlen(resultStr) + 1);
+				caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET, type, resultStr);
 
 				free(resultStr);
 			}
@@ -164,7 +149,7 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			break;
 		}
 
-		case CAER_CONFIG_PUT: {
+		case caer_config_actions::CAER_CONFIG_PUT: {
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -198,12 +183,12 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, CAER_CONFIG_PUT, true);
+			caerConfigSendBoolResponse(client, caer_config_actions::CAER_CONFIG_PUT, true);
 
 			break;
 		}
 
-		case CAER_CONFIG_GET_CHILDREN: {
+		case caer_config_actions::CAER_CONFIG_GET_CHILDREN: {
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -242,13 +227,13 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			free(childNames);
 
-			caerConfigSendResponse(
-				client, CAER_CONFIG_GET_CHILDREN, SSHS_STRING, (const uint8_t *) namesBuffer, namesLength);
+			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_CHILDREN, SSHS_STRING,
+				(const uint8_t *) namesBuffer, namesLength);
 
 			break;
 		}
 
-		case CAER_CONFIG_GET_ATTRIBUTES: {
+		case caer_config_actions::CAER_CONFIG_GET_ATTRIBUTES: {
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -287,13 +272,13 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			free(attrKeys);
 
-			caerConfigSendResponse(
-				client, CAER_CONFIG_GET_ATTRIBUTES, SSHS_STRING, (const uint8_t *) keysBuffer, keysLength);
+			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_ATTRIBUTES, SSHS_STRING,
+				(const uint8_t *) keysBuffer, keysLength);
 
 			break;
 		}
 
-		case CAER_CONFIG_GET_TYPE: {
+		case caer_config_actions::CAER_CONFIG_GET_TYPE: {
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -316,13 +301,13 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			// separated by a NUL character.
 			const char *typeStr = sshsHelperTypeToStringConverter(attrType);
 
-			caerConfigSendResponse(
-				client, CAER_CONFIG_GET_TYPE, SSHS_STRING, (const uint8_t *) typeStr, strlen(typeStr) + 1);
+			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_TYPE, SSHS_STRING,
+				(const uint8_t *) typeStr, strlen(typeStr) + 1);
 
 			break;
 		}
 
-		case CAER_CONFIG_GET_RANGES: {
+		case caer_config_actions::CAER_CONFIG_GET_RANGES: {
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -384,12 +369,13 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 					break;
 			}
 
-			caerConfigSendResponse(client, CAER_CONFIG_GET_RANGES, type, (const uint8_t *) buf, bufLen);
+			caerConfigSendResponse(
+				client, caer_config_actions::CAER_CONFIG_GET_RANGES, type, (const uint8_t *) buf, bufLen);
 
 			break;
 		}
 
-		case CAER_CONFIG_GET_FLAGS: {
+		case caer_config_actions::CAER_CONFIG_GET_FLAGS: {
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -420,13 +406,13 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 				flagsStr += ",NO_EXPORT";
 			}
 
-			caerConfigSendResponse(
-				client, CAER_CONFIG_GET_FLAGS, SSHS_STRING, (const uint8_t *) flagsStr.c_str(), flagsStr.length() + 1);
+			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_FLAGS, SSHS_STRING,
+				(const uint8_t *) flagsStr.c_str(), flagsStr.length() + 1);
 
 			break;
 		}
 
-		case CAER_CONFIG_GET_DESCRIPTION: {
+		case caer_config_actions::CAER_CONFIG_GET_DESCRIPTION: {
 			if (!checkNodeExists(configStore, (const char *) node, client)) {
 				break;
 			}
@@ -441,15 +427,15 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			char *description = sshsNodeGetAttributeDescription(
 				wantedNode, (const char *) key, (enum sshs_node_attr_value_type) type);
 
-			caerConfigSendResponse(client, CAER_CONFIG_GET_DESCRIPTION, SSHS_STRING, (const uint8_t *) description,
-				strlen(description) + 1);
+			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_DESCRIPTION, SSHS_STRING,
+				(const uint8_t *) description, strlen(description) + 1);
 
 			free(description);
 
 			break;
 		}
 
-		case CAER_CONFIG_ADD_MODULE: {
+		case caer_config_actions::CAER_CONFIG_ADD_MODULE: {
 			if (nodeLength == 0) {
 				// Disallow empty strings.
 				caerConfigSendError(client, "Name cannot be empty.");
@@ -564,12 +550,12 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			caerModuleConfigInit(newModuleNode);
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, CAER_CONFIG_ADD_MODULE, true);
+			caerConfigSendBoolResponse(client, caer_config_actions::CAER_CONFIG_ADD_MODULE, true);
 
 			break;
 		}
 
-		case CAER_CONFIG_REMOVE_MODULE: {
+		case caer_config_actions::CAER_CONFIG_REMOVE_MODULE: {
 			if (nodeLength == 0) {
 				// Disallow empty strings.
 				caerConfigSendError(client, "Name cannot be empty.");
@@ -602,25 +588,25 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			sshsNodeRemoveNode(sshsGetNode(configStore, "/" + moduleName + "/"));
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, CAER_CONFIG_REMOVE_MODULE, true);
+			caerConfigSendBoolResponse(client, caer_config_actions::CAER_CONFIG_REMOVE_MODULE, true);
 
 			break;
 		}
 
-		case CAER_CONFIG_ADD_PUSH_CLIENT: {
+		case caer_config_actions::CAER_CONFIG_ADD_PUSH_CLIENT: {
 			client->addPushClient();
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, CAER_CONFIG_ADD_PUSH_CLIENT, true);
+			caerConfigSendBoolResponse(client, caer_config_actions::CAER_CONFIG_ADD_PUSH_CLIENT, true);
 
 			break;
 		}
 
-		case CAER_CONFIG_REMOVE_PUSH_CLIENT: {
+		case caer_config_actions::CAER_CONFIG_REMOVE_PUSH_CLIENT: {
 			client->removePushClient();
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, CAER_CONFIG_REMOVE_PUSH_CLIENT, true);
+			caerConfigSendBoolResponse(client, caer_config_actions::CAER_CONFIG_REMOVE_PUSH_CLIENT, true);
 
 			break;
 		}

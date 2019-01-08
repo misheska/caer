@@ -1,12 +1,11 @@
 #ifndef SRC_CONFIG_SERVER_CONFIG_SERVER_ACTIONS_H_
 #define SRC_CONFIG_SERVER_CONFIG_SERVER_ACTIONS_H_
 
-#include "config_server_connection.h"
 #include "config_server_main.h"
 
 #include <memory>
 
-enum caer_config_actions {
+enum class caer_config_actions {
 	CAER_CONFIG_NODE_EXISTS        = 0,
 	CAER_CONFIG_ATTR_EXISTS        = 1,
 	CAER_CONFIG_GET                = 2,
@@ -25,8 +24,8 @@ enum caer_config_actions {
 	CAER_CONFIG_PUSH_MESSAGE       = 15,
 };
 
-void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> client, uint8_t action, uint8_t type,
-	const uint8_t *extra, size_t extraLength, const uint8_t *node, size_t nodeLength, const uint8_t *key,
-	size_t keyLength, const uint8_t *value, size_t valueLength);
+class ConfigServerConnection;
+
+void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> client);
 
 #endif /* SRC_CONFIG_SERVER_CONFIG_SERVER_ACTIONS_H_ */

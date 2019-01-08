@@ -45,13 +45,13 @@ static const struct {
 	size_t nameLen;
 	uint8_t code;
 } actions[] = {
-	{"node_exists", 11, CAER_CONFIG_NODE_EXISTS},
-	{"attr_exists", 11, CAER_CONFIG_ATTR_EXISTS},
-	{"get", 3, CAER_CONFIG_GET},
-	{"put", 3, CAER_CONFIG_PUT},
-	{"help", 4, CAER_CONFIG_GET_DESCRIPTION},
-	{"add_module", 10, CAER_CONFIG_ADD_MODULE},
-	{"remove_module", 13, CAER_CONFIG_REMOVE_MODULE},
+	{"node_exists", 11, caer_config_actions::CAER_CONFIG_NODE_EXISTS},
+	{"attr_exists", 11, caer_config_actions::CAER_CONFIG_ATTR_EXISTS},
+	{"get", 3, caer_config_actions::CAER_CONFIG_GET},
+	{"put", 3, caer_config_actions::CAER_CONFIG_PUT},
+	{"help", 4, caer_config_actions::CAER_CONFIG_GET_DESCRIPTION},
+	{"add_module", 10, caer_config_actions::CAER_CONFIG_ADD_MODULE},
+	{"remove_module", 13, caer_config_actions::CAER_CONFIG_REMOVE_MODULE},
 };
 static const size_t actionsLength = sizeof(actions) / sizeof(actions[0]);
 
