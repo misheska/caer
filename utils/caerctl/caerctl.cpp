@@ -709,7 +709,7 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 	// Send request for all children names.
 	dataBuffer.reset();
 	dataBuffer.setAction(caer_config_actions::CAER_CONFIG_GET_CHILDREN);
-	dataBuffer.setNode(std::string(partialNodeString, lastSlash));
+	dataBuffer.setNode(partialNodeString.substr(0, lastSlash));
 
 	try {
 		asioSocketWrite(asio::buffer(dataBuffer.getBuffer(), dataBuffer.size()));
