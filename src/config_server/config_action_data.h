@@ -100,7 +100,7 @@ public:
 			return (std::string());
 		}
 
-		return (std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE)));
+		return (std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE), getExtraLength()));
 	}
 
 	void setNode(const std::string &node) {
@@ -114,8 +114,8 @@ public:
 			return (std::string());
 		}
 
-		return (
-			std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength())));
+		return (std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength()),
+			getNodeLength()));
 	}
 
 	void setKey(const std::string &key) {
@@ -130,7 +130,8 @@ public:
 		}
 
 		return (std::string(reinterpret_cast<const char *>(
-			buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength())));
+								buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength()),
+			getKeyLength()));
 	}
 
 	void setValue(const std::string &value) {
@@ -146,8 +147,9 @@ public:
 			return (std::string());
 		}
 
-		return (std::string(reinterpret_cast<const char *>(
-			buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength() + getKeyLength())));
+		return (std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength()
+														   + getNodeLength() + getKeyLength()),
+			getValueLength()));
 	}
 
 	void reset() {
