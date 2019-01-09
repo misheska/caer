@@ -20,7 +20,7 @@ static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> c
 	client->writeResponse();
 
 	logger::log(
-		logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Sent back error message '%s' to client.", errorMsg.c_str());
+		logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Sent error message '%s' back to client.", errorMsg.c_str());
 }
 
 static inline void caerConfigSendResponse(std::shared_ptr<ConfigServerConnection> client, caer_config_actions action,
@@ -34,9 +34,8 @@ static inline void caerConfigSendResponse(std::shared_ptr<ConfigServerConnection
 
 	client->writeResponse();
 
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME,
-		"Sent back message to client: action=%" PRIu8 ", type=%" PRIu8 ", msgLength=%zu.", action, type,
-		message.length());
+	logger::log(
+		logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Sent response back to client: %s.", response.toString().c_str());
 }
 
 static inline bool checkNodeExists(
@@ -79,10 +78,8 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 	caer_config_actions action     = data.getAction();
 	sshs_node_attr_value_type type = data.getType();
 
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME,
-		"Handling request: action=%" PRIu8 ", type=%" PRIu8
-		", extraLength=%zu, nodeLength=%zu, keyLength=%zu, valueLength=%zu.",
-		action, type, data.getExtraLength(), data.getNodeLength(), data.getKeyLength(), data.getValueLength());
+	logger::log(
+		logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Handling request from client: %s.", data.toString().c_str());
 
 	// Interpretation of data is up to each action individually.
 	sshs configStore = sshsGetGlobal();

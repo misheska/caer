@@ -179,6 +179,13 @@ public:
 	size_t dataSize() const {
 		return (getExtraLength() + getNodeLength() + getKeyLength() + getValueLength());
 	}
+
+	std::string toString() const {
+		return ("action=" + std::to_string(static_cast<uint8_t>(getAction())) + ", type="
+				+ std::to_string(static_cast<uint8_t>(getType())) + ", extraLength=" + std::to_string(getExtraLength())
+				+ ", nodeLength=" + std::to_string(getNodeLength()) + ", keyLength=" + std::to_string(getKeyLength())
+				+ ", valueLength=" + std::to_string(getValueLength()));
+	}
 };
 
 #endif /* SRC_CONFIG_SERVER_CONFIG_ACTION_DATA_H_ */
