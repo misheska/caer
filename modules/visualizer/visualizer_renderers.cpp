@@ -358,6 +358,15 @@ static bool caerVisualizerRendererIMU6Events(caerVisualizerPublicState state, ca
 
 		state->renderWindow->draw(accelText);
 
+		// Acceleration Z.
+		snprintf(valStr, 128, "%.2f g", (double) accelZ);
+
+		sf::Text accelTextZ(valStr, *state->font, 30);
+		sfml::Helpers::setTextColor(accelTextZ, accelColor);
+		accelTextZ.setPosition(sf::Vector2f(centerPointX, centerPointY + accelZScaled + lineThickness));
+
+		state->renderWindow->draw(accelTextZ);
+
 		// Temperature.
 		snprintf(valStr, 128, "Temp: %.2f C", (double) temp);
 

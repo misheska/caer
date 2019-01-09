@@ -1,12 +1,14 @@
 #include "input_common.h"
+
 #include "caer-sdk/cross/portable_threads.h"
 #include "caer-sdk/cross/portable_time.h"
 #include "caer-sdk/mainloop.h"
+
 #include "ext/net_rw.h"
 #include "ext/uthash/utlist.h"
 
 #ifdef ENABLE_INOUT_PNG_COMPRESSION
-#include <png.h>
+#	include <png.h>
 #endif
 
 #include <libcaer/events/common.h>
@@ -14,9 +16,10 @@
 #include <libcaer/events/packetContainer.h>
 #include <libcaer/events/polarity.h>
 #include <libcaer/events/special.h>
-#include <stdatomic.h>
 
 #include <libcaer/devices/dynapse.h> // CONSTANTS only.
+
+#include <stdatomic.h>
 
 #define MAX_HEADER_LINE_SIZE 1024
 
@@ -132,21 +135,21 @@ static bool parseNetworkHeader(inputCommonState state) {
 	// TODO: Network: get sourceInfo node info via config-server side-channel.
 	state->header.sourceID = networkHeader.sourceID;
 
-	sshsNodeCreateShort(state->sourceInfoNode, "polaritySizeX", 240, 1, INT16_MAX,
+	sshsNodeCreateInt(state->sourceInfoNode, "polaritySizeX", 240, 1, INT16_MAX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Polarity events width.");
-	sshsNodeCreateShort(state->sourceInfoNode, "polaritySizeY", 180, 1, INT16_MAX,
+	sshsNodeCreateInt(state->sourceInfoNode, "polaritySizeY", 180, 1, INT16_MAX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Polarity events height.");
-	sshsNodeCreateShort(state->sourceInfoNode, "frameSizeX", 240, 1, INT16_MAX,
+	sshsNodeCreateInt(state->sourceInfoNode, "frameSizeX", 240, 1, INT16_MAX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Frame events width.");
-	sshsNodeCreateShort(state->sourceInfoNode, "frameSizeY", 180, 1, INT16_MAX,
+	sshsNodeCreateInt(state->sourceInfoNode, "frameSizeY", 180, 1, INT16_MAX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Frame events height.");
-	sshsNodeCreateShort(state->sourceInfoNode, "dataSizeX", 240, 1, INT16_MAX,
+	sshsNodeCreateInt(state->sourceInfoNode, "dataSizeX", 240, 1, INT16_MAX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Data width.");
-	sshsNodeCreateShort(state->sourceInfoNode, "dataSizeY", 180, 1, INT16_MAX,
+	sshsNodeCreateInt(state->sourceInfoNode, "dataSizeY", 180, 1, INT16_MAX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Data height.");
-	sshsNodeCreateShort(state->sourceInfoNode, "visualizerSizeX", 240, 1, INT16_MAX,
+	sshsNodeCreateInt(state->sourceInfoNode, "visualizerSizeX", 240, 1, INT16_MAX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Visualization width.");
-	sshsNodeCreateShort(state->sourceInfoNode, "visualizerSizeY", 180, 1, INT16_MAX,
+	sshsNodeCreateInt(state->sourceInfoNode, "visualizerSizeY", 180, 1, INT16_MAX,
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Visualization height.");
 
 	// TODO: Network: add sourceString.
@@ -275,16 +278,16 @@ static void parseSourceString(char *sourceString, inputCommonState state) {
 
 	// Put size information inside sourceInfo node.
 	if (dvsSizeX != 0 && dvsSizeY != 0) {
-		sshsNodeCreateShort(state->sourceInfoNode, "polaritySizeX", dvsSizeX, 1, INT16_MAX,
+		sshsNodeCreateInt(state->sourceInfoNode, "polaritySizeX", dvsSizeX, 1, INT16_MAX,
 			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Polarity events width.");
-		sshsNodeCreateShort(state->sourceInfoNode, "polaritySizeY", dvsSizeY, 1, INT16_MAX,
+		sshsNodeCreateInt(state->sourceInfoNode, "polaritySizeY", dvsSizeY, 1, INT16_MAX,
 			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Polarity events height.");
 	}
 
 	if (apsSizeX != 0 && apsSizeY != 0) {
-		sshsNodeCreateShort(state->sourceInfoNode, "frameSizeX", apsSizeX, 1, INT16_MAX,
+		sshsNodeCreateInt(state->sourceInfoNode, "frameSizeX", apsSizeX, 1, INT16_MAX,
 			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Frame events width.");
-		sshsNodeCreateShort(state->sourceInfoNode, "frameSizeY", apsSizeY, 1, INT16_MAX,
+		sshsNodeCreateInt(state->sourceInfoNode, "frameSizeY", apsSizeY, 1, INT16_MAX,
 			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Frame events height.");
 	}
 
@@ -296,16 +299,16 @@ static void parseSourceString(char *sourceString, inputCommonState state) {
 	}
 
 	if (dataSizeX != 0 && dataSizeY != 0) {
-		sshsNodeCreateShort(state->sourceInfoNode, "dataSizeX", dataSizeX, 1, INT16_MAX,
+		sshsNodeCreateInt(state->sourceInfoNode, "dataSizeX", dataSizeX, 1, INT16_MAX,
 			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Data width.");
-		sshsNodeCreateShort(state->sourceInfoNode, "dataSizeY", dataSizeY, 1, INT16_MAX,
+		sshsNodeCreateInt(state->sourceInfoNode, "dataSizeY", dataSizeY, 1, INT16_MAX,
 			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Data height.");
 	}
 
 	if (visualizerSizeX != 0 && visualizerSizeY != 0) {
-		sshsNodeCreateShort(state->sourceInfoNode, "visualizerSizeX", visualizerSizeX, 1, INT16_MAX,
+		sshsNodeCreateInt(state->sourceInfoNode, "visualizerSizeX", visualizerSizeX, 1, INT16_MAX,
 			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Visualization width.");
-		sshsNodeCreateShort(state->sourceInfoNode, "visualizerSizeY", visualizerSizeY, 1, INT16_MAX,
+		sshsNodeCreateInt(state->sourceInfoNode, "visualizerSizeY", visualizerSizeY, 1, INT16_MAX,
 			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Visualization height.");
 	}
 
@@ -851,7 +854,7 @@ static int aedat3GetPacket(inputCommonState state, bool isAEDAT30) {
 static void aedat30ChangeOrigin(inputCommonState state, caerEventPacketHeader packet) {
 	if (caerEventPacketHeaderGetEventType(packet) == POLARITY_EVENT) {
 		// We need to know the DVS resolution to invert the polarity Y address.
-		int16_t dvsSizeY = I16T(sshsNodeGetShort(state->sourceInfoNode, "dvsSizeY") - 1);
+		int16_t dvsSizeY = I16T(sshsNodeGetInt(state->sourceInfoNode, "dvsSizeY") - 1);
 
 		CAER_POLARITY_ITERATOR_ALL_START((caerPolarityEventPacket) packet)
 		uint16_t newYAddress = U16T(dvsSizeY - caerPolarityEventGetY(caerPolarityIteratorElement));
@@ -1043,8 +1046,9 @@ static bool decompressFramePNG(inputCommonState state, caerEventPacketHeader pac
 
 	// Check that we indeed parsed everything correctly.
 	if (currPacketOffset != packetSize) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to decompress frame event. "
-														   "Size after event parsing and packet size don't match.");
+		caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+			"Failed to decompress frame event. "
+			"Size after event parsing and packet size don't match.");
 		return (false);
 	}
 
@@ -1066,8 +1070,9 @@ static bool decompressFramePNG(inputCommonState state, caerEventPacketHeader pac
 					caerFrameEventGetLengthX(frameEvent), caerFrameEventGetLengthY(frameEvent),
 					caerFrameEventGetChannelNumber(frameEvent))) {
 				// Failed to decompress PNG.
-				caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to decompress frame event. "
-																   "PNG decompression failure.");
+				caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+					"Failed to decompress frame event. "
+					"PNG decompression failure.");
 				return (false);
 			}
 		}
@@ -1101,8 +1106,9 @@ static bool decompressTimestampSerialize(inputCommonState state, caerEventPacket
 	uint8_t *events = malloc((size_t)(eventNumber * eventSize));
 	if (events == NULL) {
 		// Memory allocation failure.
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to decode serialized timestamp. "
-														   "Memory allocation failure.");
+		caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+			"Failed to decode serialized timestamp. "
+			"Memory allocation failure.");
 		return (false);
 	}
 
@@ -1173,8 +1179,9 @@ static bool decompressTimestampSerialize(inputCommonState state, caerEventPacket
 
 	// Check we really recovered all events from compression.
 	if (currPacketOffset != packetSize) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to decode serialized timestamp. "
-														   "Length of compressed packet and read data don't match.");
+		caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+			"Failed to decode serialized timestamp. "
+			"Length of compressed packet and read data don't match.");
 		return (false);
 	}
 
@@ -1186,8 +1193,9 @@ static bool decompressTimestampSerialize(inputCommonState state, caerEventPacket
 	}
 
 	if ((size_t) eventNumber != recoveredEventsNumber) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to decode serialized timestamp. "
-														   "Number of expected and recovered events don't match.");
+		caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+			"Failed to decode serialized timestamp. "
+			"Number of expected and recovered events don't match.");
 		return (false);
 	}
 

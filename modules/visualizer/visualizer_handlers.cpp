@@ -1,11 +1,11 @@
 #include "visualizer_handlers.hpp"
 
+#include <libcaercpp/devices/dynapse.hpp> // Only for constants.
+
 #include "caer-sdk/mainloop.h"
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
-
-#include <libcaercpp/devices/dynapse.hpp> // Only for constants.
 
 // Default event handlers.
 static void caerVisualizerEventHandlerNeuronMonitor(caerVisualizerPublicState state, const sf::Event &event);
@@ -56,7 +56,7 @@ static void caerVisualizerEventHandlerNeuronMonitor(caerVisualizerPublicState st
 		monitorKey[1]     = (char) (48 + chipId);
 		monitorKey[4]     = (char) (48 + coreId);
 
-		sshsNodePutShort(neuronMonitorNode, monitorKey, I16T(neuronId));
+		sshsNodePutInt(neuronMonitorNode, monitorKey, I32T(neuronId));
 
 		caerLog(CAER_LOG_NOTICE, "Visualizer", "Monitoring neuron - chip ID: %d, core ID: %d, neuron ID: %d.", chipId,
 			coreId, neuronId);

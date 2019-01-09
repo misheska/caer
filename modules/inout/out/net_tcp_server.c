@@ -1,4 +1,5 @@
 #include "caer-sdk/mainloop.h"
+
 #include "output_common.h"
 
 static bool caerOutputNetTCPServerInit(caerModuleData moduleData);
@@ -35,9 +36,9 @@ static bool caerOutputNetTCPServerInit(caerModuleData moduleData) {
 		"IPv4 address to listen on (server mode).");
 	sshsNodeCreateInt(moduleData->moduleNode, "portNumber", 7777, 1, UINT16_MAX, SSHS_FLAGS_NORMAL,
 		"Port number to listen on (server mode).");
-	sshsNodeCreateShort(
+	sshsNodeCreateInt(
 		moduleData->moduleNode, "backlogSize", 5, 1, 32, SSHS_FLAGS_NORMAL, "Maximum number of pending connections.");
-	sshsNodeCreateShort(moduleData->moduleNode, "concurrentConnections", 10, 1, 128, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(moduleData->moduleNode, "concurrentConnections", 10, 1, 128, SSHS_FLAGS_NORMAL,
 		"Maximum number of concurrent active connections.");
 
 	int retVal;
@@ -51,7 +52,7 @@ static bool caerOutputNetTCPServerInit(caerModuleData moduleData) {
 	free(ipAddress);
 
 	// Allocate memory.
-	size_t numClients         = (size_t) sshsNodeGetShort(moduleData->moduleNode, "concurrentConnections");
+	size_t numClients         = (size_t) sshsNodeGetInt(moduleData->moduleNode, "concurrentConnections");
 	outputCommonNetIO streams = malloc(sizeof(*streams) + (numClients * sizeof(uv_stream_t *)));
 	if (streams == NULL) {
 		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
@@ -104,7 +105,7 @@ static bool caerOutputNetTCPServerInit(caerModuleData moduleData) {
 				 uv_loop_close(&streams->loop); free(streams->address); free(streams); return (false));
 
 	retVal = uv_listen(
-		streams->server, sshsNodeGetShort(moduleData->moduleNode, "backlogSize"), &caerOutputCommonOnServerConnection);
+		streams->server, sshsNodeGetInt(moduleData->moduleNode, "backlogSize"), &caerOutputCommonOnServerConnection);
 	UV_RET_CHECK(retVal, moduleData->moduleSubSystemString, "uv_listen", libuvCloseLoopHandles(&streams->loop);
 				 uv_loop_close(&streams->loop); free(streams->address); free(streams); return (false));
 

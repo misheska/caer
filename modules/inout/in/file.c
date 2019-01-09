@@ -1,6 +1,8 @@
 #include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/mainloop.h"
+
 #include "input_common.h"
+
 #include <fcntl.h>
 #include <sys/types.h>
 
@@ -33,7 +35,7 @@ caerModuleInfo caerModuleGetInfo(void) {
 static bool caerInputFileInit(caerModuleData moduleData) {
 	sshsNodeCreateString(
 		moduleData->moduleNode, "filePath", "", 0, PATH_MAX, SSHS_FLAGS_NORMAL, "File path for reading input data.");
-	sshsNodeCreateAttributeFileChooser(moduleData->moduleNode, "filePath", SSHS_STRING, "LOAD:aedat");
+	sshsNodeCreateAttributeFileChooser(moduleData->moduleNode, "filePath", "LOAD:aedat");
 
 	char *filePath = sshsNodeGetString(moduleData->moduleNode, "filePath");
 

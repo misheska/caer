@@ -29,7 +29,7 @@ ENDIF()
 
 # Main cAER executable.
 SET(CAER_SRC_FILES
-	log.c
+	log.cpp
 	config.cpp
 	config_server.cpp
 	module.cpp

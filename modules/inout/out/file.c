@@ -1,6 +1,8 @@
 #include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/mainloop.h"
+
 #include "output_common.h"
+
 #include <fcntl.h>
 #include <time.h>
 
@@ -119,7 +121,7 @@ static bool caerOutputFileInit(caerModuleData moduleData) {
 	free(userHomeDir);
 
 	// Support file-chooser in GUI, select any directory.
-	sshsNodeCreateAttributeFileChooser(moduleData->moduleNode, "directory", SSHS_STRING, "DIRECTORY");
+	sshsNodeCreateAttributeFileChooser(moduleData->moduleNode, "directory", "DIRECTORY");
 
 	sshsNodeCreateString(moduleData->moduleNode, "prefix", DEFAULT_PREFIX, 1, MAX_PREFIX_LENGTH, SSHS_FLAGS_NORMAL,
 		"Output data files name prefix.");

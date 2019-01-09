@@ -168,13 +168,14 @@ static void caerInputDAVISRPiExit(caerModuleData moduleData) {
 		free(biasNodes);
 	}
 
-	// Ensure Exposure value is coherent with libcaer. Removing a Read Modifier
-	// will synchronize the value once here on exit.
-	sshsNodeRemoveAttributeReadModifier(apsNode, "Exposure", SSHS_INT);
+	// Ensure Exposure value is coherent with libcaer.
+	sshsAttributeUpdaterRemoveAllForNode(apsNode);
+	sshsNodePutAttribute(
+		apsNode, "Exposure", SSHS_INT, apsExposureUpdater(moduleData->moduleState, "Exposure", SSHS_INT));
 
-	// Remove statistics read modifiers.
+	// Remove statistics updaters.
 	sshsNode statNode = sshsGetRelativeNode(deviceConfigNode, "statistics/");
-	sshsNodeRemoveAllAttributeReadModifiers(statNode);
+	sshsAttributeUpdaterRemoveAllForNode(statNode);
 
 	caerDeviceDataStop(moduleData->moduleState);
 
