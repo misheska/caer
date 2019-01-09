@@ -10,7 +10,7 @@
 namespace logger = libcaer::log;
 
 static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> client, const std::string &errorMsg) {
-	ConfigActionData response = client->getData();
+	ConfigActionData &response = client->getData();
 	response.reset();
 
 	response.setAction(caer_config_actions::CAER_CONFIG_ERROR);
@@ -25,7 +25,7 @@ static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> c
 
 static inline void caerConfigSendResponse(std::shared_ptr<ConfigServerConnection> client, caer_config_actions action,
 	sshs_node_attr_value_type type, const std::string &message) {
-	ConfigActionData response = client->getData();
+	ConfigActionData &response = client->getData();
 	response.reset();
 
 	response.setAction(action);
@@ -73,7 +73,7 @@ static inline void caerConfigSendBoolResponse(
 }
 
 void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> client) {
-	ConfigActionData data = client->getData();
+	ConfigActionData &data = client->getData();
 
 	caer_config_actions action     = data.getAction();
 	sshs_node_attr_value_type type = data.getType();
