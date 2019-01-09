@@ -2,6 +2,7 @@
 
 #include "config_server.h"
 #include "config_server_actions.h"
+#include "config_server_main.h"
 
 namespace logger = libcaer::log;
 

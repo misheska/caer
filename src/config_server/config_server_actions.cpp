@@ -2,6 +2,7 @@
 
 #include "../module.h"
 #include "config_server_connection.h"
+#include "config_server_main.h"
 
 #include <boost/algorithm/string.hpp>
 #include <regex>
@@ -126,7 +127,7 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 				break;
 			}
 
-			union sshs_node_attr_value result = sshsNodeGetAttribute(wantedNode, data.getKey(), type);
+			union sshs_node_attr_value result = sshsNodeGetAttribute(wantedNode, data.getKey().c_str(), type);
 
 			char *resultStr = sshsHelperValueToStringConverter(type, result);
 
@@ -150,20 +151,21 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 		}
 
 		case caer_config_actions::CAER_CONFIG_PUT: {
-			if (!checkNodeExists(configStore, (const char *) node, client)) {
+			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, (const char *) node);
+			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
 
-			if (!checkAttributeExists(wantedNode, (const char *) key, (enum sshs_node_attr_value_type) type, client)) {
+			if (!checkAttributeExists(wantedNode, data.getKey(), type, client)) {
 				break;
 			}
 
 			// Put given value into config node. Node, attr and type are already verified.
-			const char *typeStr = sshsHelperTypeToStringConverter((enum sshs_node_attr_value_type) type);
-			if (!sshsNodeStringToAttributeConverter(wantedNode, (const char *) key, typeStr, (const char *) value)) {
+			const char *typeStr = sshsHelperTypeToStringConverter(type);
+			if (!sshsNodeStringToAttributeConverter(
+					wantedNode, data.getKey().c_str(), typeStr, data.getValue().c_str())) {
 				// Send back correct error message to client.
 				if (errno == EINVAL) {
 					caerConfigSendError(client, "Impossible to convert value according to type.");
@@ -189,12 +191,12 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 		}
 
 		case caer_config_actions::CAER_CONFIG_GET_CHILDREN: {
-			if (!checkNodeExists(configStore, (const char *) node, client)) {
+			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, (const char *) node);
+			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
 
 			// Get the names of all the child nodes and return them.
 			size_t numNames;
@@ -228,18 +230,18 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			free(childNames);
 
 			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_CHILDREN, SSHS_STRING,
-				(const uint8_t *) namesBuffer, namesLength);
+				std::string(namesBuffer, namesLength));
 
 			break;
 		}
 
 		case caer_config_actions::CAER_CONFIG_GET_ATTRIBUTES: {
-			if (!checkNodeExists(configStore, (const char *) node, client)) {
+			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, (const char *) node);
+			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
 
 			// Get the keys of all the attributes and return them.
 			size_t numKeys;
@@ -273,21 +275,21 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			free(attrKeys);
 
 			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_ATTRIBUTES, SSHS_STRING,
-				(const uint8_t *) keysBuffer, keysLength);
+				std::string(keysBuffer, keysLength));
 
 			break;
 		}
 
 		case caer_config_actions::CAER_CONFIG_GET_TYPE: {
-			if (!checkNodeExists(configStore, (const char *) node, client)) {
+			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, (const char *) node);
+			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
 
 			// Check if any keys match the given one and return its type.
-			enum sshs_node_attr_value_type attrType = sshsNodeGetAttributeType(wantedNode, (const char *) key);
+			enum sshs_node_attr_value_type attrType = sshsNodeGetAttributeType(wantedNode, data.getKey().c_str());
 
 			// No attributes for specified key, return empty.
 			if (attrType == SSHS_UNKNOWN) {
@@ -301,26 +303,24 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			// separated by a NUL character.
 			const char *typeStr = sshsHelperTypeToStringConverter(attrType);
 
-			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_TYPE, SSHS_STRING,
-				(const uint8_t *) typeStr, strlen(typeStr) + 1);
+			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_TYPE, SSHS_STRING, typeStr);
 
 			break;
 		}
 
 		case caer_config_actions::CAER_CONFIG_GET_RANGES: {
-			if (!checkNodeExists(configStore, (const char *) node, client)) {
+			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, (const char *) node);
+			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
 
-			if (!checkAttributeExists(wantedNode, (const char *) key, (enum sshs_node_attr_value_type) type, client)) {
+			if (!checkAttributeExists(wantedNode, data.getKey(), type, client)) {
 				break;
 			}
 
-			struct sshs_node_attr_ranges ranges
-				= sshsNodeGetAttributeRanges(wantedNode, (const char *) key, (enum sshs_node_attr_value_type) type);
+			struct sshs_node_attr_ranges ranges = sshsNodeGetAttributeRanges(wantedNode, data.getKey().c_str(), type);
 
 			// We need to return a string with the two ranges,
 			// separated by a NUL character.
@@ -369,26 +369,24 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 					break;
 			}
 
-			caerConfigSendResponse(
-				client, caer_config_actions::CAER_CONFIG_GET_RANGES, type, (const uint8_t *) buf, bufLen);
+			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_RANGES, type, std::string(buf, bufLen));
 
 			break;
 		}
 
 		case caer_config_actions::CAER_CONFIG_GET_FLAGS: {
-			if (!checkNodeExists(configStore, (const char *) node, client)) {
+			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, (const char *) node);
+			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
 
-			if (!checkAttributeExists(wantedNode, (const char *) key, (enum sshs_node_attr_value_type) type, client)) {
+			if (!checkAttributeExists(wantedNode, data.getKey(), type, client)) {
 				break;
 			}
 
-			int flags
-				= sshsNodeGetAttributeFlags(wantedNode, (const char *) key, (enum sshs_node_attr_value_type) type);
+			int flags = sshsNodeGetAttributeFlags(wantedNode, data.getKey().c_str(), type);
 
 			std::string flagsStr;
 
@@ -406,29 +404,26 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 				flagsStr += ",NO_EXPORT";
 			}
 
-			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_FLAGS, SSHS_STRING,
-				(const uint8_t *) flagsStr.c_str(), flagsStr.length() + 1);
+			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_FLAGS, SSHS_STRING, flagsStr);
 
 			break;
 		}
 
 		case caer_config_actions::CAER_CONFIG_GET_DESCRIPTION: {
-			if (!checkNodeExists(configStore, (const char *) node, client)) {
+			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, (const char *) node);
+			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
 
-			if (!checkAttributeExists(wantedNode, (const char *) key, (enum sshs_node_attr_value_type) type, client)) {
+			if (!checkAttributeExists(wantedNode, data.getKey(), type, client)) {
 				break;
 			}
 
-			char *description = sshsNodeGetAttributeDescription(
-				wantedNode, (const char *) key, (enum sshs_node_attr_value_type) type);
+			char *description = sshsNodeGetAttributeDescription(wantedNode, data.getKey().c_str(), type);
 
-			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_DESCRIPTION, SSHS_STRING,
-				(const uint8_t *) description, strlen(description) + 1);
+			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_DESCRIPTION, SSHS_STRING, description);
 
 			free(description);
 
@@ -436,21 +431,21 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 		}
 
 		case caer_config_actions::CAER_CONFIG_ADD_MODULE: {
-			if (nodeLength == 0) {
+			if (data.getNode().length() == 0) {
 				// Disallow empty strings.
 				caerConfigSendError(client, "Name cannot be empty.");
 				break;
 			}
 
-			if (keyLength == 0) {
+			if (data.getKey().length() == 0) {
 				// Disallow empty strings.
 				caerConfigSendError(client, "Library cannot be empty.");
 				break;
 			}
 
 			// Node is the module name, key the library.
-			const std::string moduleName((const char *) node);
-			const std::string moduleLibrary((const char *) key);
+			const std::string moduleName(data.getNode());
+			const std::string moduleLibrary(data.getKey());
 
 			// Check module name.
 			if (moduleName == "caer") {
@@ -556,14 +551,14 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 		}
 
 		case caer_config_actions::CAER_CONFIG_REMOVE_MODULE: {
-			if (nodeLength == 0) {
+			if (data.getNode().length() == 0) {
 				// Disallow empty strings.
 				caerConfigSendError(client, "Name cannot be empty.");
 				break;
 			}
 
 			// Node is the module name.
-			const std::string moduleName((const char *) node);
+			const std::string moduleName(data.getNode());
 
 			// Check module name.
 			if (moduleName == "caer") {

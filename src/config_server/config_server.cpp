@@ -3,6 +3,7 @@
 #include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/cross/portable_threads.h"
 
+#include "config_server_main.h"
 #include "config_updater.h"
 
 #include <algorithm>
