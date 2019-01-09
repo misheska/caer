@@ -375,6 +375,10 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 		}
 	}
 
+	// Initialize buffer.
+	dataBuffer.reset();
+	dataBuffer.setAction(action);
+
 	// Now that we know what we want to do, let's decode the command line.
 	switch (action) {
 		case caer_config_actions::CAER_CONFIG_NODE_EXISTS: {
@@ -388,8 +392,6 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			dataBuffer.reset();
-			dataBuffer.setAction(action);
 			dataBuffer.setNode(commandParts[CMD_PART_NODE]);
 
 			break;
@@ -422,8 +424,6 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			dataBuffer.reset();
-			dataBuffer.setAction(action);
 			dataBuffer.setType(type);
 			dataBuffer.setNode(commandParts[CMD_PART_NODE]);
 			dataBuffer.setKey(commandParts[CMD_PART_KEY]);
@@ -460,8 +460,6 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			dataBuffer.reset();
-			dataBuffer.setAction(action);
 			dataBuffer.setType(type);
 			dataBuffer.setNode(commandParts[CMD_PART_NODE]);
 			dataBuffer.setKey(commandParts[CMD_PART_KEY]);
@@ -485,8 +483,6 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			dataBuffer.reset();
-			dataBuffer.setAction(action);
 			dataBuffer.setNode(commandParts[CMD_PART_NODE]);
 			dataBuffer.setKey(commandParts[CMD_PART_KEY]);
 
@@ -504,8 +500,6 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			dataBuffer.reset();
-			dataBuffer.setAction(action);
 			dataBuffer.setNode(commandParts[CMD_PART_NODE]);
 
 			break;
@@ -526,6 +520,8 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 		std::cerr << exMsg.str() << std::endl;
 		return;
 	}
+
+	dataBuffer.reset();
 
 	try {
 		asioSocketRead(asio::buffer(dataBuffer.getHeaderBuffer(), dataBuffer.headerSize()));
@@ -719,6 +715,8 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		return;
 	}
 
+	dataBuffer.reset();
+
 	try {
 		asioSocketRead(asio::buffer(dataBuffer.getHeaderBuffer(), dataBuffer.headerSize()));
 	}
@@ -771,6 +769,8 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 		return;
 	}
 
+	dataBuffer.reset();
+
 	try {
 		asioSocketRead(asio::buffer(dataBuffer.getHeaderBuffer(), dataBuffer.headerSize()));
 	}
@@ -821,6 +821,8 @@ static void typeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		// Failed to contact remote host, no auto-completion!
 		return;
 	}
+
+	dataBuffer.reset();
 
 	try {
 		asioSocketRead(asio::buffer(dataBuffer.getHeaderBuffer(), dataBuffer.headerSize()));
@@ -894,6 +896,8 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 		// Failed to contact remote host, no auto-completion!
 		return;
 	}
+
+	dataBuffer.reset();
 
 	try {
 		asioSocketRead(asio::buffer(dataBuffer.getHeaderBuffer(), dataBuffer.headerSize()));
