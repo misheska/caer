@@ -1,9 +1,9 @@
 #include "module.h"
 
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
+#include <boost/tokenizer.hpp>
 #include <iterator>
 #include <mutex>
 #include <regex>
@@ -522,8 +522,7 @@ void caerUpdateModulesInformation() {
 	const std::string modulesSearchPath = sshsNodeGetStdString(modulesNode, "modulesSearchPath");
 
 	// Split on '|'.
-	std::vector<std::string> searchPaths;
-	boost::algorithm::split(searchPaths, modulesSearchPath, boost::is_any_of("|"));
+	boost::tokenizer<boost::char_separator<char>> searchPaths(modulesSearchPath, boost::char_separator<char>("|"));
 
 	// Search is recursive for binary shared libraries.
 	const std::regex moduleRegex("\\w+\\.(so|dll|dylib)");

@@ -4,7 +4,7 @@
 #include "config_server_connection.h"
 #include "config_server_main.h"
 
-#include <boost/algorithm/string.hpp>
+#include <boost/tokenizer.hpp>
 #include <regex>
 
 namespace logger = libcaer::log;
@@ -461,8 +461,8 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			sshsNode modulesSysNode              = sshsGetNode(configStore, "/caer/modules/");
 			const std::string modulesListOptions = sshsNodeGetStdString(modulesSysNode, "modulesListOptions");
 
-			std::vector<std::string> modulesList;
-			boost::algorithm::split(modulesList, modulesListOptions, boost::is_any_of(","));
+			boost::tokenizer<boost::char_separator<char>> modulesList(
+				modulesListOptions, boost::char_separator<char>(","));
 
 			if (!findBool(modulesList.begin(), modulesList.end(), moduleLibrary)) {
 				caerConfigSendError(client, "Library does not exist.");
