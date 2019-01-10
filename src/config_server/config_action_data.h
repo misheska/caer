@@ -100,7 +100,9 @@ public:
 			return (std::string());
 		}
 
-		return (std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE), getExtraLength()));
+		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
+		return (
+			std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE), getExtraLength() - 1));
 	}
 
 	void setNode(const std::string &node) {
@@ -114,8 +116,9 @@ public:
 			return (std::string());
 		}
 
+		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
 		return (std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength()),
-			getNodeLength()));
+			getNodeLength() - 1));
 	}
 
 	void setKey(const std::string &key) {
@@ -129,9 +132,10 @@ public:
 			return (std::string());
 		}
 
+		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
 		return (std::string(reinterpret_cast<const char *>(
 								buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength()),
-			getKeyLength()));
+			getKeyLength() - 1));
 	}
 
 	void setValue(const std::string &value) {
@@ -147,9 +151,10 @@ public:
 			return (std::string());
 		}
 
+		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
 		return (std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength()
 														   + getNodeLength() + getKeyLength()),
-			getValueLength()));
+			getValueLength() - 1));
 	}
 
 	void reset() {
