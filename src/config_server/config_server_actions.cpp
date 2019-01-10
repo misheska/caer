@@ -208,26 +208,29 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// We need to return a big string with all of the child names,
-			// separated by a NUL character.
+			// separated by a | character.
 			size_t namesLength = 0;
 
 			for (size_t i = 0; i < numNames; i++) {
-				namesLength += strlen(childNames[i]) + 1; // +1 for terminating NUL byte.
+				namesLength += strlen(childNames[i]) + 1; // +1 for | separator.
 			}
 
 			// Allocate a buffer for the names and copy them over.
 			char namesBuffer[namesLength];
 
 			for (size_t i = 0, acc = 0; i < numNames; i++) {
-				size_t len = strlen(childNames[i]) + 1;
+				size_t len = strlen(childNames[i]);
+
 				memcpy(namesBuffer + acc, childNames[i], len);
 				acc += len;
+
+				namesBuffer[acc++] = '|';
 			}
 
 			free(childNames);
 
 			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_CHILDREN, SSHS_STRING,
-				std::string(namesBuffer, namesLength));
+				std::string(namesBuffer, namesLength - 1));
 
 			break;
 		}
@@ -253,26 +256,29 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// We need to return a big string with all of the attribute keys,
-			// separated by a NUL character.
+			// separated by a | character.
 			size_t keysLength = 0;
 
 			for (size_t i = 0; i < numKeys; i++) {
-				keysLength += strlen(attrKeys[i]) + 1; // +1 for terminating NUL byte.
+				keysLength += strlen(attrKeys[i]) + 1; // +1 for | separator.
 			}
 
 			// Allocate a buffer for the keys and copy them over.
 			char keysBuffer[keysLength];
 
 			for (size_t i = 0, acc = 0; i < numKeys; i++) {
-				size_t len = strlen(attrKeys[i]) + 1;
+				size_t len = strlen(attrKeys[i]);
+
 				memcpy(keysBuffer + acc, attrKeys[i], len);
 				acc += len;
+
+				keysBuffer[acc++] = '|';
 			}
 
 			free(attrKeys);
 
 			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_ATTRIBUTES, SSHS_STRING,
-				std::string(keysBuffer, keysLength));
+				std::string(keysBuffer, keysLength - 1));
 
 			break;
 		}
@@ -320,49 +326,38 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			struct sshs_node_attr_ranges ranges = sshsNodeGetAttributeRanges(wantedNode, data.getKey().c_str(), type);
 
 			// We need to return a string with the two ranges,
-			// separated by a NUL character.
+			// separated by a | character.
 			char buf[256];
 			size_t bufLen = 0;
 
 			switch (type) {
+				case SSHS_UNKNOWN:
 				case SSHS_BOOL:
-					bufLen = 4;
-					memcpy(buf, "0\00\0", bufLen);
+					bufLen = 3;
+					memcpy(buf, "0|0", bufLen);
 					break;
 
 				case SSHS_INT:
-					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%" PRIi32, ranges.min.iintRange)
-							  + 1; // Terminating NUL byte.
-					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%" PRIi32, ranges.max.iintRange)
-							  + 1; // Terminating NUL byte.
+					bufLen = (size_t) snprintf(
+						buf, 256, "%" PRIi32 "|%" PRIi32, ranges.min.iintRange, ranges.max.iintRange);
 					break;
 
 				case SSHS_LONG:
-					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%" PRIi64, ranges.min.ilongRange)
-							  + 1; // Terminating NUL byte.
-					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%" PRIi64, ranges.max.ilongRange)
-							  + 1; // Terminating NUL byte.
+					bufLen = (size_t) snprintf(
+						buf, 256, "%" PRIi64 "|%" PRIi64, ranges.min.ilongRange, ranges.max.ilongRange);
 					break;
 
 				case SSHS_FLOAT:
-					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%g", (double) ranges.min.ffloatRange)
-							  + 1; // Terminating NUL byte.
-					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%g", (double) ranges.max.ffloatRange)
-							  + 1; // Terminating NUL byte.
+					bufLen = (size_t) snprintf(
+						buf, 256, "%g|%g", (double) ranges.min.ffloatRange, (double) ranges.max.ffloatRange);
 					break;
 
 				case SSHS_DOUBLE:
-					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%g", ranges.min.ddoubleRange)
-							  + 1; // Terminating NUL byte.
-					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%g", ranges.max.ddoubleRange)
-							  + 1; // Terminating NUL byte.
+					bufLen = (size_t) snprintf(buf, 256, "%g|%g", ranges.min.ddoubleRange, ranges.max.ddoubleRange);
 					break;
 
 				case SSHS_STRING:
-					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%zu", ranges.min.stringRange)
-							  + 1; // Terminating NUL byte.
-					bufLen += (size_t) snprintf(buf + bufLen, 256 - bufLen, "%zu", ranges.max.stringRange)
-							  + 1; // Terminating NUL byte.
+					bufLen = (size_t) snprintf(buf, 256, "%zu|%zu", ranges.min.stringRange, ranges.max.stringRange);
 					break;
 			}
 
