@@ -367,7 +367,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	}
 
 	// Let's get the action code first thing.
-	caer_config_actions action;
+	caer_config_actions action = caer_config_actions::CAER_CONFIG_ERROR;
 
 	for (size_t i = 0; i < actionsLength; i++) {
 		if (actions[i].name == commandParts[CMD_PART_ACTION]) {
@@ -568,7 +568,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 }
 
 static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoComplete) {
-	std::string commandStr(buf);
+	const std::string commandStr(buf);
 
 	// First let's split up the command into its constituents.
 	std::string commandParts[MAX_CMD_PARTS + 1];
@@ -608,7 +608,7 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 	}
 
 	// Let's get the action code first thing.
-	caer_config_actions action;
+	caer_config_actions action = caer_config_actions::CAER_CONFIG_ERROR;
 
 	for (size_t i = 0; i < actionsLength; i++) {
 		if (actions[i].name == commandParts[CMD_PART_ACTION]) {
@@ -740,11 +740,12 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 	}
 
 	// At this point we made a valid request and got back a full response.
-	boost::tokenizer<boost::char_separator<char>> nodeChildren(dataBuffer.getNode(), boost::char_separator<char>("|"));
+	const std::string childrenStr(dataBuffer.getNode());
+	boost::tokenizer<boost::char_separator<char>> children(childrenStr, boost::char_separator<char>("|"));
 
-	for (const auto &child : nodeChildren) {
-		size_t lengthOfIncompletePart = (partialNodeString.length() - lastSlash);
+	size_t lengthOfIncompletePart = (partialNodeString.length() - lastSlash);
 
+	for (const auto &child : children) {
 		if (partialNodeString.substr(lastSlash, lengthOfIncompletePart) == child.substr(0, lengthOfIncompletePart)) {
 			addCompletionSuffix(
 				autoComplete, buf.c_str(), buf.length() - lengthOfIncompletePart, child.c_str(), false, true);
@@ -794,7 +795,8 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 	}
 
 	// At this point we made a valid request and got back a full response.
-	boost::tokenizer<boost::char_separator<char>> attributes(dataBuffer.getNode(), boost::char_separator<char>("|"));
+	const std::string attributesStr(dataBuffer.getNode());
+	boost::tokenizer<boost::char_separator<char>> attributes(attributesStr, boost::char_separator<char>("|"));
 
 	for (const auto &attr : attributes) {
 		if (partialKeyString == attr.substr(0, partialKeyString.length())) {
