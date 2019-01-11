@@ -78,11 +78,27 @@ void ConfigServer::removeClient(ConfigServerConnection *client) {
 }
 
 void ConfigServer::addPushClient(ConfigServerConnection *pushClient) {
+	numPushClients++;
 	pushClients.push_back(pushClient);
 }
 
 void ConfigServer::removePushClient(ConfigServerConnection *pushClient) {
 	pushClients.erase(std::remove(pushClients.begin(), pushClients.end(), pushClient), pushClients.end());
+	numPushClients--;
+}
+
+bool ConfigServer::pushClientsPresent() {
+	return (!ioService.stopped() && (numPushClients > 0));
+}
+
+void ConfigServer::pushMessageToClients(std::shared_ptr<const ConfigActionData> message) {
+	if (!ioService.stopped()) {
+		ioService.post([this, message]() {
+			for (auto client : pushClients) {
+				client->writePushMessage(message);
+			}
+		});
+	}
 }
 
 void ConfigServer::serviceConfigure() {
@@ -161,7 +177,7 @@ void ConfigServer::serviceStart() {
 
 	ioThreadState = IOThreadState::RUNNING;
 
-	sshsGlobalAttributeListenerSet(sshsGetGlobal(), &caerConfigServerGlobalAttributeChangeListener, this);
+	sshsGlobalAttributeListenerSet(sshsGetGlobal(), &caerConfigServerGlobalAttributeChangeListener, nullptr);
 
 	// Run IO service.
 	ioService.run();
@@ -298,7 +314,27 @@ static void caerConfigServerRestartListener(sshsNode node, void *userData, enum 
 static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *userData,
 	enum sshs_node_attribute_events event, const char *changeKey, enum sshs_node_attr_value_type changeType,
 	union sshs_node_attr_value changeValue) {
-	ConfigServer *cfg = static_cast<ConfigServer *>(userData);
+	UNUSED_ARGUMENT(userData);
 
-	auto buf = std::make_shared<std::array<uint8_t, CAER_CONFIG_SERVER_BUFFER_SIZE>>();
+	if (globalConfigData.server.pushClientsPresent()) {
+		auto msg = std::make_shared<ConfigActionData>();
+
+		msg->setAction(caer_config_actions::CAER_CONFIG_PUSH_MESSAGE);
+		msg->setType(changeType);
+		msg->setNode(sshsNodeGetPath(node));
+		msg->setKey(changeKey);
+
+		char *valueStr = sshsHelperValueToStringConverter(changeType, changeValue);
+
+		if (valueStr == nullptr) {
+			return;
+		}
+		else {
+			msg->setValue(valueStr);
+
+			free(valueStr);
+		}
+
+		globalConfigData.server.pushMessageToClients(msg);
+	}
 }

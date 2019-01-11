@@ -46,6 +46,17 @@ void ConfigServerConnection::removePushClient() {
 	parent->removePushClient(this);
 }
 
+void ConfigServerConnection::writePushMessage(std::shared_ptr<const ConfigActionData> message) {
+	auto self(shared_from_this());
+
+	socket.write(asio::buffer(message->getBuffer(), message->size()),
+		[this, self, message](const boost::system::error_code &error, size_t /*length*/) {
+			if (error) {
+				handleError(error, "Failed to write push message");
+			}
+		});
+}
+
 ConfigActionData &ConfigServerConnection::getData() {
 	return (data);
 }

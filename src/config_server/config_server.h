@@ -24,6 +24,7 @@ private:
 
 	std::vector<ConfigServerConnection *> clients;
 	std::vector<ConfigServerConnection *> pushClients;
+	std::atomic_size_t numPushClients;
 
 public:
 	ConfigServer();
@@ -35,6 +36,8 @@ public:
 	void removeClient(ConfigServerConnection *client);
 	void addPushClient(ConfigServerConnection *pushClient);
 	void removePushClient(ConfigServerConnection *pushClient);
+	bool pushClientsPresent();
+	void pushMessageToClients(std::shared_ptr<const ConfigActionData> message);
 
 private:
 	void serviceConfigure();

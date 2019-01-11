@@ -11,7 +11,7 @@ class ConfigServer;
 class ConfigServerConnection : public std::enable_shared_from_this<ConfigServerConnection> {
 private:
 	ConfigServer *parent;
-	TCPTLSSocket socket;
+	TCPTLSWriteOrderedSocket socket;
 	ConfigActionData data;
 
 public:
@@ -26,6 +26,7 @@ public:
 
 	ConfigActionData &getData();
 	void writeResponse();
+	void writePushMessage(std::shared_ptr<const ConfigActionData> message);
 
 private:
 	void readHeader();
