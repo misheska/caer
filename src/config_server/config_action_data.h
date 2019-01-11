@@ -39,6 +39,7 @@ private:
 
 public:
 	ConfigActionData() {
+		reset();
 	}
 
 	void setAction(caer_config_actions action) {
@@ -165,6 +166,10 @@ public:
 		return (getHeaderBuffer());
 	}
 
+	const uint8_t *getBuffer() const {
+		return (getHeaderBuffer());
+	}
+
 	size_t size() const {
 		return (headerSize() + dataSize());
 	}
@@ -173,11 +178,19 @@ public:
 		return (buffer);
 	}
 
+	const uint8_t *getHeaderBuffer() const {
+		return (buffer);
+	}
+
 	size_t headerSize() const {
 		return (CAER_CONFIG_SERVER_HEADER_SIZE);
 	}
 
 	uint8_t *getDataBuffer() {
+		return (buffer + CAER_CONFIG_SERVER_HEADER_SIZE);
+	}
+
+	const uint8_t *getDataBuffer() const {
 		return (buffer + CAER_CONFIG_SERVER_HEADER_SIZE);
 	}
 
