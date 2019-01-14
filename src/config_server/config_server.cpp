@@ -322,7 +322,7 @@ static void caerConfigServerGlobalNodeChangeListener(
 	if (globalConfigData.server.pushClientsPresent()) {
 		auto msg = std::make_shared<caerConfigActionData>();
 
-		msg->setAction(caerConfigAction::CAER_CONFIG_PUSH_MESSAGE_NODE);
+		msg->setAction(caerConfigAction::PUSH_MESSAGE_NODE);
 
 		msg->setExtra(std::string(1, (char) event));
 
@@ -343,7 +343,7 @@ static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *u
 	if (globalConfigData.server.pushClientsPresent()) {
 		auto msg = std::make_shared<caerConfigActionData>();
 
-		msg->setAction(caerConfigAction::CAER_CONFIG_PUSH_MESSAGE_ATTR);
+		msg->setAction(caerConfigAction::PUSH_MESSAGE_ATTR);
 		msg->setType(changeType);
 
 		if (event == SSHS_ATTRIBUTE_ADDED) {

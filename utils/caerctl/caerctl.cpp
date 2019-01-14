@@ -47,10 +47,10 @@ static const struct {
 	{"node_exists", caerConfigAction::NODE_EXISTS},
 	{"attr_exists", caerConfigAction::ATTR_EXISTS},
 	{"get", caerConfigAction::GET},
-	{"put", caerConfigAction::CAER_CONFIG_PUT},
-	{"help", caerConfigAction::CAER_CONFIG_GET_DESCRIPTION},
-	{"add_module", caerConfigAction::CAER_CONFIG_ADD_MODULE},
-	{"remove_module", caerConfigAction::CAER_CONFIG_REMOVE_MODULE},
+	{"put", caerConfigAction::PUT},
+	{"help", caerConfigAction::GET_DESCRIPTION},
+	{"add_module", caerConfigAction::ADD_MODULE},
+	{"remove_module", caerConfigAction::REMOVE_MODULE},
 };
 static const size_t actionsLength = sizeof(actions) / sizeof(actions[0]);
 
@@ -367,7 +367,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	}
 
 	// Let's get the action code first thing.
-	caerConfigAction action = caerConfigAction::CAER_CONFIG_ERROR;
+	caerConfigAction action = caerConfigAction::ERROR;
 
 	for (size_t i = 0; i < actionsLength; i++) {
 		if (actions[i].name == commandParts[CMD_PART_ACTION]) {
@@ -399,7 +399,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 
 		case caerConfigAction::ATTR_EXISTS:
 		case caerConfigAction::GET:
-		case caerConfigAction::CAER_CONFIG_GET_DESCRIPTION: {
+		case caerConfigAction::GET_DESCRIPTION: {
 			// Check parameters needed for operation.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing node parameter." << std::endl;
@@ -431,7 +431,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_PUT: {
+		case caerConfigAction::PUT: {
 			// Check parameters needed for operation.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing node parameter." << std::endl;
@@ -468,7 +468,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_ADD_MODULE: {
+		case caerConfigAction::ADD_MODULE: {
 			// Check parameters needed for operation. Reuse node parameters.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing module name." << std::endl;
@@ -489,7 +489,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_REMOVE_MODULE: {
+		case caerConfigAction::REMOVE_MODULE: {
 			// Check parameters needed for operation. Reuse node parameters.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing module name." << std::endl;
@@ -548,7 +548,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	std::string actionString;
 
 	// Detect error response.
-	if (dataBuffer.getAction() == caerConfigAction::CAER_CONFIG_ERROR) {
+	if (dataBuffer.getAction() == caerConfigAction::ERROR) {
 		actionString = "error";
 	}
 	else {
@@ -608,7 +608,7 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 	}
 
 	// Let's get the action code first thing.
-	caerConfigAction action = caerConfigAction::CAER_CONFIG_ERROR;
+	caerConfigAction action = caerConfigAction::ERROR;
 
 	for (size_t i = 0; i < actionsLength; i++) {
 		if (actions[i].name == commandParts[CMD_PART_ACTION]) {
@@ -626,7 +626,7 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 
 		case caerConfigAction::ATTR_EXISTS:
 		case caerConfigAction::GET:
-		case caerConfigAction::CAER_CONFIG_GET_DESCRIPTION:
+		case caerConfigAction::GET_DESCRIPTION:
 			if (commandDepth == 1) {
 				nodeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE]);
 			}
@@ -641,7 +641,7 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 
 			break;
 
-		case caerConfigAction::CAER_CONFIG_PUT:
+		case caerConfigAction::PUT:
 			if (commandDepth == 1) {
 				nodeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE]);
 			}
@@ -704,7 +704,7 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 
 	// Send request for all children names.
 	dataBuffer.reset();
-	dataBuffer.setAction(caerConfigAction::CAER_CONFIG_GET_CHILDREN);
+	dataBuffer.setAction(caerConfigAction::GET_CHILDREN);
 	dataBuffer.setNode(partialNodeString.substr(0, lastSlash));
 
 	try {
@@ -734,7 +734,7 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		return;
 	}
 
-	if (dataBuffer.getAction() == caerConfigAction::CAER_CONFIG_ERROR || dataBuffer.getType() != SSHS_STRING) {
+	if (dataBuffer.getAction() == caerConfigAction::ERROR || dataBuffer.getType() != SSHS_STRING) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -759,7 +759,7 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 
 	// Send request for all attribute names for this node.
 	dataBuffer.reset();
-	dataBuffer.setAction(caerConfigAction::CAER_CONFIG_GET_ATTRIBUTES);
+	dataBuffer.setAction(caerConfigAction::GET_ATTRIBUTES);
 	dataBuffer.setNode(nodeString);
 
 	try {
@@ -789,7 +789,7 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 		return;
 	}
 
-	if (dataBuffer.getAction() == caerConfigAction::CAER_CONFIG_ERROR || dataBuffer.getType() != SSHS_STRING) {
+	if (dataBuffer.getAction() == caerConfigAction::ERROR || dataBuffer.getType() != SSHS_STRING) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -812,7 +812,7 @@ static void typeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 
 	// Send request for the type name for this key on this node.
 	dataBuffer.reset();
-	dataBuffer.setAction(caerConfigAction::CAER_CONFIG_GET_TYPE);
+	dataBuffer.setAction(caerConfigAction::GET_TYPE);
 	dataBuffer.setNode(nodeString);
 	dataBuffer.setKey(keyString);
 
@@ -843,7 +843,7 @@ static void typeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		return;
 	}
 
-	if (dataBuffer.getAction() == caerConfigAction::CAER_CONFIG_ERROR || dataBuffer.getType() != SSHS_STRING) {
+	if (dataBuffer.getAction() == caerConfigAction::ERROR || dataBuffer.getType() != SSHS_STRING) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -918,7 +918,7 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 		return;
 	}
 
-	if (dataBuffer.getAction() == caerConfigAction::CAER_CONFIG_ERROR) {
+	if (dataBuffer.getAction() == caerConfigAction::ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}

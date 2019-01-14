@@ -13,7 +13,7 @@ static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> c
 	caerConfigActionData &response = client->getData();
 	response.reset();
 
-	response.setAction(caerConfigAction::CAER_CONFIG_ERROR);
+	response.setAction(caerConfigAction::ERROR);
 	response.setType(SSHS_STRING);
 	response.setNode(errorMsg);
 
@@ -147,7 +147,7 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_PUT: {
+		case caerConfigAction::PUT: {
 			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
@@ -182,12 +182,12 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, caerConfigAction::CAER_CONFIG_PUT, true);
+			caerConfigSendBoolResponse(client, caerConfigAction::PUT, true);
 
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_GET_CHILDREN: {
+		case caerConfigAction::GET_CHILDREN: {
 			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
@@ -229,13 +229,13 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			free(childNames);
 
-			caerConfigSendResponse(client, caerConfigAction::CAER_CONFIG_GET_CHILDREN, SSHS_STRING,
+			caerConfigSendResponse(client, caerConfigAction::GET_CHILDREN, SSHS_STRING,
 				std::string(namesBuffer, namesLength - 1));
 
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_GET_ATTRIBUTES: {
+		case caerConfigAction::GET_ATTRIBUTES: {
 			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
@@ -277,13 +277,13 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			free(attrKeys);
 
-			caerConfigSendResponse(client, caerConfigAction::CAER_CONFIG_GET_ATTRIBUTES, SSHS_STRING,
+			caerConfigSendResponse(client, caerConfigAction::GET_ATTRIBUTES, SSHS_STRING,
 				std::string(keysBuffer, keysLength - 1));
 
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_GET_TYPE: {
+		case caerConfigAction::GET_TYPE: {
 			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
@@ -306,12 +306,12 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			// separated by a NUL character.
 			const char *typeStr = sshsHelperTypeToStringConverter(attrType);
 
-			caerConfigSendResponse(client, caerConfigAction::CAER_CONFIG_GET_TYPE, SSHS_STRING, typeStr);
+			caerConfigSendResponse(client, caerConfigAction::GET_TYPE, SSHS_STRING, typeStr);
 
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_GET_RANGES: {
+		case caerConfigAction::GET_RANGES: {
 			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
@@ -331,12 +331,12 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			free(rangesString);
 
-			caerConfigSendResponse(client, caerConfigAction::CAER_CONFIG_GET_RANGES, type, rangesStr);
+			caerConfigSendResponse(client, caerConfigAction::GET_RANGES, type, rangesStr);
 
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_GET_FLAGS: {
+		case caerConfigAction::GET_FLAGS: {
 			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
@@ -356,12 +356,12 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			free(flagsString);
 
-			caerConfigSendResponse(client, caerConfigAction::CAER_CONFIG_GET_FLAGS, SSHS_STRING, flagsStr);
+			caerConfigSendResponse(client, caerConfigAction::GET_FLAGS, SSHS_STRING, flagsStr);
 
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_GET_DESCRIPTION: {
+		case caerConfigAction::GET_DESCRIPTION: {
 			if (!checkNodeExists(configStore, data.getNode(), client)) {
 				break;
 			}
@@ -375,14 +375,14 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			char *description = sshsNodeGetAttributeDescription(wantedNode, data.getKey().c_str(), type);
 
-			caerConfigSendResponse(client, caerConfigAction::CAER_CONFIG_GET_DESCRIPTION, SSHS_STRING, description);
+			caerConfigSendResponse(client, caerConfigAction::GET_DESCRIPTION, SSHS_STRING, description);
 
 			free(description);
 
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_ADD_MODULE: {
+		case caerConfigAction::ADD_MODULE: {
 			if (data.getNode().length() == 0) {
 				// Disallow empty strings.
 				caerConfigSendError(client, "Name cannot be empty.");
@@ -497,12 +497,12 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			caerModuleConfigInit(newModuleNode);
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, caerConfigAction::CAER_CONFIG_ADD_MODULE, true);
+			caerConfigSendBoolResponse(client, caerConfigAction::ADD_MODULE, true);
 
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_REMOVE_MODULE: {
+		case caerConfigAction::REMOVE_MODULE: {
 			if (data.getNode().length() == 0) {
 				// Disallow empty strings.
 				caerConfigSendError(client, "Name cannot be empty.");
@@ -535,30 +535,30 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			sshsNodeRemoveNode(sshsGetNode(configStore, "/" + moduleName + "/"));
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, caerConfigAction::CAER_CONFIG_REMOVE_MODULE, true);
+			caerConfigSendBoolResponse(client, caerConfigAction::REMOVE_MODULE, true);
 
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_ADD_PUSH_CLIENT: {
+		case caerConfigAction::ADD_PUSH_CLIENT: {
 			client->addPushClient();
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, caerConfigAction::CAER_CONFIG_ADD_PUSH_CLIENT, true);
+			caerConfigSendBoolResponse(client, caerConfigAction::ADD_PUSH_CLIENT, true);
 
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_REMOVE_PUSH_CLIENT: {
+		case caerConfigAction::REMOVE_PUSH_CLIENT: {
 			client->removePushClient();
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, caerConfigAction::CAER_CONFIG_REMOVE_PUSH_CLIENT, true);
+			caerConfigSendBoolResponse(client, caerConfigAction::REMOVE_PUSH_CLIENT, true);
 
 			break;
 		}
 
-		case caerConfigAction::CAER_CONFIG_DUMP_TREE: {
+		case caerConfigAction::DUMP_TREE: {
 			break;
 		}
 
