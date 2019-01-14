@@ -46,7 +46,7 @@ void ConfigServerConnection::removePushClient() {
 	parent->removePushClient(this);
 }
 
-void ConfigServerConnection::writePushMessage(std::shared_ptr<const ConfigActionData> message) {
+void ConfigServerConnection::writePushMessage(std::shared_ptr<const caerConfigActionData> message) {
 	auto self(shared_from_this());
 
 	socket.write(asio::buffer(message->getBuffer(), message->size()),
@@ -57,7 +57,7 @@ void ConfigServerConnection::writePushMessage(std::shared_ptr<const ConfigAction
 		});
 }
 
-ConfigActionData &ConfigServerConnection::getData() {
+caerConfigActionData &ConfigServerConnection::getData() {
 	return (data);
 }
 

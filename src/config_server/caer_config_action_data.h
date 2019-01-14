@@ -1,12 +1,12 @@
-#ifndef SRC_CONFIG_SERVER_CONFIG_ACTION_DATA_H_
-#define SRC_CONFIG_SERVER_CONFIG_ACTION_DATA_H_
+#ifndef SRC_CONFIG_SERVER_CAER_CONFIG_ACTION_DATA_H_
+#define SRC_CONFIG_SERVER_CAER_CONFIG_ACTION_DATA_H_
 
 #include "caer-sdk/utils.h"
 
-enum class caer_config_actions {
-	CAER_CONFIG_NODE_EXISTS        = 0,
-	CAER_CONFIG_ATTR_EXISTS        = 1,
-	CAER_CONFIG_GET                = 2,
+enum class caerConfigAction {
+	NODE_EXISTS        = 0,
+	ATTR_EXISTS        = 1,
+	GET                = 2,
 	CAER_CONFIG_PUT                = 3,
 	CAER_CONFIG_ERROR              = 4,
 	CAER_CONFIG_GET_CHILDREN       = 5,
@@ -21,6 +21,7 @@ enum class caer_config_actions {
 	CAER_CONFIG_REMOVE_PUSH_CLIENT = 14,
 	CAER_CONFIG_PUSH_MESSAGE_NODE  = 15,
 	CAER_CONFIG_PUSH_MESSAGE_ATTR  = 16,
+	CAER_CONFIG_DUMP_TREE          = 17,
 };
 
 // Control message format: 1 byte ACTION, 1 byte TYPE, 2 bytes EXTRA_LEN,
@@ -34,21 +35,21 @@ enum class caer_config_actions {
 #define CAER_CONFIG_SERVER_BUFFER_SIZE 4096
 #define CAER_CONFIG_SERVER_HEADER_SIZE 10
 
-class ConfigActionData {
+class caerConfigActionData {
 private:
 	uint8_t buffer[CAER_CONFIG_SERVER_BUFFER_SIZE];
 
 public:
-	ConfigActionData() {
+	caerConfigActionData() {
 		reset();
 	}
 
-	void setAction(caer_config_actions action) {
+	void setAction(caerConfigAction action) {
 		buffer[0] = static_cast<uint8_t>(action);
 	}
 
-	caer_config_actions getAction() const {
-		return (static_cast<caer_config_actions>(buffer[0]));
+	caerConfigAction getAction() const {
+		return (static_cast<caerConfigAction>(buffer[0]));
 	}
 
 	void setType(sshs_node_attr_value_type type) {
@@ -207,4 +208,4 @@ public:
 	}
 };
 
-#endif /* SRC_CONFIG_SERVER_CONFIG_ACTION_DATA_H_ */
+#endif /* SRC_CONFIG_SERVER_CAER_CONFIG_ACTION_DATA_H_ */

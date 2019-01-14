@@ -93,7 +93,7 @@ bool ConfigServer::pushClientsPresent() {
 	return (!ioService.stopped() && (numPushClients > 0));
 }
 
-void ConfigServer::pushMessageToClients(std::shared_ptr<const ConfigActionData> message) {
+void ConfigServer::pushMessageToClients(std::shared_ptr<const caerConfigActionData> message) {
 	if (!ioService.stopped()) {
 		ioService.post([this, message]() {
 			for (auto client : pushClients) {
@@ -320,9 +320,9 @@ static void caerConfigServerGlobalNodeChangeListener(
 	UNUSED_ARGUMENT(userData);
 
 	if (globalConfigData.server.pushClientsPresent()) {
-		auto msg = std::make_shared<ConfigActionData>();
+		auto msg = std::make_shared<caerConfigActionData>();
 
-		msg->setAction(caer_config_actions::CAER_CONFIG_PUSH_MESSAGE_NODE);
+		msg->setAction(caerConfigAction::CAER_CONFIG_PUSH_MESSAGE_NODE);
 
 		msg->setExtra(std::string(1, (char) event));
 
@@ -341,9 +341,9 @@ static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *u
 	UNUSED_ARGUMENT(userData);
 
 	if (globalConfigData.server.pushClientsPresent()) {
-		auto msg = std::make_shared<ConfigActionData>();
+		auto msg = std::make_shared<caerConfigActionData>();
 
-		msg->setAction(caer_config_actions::CAER_CONFIG_PUSH_MESSAGE_ATTR);
+		msg->setAction(caerConfigAction::CAER_CONFIG_PUSH_MESSAGE_ATTR);
 		msg->setType(changeType);
 
 		if (event == SSHS_ATTRIBUTE_ADDED) {

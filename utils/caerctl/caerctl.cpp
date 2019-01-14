@@ -1,7 +1,6 @@
 #include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/utils.h"
 
-#include "src/config_server/config_action_data.h"
 #include "utils/ext/linenoise-ng/linenoise.h"
 
 #include <boost/algorithm/string/join.hpp>
@@ -14,6 +13,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "../../src/config_server/caer_config_action_data.h"
 
 namespace asio    = boost::asio;
 namespace asioSSL = boost::asio::ssl;
@@ -28,13 +28,13 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 
 static void actionCompletion(
 	const std::string &buf, linenoiseCompletions *autoComplete, const std::string &partialActionString);
-static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caer_config_actions action,
+static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caerConfigAction action,
 	const std::string &partialNodeString);
-static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caer_config_actions action,
+static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caerConfigAction action,
 	const std::string &nodeString, const std::string &partialKeyString);
-static void typeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caer_config_actions action,
+static void typeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caerConfigAction action,
 	const std::string &nodeString, const std::string &keyString, const std::string &partialTypeString);
-static void valueCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caer_config_actions action,
+static void valueCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caerConfigAction action,
 	const std::string &nodeString, const std::string &keyString, const std::string &typeString,
 	const std::string &partialValueString);
 static void addCompletionSuffix(linenoiseCompletions *lc, const char *buf, size_t completionPoint, const char *suffix,
@@ -42,19 +42,19 @@ static void addCompletionSuffix(linenoiseCompletions *lc, const char *buf, size_
 
 static const struct {
 	const std::string name;
-	const caer_config_actions code;
+	const caerConfigAction code;
 } actions[] = {
-	{"node_exists", caer_config_actions::CAER_CONFIG_NODE_EXISTS},
-	{"attr_exists", caer_config_actions::CAER_CONFIG_ATTR_EXISTS},
-	{"get", caer_config_actions::CAER_CONFIG_GET},
-	{"put", caer_config_actions::CAER_CONFIG_PUT},
-	{"help", caer_config_actions::CAER_CONFIG_GET_DESCRIPTION},
-	{"add_module", caer_config_actions::CAER_CONFIG_ADD_MODULE},
-	{"remove_module", caer_config_actions::CAER_CONFIG_REMOVE_MODULE},
+	{"node_exists", caerConfigAction::NODE_EXISTS},
+	{"attr_exists", caerConfigAction::ATTR_EXISTS},
+	{"get", caerConfigAction::GET},
+	{"put", caerConfigAction::CAER_CONFIG_PUT},
+	{"help", caerConfigAction::CAER_CONFIG_GET_DESCRIPTION},
+	{"add_module", caerConfigAction::CAER_CONFIG_ADD_MODULE},
+	{"remove_module", caerConfigAction::CAER_CONFIG_REMOVE_MODULE},
 };
 static const size_t actionsLength = sizeof(actions) / sizeof(actions[0]);
 
-static ConfigActionData dataBuffer;
+static caerConfigActionData dataBuffer;
 
 static asio::io_service ioService;
 static asioSSL::context sslContext(asioSSL::context::tlsv12_client);
@@ -367,7 +367,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	}
 
 	// Let's get the action code first thing.
-	caer_config_actions action = caer_config_actions::CAER_CONFIG_ERROR;
+	caerConfigAction action = caerConfigAction::CAER_CONFIG_ERROR;
 
 	for (size_t i = 0; i < actionsLength; i++) {
 		if (actions[i].name == commandParts[CMD_PART_ACTION]) {
@@ -381,7 +381,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 
 	// Now that we know what we want to do, let's decode the command line.
 	switch (action) {
-		case caer_config_actions::CAER_CONFIG_NODE_EXISTS: {
+		case caerConfigAction::NODE_EXISTS: {
 			// Check parameters needed for operation.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing node parameter." << std::endl;
@@ -397,9 +397,9 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 			break;
 		}
 
-		case caer_config_actions::CAER_CONFIG_ATTR_EXISTS:
-		case caer_config_actions::CAER_CONFIG_GET:
-		case caer_config_actions::CAER_CONFIG_GET_DESCRIPTION: {
+		case caerConfigAction::ATTR_EXISTS:
+		case caerConfigAction::GET:
+		case caerConfigAction::CAER_CONFIG_GET_DESCRIPTION: {
 			// Check parameters needed for operation.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing node parameter." << std::endl;
@@ -431,7 +431,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 			break;
 		}
 
-		case caer_config_actions::CAER_CONFIG_PUT: {
+		case caerConfigAction::CAER_CONFIG_PUT: {
 			// Check parameters needed for operation.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing node parameter." << std::endl;
@@ -468,7 +468,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 			break;
 		}
 
-		case caer_config_actions::CAER_CONFIG_ADD_MODULE: {
+		case caerConfigAction::CAER_CONFIG_ADD_MODULE: {
 			// Check parameters needed for operation. Reuse node parameters.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing module name." << std::endl;
@@ -489,7 +489,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 			break;
 		}
 
-		case caer_config_actions::CAER_CONFIG_REMOVE_MODULE: {
+		case caerConfigAction::CAER_CONFIG_REMOVE_MODULE: {
 			// Check parameters needed for operation. Reuse node parameters.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing module name." << std::endl;
@@ -548,7 +548,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	std::string actionString;
 
 	// Detect error response.
-	if (dataBuffer.getAction() == caer_config_actions::CAER_CONFIG_ERROR) {
+	if (dataBuffer.getAction() == caerConfigAction::CAER_CONFIG_ERROR) {
 		actionString = "error";
 	}
 	else {
@@ -608,7 +608,7 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 	}
 
 	// Let's get the action code first thing.
-	caer_config_actions action = caer_config_actions::CAER_CONFIG_ERROR;
+	caerConfigAction action = caerConfigAction::CAER_CONFIG_ERROR;
 
 	for (size_t i = 0; i < actionsLength; i++) {
 		if (actions[i].name == commandParts[CMD_PART_ACTION]) {
@@ -617,16 +617,16 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 	}
 
 	switch (action) {
-		case caer_config_actions::CAER_CONFIG_NODE_EXISTS:
+		case caerConfigAction::NODE_EXISTS:
 			if (commandDepth == 1) {
 				nodeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE]);
 			}
 
 			break;
 
-		case caer_config_actions::CAER_CONFIG_ATTR_EXISTS:
-		case caer_config_actions::CAER_CONFIG_GET:
-		case caer_config_actions::CAER_CONFIG_GET_DESCRIPTION:
+		case caerConfigAction::ATTR_EXISTS:
+		case caerConfigAction::GET:
+		case caerConfigAction::CAER_CONFIG_GET_DESCRIPTION:
 			if (commandDepth == 1) {
 				nodeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE]);
 			}
@@ -641,7 +641,7 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 
 			break;
 
-		case caer_config_actions::CAER_CONFIG_PUT:
+		case caerConfigAction::CAER_CONFIG_PUT:
 			if (commandDepth == 1) {
 				nodeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE]);
 			}
@@ -682,7 +682,7 @@ static void actionCompletion(
 	}
 }
 
-static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caer_config_actions action,
+static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caerConfigAction action,
 	const std::string &partialNodeString) {
 	UNUSED_ARGUMENT(action);
 
@@ -704,7 +704,7 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 
 	// Send request for all children names.
 	dataBuffer.reset();
-	dataBuffer.setAction(caer_config_actions::CAER_CONFIG_GET_CHILDREN);
+	dataBuffer.setAction(caerConfigAction::CAER_CONFIG_GET_CHILDREN);
 	dataBuffer.setNode(partialNodeString.substr(0, lastSlash));
 
 	try {
@@ -734,7 +734,7 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		return;
 	}
 
-	if (dataBuffer.getAction() == caer_config_actions::CAER_CONFIG_ERROR || dataBuffer.getType() != SSHS_STRING) {
+	if (dataBuffer.getAction() == caerConfigAction::CAER_CONFIG_ERROR || dataBuffer.getType() != SSHS_STRING) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -753,13 +753,13 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 	}
 }
 
-static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caer_config_actions action,
+static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caerConfigAction action,
 	const std::string &nodeString, const std::string &partialKeyString) {
 	UNUSED_ARGUMENT(action);
 
 	// Send request for all attribute names for this node.
 	dataBuffer.reset();
-	dataBuffer.setAction(caer_config_actions::CAER_CONFIG_GET_ATTRIBUTES);
+	dataBuffer.setAction(caerConfigAction::CAER_CONFIG_GET_ATTRIBUTES);
 	dataBuffer.setNode(nodeString);
 
 	try {
@@ -789,7 +789,7 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 		return;
 	}
 
-	if (dataBuffer.getAction() == caer_config_actions::CAER_CONFIG_ERROR || dataBuffer.getType() != SSHS_STRING) {
+	if (dataBuffer.getAction() == caerConfigAction::CAER_CONFIG_ERROR || dataBuffer.getType() != SSHS_STRING) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -806,13 +806,13 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 	}
 }
 
-static void typeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caer_config_actions action,
+static void typeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caerConfigAction action,
 	const std::string &nodeString, const std::string &keyString, const std::string &partialTypeString) {
 	UNUSED_ARGUMENT(action);
 
 	// Send request for the type name for this key on this node.
 	dataBuffer.reset();
-	dataBuffer.setAction(caer_config_actions::CAER_CONFIG_GET_TYPE);
+	dataBuffer.setAction(caerConfigAction::CAER_CONFIG_GET_TYPE);
 	dataBuffer.setNode(nodeString);
 	dataBuffer.setKey(keyString);
 
@@ -843,7 +843,7 @@ static void typeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		return;
 	}
 
-	if (dataBuffer.getAction() == caer_config_actions::CAER_CONFIG_ERROR || dataBuffer.getType() != SSHS_STRING) {
+	if (dataBuffer.getAction() == caerConfigAction::CAER_CONFIG_ERROR || dataBuffer.getType() != SSHS_STRING) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -855,7 +855,7 @@ static void typeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 	}
 }
 
-static void valueCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caer_config_actions action,
+static void valueCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caerConfigAction action,
 	const std::string &nodeString, const std::string &keyString, const std::string &typeString,
 	const std::string &partialValueString) {
 	UNUSED_ARGUMENT(action);
@@ -886,7 +886,7 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 
 	// Send request for the current value, so we can auto-complete with it as default.
 	dataBuffer.reset();
-	dataBuffer.setAction(caer_config_actions::CAER_CONFIG_GET);
+	dataBuffer.setAction(caerConfigAction::GET);
 	dataBuffer.setType(type);
 	dataBuffer.setNode(nodeString);
 	dataBuffer.setKey(keyString);
@@ -918,7 +918,7 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 		return;
 	}
 
-	if (dataBuffer.getAction() == caer_config_actions::CAER_CONFIG_ERROR) {
+	if (dataBuffer.getAction() == caerConfigAction::CAER_CONFIG_ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}

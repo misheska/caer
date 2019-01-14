@@ -2,9 +2,8 @@
 #define SRC_CONFIG_SERVER_CONFIG_SERVER_CONNECTION_H_
 
 #include "asio.h"
-#include "config_action_data.h"
-
 #include <memory>
+#include "caer_config_action_data.h"
 
 class ConfigServer;
 
@@ -12,7 +11,7 @@ class ConfigServerConnection : public std::enable_shared_from_this<ConfigServerC
 private:
 	ConfigServer *parent;
 	TCPTLSWriteOrderedSocket socket;
-	ConfigActionData data;
+	caerConfigActionData data;
 
 public:
 	ConfigServerConnection(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext, ConfigServer *server);
@@ -24,9 +23,9 @@ public:
 	void addPushClient();
 	void removePushClient();
 
-	ConfigActionData &getData();
+	caerConfigActionData &getData();
 	void writeResponse();
-	void writePushMessage(std::shared_ptr<const ConfigActionData> message);
+	void writePushMessage(std::shared_ptr<const caerConfigActionData> message);
 
 private:
 	void readHeader();

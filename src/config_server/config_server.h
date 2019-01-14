@@ -37,7 +37,7 @@ public:
 	void addPushClient(ConfigServerConnection *pushClient);
 	void removePushClient(ConfigServerConnection *pushClient);
 	bool pushClientsPresent();
-	void pushMessageToClients(std::shared_ptr<const ConfigActionData> message);
+	void pushMessageToClients(std::shared_ptr<const caerConfigActionData> message);
 
 private:
 	void serviceConfigure();

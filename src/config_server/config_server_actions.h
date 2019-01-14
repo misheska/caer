@@ -1,9 +1,8 @@
 #ifndef SRC_CONFIG_SERVER_CONFIG_SERVER_ACTIONS_H_
 #define SRC_CONFIG_SERVER_CONFIG_SERVER_ACTIONS_H_
 
-#include "config_action_data.h"
-
 #include <memory>
+#include "caer_config_action_data.h"
 
 class ConfigServerConnection;
 
