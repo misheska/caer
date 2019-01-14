@@ -349,8 +349,48 @@ static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *u
 	if (globalConfigData.server.pushClientsPresent()) {
 		auto msg = std::make_shared<ConfigActionData>();
 
-		msg->setAction(caer_config_actions::CAER_CONFIG_PUSH_MESSAGE);
+		msg->setAction(caer_config_actions::CAER_CONFIG_PUSH_MESSAGE_ATTR);
 		msg->setType(changeType);
+
+		if (event == SSHS_ATTRIBUTE_ADDED) {
+			// Need to get extra info when adding: flags, range, description.
+			char *flagsString
+				= sshsHelperFlagsToStringConverter(sshsNodeGetAttributeFlags(node, changeKey, changeType));
+
+			std::string flagsStr(flagsString);
+
+			free(flagsString);
+
+			char *rangesString = sshsHelperRangesToStringConverter(
+				changeType, sshsNodeGetAttributeRanges(node, changeKey, changeType));
+
+			std::string rangesStr(rangesString);
+
+			free(rangesString);
+
+			char *descriptionString = sshsNodeGetAttributeDescription(node, changeKey, changeType);
+
+			std::string descriptionStr(descriptionString);
+
+			free(descriptionString);
+
+			std::string extraStr("ADDED");
+			extraStr.push_back('\0');
+			extraStr += flagsStr;
+			extraStr.push_back('\0');
+			extraStr += rangesStr;
+			extraStr.push_back('\0');
+			extraStr += descriptionString;
+
+			msg->setExtra(extraStr);
+		}
+		else if (event == SSHS_ATTRIBUTE_REMOVED) {
+			msg->setExtra("REMOVED");
+		}
+		else {
+			msg->setExtra("MODIFIED");
+		}
+
 		msg->setNode(sshsNodeGetPath(node));
 		msg->setKey(changeKey);
 
