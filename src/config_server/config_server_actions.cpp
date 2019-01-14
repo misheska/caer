@@ -325,43 +325,13 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			struct sshs_node_attr_ranges ranges = sshsNodeGetAttributeRanges(wantedNode, data.getKey().c_str(), type);
 
-			// We need to return a string with the two ranges,
-			// separated by a | character.
-			char buf[256];
-			size_t bufLen = 0;
+			char *rangesString = sshsHelperRangesToStringConverter(type, ranges);
 
-			switch (type) {
-				case SSHS_UNKNOWN:
-				case SSHS_BOOL:
-					bufLen = 3;
-					memcpy(buf, "0|0", bufLen);
-					break;
+			std::string rangesStr(rangesString);
 
-				case SSHS_INT:
-					bufLen = (size_t) snprintf(
-						buf, 256, "%" PRIi32 "|%" PRIi32, ranges.min.iintRange, ranges.max.iintRange);
-					break;
+			free(rangesString);
 
-				case SSHS_LONG:
-					bufLen = (size_t) snprintf(
-						buf, 256, "%" PRIi64 "|%" PRIi64, ranges.min.ilongRange, ranges.max.ilongRange);
-					break;
-
-				case SSHS_FLOAT:
-					bufLen = (size_t) snprintf(
-						buf, 256, "%g|%g", (double) ranges.min.ffloatRange, (double) ranges.max.ffloatRange);
-					break;
-
-				case SSHS_DOUBLE:
-					bufLen = (size_t) snprintf(buf, 256, "%g|%g", ranges.min.ddoubleRange, ranges.max.ddoubleRange);
-					break;
-
-				case SSHS_STRING:
-					bufLen = (size_t) snprintf(buf, 256, "%zu|%zu", ranges.min.stringRange, ranges.max.stringRange);
-					break;
-			}
-
-			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_RANGES, type, std::string(buf, bufLen));
+			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_RANGES, type, rangesStr);
 
 			break;
 		}
@@ -380,21 +350,11 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			int flags = sshsNodeGetAttributeFlags(wantedNode, data.getKey().c_str(), type);
 
-			std::string flagsStr;
+			char *flagsString = sshsHelperFlagsToStringConverter(flags);
 
-			if (flags & SSHS_FLAGS_READ_ONLY) {
-				flagsStr = "READ_ONLY";
-			}
-			else if (flags & SSHS_FLAGS_NOTIFY_ONLY) {
-				flagsStr = "NOTIFY_ONLY";
-			}
-			else {
-				flagsStr = "NORMAL";
-			}
+			std::string flagsStr(flagsString);
 
-			if (flags & SSHS_FLAGS_NO_EXPORT) {
-				flagsStr += ",NO_EXPORT";
-			}
+			free(flagsString);
 
 			caerConfigSendResponse(client, caer_config_actions::CAER_CONFIG_GET_FLAGS, SSHS_STRING, flagsStr);
 
