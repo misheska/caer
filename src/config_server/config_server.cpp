@@ -324,17 +324,11 @@ static void caerConfigServerGlobalNodeChangeListener(
 
 		msg->setAction(caer_config_actions::CAER_CONFIG_PUSH_MESSAGE_NODE);
 
-		if (event == SSHS_CHILD_NODE_ADDED) {
-			msg->setExtra("ADDED");
-		}
-		else {
-			msg->setExtra("REMOVED");
-		}
+		msg->setExtra(std::string(1, (char) event));
 
 		std::string nodePath(sshsNodeGetPath(node));
 		nodePath += changeNode;
 		nodePath.push_back('/');
-
 		msg->setNode(nodePath);
 
 		globalConfigData.server.pushMessageToClients(msg);
@@ -374,7 +368,7 @@ static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *u
 
 			free(descriptionString);
 
-			std::string extraStr("ADDED");
+			std::string extraStr(1, (char) event);
 			extraStr.push_back('\0');
 			extraStr += flagsStr;
 			extraStr.push_back('\0');
@@ -384,11 +378,8 @@ static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *u
 
 			msg->setExtra(extraStr);
 		}
-		else if (event == SSHS_ATTRIBUTE_REMOVED) {
-			msg->setExtra("REMOVED");
-		}
 		else {
-			msg->setExtra("MODIFIED");
+			msg->setExtra(std::string(1, (char) event));
 		}
 
 		msg->setNode(sshsNodeGetPath(node));
