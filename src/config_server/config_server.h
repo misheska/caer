@@ -4,6 +4,7 @@
 #include "asio.h"
 #include "config_server_connection.h"
 
+#include <atomic>
 #include <memory>
 #include <thread>
 #include <vector>

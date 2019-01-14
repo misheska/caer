@@ -1,5 +1,7 @@
 #include "config_server_actions.h"
 
+#include "caer-sdk/cross/portable_io.h"
+
 #include "../module.h"
 #include "config_server_connection.h"
 #include "config_server_main.h"
@@ -75,7 +77,7 @@ static inline void caerConfigSendBoolResponse(
 void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> client) {
 	caerConfigActionData &data = client->getData();
 
-	caerConfigAction action     = data.getAction();
+	caerConfigAction action        = data.getAction();
 	sshs_node_attr_value_type type = data.getType();
 
 	logger::log(
@@ -229,8 +231,8 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			free(childNames);
 
-			caerConfigSendResponse(client, caerConfigAction::GET_CHILDREN, SSHS_STRING,
-				std::string(namesBuffer, namesLength - 1));
+			caerConfigSendResponse(
+				client, caerConfigAction::GET_CHILDREN, SSHS_STRING, std::string(namesBuffer, namesLength - 1));
 
 			break;
 		}
@@ -277,8 +279,8 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			free(attrKeys);
 
-			caerConfigSendResponse(client, caerConfigAction::GET_ATTRIBUTES, SSHS_STRING,
-				std::string(keysBuffer, keysLength - 1));
+			caerConfigSendResponse(
+				client, caerConfigAction::GET_ATTRIBUTES, SSHS_STRING, std::string(keysBuffer, keysLength - 1));
 
 			break;
 		}
