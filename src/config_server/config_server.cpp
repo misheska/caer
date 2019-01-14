@@ -15,6 +15,8 @@ namespace logger = libcaer::log;
 
 static void caerConfigServerRestartListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
 	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+static void caerConfigServerGlobalNodeChangeListener(
+	sshsNode node, void *userData, enum sshs_node_node_events event, const char *changeNode);
 static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *userData,
 	enum sshs_node_attribute_events event, const char *changeKey, enum sshs_node_attr_value_type changeType,
 	union sshs_node_attr_value changeValue);
@@ -177,6 +179,7 @@ void ConfigServer::serviceStart() {
 
 	ioThreadState = IOThreadState::RUNNING;
 
+	sshsGlobalNodeListenerSet(sshsGetGlobal(), &caerConfigServerGlobalNodeChangeListener, nullptr);
 	sshsGlobalAttributeListenerSet(sshsGetGlobal(), &caerConfigServerGlobalAttributeChangeListener, nullptr);
 
 	// Run IO service.
@@ -192,6 +195,7 @@ void ConfigServer::serviceStop() {
 	ioThreadState = IOThreadState::STOPPING;
 
 	sshsGlobalAttributeListenerSet(sshsGetGlobal(), nullptr, nullptr);
+	sshsGlobalNodeListenerSet(sshsGetGlobal(), nullptr, nullptr);
 
 	// Stop accepting connections.
 	acceptor.close();
@@ -308,6 +312,32 @@ static void caerConfigServerRestartListener(sshsNode node, void *userData, enum 
 	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BOOL && caerStrEquals(changeKey, "restart")
 		&& changeValue.boolean) {
 		globalConfigData.server.serviceRestart();
+	}
+}
+
+static void caerConfigServerGlobalNodeChangeListener(
+	sshsNode node, void *userData, enum sshs_node_node_events event, const char *changeNode) {
+	UNUSED_ARGUMENT(userData);
+
+	if (globalConfigData.server.pushClientsPresent()) {
+		auto msg = std::make_shared<ConfigActionData>();
+
+		msg->setAction(caer_config_actions::CAER_CONFIG_PUSH_MESSAGE_NODE);
+
+		if (event == SSHS_CHILD_NODE_ADDED) {
+			msg->setExtra("ADDED");
+		}
+		else {
+			msg->setExtra("REMOVED");
+		}
+
+		std::string nodePath(sshsNodeGetPath(node));
+		nodePath += changeNode;
+		nodePath.push_back('/');
+
+		msg->setNode(nodePath);
+
+		globalConfigData.server.pushMessageToClients(msg);
 	}
 }
 
