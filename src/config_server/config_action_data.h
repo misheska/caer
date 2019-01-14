@@ -19,7 +19,8 @@ enum class caer_config_actions {
 	CAER_CONFIG_REMOVE_MODULE      = 12,
 	CAER_CONFIG_ADD_PUSH_CLIENT    = 13,
 	CAER_CONFIG_REMOVE_PUSH_CLIENT = 14,
-	CAER_CONFIG_PUSH_MESSAGE       = 15,
+	CAER_CONFIG_PUSH_MESSAGE_NODE  = 15,
+	CAER_CONFIG_PUSH_MESSAGE_ATTR  = 16,
 };
 
 // Control message format: 1 byte ACTION, 1 byte TYPE, 2 bytes EXTRA_LEN,
