@@ -178,6 +178,11 @@ enum sshs_node_attr_value_type sshsHelperStringToTypeConverter(const char *typeS
 char *sshsHelperValueToStringConverter(enum sshs_node_attr_value_type type, union sshs_node_attr_value value);
 union sshs_node_attr_value sshsHelperStringToValueConverter(
 	enum sshs_node_attr_value_type type, const char *valueString);
+char *sshsHelperFlagsToStringConverter(int flags);
+int sshsHelperStringToFlagsConverter(const char *flagsString);
+char *sshsHelperRangesToStringConverter(enum sshs_node_attr_value_type type, struct sshs_node_attr_ranges ranges);
+struct sshs_node_attr_ranges sshsHelperStringToRangesConverter(
+	enum sshs_node_attr_value_type type, const char *rangesString);
 
 void sshsNodeCreateAttributeListOptions(
 	sshsNode node, const char *key, const char *listOptions, bool allowMultipleSelections);

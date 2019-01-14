@@ -1,5 +1,7 @@
 #include "sshs_internal.hpp"
 
+#include <boost/tokenizer.hpp>
+
 static const std::string typeStrings[] = {"bool", "byte", "short", "int", "long", "float", "double", "string"};
 
 const std::string &sshsHelperCppTypeToStringConverter(enum sshs_node_attr_value_type type) {
@@ -153,4 +155,122 @@ union sshs_node_attr_value sshsHelperStringToValueConverter(
 	}
 
 	return (sshsHelperCppStringToValueConverter(type, valueString).toCUnion());
+}
+
+char *sshsHelperFlagsToStringConverter(int flags) {
+	std::string flagsStr;
+
+	if (flags & SSHS_FLAGS_READ_ONLY) {
+		flagsStr = "READ_ONLY";
+	}
+	else if (flags & SSHS_FLAGS_NOTIFY_ONLY) {
+		flagsStr = "NOTIFY_ONLY";
+	}
+	else {
+		flagsStr = "NORMAL";
+	}
+
+	if (flags & SSHS_FLAGS_NO_EXPORT) {
+		flagsStr += "|NO_EXPORT";
+	}
+
+	char *resultString = strdup(flagsStr.c_str());
+	sshsMemoryCheck(resultString, __func__);
+
+	return (resultString);
+}
+
+int sshsHelperStringToFlagsConverter(const char *flagsString) {
+	int flags = SSHS_FLAGS_NORMAL;
+
+	std::string flagsStr(flagsString);
+	boost::tokenizer<boost::char_separator<char>> flagsTokens(flagsStr, boost::char_separator<char>("|"));
+
+	// Search (or create) viable node iteratively.
+	for (const auto &tok : flagsTokens) {
+		if (tok == "READ_ONLY") {
+			flags = SSHS_FLAGS_READ_ONLY;
+		}
+		else if (tok == "NOTIFY_ONLY") {
+			flags = SSHS_FLAGS_NOTIFY_ONLY;
+		}
+		else if (tok == "NO_EXPORT") {
+			flags |= SSHS_FLAGS_NO_EXPORT;
+		}
+	}
+
+	return (flags);
+}
+
+char *sshsHelperRangesToStringConverter(enum sshs_node_attr_value_type type, struct sshs_node_attr_ranges ranges) {
+	// We need to return a string with the two ranges,
+	// separated by a | character.
+	char buf[256];
+
+	switch (type) {
+		case SSHS_UNKNOWN:
+		case SSHS_BOOL:
+			snprintf(buf, 256, "0|0");
+			break;
+
+		case SSHS_INT:
+			snprintf(buf, 256, "%" PRIi32 "|%" PRIi32, ranges.min.iintRange, ranges.max.iintRange);
+			break;
+
+		case SSHS_LONG:
+			snprintf(buf, 256, "%" PRIi64 "|%" PRIi64, ranges.min.ilongRange, ranges.max.ilongRange);
+			break;
+
+		case SSHS_FLOAT:
+			snprintf(buf, 256, "%g|%g", (double) ranges.min.ffloatRange, (double) ranges.max.ffloatRange);
+			break;
+
+		case SSHS_DOUBLE:
+			snprintf(buf, 256, "%g|%g", ranges.min.ddoubleRange, ranges.max.ddoubleRange);
+			break;
+
+		case SSHS_STRING:
+			snprintf(buf, 256, "%zu|%zu", ranges.min.stringRange, ranges.max.stringRange);
+			break;
+	}
+
+	char *resultString = strdup(buf);
+	sshsMemoryCheck(resultString, __func__);
+
+	return (resultString);
+}
+
+struct sshs_node_attr_ranges sshsHelperStringToRangesConverter(
+	enum sshs_node_attr_value_type type, const char *rangesString) {
+	struct sshs_node_attr_ranges ranges;
+
+	switch (type) {
+		case SSHS_UNKNOWN:
+		case SSHS_BOOL:
+			ranges.min.ilongRange = 0;
+			ranges.max.ilongRange = 0;
+			break;
+
+		case SSHS_INT:
+			sscanf(rangesString, "%" SCNi32 "|%" SCNi32, &ranges.min.iintRange, &ranges.max.iintRange);
+			break;
+
+		case SSHS_LONG:
+			sscanf(rangesString, "%" SCNi64 "|%" SCNi64, &ranges.min.ilongRange, &ranges.max.ilongRange);
+			break;
+
+		case SSHS_FLOAT:
+			sscanf(rangesString, "%g|%g", &ranges.min.ffloatRange, &ranges.max.ffloatRange);
+			break;
+
+		case SSHS_DOUBLE:
+			sscanf(rangesString, "%lg|%lg", &ranges.min.ddoubleRange, &ranges.max.ddoubleRange);
+			break;
+
+		case SSHS_STRING:
+			sscanf(rangesString, "%zu|%zu", &ranges.min.stringRange, &ranges.max.stringRange);
+			break;
+	}
+
+	return (ranges);
 }
