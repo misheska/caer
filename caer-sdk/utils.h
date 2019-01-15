@@ -60,6 +60,25 @@ template<class T> static bool vectorDetectDuplicates(std::vector<T> &vec) {
 	return (false);
 }
 
+/**
+ * Type that maps boolean expression to type.
+ */
+template <bool C> using enable_if_t = typename std::enable_if<C>::type;
+
+/**
+ * Type that maps a valid list of types to a type,
+ * an invalid list of types to a type error.
+ * @tparam A list of types that all have to be valid types
+ */
+template <typename ...> struct void_t_impl
+{
+	typedef void type;
+};
+
+template <typename ... T>
+using void_t = typename void_t_impl<T...>::type;
+
+
 #endif
 
 #endif /* CAER_SDK_UTILS_H_ */
