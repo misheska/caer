@@ -341,6 +341,7 @@ public:
 	}
 };
 
+
 /**
  * The dv BaseModule. Every module shall inherit from this module.
  * The base Module provides the following:
@@ -401,10 +402,12 @@ public:
 		}
 	}
 
+
 	/**
 	 * Map that contains the runtime config values of the configs.
 	 */
 	RuntimeConfigMap config;
+
 
 	/**
 	 * Method that updates the configs in the map as soon as some config

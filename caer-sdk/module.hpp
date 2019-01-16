@@ -22,7 +22,7 @@
  */
 #define registerModuleClass(MODULE)                            \
 	caerModuleInfo caerModuleGetInfo() {                       \
-		return &(caer::ModuleStaticDefinitions<MODULE>::info); \
+		return &(caer::ModuleStatics<MODULE>::info); \
 	}
 
 namespace caer {
@@ -111,12 +111,12 @@ const caer_module_type moduleType
  * the functions of the given C++ module class to the stateless
  * functions and external state of the caer interface. Template parameter T must be
  * a valid caer module, e.g. it has to extend `caer::BaseModule` and provide
- * certain static functions. Upon (static) instantiation, the `ModuleStaticDefinitions`
+ * certain static functions. Upon (static) instantiation, the `ModuleStatics`
  * class performs static (compile time) validations to check if `T` is a valid
  * module.
  * @tparam T A valid caer Module class that extends `caer::BaseModule`
  */
-template<class T> class ModuleStaticDefinitions {
+template<class T> class ModuleStatics {
 	/* Static assertions. Checks the existence of all required static members. */
 	static_assert(std::is_base_of<BaseModule, T>::value, "Your module does not inherit from caer::BaseModule.");
 	static_assert(has_getName<T>::value, "Your module does not specify a `static const char* getName()` function."
@@ -136,6 +136,12 @@ template<class T> class ModuleStaticDefinitions {
 		"This property should list the modules output streams.");
 
 public:
+    /**
+     * Static pointer to the modules caer data. Gets initialized in the
+     * initialize function
+     */
+     static caerModuleData moduleData_;
+
 	/**
 	 * Wrapper for the `configInit` caer function. Performs a static call to the
 	 * `configInit<T>` function of `BaseModule`, which in turn gets the config from
@@ -147,6 +153,7 @@ public:
 		BaseModule::configInit<T>(node);
 	}
 
+
 	/**
 	 * Wrapper for the `init` caer function. Constructs the user defined `T` module
 	 * into the module state, calls the the config update function after construction
@@ -155,7 +162,9 @@ public:
 	 * @return true if construction succeeded, false if it failed.
 	 */
 	static bool init(caerModuleData moduleData) {
-		try {
+        // store the static pointer to the moduleData
+	    moduleData_ = moduleData;
+        try {
 			new (moduleData->moduleState) T();
 			config(moduleData);
 			sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
@@ -216,16 +225,16 @@ public:
 };
 
 /**
- * Static definition of the `ModuleStaticDefinitions::functions` struct. This struct
+ * Static definition of the `ModuleStatics::functions` struct. This struct
  * contains the addresses to all the wrapper functions instantiated to the template
  * module `T`. This struct is then passed to caer to allow caer to access the
  * functionalities inside the module.
  * @tparam T The user defined module. Must inherit from `caer::BaseModule`
  */
 template<class T>
-const caer_module_functions ModuleStaticDefinitions<T>::functions
-	= {&ModuleStaticDefinitions<T>::configInit, &ModuleStaticDefinitions<T>::init, &ModuleStaticDefinitions<T>::run,
-		&ModuleStaticDefinitions<T>::config, &ModuleStaticDefinitions<T>::exit, nullptr};
+const caer_module_functions ModuleStatics<T>::functions
+	= {&ModuleStatics<T>::configInit, &ModuleStatics<T>::init, &ModuleStatics<T>::run,
+		&ModuleStatics<T>::config, &ModuleStatics<T>::exit, nullptr};
 
 /**
  * Static definition of the info struct, which gets passed to caer.
@@ -235,7 +244,7 @@ const caer_module_functions ModuleStaticDefinitions<T>::functions
  * @tparam T The user defined module. Must inherit from `caer::BaseModule`
  */
 template<class T>
-const caer_module_info ModuleStaticDefinitions<T>::info = {1, T::getName(), T::getDescription(), moduleType<T>,
+const caer_module_info ModuleStatics<T>::info = {1, T::getName(), T::getDescription(), moduleType<T>,
 	sizeof(T), &functions, numberOfInputStreams<T>, T::inputStreams, numberOfOutputStreams<T>, T::outputStreams};
 
 } // namespace caer
