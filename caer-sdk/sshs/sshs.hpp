@@ -46,8 +46,8 @@ template<> struct sshsAttributeTypeGenerator<sshsAttributeType::DOUBLE> {
 };
 
 template<> struct sshsAttributeTypeGenerator<sshsAttributeType::STRING> {
-	using type                                                 = char *;
-	using const_type                                           = const char *;
+	using type                                                 = std::string;
+	using const_type                                           = const std::string;
 	static const enum sshs_node_attr_value_type underlyingType = SSHS_STRING;
 };
 
@@ -73,19 +73,19 @@ public:
 				break;
 
 			case sshsAttributeType::INT:
-				value = v.iint;
+				value = static_cast<int32_t>(v.iint);
 				break;
 
 			case sshsAttributeType::LONG:
-				value = v.ilong;
+				value = static_cast<int64_t>(v.ilong);
 				break;
 
 			case sshsAttributeType::FLOAT:
-				value = v.ffloat;
+				value = static_cast<float>(v.ffloat);
 				break;
 
 			case sshsAttributeType::DOUBLE:
-				value = v.ddouble;
+				value = static_cast<double>(v.ddouble);
 				break;
 
 			default:
@@ -103,19 +103,19 @@ public:
 				break;
 
 			case sshsAttributeType::INT:
-				cUnion.iint = value;
+				cUnion.iint = static_cast<int32_t>(value);
 				break;
 
 			case sshsAttributeType::LONG:
-				cUnion.ilong = value;
+				cUnion.ilong = static_cast<int64_t>(value);
 				break;
 
 			case sshsAttributeType::FLOAT:
-				cUnion.ffloat = value;
+				cUnion.ffloat = static_cast<float>(value);
 				break;
 
 			case sshsAttributeType::DOUBLE:
-				cUnion.ddouble = value;
+				cUnion.ddouble = static_cast<double>(value);
 				break;
 
 			default:
@@ -129,23 +129,21 @@ public:
 
 template<> struct sshsAttributeValue<sshsAttributeType::STRING> {
 public:
-	typename sshsAttributeTypeGenerator<sshsAttributeType::STRING>::const_type value;
+	typename sshsAttributeTypeGenerator<sshsAttributeType::STRING>::type value;
 
-	sshsAttributeValue(typename sshsAttributeTypeGenerator<sshsAttributeType::STRING>::const_type v) : value(v) {
+	sshsAttributeValue(typename sshsAttributeTypeGenerator<sshsAttributeType::STRING>::const_type &v) : value(v) {
 	}
 
-	// Specialize for STRING so we can also accept std::string.
-	sshsAttributeValue(const std::string &v) : value(v.c_str()) {
+	sshsAttributeValue(const char *v) : value(v) {
 	}
 
-	sshsAttributeValue(const sshs_node_attr_value v) {
-		value = v.string;
+	sshsAttributeValue(const sshs_node_attr_value v) : value(v.string) {
 	}
 
 	sshs_node_attr_value getCUnion() const {
 		sshs_node_attr_value cUnion;
 
-		cUnion.string = const_cast<char *>(value);
+		cUnion.string = const_cast<char *>(value.c_str());
 
 		return (cUnion);
 	}
@@ -179,28 +177,28 @@ public:
 				break;
 
 			case sshsAttributeType::INT:
-				cStruct.min.iintRange = min.range;
-				cStruct.max.iintRange = max.range;
+				cStruct.min.iintRange = static_cast<int32_t>(min.range);
+				cStruct.max.iintRange = static_cast<int32_t>(max.range);
 				break;
 
 			case sshsAttributeType::LONG:
-				cStruct.min.ilongRange = min.range;
-				cStruct.max.ilongRange = max.range;
+				cStruct.min.ilongRange = static_cast<int64_t>(min.range);
+				cStruct.max.ilongRange = static_cast<int64_t>(max.range);
 				break;
 
 			case sshsAttributeType::FLOAT:
-				cStruct.min.ffloatRange = min.range;
-				cStruct.max.ffloatRange = max.range;
+				cStruct.min.ffloatRange = static_cast<float>(min.range);
+				cStruct.max.ffloatRange = static_cast<float>(max.range);
 				break;
 
 			case sshsAttributeType::DOUBLE:
-				cStruct.min.ddoubleRange = min.range;
-				cStruct.max.ddoubleRange = max.range;
+				cStruct.min.ddoubleRange = static_cast<double>(min.range);
+				cStruct.max.ddoubleRange = static_cast<double>(max.range);
 				break;
 
 			case sshsAttributeType::STRING:
-				cStruct.min.stringRange = min.range;
-				cStruct.max.stringRange = max.range;
+				cStruct.min.stringRange = static_cast<size_t>(min.range);
+				cStruct.max.stringRange = static_cast<size_t>(max.range);
 				break;
 		}
 
@@ -332,14 +330,26 @@ public:
 	}
 
 	template<sshsAttributeType T>
-	void createAttribute(const std::string &key, const sshsAttributeValue<T> defaultValue,
-		const sshsAttributeRanges<T> ranges, const sshsAttributeFlags flags, const std::string &description) {
+	void createAttribute(const std::string &key, const sshsAttributeValue<T> &defaultValue,
+		const sshsAttributeRanges<T> &ranges, sshsAttributeFlags flags, const std::string &description) {
 		sshsNodeCreateAttribute(node, key.c_str(), sshsAttributeTypeGenerator<T>::underlyingType,
 			defaultValue.getCUnion(), ranges.getCStruct(), getCFlags(flags), description.c_str());
 	}
 
+	// Non-templated version for dynamic runtime types.
+	void createAttribute(const std::string &key, sshsAttributeType type, const sshs_node_attr_value defaultValue,
+		const sshs_node_attr_ranges &ranges, sshsAttributeFlags flags, const std::string &description) {
+		sshsNodeCreateAttribute(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type), defaultValue,
+			ranges, getCFlags(flags), description.c_str());
+	}
+
 	template<sshsAttributeType T> void removeAttribute(const std::string &key) {
 		sshsNodeRemoveAttribute(node, key.c_str(), sshsAttributeTypeGenerator<T>::underlyingType);
+	}
+
+	// Non-templated version for dynamic runtime types.
+	void removeAttribute(const std::string &key, sshsAttributeType type) {
+		sshsNodeRemoveAttribute(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type));
 	}
 
 	void removeAllAttributes() {
@@ -350,9 +360,19 @@ public:
 		return (sshsNodeAttributeExists(node, key.c_str(), sshsAttributeTypeGenerator<T>::underlyingType));
 	}
 
-	template<sshsAttributeType T> bool putAttribute(const std::string &key, const sshsAttributeValue<T> value) {
+	// Non-templated version for dynamic runtime types.
+	bool existsAttribute(const std::string &key, sshsAttributeType type) {
+		return (sshsNodeAttributeExists(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type)));
+	}
+
+	template<sshsAttributeType T> bool putAttribute(const std::string &key, const sshsAttributeValue<T> &value) {
 		return (
 			sshsNodePutAttribute(node, key.c_str(), sshsAttributeTypeGenerator<T>::underlyingType, value.getCUnion()));
+	}
+
+	// Non-templated version for dynamic runtime types.
+	bool putAttribute(const std::string &key, sshsAttributeType type, const sshs_node_attr_value value) {
+		return (sshsNodePutAttribute(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type), value));
 	}
 
 	template<sshsAttributeType T> sshsAttributeValue<T> getAttribute(const std::string &key) {
@@ -360,57 +380,162 @@ public:
 			sshsNodeGetAttribute(node, key.c_str(), sshsAttributeTypeGenerator<T>::underlyingType)));
 	}
 
+	// Non-templated version for dynamic runtime types.
+	sshs_node_attr_value getAttribute(const std::string &key, sshsAttributeType type) {
+		return (sshsNodeGetAttribute(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type)));
+	}
+
 	template<sshsAttributeType T>
-	bool updateReadOnlyAttribute(const std::string &key, const sshsAttributeValue<T> value) {
+	bool updateReadOnlyAttribute(const std::string &key, const sshsAttributeValue<T> &value) {
 		return (sshsNodeUpdateReadOnlyAttribute(
 			node, key.c_str(), sshsAttributeTypeGenerator<T>::underlyingType, value.getCUnion()));
+	}
+
+	// Non-templated version for dynamic runtime types.
+	bool updateReadOnlyAttribute(const std::string &key, sshsAttributeType type, const sshs_node_attr_value value) {
+		return (sshsNodeUpdateReadOnlyAttribute(
+			node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type), value));
+	}
+
+	template<sshsAttributeType T>
+	void create(const std::string &key, typename sshsAttributeTypeGenerator<T>::type defaultValue,
+		const sshsAttributeRanges<T> &ranges, sshsAttributeFlags flags, const std::string &description) {
+		const sshsAttributeValue<T> defVal(defaultValue);
+		sshsNodeCreateAttribute(node, key.c_str(), sshsAttributeTypeGenerator<T>::underlyingType, defVal.getCUnion(),
+			ranges.getCStruct(), getCFlags(flags), description.c_str());
+	}
+
+	template<sshsAttributeType T> bool put(const std::string &key, typename sshsAttributeTypeGenerator<T>::type value) {
+		const sshsAttributeValue<T> val(value);
+		return (
+			sshsNodePutAttribute(node, key.c_str(), sshsAttributeTypeGenerator<T>::underlyingType, val.getCUnion()));
+	}
+
+	template<sshsAttributeType T> typename sshsAttributeTypeGenerator<T>::type get(const std::string &key) {
+		return (sshsAttributeValue<T>(
+			sshsNodeGetAttribute(node, key.c_str(), sshsAttributeTypeGenerator<T>::underlyingType))
+					.value);
+	}
+
+	bool exportNodeToXML(int fd) {
+		return (sshsNodeExportNodeToXML(node, fd));
+	}
+
+	bool exportSubTreeToXML(int fd) {
+		return (sshsNodeExportSubTreeToXML(node, fd));
+	}
+
+	bool importNodeFromXML(int fd, bool strict = true) {
+		return (sshsNodeImportNodeFromXML(node, fd, strict));
+	}
+
+	bool importSubTreeFromXML(int fd, bool strict = true) {
+		return (sshsNodeImportSubTreeFromXML(node, fd, strict));
+	}
+
+	bool stringToAttributeConverter(const std::string &key, const std::string &type, const std::string &value) {
+		return (sshsNodeStringToAttributeConverter(node, key.c_str(), type.c_str(), value.c_str()));
+	}
+
+	std::vector<std::string> getChildNames() {
+		std::vector<std::string> childNames;
+
+		size_t numChildNames         = 0;
+		const char **childNamesArray = sshsNodeGetChildNames(node, &numChildNames);
+
+		if (numChildNames > 0) {
+			childNames.reserve(numChildNames);
+
+			for (size_t i = 0; i < numChildNames; i++) {
+				childNames.emplace_back(childNamesArray[i]);
+			}
+
+			free(childNamesArray);
+		}
+
+		return (childNames);
+	}
+
+	std::vector<std::string> getAttributeKeys() {
+		std::vector<std::string> attributeKeys;
+
+		size_t numAttributeKeys         = 0;
+		const char **attributeKeysArray = sshsNodeGetAttributeKeys(node, &numAttributeKeys);
+
+		if (numAttributeKeys > 0) {
+			attributeKeys.reserve(numAttributeKeys);
+
+			for (size_t i = 0; i < numAttributeKeys; i++) {
+				attributeKeys.emplace_back(attributeKeysArray[i]);
+			}
+
+			free(attributeKeysArray);
+		}
+
+		return (attributeKeys);
+	}
+
+	sshsAttributeType getAttributeType(const std::string &key) {
+		return (static_cast<sshsAttributeType>(sshsNodeGetAttributeType(node, key.c_str())));
+	}
+
+	// sshsAttributeRanges getAttributeRanges(const std::string &key) {
+	//}
+
+	int getAttributeFlags(const std::string &key) {
+	}
+
+	template<sshsAttributeType T> std::string getAttributeDescription(const std::string &key) {
+		return (sshsNodeGetAttributeDescription(node, key.c_str(), sshsAttributeTypeGenerator<T>::underlyingType));
+	}
+
+	// Non-templated version for dynamic runtime types.
+	std::string getAttributeDescription(const std::string &key, sshsAttributeType type) {
+		return (sshsNodeGetAttributeDescription(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type)));
+	}
+
+	void createAttributeListOptions(
+		const std::string &key, const std::string &listOptions, bool allowMultipleSelections) {
+		sshsNodeCreateAttributeListOptions(node, key.c_str(), listOptions.c_str(), allowMultipleSelections);
+	}
+
+	void createAttributeFileChooser(const std::string &key, const std::string &allowedExtensions) {
+		sshsNodeCreateAttributeFileChooser(node, key.c_str(), allowedExtensions.c_str());
 	}
 };
 
 class sshsc {
 	sshsc() {
-		sshsn(nullptr).createAttribute<sshsAttributeType::STRING>("baa", "default",
-			sshsAttributeRanges<sshsAttributeType::STRING>(10, 20),
-			sshsAttributeFlags::NORMAL | sshsAttributeFlags::NO_EXPORT, "raa");
+		sshsn(nullptr).createAttribute<sshsAttributeType::STRING>(
+			"baa", "default", {10, 20}, sshsAttributeFlags::NORMAL | sshsAttributeFlags::NO_EXPORT, "raa");
+		sshsn(nullptr).createAttribute<sshsAttributeType::FLOAT>(
+			"baa", 12.10f, {10, 20}, sshsAttributeFlags::NORMAL | sshsAttributeFlags::NO_EXPORT, "raa");
+		sshsn(nullptr).createAttribute<sshsAttributeType::BOOL>(
+			"baa", true, {}, sshsAttributeFlags::NORMAL | sshsAttributeFlags::NO_EXPORT, "raa");
+
+		auto aa = sshsn(nullptr).getAttribute<sshsAttributeType::STRING>("baa");
+		auto bb = sshsn(nullptr).getAttribute<sshsAttributeType::FLOAT>("baa");
+		auto cc = sshsn(nullptr).getAttribute<sshsAttributeType::BOOL>("baa");
+
+		sshsn(nullptr).putAttribute<sshsAttributeType::STRING>("baa", "default");
+		sshsn(nullptr).putAttribute<sshsAttributeType::FLOAT>("baa", 12.10f);
+		sshsn(nullptr).putAttribute<sshsAttributeType::BOOL>("baa", true);
+
+		sshsn(nullptr).create<sshsAttributeType::STRING>(
+			"baa", "default", {10, 20}, sshsAttributeFlags::NORMAL | sshsAttributeFlags::NO_EXPORT, "raa");
+		sshsn(nullptr).create<sshsAttributeType::FLOAT>(
+			"baa", 12.10f, {10, 20}, sshsAttributeFlags::NORMAL | sshsAttributeFlags::NO_EXPORT, "raa");
+		sshsn(nullptr).create<sshsAttributeType::BOOL>(
+			"baa", true, {}, sshsAttributeFlags::NORMAL | sshsAttributeFlags::NO_EXPORT, "raa");
+
+		std::string aaa = sshsn(nullptr).get<sshsAttributeType::STRING>("baa");
+		float bbb       = sshsn(nullptr).get<sshsAttributeType::FLOAT>("baa");
+		bool ccc        = sshsn(nullptr).get<sshsAttributeType::BOOL>("baa");
+
+		sshsn(nullptr).put<sshsAttributeType::STRING>("baa", "default");
+		sshsn(nullptr).put<sshsAttributeType::FLOAT>("baa", 12.10f);
+		sshsn(nullptr).put<sshsAttributeType::BOOL>("baa", true);
 	}
-
-	void sshsNodeCreateBool(sshsNode node, const char *key, bool defaultValue, int flags, const char *description);
-	bool sshsNodePutBool(sshsNode node, const char *key, bool value);
-	bool sshsNodeGetBool(sshsNode node, const char *key);
-	void sshsNodeCreateInt(sshsNode node, const char *key, int32_t defaultValue, int32_t minValue, int32_t maxValue,
-		int flags, const char *description);
-	bool sshsNodePutInt(sshsNode node, const char *key, int32_t value);
-	int32_t sshsNodeGetInt(sshsNode node, const char *key);
-	void sshsNodeCreateLong(sshsNode node, const char *key, int64_t defaultValue, int64_t minValue, int64_t maxValue,
-		int flags, const char *description);
-	bool sshsNodePutLong(sshsNode node, const char *key, int64_t value);
-	int64_t sshsNodeGetLong(sshsNode node, const char *key);
-	void sshsNodeCreateFloat(sshsNode node, const char *key, float defaultValue, float minValue, float maxValue,
-		int flags, const char *description);
-	bool sshsNodePutFloat(sshsNode node, const char *key, float value);
-	float sshsNodeGetFloat(sshsNode node, const char *key);
-	void sshsNodeCreateDouble(sshsNode node, const char *key, double defaultValue, double minValue, double maxValue,
-		int flags, const char *description);
-	bool sshsNodePutDouble(sshsNode node, const char *key, double value);
-	double sshsNodeGetDouble(sshsNode node, const char *key);
-	void sshsNodeCreateString(sshsNode node, const char *key, const char *defaultValue, size_t minLength,
-		size_t maxLength, int flags, const char *description);
-	bool sshsNodePutString(sshsNode node, const char *key, const char *value);
-	char *sshsNodeGetString(sshsNode node, const char *key);
-
-	bool sshsNodeExportNodeToXML(sshsNode node, int fd);
-	bool sshsNodeExportSubTreeToXML(sshsNode node, int fd);
-	bool sshsNodeImportNodeFromXML(sshsNode node, int fd, bool strict);
-	bool sshsNodeImportSubTreeFromXML(sshsNode node, int fd, bool strict);
-
-	bool sshsNodeStringToAttributeConverter(sshsNode node, const char *key, const char *type, const char *value);
-	const char **sshsNodeGetChildNames(sshsNode node, size_t *numNames);
-	const char **sshsNodeGetAttributeKeys(sshsNode node, size_t *numKeys);
-	enum sshs_node_attr_value_type sshsNodeGetAttributeType(sshsNode node, const char *key);
-	struct sshs_node_attr_ranges sshsNodeGetAttributeRanges(
-		sshsNode node, const char *key, enum sshs_node_attr_value_type type);
-	int sshsNodeGetAttributeFlags(sshsNode node, const char *key, enum sshs_node_attr_value_type type);
-	char *sshsNodeGetAttributeDescription(sshsNode node, const char *key, enum sshs_node_attr_value_type type);
 
 	// Helper functions
 	const char *sshsHelperTypeToStringConverter(enum sshs_node_attr_value_type type);
@@ -423,10 +548,6 @@ class sshsc {
 	char *sshsHelperRangesToStringConverter(enum sshs_node_attr_value_type type, struct sshs_node_attr_ranges ranges);
 	struct sshs_node_attr_ranges sshsHelperStringToRangesConverter(
 		enum sshs_node_attr_value_type type, const char *rangesString);
-
-	void sshsNodeCreateAttributeListOptions(
-		sshsNode node, const char *key, const char *listOptions, bool allowMultipleSelections);
-	void sshsNodeCreateAttributeFileChooser(sshsNode node, const char *key, const char *allowedExtensions);
 
 	// SSHS
 	typedef struct sshs_struct *sshs;
