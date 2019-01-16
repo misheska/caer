@@ -8,7 +8,7 @@
 #include <iostream>
 #include "caer-sdk/sshs/sshs.hpp"
 #include "utils.h"
-#include "BaseModule.h"
+#include "BaseModule.hpp"
 #include <caer-sdk/mainloop.h>
 #include <caer-sdk/module.h>
 
@@ -211,12 +211,12 @@ public:
  * @tparam T The user defined module. Must inherit from `caer::BaseModule`
  */
 template<class T> const caer_module_functions ModuleStaticDefinitions<T>::functions = {
-        .moduleConfigInit = &ModuleStaticDefinitions<T>::configInit,
-        .moduleInit       = &ModuleStaticDefinitions<T>::init,
-        .moduleRun        = &ModuleStaticDefinitions<T>::run,
-        .moduleConfig     = &ModuleStaticDefinitions<T>::config,
-        .moduleExit       = &ModuleStaticDefinitions<T>::exit,
-        .moduleReset      = nullptr
+        &ModuleStaticDefinitions<T>::configInit,
+        &ModuleStaticDefinitions<T>::init,
+        &ModuleStaticDefinitions<T>::run,
+        &ModuleStaticDefinitions<T>::config,
+        &ModuleStaticDefinitions<T>::exit,
+        nullptr
 };
 
 /**
@@ -227,16 +227,16 @@ template<class T> const caer_module_functions ModuleStaticDefinitions<T>::functi
  * @tparam T The user defined module. Must inherit from `caer::BaseModule`
  */
 template<class T> const caer_module_info ModuleStaticDefinitions<T>::info = {
-        .version             = 1,
-        .name                = T::getName(),
-        .description         = T::getDescription(),
-        .type                = moduleType<T>,
-        .memSize             = sizeof(T),
-        .functions           = &functions,
-        .inputStreamsSize    = numberOfInputStreams<T>,
-        .inputStreams        = T::inputStreams,
-        .outputStreamsSize   = numberOfOutputStreams<T>,
-        .outputStreams       = T::outputStreams
+        1,
+        T::getName(),
+        T::getDescription(),
+        moduleType<T>,
+        sizeof(T),
+        &functions,
+        numberOfInputStreams<T>,
+        T::inputStreams,
+        numberOfOutputStreams<T>,
+        T::outputStreams
 };
 
 }

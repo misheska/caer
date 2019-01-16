@@ -28,7 +28,7 @@ namespace caer {
     /**
      * Different opening modes for a File Dialog config option
      */
-    enum _FileDialogMode {
+    enum class _FileDialogMode {
         NONE,
         OPEN,
         SAVE,
@@ -39,7 +39,9 @@ namespace caer {
      * The different config variations a user can choose from, when building the
      * configuration of a module
      */
-    enum _ConfigVariant {
+    enum class _ConfigVariant {
+        NONE,
+        BOOLEAN,
         FILE,
         STRING,
         INTEGER,
@@ -50,10 +52,11 @@ namespace caer {
      * Maps the selected config variant template to a C++ data type.
      */
     template<_ConfigVariant> struct _ConfigVariantType {};
-    template<> struct _ConfigVariantType<FILE> {typedef std::string type;};
-    template<> struct _ConfigVariantType<STRING> {typedef std::string type;};
-    template<> struct _ConfigVariantType<INTEGER> {typedef int64_t type;};
-    template<> struct _ConfigVariantType<FRACTIONAL> {typedef double type;};
+    template<> struct _ConfigVariantType<_ConfigVariant::BOOLEAN> {typedef bool type;};
+    template<> struct _ConfigVariantType<_ConfigVariant::FILE> {typedef std::string type;};
+    template<> struct _ConfigVariantType<_ConfigVariant::STRING> {typedef std::string type;};
+    template<> struct _ConfigVariantType<_ConfigVariant::INTEGER> {typedef int64_t type;};
+    template<> struct _ConfigVariantType<_ConfigVariant::FRACTIONAL> {typedef double type;};
 
 
     /**
@@ -63,7 +66,7 @@ namespace caer {
     template<_ConfigVariant> struct _ConfigAttributes {};
     template<> struct _ConfigAttributes<_ConfigVariant::FILE> {
         std::string allowedExtensions;
-        _FileDialogMode mode = NONE;
+        _FileDialogMode mode = _FileDialogMode::NONE;
     };
     template<> struct _ConfigAttributes<_ConfigVariant::INTEGER> {
         using _VariantType = typename _ConfigVariantType<_ConfigVariant::INTEGER>::type;
@@ -104,7 +107,7 @@ namespace caer {
     class ConfigOption {
     private:
         std::shared_ptr<void> configOption_;
-        _ConfigVariant variant_;
+        _ConfigVariant variant_ = _ConfigVariant::NONE;
 
         /**
          * __Private constructor__
@@ -170,7 +173,7 @@ namespace caer {
          * @return A ConfigOption Object
          */
         static ConfigOption fractionalOption(const std::string &description, double defaultValue, double minValue, double maxValue) {
-            return getOption<FRACTIONAL>(description, defaultValue, {minValue, maxValue});
+            return getOption<_ConfigVariant::FRACTIONAL>(description, defaultValue, {minValue, maxValue});
         };
 
         /**
@@ -183,7 +186,7 @@ namespace caer {
             double sensibleUpperRange = ((std::abs(defaultValue) > 0.)
                                          ? std::pow(10., std::floor(std::log10(std::abs(defaultValue)) + 1.))
                                          : 1.) * sgn(defaultValue);
-            return getOption<FRACTIONAL>(description, defaultValue, {0., sensibleUpperRange});
+            return getOption<_ConfigVariant::FRACTIONAL>(description, defaultValue, {0., sensibleUpperRange});
         };
 
         /**
@@ -195,7 +198,7 @@ namespace caer {
          * @return A ConfigOption Object
          */
         static ConfigOption integerOption(const std::string &description, long defaultValue, long minValue, long maxValue) {
-            return getOption<INTEGER>(description, defaultValue, {minValue, maxValue});
+            return getOption<_ConfigVariant::INTEGER>(description, defaultValue, {minValue, maxValue});
         }
 
         /**
@@ -208,7 +211,7 @@ namespace caer {
             long sensibleUpperRange = ((std::abs(defaultValue) > 0)
                                        ? (long)std::pow(10., std::floor(std::log10((double)std::abs(defaultValue)) + 1.))
                                        : 1) * sgn(defaultValue);
-            return getOption<INTEGER>(description, defaultValue, {0, sensibleUpperRange});
+            return getOption<_ConfigVariant::INTEGER>(description, defaultValue, {0, sensibleUpperRange});
         }
 
         /**
@@ -218,7 +221,7 @@ namespace caer {
          * @return A ConfigOption Object
          */
         static ConfigOption stringOption(const std::string &description, const std::string &defaultValue) {
-            return getOption<STRING>(description, defaultValue, {});
+            return getOption<_ConfigVariant::STRING>(description, defaultValue, {});
         }
 
         /**
@@ -227,7 +230,7 @@ namespace caer {
          * @return A ConfigOption Object
          */
         static ConfigOption fileOpenOption(const std::string &description) {
-            return getOption<FILE>(description, "", {".*", OPEN});
+            return getOption<_ConfigVariant::FILE>(description, "", {".*", _FileDialogMode::OPEN});
         }
 
         /**
@@ -237,7 +240,7 @@ namespace caer {
          * @return A ConfigOption Object
          */
         static ConfigOption fileOpenOption(const std::string &description, const std::string &allowedExtensions) {
-            return getOption<FILE>(description, "", {allowedExtensions, OPEN});
+            return getOption<_ConfigVariant::FILE>(description, "", {allowedExtensions, _FileDialogMode::OPEN});
         }
 
         /**
@@ -248,7 +251,7 @@ namespace caer {
          * @return A ConfigOption Object
          */
         static ConfigOption fileOpenOption(const std::string &description,  const std::string &defaultValue, const std::string &allowedExtensions) {
-            return getOption<FILE>(description, defaultValue, {allowedExtensions, OPEN});
+            return getOption<_ConfigVariant::FILE>(description, defaultValue, {allowedExtensions, _FileDialogMode::OPEN});
         }
 
         /**
@@ -257,7 +260,7 @@ namespace caer {
          * @return A ConfigOption Object
          */
         static ConfigOption fileSaveOption(const std::string &description) {
-            return getOption<FILE>(description, "", {"*", SAVE});
+            return getOption<_ConfigVariant::FILE>(description, "", {"*", _FileDialogMode::SAVE});
         }
 
         /**
@@ -267,7 +270,7 @@ namespace caer {
          * @return A ConfigOption Object
          */
         static ConfigOption fileSaveOption(const std::string &description, const std::string &allowedExtensions) {
-            return getOption<FILE>(description, "", {allowedExtensions, SAVE});
+            return getOption<_ConfigVariant::FILE>(description, "", {allowedExtensions, _FileDialogMode::SAVE});
         }
 
         /**
@@ -278,7 +281,7 @@ namespace caer {
          * @return A ConfigOption Object
          */
         static ConfigOption fileSaveOption(const std::string &description,  const std::string &defaultValue, const std::string &allowedExtensions) {
-            return getOption<FILE>(description, defaultValue, {allowedExtensions, SAVE});
+            return getOption<_ConfigVariant::FILE>(description, defaultValue, {allowedExtensions, _FileDialogMode::SAVE});
         }
 
         /**
@@ -287,7 +290,7 @@ namespace caer {
          * @return A ConfigOption Object
          */
         static ConfigOption directoryOption(const std::string &description) {
-            return getOption<FILE>(description, "", {"", DIRECTORY});
+            return getOption<_ConfigVariant::FILE>(description, "", {"", _FileDialogMode::DIRECTORY});
         }
 
         /**
@@ -297,7 +300,26 @@ namespace caer {
          * @return A ConfigOption Object
          */
         static ConfigOption directoryOption(const std::string &description,  const std::string &defaultValue) {
-            return getOption<FILE>(description, defaultValue, {"", DIRECTORY});
+            return getOption<_ConfigVariant::FILE>(description, defaultValue, {"", _FileDialogMode::DIRECTORY});
+        }
+
+        /**
+         * Factory function. Creates bool option
+         * @param description A description that describes the purpose of this option
+         * @return A ConfigOption Object
+         */
+        static ConfigOption boolOption(const std::string &description) {
+            return getOption<_ConfigVariant::BOOLEAN>(description, false, {});
+        }
+
+        /**
+         * Factory function. Creates bool option
+         * @param description A description that describes the purpose of this option
+         * @param defaultValue The default value of the option
+         * @return A ConfigOption Object
+         */
+        static ConfigOption boolOption(const std::string &description,  const bool defaultValue) {
+            return getOption<_ConfigVariant::BOOLEAN>(description, defaultValue, {});
         }
     };
 
@@ -359,34 +381,34 @@ namespace caer {
                 auto key = entry.first;
                 auto config = entry.second;
                 switch (config.getVariant()) {
-                    case FRACTIONAL: {
-                        auto config_ = config.getConfigObject<FRACTIONAL>();
+                    case _ConfigVariant::FRACTIONAL: {
+                        auto config_ = config.getConfigObject<_ConfigVariant::FRACTIONAL>();
                         sshsNodeCreateDouble(node, key.c_str(), config_.initValue,
                                              config_.attributes.min, config_.attributes.max, SSHS_FLAGS_NORMAL,
                                              config_.description.c_str());
                         break;
                     }
-                    case INTEGER: {
-                        auto config_ = config.getConfigObject<INTEGER>();
+                    case _ConfigVariant::INTEGER: {
+                        auto config_ = config.getConfigObject<_ConfigVariant::INTEGER>();
                         sshsNodeCreateLong(node, key.c_str(), config_.initValue,
                                            config_.attributes.min, config_.attributes.max, SSHS_FLAGS_NORMAL,
                                            config_.description.c_str());
                         break;
                     }
-                    case STRING: {
-                        auto config_ = config.getConfigObject<STRING>();
+                    case _ConfigVariant::STRING: {
+                        auto config_ = config.getConfigObject<_ConfigVariant::STRING>();
                         sshsNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, UINT32_MAX,
                                              SSHS_FLAGS_NORMAL, config_.description.c_str());
                         break;
                     }
-                    case FILE: {
-                        auto config_ = config.getConfigObject<FILE>();
+                    case _ConfigVariant::FILE: {
+                        auto config_ = config.getConfigObject<_ConfigVariant::FILE>();
                         sshsNodeCreateString(node, key.c_str(), config_.initValue.c_str(),
                                              0, PATH_MAX, SSHS_FLAGS_NORMAL, config_.description.c_str());
 
-                        std::string fileChooserAttribute = (config_.attributes.mode == OPEN)
+                        std::string fileChooserAttribute = (config_.attributes.mode == _FileDialogMode::OPEN)
                                                            ? "LOAD"
-                                                           : ((config_.attributes.mode == SAVE)
+                                                           : ((config_.attributes.mode == _FileDialogMode::SAVE)
                                                               ? "SAVE" : "DIRECTORY");
                         sshsNodeCreateAttributeFileChooser(node, key.c_str(), fileChooserAttribute + ":" + config_.attributes.allowedExtensions);
                         break;
