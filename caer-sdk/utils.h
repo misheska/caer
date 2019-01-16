@@ -3,7 +3,9 @@
 
 // Common includes, useful for everyone.
 #include <libcaer/libcaer.h>
+
 #include <libcaer/events/packetContainer.h>
+
 #include "sshs/sshs.h"
 
 // Suppress unused argument warnings, if needed
@@ -11,12 +13,14 @@
 
 #ifdef __cplusplus
 
-#include <libcaercpp/libcaer.hpp>
-#include <libcaercpp/events/packetContainer.hpp>
-#include "sshs/sshs.hpp"
+#	include <libcaercpp/libcaer.hpp>
 
-#include <algorithm>
-#include <vector>
+#	include <libcaercpp/events/packetContainer.hpp>
+
+#	include "sshs/sshs.hpp"
+
+#	include <algorithm>
+#	include <vector>
 
 template<typename InIter, typename Elem> static inline bool findBool(InIter begin, InIter end, const Elem &val) {
 	const auto result = std::find(begin, end, val);
@@ -63,21 +67,16 @@ template<class T> static bool vectorDetectDuplicates(std::vector<T> &vec) {
 /**
  * Type that maps boolean expression to type.
  */
-template <bool C> using enable_if_t = typename std::enable_if<C>::type;
+template<bool C> using enable_if_t = typename std::enable_if<C>::type;
 
 /**
  * Type that maps a valid list of types to a type,
  * an invalid list of types to a type error.
  * @tparam A list of types that all have to be valid types
  */
-template <typename ...> struct void_t_impl
-{
-	typedef void type;
-};
+template<typename...> struct void_t_impl { typedef void type; };
 
-template <typename ... T>
-using void_t = typename void_t_impl<T...>::type;
-
+template<typename... T> using void_t = typename void_t_impl<T...>::type;
 
 #endif
 
