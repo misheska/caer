@@ -177,7 +177,7 @@ public:
 	 * @param out Pointer to the output data.
 	 */
 	static void run(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
-		((T *) moduleData->moduleState)->run(in, out);
+		((T *) moduleData->moduleState)->runBase(in, out);
 	}
 
 	/**

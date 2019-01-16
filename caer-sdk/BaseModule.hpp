@@ -451,7 +451,7 @@ public:
 	 * @param in The input libcaer packet
 	 * @param out the output libcaer packet
 	 */
-	void run(caerEventPacketContainer in, caerEventPacketContainer *out) {
+	void runBase(caerEventPacketContainer in, caerEventPacketContainer *out) {
 		auto in_ = libcaer::events::EventPacketContainer(in, false);
 		// TODO: Handle the out behaviour
 		run(in_);
