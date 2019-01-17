@@ -11,6 +11,7 @@
 
 #include "BaseModule.hpp"
 #include "utils.h"
+#include "log.hpp"
 
 #include <iostream>
 
@@ -136,12 +137,6 @@ template<class T> class ModuleStatics {
 		"This property should list the modules output streams.");
 
 public:
-    /**
-     * Static pointer to the modules caer data. Gets initialized in the
-     * initialize function
-     */
-     static caerModuleData moduleData_;
-
 	/**
 	 * Wrapper for the `configInit` caer function. Performs a static call to the
 	 * `configInit<T>` function of `BaseModule`, which in turn gets the config from
@@ -162,8 +157,8 @@ public:
 	 * @return true if construction succeeded, false if it failed.
 	 */
 	static bool init(caerModuleData moduleData) {
-        // store the static pointer to the moduleData
-	    moduleData_ = moduleData;
+        // set the module data pointer for the logger
+        Logger::_setModuleData(moduleData);
         try {
 			new (moduleData->moduleState) T();
 			config(moduleData);

@@ -13,6 +13,7 @@
 
 #include <boost/any.hpp>
 #include <map>
+#include "log.hpp"
 
 /**
  * Returns the sign of the given number as -1 or 1. Returns 1 for 0.
@@ -401,6 +402,11 @@ public:
 			}
 		}
 	}
+
+	/**
+	 * Logger object to be used in implementation
+	 */
+	 Logger log;
 
 
 	/**
