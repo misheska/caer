@@ -19,6 +19,10 @@
 #	include <X11/Xlib.h>
 #endif
 
+namespace dvCfg  = dv::Config;
+using dvCfgType  = dvCfg::AttributeType;
+using dvCfgFlags = dvCfg::AttributeFlags;
+
 #define VISUALIZER_REFRESH_RATE 60
 #define VISUALIZER_ZOOM_DEF 2.0f
 #define VISUALIZER_ZOOM_INC 0.25f
@@ -112,7 +116,9 @@ caerModuleInfo caerModuleGetInfo(void) {
 }
 
 static void caerVisualizerConfigInit(sshsNode moduleNode) {
-	sshsNodeCreate(moduleNode, "renderer", "", 0, 500, SSHS_FLAGS_NORMAL, "Renderer to use to generate content.");
+	dvCfg::Node cfg(moduleNode);
+
+	cfg.create<dvCfgType::STRING>("renderer", "", {0, 500}, dvCfgFlags::NORMAL, "Renderer to use to generate content.");
 	sshsNodeCreateAttributeListOptions(moduleNode, "renderer", caerVisualizerRendererListOptionsString, true);
 	sshsNodeCreate(moduleNode, "eventHandler", "", 0, 500, SSHS_FLAGS_NORMAL,
 		"Event handler to handle mouse and keyboard events.");

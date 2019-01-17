@@ -1,9 +1,13 @@
-#include "caer-sdk/mainloop.h"
-
 #include <libcaercpp/events/frame.hpp>
+
+#include "caer-sdk/mainloop.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
+namespace dvCfg  = dv::Config;
+using dvCfgType  = dvCfg::AttributeType;
+using dvCfgFlags = dvCfg::AttributeFlags;
 
 struct caer_frame_statistics_state {
 	int numBins;
@@ -46,13 +50,15 @@ caerModuleInfo caerModuleGetInfo(void) {
 }
 
 static void caerFrameStatisticsConfigInit(sshsNode moduleNode) {
-	sshsNodeCreate(moduleNode, "numBins", 1024, 4, UINT16_MAX + 1, SSHS_FLAGS_NORMAL,
-		"Number of bins in which to divide values up.");
-	sshsNodeCreate(moduleNode, "roiRegion", 0, 0, 7, SSHS_FLAGS_NORMAL, "Selects which ROI region to display.");
-	sshsNodeCreateInt(moduleNode, "windowPositionX", 20, 0, UINT16_MAX, SSHS_FLAGS_NORMAL,
-		"Position of window on screen (X coordinate).");
-	sshsNodeCreateInt(moduleNode, "windowPositionY", 20, 0, UINT16_MAX, SSHS_FLAGS_NORMAL,
-		"Position of window on screen (Y coordinate).");
+	dvCfg::Node cfg(moduleNode);
+
+	cfg.create<dvCfgType::INT>(
+		"numBins", 1024, {4, UINT16_MAX + 1}, dvCfgFlags::NORMAL, "Number of bins in which to divide values up.");
+	cfg.create<dvCfgType::INT>("roiRegion", 0, {0, 7}, dvCfgFlags::NORMAL, "Selects which ROI region to display.");
+	cfg.create<dvCfgType::INT>(
+		"windowPositionX", 20, {0, UINT16_MAX}, dvCfgFlags::NORMAL, "Position of window on screen (X coordinate).");
+	cfg.create<dvCfgType::INT>(
+		"windowPositionY", 20, {0, UINT16_MAX}, dvCfgFlags::NORMAL, "Position of window on screen (Y coordinate).");
 }
 
 static bool caerFrameStatisticsInit(caerModuleData moduleData) {
@@ -128,12 +134,13 @@ static void caerFrameStatisticsExit(caerModuleData moduleData) {
 
 static void caerFrameStatisticsConfig(caerModuleData moduleData) {
 	caerFrameStatisticsState state = (caerFrameStatisticsState) moduleData->moduleState;
+	dvCfg::Node cfg(moduleData->moduleNode);
 
-	state->numBins   = sshsNodeGetInt(moduleData->moduleNode, "numBins");
-	state->roiRegion = sshsNodeGetInt(moduleData->moduleNode, "roiRegion");
+	state->numBins   = cfg.get<dvCfgType::INT>("numBins");
+	state->roiRegion = cfg.get<dvCfgType::INT>("roiRegion");
 
-	int posX = sshsNodeGetInt(moduleData->moduleNode, "windowPositionX");
-	int posY = sshsNodeGetInt(moduleData->moduleNode, "windowPositionY");
+	int posX = cfg.get<dvCfgType::INT>("windowPositionX");
+	int posY = cfg.get<dvCfgType::INT>("windowPositionY");
 
 	cv::moveWindow(moduleData->moduleSubSystemString, posX, posY);
 }
