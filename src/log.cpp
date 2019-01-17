@@ -9,8 +9,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+namespace dvCfg  = dv::Config;
+using dvCfgType  = dvCfg::AttributeType;
+using dvCfgFlags = dvCfg::AttributeFlags;
+
 static int CAER_LOG_FILE_FD = -1;
-static sshsNode logNode     = nullptr;
+static dvCfg::Node logNode  = nullptr;
 
 static void caerLogShutDownWriteBack(void);
 static void caerLogSSHSLogger(const char *msg, bool fatal);
@@ -19,24 +23,24 @@ static void caerLogLevelListener(sshsNode node, void *userData, enum sshs_node_a
 	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
 
 void caerLogInit(void) {
-	logNode = sshsGetNode(sshsGetGlobal(), "/caer/logger/");
+	logNode = dvCfg::Tree::getGlobal().getNode("/caer/logger/");
 
 	// Ensure default log file and value are present.
 	char *userHome                       = portable_get_user_home_directory();
 	const std::string logFileDefaultPath = std::string(userHome) + "/" + CAER_LOG_FILE_NAME;
 	free(userHome);
 
-	sshsNodeCreate(logNode, "logFile", logFileDefaultPath, 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+	logNode.create<dvCfgType::STRING>("logFile", logFileDefaultPath, {2, PATH_MAX}, dvCfgFlags::NORMAL,
 		"Path to the file where all log messages are written to.");
 
-	sshsNodeCreateInt(logNode, "logLevel", CAER_LOG_NOTICE, CAER_LOG_EMERGENCY, CAER_LOG_DEBUG, SSHS_FLAGS_NORMAL,
-		"Global log-level.");
+	logNode.create<dvCfgType::INT>(
+		"logLevel", CAER_LOG_NOTICE, {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG}, dvCfgFlags::NORMAL, "Global log-level.");
 
-	sshsNodeCreate(logNode, "lastLogMessage", "Logging initialized.", 0, 32 * 1024,
-		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Path to the file where all log messages are written to.");
+	logNode.create<dvCfgType::STRING>("lastLogMessage", "Logging initialized.", {0, 32 * 1024},
+		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Path to the file where all log messages are written to.");
 
 	// Try to open the specified file and error out if not possible.
-	const std::string logFile = sshsNodeGetStdString(logNode, "logFile");
+	const std::string logFile = logNode.get<dvCfgType::STRING>("logFile");
 	CAER_LOG_FILE_FD          = open(logFile.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IWUSR | S_IRUSR | S_IRGRP);
 
 	if (CAER_LOG_FILE_FD < 0) {
@@ -47,10 +51,10 @@ void caerLogInit(void) {
 	}
 
 	// Set global log level and install listener for its update.
-	int32_t logLevel = sshsNodeGetInt(logNode, "logLevel");
-	caerLogLevelSet((enum caer_log_level) logLevel);
+	int32_t logLevel = logNode.get<dvCfgType::INT>("logLevel");
+	caerLogLevelSet(static_cast<enum caer_log_level>(logLevel));
 
-	sshsNodeAddAttributeListener(logNode, nullptr, &caerLogLevelListener);
+	logNode.addAttributeListener(nullptr, &caerLogLevelListener);
 
 	// Switch log messages to log file and stderr.
 	caerLogFileDescriptorsSet(CAER_LOG_FILE_FD, STDERR_FILENO);
@@ -79,7 +83,7 @@ static void caerLogMessagesToSSHS(const char *msg, size_t msgLength) {
 	// and passing it to the callback last by design.
 	logMessage.string[msgLength - 1] = '\0';
 
-	sshsNodeUpdateReadOnlyAttribute(logNode, "lastLogMessage", SSHS_STRING, logMessage);
+	logNode.updateReadOnlyAttribute<dvCfgType::STRING>("lastLogMessage", logMessage);
 }
 
 static void caerLogShutDownWriteBack(void) {
@@ -110,7 +114,7 @@ static void caerLogLevelListener(sshsNode node, void *userData, enum sshs_node_a
 
 	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_INT && caerStrEquals(changeKey, "logLevel")) {
 		// Update the global log level asynchronously.
-		caerLogLevelSet((enum caer_log_level) changeValue.iint);
+		caerLogLevelSet(static_cast<enum caer_log_level>(changeValue.iint));
 		caerLog(CAER_LOG_DEBUG, "Logger", "Log-level set to %d.", changeValue.iint);
 	}
 }

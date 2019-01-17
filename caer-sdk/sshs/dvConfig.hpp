@@ -449,9 +449,23 @@ public:
 		createAttribute(key, defVal, ranges, flags, description);
 	}
 
+	template<AttributeType T> void remove(const std::string &key) {
+		removeAttribute<T>(key);
+	}
+
+	template<AttributeType T> bool exists(const std::string &key) {
+		return (existsAttribute<T>(key));
+	}
+
 	template<AttributeType T> bool put(const std::string &key, typename AttributeTypeGenerator<T>::type value) {
 		const AttributeValue<T> val(value);
 		return (putAttribute<T>(key, val));
+	}
+
+	template<AttributeType T>
+	bool updateReadOnly(const std::string &key, typename AttributeTypeGenerator<T>::type value) {
+		const AttributeValue<T> val(value);
+		return (updateReadOnlyAttribute<T>(key, val));
 	}
 
 	template<AttributeType T> typename AttributeTypeGenerator<T>::type get(const std::string &key) {
@@ -709,6 +723,8 @@ public:
 		sshsGlobalAttributeListenerSet(tree, attribute_changed, userData);
 	}
 };
+
+static Tree GLOBAL = Tree::getGlobal();
 
 } // namespace Config
 } // namespace dv

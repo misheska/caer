@@ -10,6 +10,9 @@
 #include <regex>
 
 namespace logger = libcaer::log;
+namespace dvCfg  = dv::Config;
+using dvCfgType  = dvCfg::AttributeType;
+using dvCfgFlags = dvCfg::AttributeFlags;
 
 static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> client, const std::string &errorMsg) {
 	caerConfigActionData &response = client->getData();
@@ -26,12 +29,12 @@ static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> c
 }
 
 static inline void caerConfigSendResponse(std::shared_ptr<ConfigServerConnection> client, caerConfigAction action,
-	sshs_node_attr_value_type type, const std::string &message) {
+	dvCfgType type, const std::string &message) {
 	caerConfigActionData &response = client->getData();
 	response.reset();
 
 	response.setAction(action);
-	response.setType(type);
+	response.setType(static_cast<enum sshs_node_attr_value_type>(type));
 	response.setNode(message);
 
 	client->writeResponse();
@@ -41,8 +44,8 @@ static inline void caerConfigSendResponse(std::shared_ptr<ConfigServerConnection
 }
 
 static inline bool checkNodeExists(
-	sshs configStore, const std::string &node, std::shared_ptr<ConfigServerConnection> client) {
-	bool nodeExists = sshsExistsNode(configStore, node);
+	dvCfg::Tree configStore, const std::string &node, std::shared_ptr<ConfigServerConnection> client) {
+	bool nodeExists = configStore.existsNode(node);
 
 	// Only allow operations on existing nodes, this is for remote
 	// control, so we only manipulate what's already there!
@@ -54,10 +57,10 @@ static inline bool checkNodeExists(
 	return (nodeExists);
 }
 
-static inline bool checkAttributeExists(sshsNode wantedNode, const std::string &key,
-	enum sshs_node_attr_value_type type, std::shared_ptr<ConfigServerConnection> client) {
+static inline bool checkAttributeExists(
+	dvCfg::Node wantedNode, const std::string &key, dvCfgType type, std::shared_ptr<ConfigServerConnection> client) {
 	// Check if attribute exists. Only allow operations on existing attributes!
-	bool attrExists = sshsNodeAttributeExists(wantedNode, key, type);
+	bool attrExists = wantedNode.existsAttribute(key, type);
 
 	if (!attrExists) {
 		// Send back error message to client.
@@ -71,25 +74,25 @@ static inline bool checkAttributeExists(sshsNode wantedNode, const std::string &
 static inline void caerConfigSendBoolResponse(
 	std::shared_ptr<ConfigServerConnection> client, caerConfigAction action, bool result) {
 	// Send back result to client. Format is the same as incoming data.
-	caerConfigSendResponse(client, action, SSHS_BOOL, ((result) ? ("true") : ("false")));
+	caerConfigSendResponse(client, action, dvCfgType::BOOL, ((result) ? ("true") : ("false")));
 }
 
 void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> client) {
 	caerConfigActionData &data = client->getData();
 
-	caerConfigAction action        = data.getAction();
-	sshs_node_attr_value_type type = data.getType();
+	caerConfigAction action = data.getAction();
+	dvCfgType type          = static_cast<dvCfgType>(data.getType());
 
 	logger::log(
 		logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Handling request from client: %s.", data.toString().c_str());
 
 	// Interpretation of data is up to each action individually.
-	sshs configStore = sshsGetGlobal();
+	dvCfg::Tree configStore = dvCfg::GLOBAL;
 
 	switch (action) {
 		case caerConfigAction::NODE_EXISTS: {
 			// We only need the node name here. Type is not used (ignored)!
-			bool result = sshsExistsNode(configStore, data.getNode());
+			bool result = configStore.existsNode(data.getNode());
 
 			// Send back result to client. Format is the same as incoming data.
 			caerConfigSendBoolResponse(client, caerConfigAction::NODE_EXISTS, result);
@@ -103,7 +106,7 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
+			dvCfg::Node wantedNode = configStore.getNode(data.getNode());
 
 			// Check if attribute exists.
 			bool result = sshsNodeAttributeExists(wantedNode, data.getKey(), type);
