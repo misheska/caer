@@ -3,6 +3,7 @@
 
 #include "sshs.h"
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -308,9 +309,17 @@ public:
 	/**
 	 * This returns a reference to a node, and as such must be carefully mediated with
 	 * any sshsNodeRemoveNode() calls.
+	 *
+	 * @throws std::out_of_range Node is root and has no parent.
 	 */
 	Node getParent() const {
-		return (sshsNodeGetParent(node));
+		sshsNode parent = sshsNodeGetParent(node);
+
+		if (parent == nullptr) {
+			throw std::out_of_range("Node is root and has no parent.");
+		}
+
+		return (parent);
 	}
 
 	/**
@@ -594,9 +603,17 @@ public:
 	/**
 	 * This returns a reference to a node, and as such must be carefully mediated with
 	 * any sshsNodeRemoveNode() calls.
+	 *
+	 * @throws std::out_of_range Node not found.
 	 */
 	Node getRelativeNode(const std::string &nodePath) const {
-		return (sshsGetRelativeNode(node, nodePath.c_str()));
+		sshsNode node = sshsGetRelativeNode(node, nodePath.c_str());
+
+		if (node == nullptr) {
+			throw std::out_of_range("Node not found.");
+		}
+
+		return (node);
 	}
 
 	void attributeUpdaterAdd(
@@ -706,9 +723,17 @@ public:
 	/**
 	 * This returns a reference to a node, and as such must be carefully mediated with
 	 * any sshsNodeRemoveNode() calls.
+	 *
+	 * @throws std::out_of_range Node not found.
 	 */
 	Node getNode(const std::string &nodePath) const {
-		return (sshsGetNode(tree, nodePath.c_str()));
+		sshsNode node = sshsGetNode(tree, nodePath.c_str());
+
+		if (node == nullptr) {
+			throw std::out_of_range("Node not found.");
+		}
+
+		return (node);
 	}
 
 	void attributeUpdaterRemoveAll() {
