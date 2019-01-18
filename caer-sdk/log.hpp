@@ -8,17 +8,11 @@
 #include "module.h"
 
 namespace caer {
-    /**
-     * Static pointer to the modules caer data. Gets set by a setter function.
-     * When not set, logging is performed anonymously
-     */
-    static caerModuleData moduleData_ = nullptr;
-
-
     template <caer_log_level L>
     class LogStream {
     private:
-        static inline void logImpl(const std::string &message) {
+        caerModuleData moduleData_ = nullptr;
+        inline void logImpl(const std::string &message) {
             if (moduleData_) {
                 caerModuleLog(moduleData_, L, "%s", message.c_str());
             } else {
@@ -28,28 +22,27 @@ namespace caer {
 
     public:
 
+        LogStream(caerModuleData moduleData) : moduleData_(moduleData) {};
 
         void operator()(const std::string &message) const {
             logImpl(message);
         }
-
-//        void bla(const std::string &message) const {
-//            logImpl(message);
-//        }
-
     };
 
     class Logger {
     public:
-        static void _setModuleData(caerModuleData moduleData) {
-            moduleData_ = moduleData;
-        }
-
         LogStream<CAER_LOG_DEBUG> debug;
         LogStream<CAER_LOG_INFO> info;
         LogStream<CAER_LOG_WARNING> warning;
         LogStream<CAER_LOG_ERROR> error;
         LogStream<CAER_LOG_CRITICAL> critical;
+
+        Logger(caerModuleData moduleData) :
+        debug(LogStream<CAER_LOG_DEBUG>(moduleData)),
+        info(LogStream<CAER_LOG_INFO>(moduleData)),
+        warning(LogStream<CAER_LOG_WARNING>(moduleData)),
+        error(LogStream<CAER_LOG_ERROR>(moduleData)),
+        critical(LogStream<CAER_LOG_CRITICAL>(moduleData))  {};
     };
 }
 

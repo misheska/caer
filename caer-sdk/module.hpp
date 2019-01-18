@@ -21,8 +21,8 @@
  * of `caer::BaseModule` and returns the static info section.
  * @param MODULE
  */
-#define registerModuleClass(MODULE)                            \
-	caerModuleInfo caerModuleGetInfo() {                       \
+#define registerModuleClass(MODULE)                  \
+	caerModuleInfo caerModuleGetInfo() {             \
 		return &(caer::ModuleStatics<MODULE>::info); \
 	}
 
@@ -157,16 +157,15 @@ public:
 	 * @return true if construction succeeded, false if it failed.
 	 */
 	static bool init(caerModuleData moduleData) {
-        // set the module data pointer for the logger
-        Logger::_setModuleData(moduleData);
         try {
+            // set the moduleData pointer thread local static prior to construction.
+        	BaseModule::__setStaticModuleData(moduleData);
 			new (moduleData->moduleState) T();
-			config(moduleData);
 			sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 		}
 		catch (const std::exception &e) {
-			std::cerr << e.what();
-			std::cerr << "Could not initialize Module";
+		    caerModuleLog(moduleData, CAER_LOG_ERROR, "%s", e.what());
+			caerModuleLog(moduleData, CAER_LOG_ERROR, "%s", "Could not initialize Module");
 			return false;
 		}
 		return true;

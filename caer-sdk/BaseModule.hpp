@@ -11,9 +11,10 @@
 
 #include <caer-sdk/module.h>
 
+#include "log.hpp"
+
 #include <boost/any.hpp>
 #include <map>
-#include "log.hpp"
 
 /**
  * Returns the sign of the given number as -1 or 1. Returns 1 for 0.
@@ -342,7 +343,6 @@ public:
 	}
 };
 
-
 /**
  * The dv BaseModule. Every module shall inherit from this module.
  * The base Module provides the following:
@@ -350,6 +350,9 @@ public:
  * - Input / output management
  */
 class BaseModule {
+private:
+	thread_local static caerModuleData __moduleData;
+
 public:
 	/**
 	 * Static function that calls the user provided static function `T::getConfigOptions` and processes its output.
@@ -404,15 +407,40 @@ public:
 	}
 
 	/**
+	 * __INTERNAL USE ONLY__
+	 * Sets the static, thread local module data to be used by
+	 * a subsequent constructor. This shall only be used prior to
+	 * @param _moduleData The moduleData param to be used for
+	 * BaseModule member initialization upon constructor
+	 */
+	static void __setStaticModuleData(caerModuleData _moduleData) {
+		__moduleData = _moduleData;
+	}
+
+	/**
 	 * Logger object to be used in implementation
 	 */
-	 Logger log;
 
+	Logger log;
 
 	/**
 	 * Map that contains the runtime config values of the configs.
 	 */
 	RuntimeConfigMap config;
+
+
+	/**
+	 * Base module constructor. The base module constructor initializes
+	 * the logger and config members of the class, by utilizing the
+	 * `static_thread` local pointer to the caer moduleData pointer
+	 * provided prior to constructrion. This makes sure, that logger
+	 * and config are available at the time the subclass constructor is
+	 * called.
+	 */
+	BaseModule() : log(Logger(__moduleData)) {
+	    assert(__moduleData);
+	    configUpdate(__moduleData->moduleNode);
+	}
 
 
 	/**
