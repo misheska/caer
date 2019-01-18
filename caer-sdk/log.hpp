@@ -5,6 +5,8 @@
 #ifndef CAER_LOG_HPP
 #define CAER_LOG_HPP
 
+#include <iostream>
+#include <boost/format.hpp>
 #include "module.h"
 
 namespace caer {
@@ -12,21 +14,55 @@ namespace caer {
     class LogStream {
     private:
         caerModuleData moduleData_ = nullptr;
-        inline void logImpl(const std::string &message) const {
-            if (moduleData_) {
-                caerModuleLog(moduleData_, L, "%s", message.c_str());
-            } else {
-                caerLog(L, "[UNKNOWN SUBSYSTEM]", "%s", message.c_str());
-            }
-        }
+        std::ostringstream stream;
 
     public:
-
         LogStream(caerModuleData moduleData) : moduleData_(moduleData) {};
 
-        void operator()(const std::string &message) const {
-            logImpl(message);
+        template <class T>
+        void operator()(const T &val) {
+            write(val);
+            commit();
         }
+
+        template <class T>
+        LogStream& operator<<(const T &val) {
+            write(val);
+            return *this;
+        }
+
+        LogStream& operator <<(std::ostream& (*)(std::ostream&))
+        {
+            commit();
+            return *this;
+        }
+
+        template <class T>
+        void write(T &val) {
+            stream << val;
+        }
+
+        void commit() {
+            if (moduleData_) {
+                caerModuleLog(moduleData_, L, "%s", stream.str().c_str());
+            } else {
+                caerLog(L, "[UNKNOWN SUBSYSTEM]", "%s", stream.str().c_str());
+            }
+            flush();
+        }
+
+        void flush() {
+            stream.str(std::string());
+            stream.clear();
+        }
+
+        template<typename... Args>
+        void format(const std::string &fmt, const Args&... args) {
+            boost::format f(fmt);
+            std::initializer_list<char> {(static_cast<void>(f % args), char{}) ...};
+            this->operator()(boost::str(f));
+        }
+
     };
 
     class Logger {

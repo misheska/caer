@@ -418,6 +418,11 @@ public:
 	}
 
 	/**
+	 * caer low level module data. To be used for accessing low level caer API.
+	 */
+	caerModuleData moduleData;
+
+	/**
 	 * Logger object to be used in implementation
 	 */
 
@@ -437,7 +442,7 @@ public:
 	 * and config are available at the time the subclass constructor is
 	 * called.
 	 */
-	BaseModule() : log(Logger(__moduleData)) {
+	BaseModule() :  moduleData(__moduleData), log(Logger(__moduleData)) {
 	    assert(__moduleData);
 	    configUpdate(__moduleData->moduleNode);
 	}
@@ -489,9 +494,13 @@ public:
 	 * @param out the output libcaer packet
 	 */
 	void runBase(caerEventPacketContainer in, caerEventPacketContainer *out) {
-		auto in_ = libcaer::events::EventPacketContainer(in, false);
-		// TODO: Handle the out behaviour
-		run(in_);
+        // TODO: Handle the out behaviour
+	    if (!in) {
+	        run(libcaer::events::EventPacketContainer());
+	    } else {
+            auto in_ = libcaer::events::EventPacketContainer(in, false);
+            run(in_);
+	    }
 	};
 
 	/**
