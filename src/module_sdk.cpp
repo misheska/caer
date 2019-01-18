@@ -24,8 +24,8 @@ bool caerModuleSetSubSystemString(caerModuleData moduleData, const char *subSyst
 	return (true);
 }
 
-void caerModuleConfigDefaultListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+void caerModuleConfigDefaultListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(changeKey);
 	UNUSED_ARGUMENT(changeType);
@@ -34,7 +34,7 @@ void caerModuleConfigDefaultListener(sshsNode node, void *userData, enum sshs_no
 	caerModuleData data = (caerModuleData) userData;
 
 	// Simply set the config update flag to 1 on any attribute change.
-	if (event == SSHS_ATTRIBUTE_MODIFIED) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		data->configUpdate.store(1);
 	}
 }

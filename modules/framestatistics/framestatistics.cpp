@@ -16,7 +16,7 @@ struct caer_frame_statistics_state {
 
 typedef struct caer_frame_statistics_state *caerFrameStatisticsState;
 
-static void caerFrameStatisticsConfigInit(sshsNode moduleNode);
+static void caerFrameStatisticsConfigInit(dvConfigNode moduleNode);
 static bool caerFrameStatisticsInit(caerModuleData moduleData);
 static void caerFrameStatisticsRun(
 	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
@@ -49,7 +49,7 @@ caerModuleInfo caerModuleGetInfo(void) {
 	return (&FrameStatisticsInfo);
 }
 
-static void caerFrameStatisticsConfigInit(sshsNode moduleNode) {
+static void caerFrameStatisticsConfigInit(dvConfigNode moduleNode) {
 	dvCfg::Node cfg(moduleNode);
 
 	cfg.create<dvCfgType::INT>(

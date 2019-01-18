@@ -19,10 +19,10 @@ static struct {
 	std::recursive_mutex modulePathsMutex;
 } glModuleData;
 
-static void caerModuleShutdownListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
-static void caerModuleLogLevelListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+static void caerModuleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
+static void caerModuleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 void caerModuleConfigInit(dv::Config::Node moduleNode) {
 	// Per-module log level support. Initialize with global log level value.
@@ -50,7 +50,7 @@ void caerModuleConfigInit(dv::Config::Node moduleNode) {
 
 	if (mLoad.second->functions->moduleConfigInit != nullptr) {
 		try {
-			mLoad.second->functions->moduleConfigInit(static_cast<sshsNode>(moduleNode));
+			mLoad.second->functions->moduleConfigInit(static_cast<dvConfigNode>(moduleNode));
 		}
 		catch (const std::exception &ex) {
 			boost::format exMsg = boost::format("moduleConfigInit() for '%s': %s") % moduleName % ex.what();
@@ -237,7 +237,7 @@ caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv
 	moduleData->moduleID = moduleID;
 
 	// Set configuration node (so it's user accessible).
-	moduleData->moduleNode = static_cast<sshsNode>(moduleNode);
+	moduleData->moduleNode = static_cast<dvConfigNode>(moduleNode);
 
 	// Put module into startup state. 'running' flag is updated later based on user startup wishes.
 	moduleData->moduleStatus = CAER_MODULE_STOPPED;
@@ -289,24 +289,24 @@ void caerModuleDestroy(caerModuleData moduleData) {
 	free(moduleData);
 }
 
-static void caerModuleShutdownListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerModuleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
 	caerModuleData data = (caerModuleData) userData;
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BOOL && caerStrEquals(changeKey, "running")) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
 		atomic_store(&data->running, changeValue.boolean);
 	}
 }
 
-static void caerModuleLogLevelListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerModuleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
 	caerModuleData data = (caerModuleData) userData;
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_INT && caerStrEquals(changeKey, "logLevel")) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
 		atomic_store(&data->moduleLogLevel, U8T(changeValue.iint));
 	}
 }

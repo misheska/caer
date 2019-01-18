@@ -132,7 +132,7 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 				break;
 			}
 
-			union sshs_node_attr_value result = wantedNode.getAttribute(data.getKey(), type);
+			union dvConfigAttributeValue result = wantedNode.getAttribute(data.getKey(), type);
 
 			const std::string resultStr = dvCfg::Helper::valueToStringConverter(type, result);
 
@@ -276,7 +276,7 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 				break;
 			}
 
-			struct sshs_node_attr_ranges ranges = wantedNode.getAttributeRanges(data.getKey(), type);
+			struct dvConfigAttributeRanges ranges = wantedNode.getAttributeRanges(data.getKey(), type);
 
 			const std::string rangesStr = dvCfg::Helper::rangesToStringConverter(type, ranges);
 

@@ -102,13 +102,13 @@ static bool caerOutputFileInit(caerModuleData moduleData) {
 	}
 
 	sshsNodeCreateString(moduleData->moduleNode, "directory", userHomeDir, 1, (PATH_MAX - MAX_PREFIX_LENGTH),
-		SSHS_FLAGS_NORMAL, "Directory to write output data files in.");
+		DVCFG_FLAGS_NORMAL, "Directory to write output data files in.");
 	free(userHomeDir);
 
 	// Support file-chooser in GUI, select any directory.
 	sshsNodeCreateAttributeFileChooser(moduleData->moduleNode, "directory", "DIRECTORY");
 
-	sshsNodeCreateString(moduleData->moduleNode, "prefix", DEFAULT_PREFIX, 1, MAX_PREFIX_LENGTH, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateString(moduleData->moduleNode, "prefix", DEFAULT_PREFIX, 1, MAX_PREFIX_LENGTH, DVCFG_FLAGS_NORMAL,
 		"Output data files name prefix.");
 
 	// Generate current file name and open it.

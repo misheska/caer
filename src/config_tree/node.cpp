@@ -18,16 +18,16 @@
 
 class sshs_node_attr {
 private:
-	struct sshs_node_attr_ranges ranges;
+	struct dvConfigAttributeRanges ranges;
 	int flags;
 	std::string description;
 	sshs_value value;
 
 public:
-	sshs_node_attr() : flags(SSHS_FLAGS_NORMAL) {
+	sshs_node_attr() : flags(DVCFG_FLAGS_NORMAL) {
 	}
 
-	sshs_node_attr(const sshs_value &_value, const struct sshs_node_attr_ranges &_ranges, int _flags,
+	sshs_node_attr(const sshs_value &_value, const struct dvConfigAttributeRanges &_ranges, int _flags,
 		const std::string &_description) :
 		ranges(_ranges),
 		flags(_flags),
@@ -47,7 +47,7 @@ public:
 		return (description);
 	}
 
-	const struct sshs_node_attr_ranges &getRanges() const noexcept {
+	const struct dvConfigAttributeRanges &getRanges() const noexcept {
 		return (ranges);
 	}
 
@@ -62,16 +62,16 @@ public:
 
 class sshs_node_listener {
 private:
-	sshsNodeChangeListener nodeChanged;
+	dvConfigNodeChangeListener nodeChanged;
 	void *userData;
 
 public:
-	sshs_node_listener(sshsNodeChangeListener _listener, void *_userData) :
+	sshs_node_listener(dvConfigNodeChangeListener _listener, void *_userData) :
 		nodeChanged(_listener),
 		userData(_userData) {
 	}
 
-	sshsNodeChangeListener getListener() const noexcept {
+	dvConfigNodeChangeListener getListener() const noexcept {
 		return (nodeChanged);
 	}
 
@@ -91,16 +91,16 @@ public:
 
 class sshs_attribute_listener {
 private:
-	sshsAttributeChangeListener attributeChanged;
+	dvConfigAttributeChangeListener attributeChanged;
 	void *userData;
 
 public:
-	sshs_attribute_listener(sshsAttributeChangeListener _listener, void *_userData) :
+	sshs_attribute_listener(dvConfigAttributeChangeListener _listener, void *_userData) :
 		attributeChanged(_listener),
 		userData(_userData) {
 	}
 
-	sshsAttributeChangeListener getListener() const noexcept {
+	dvConfigAttributeChangeListener getListener() const noexcept {
 		return (attributeChanged);
 	}
 
@@ -121,20 +121,20 @@ public:
 static const std::regex sshsKeyRegexp("^[a-zA-Z-_\\d\\.]+$");
 
 // struct for C compatibility
-struct sshs_node {
+struct dv_config_node {
 public:
 	std::string name;
 	std::string path;
-	sshs global;
-	sshsNode parent;
-	std::map<std::string, sshsNode> children;
+	dvConfigTree global;
+	dvConfigNode parent;
+	std::map<std::string, dvConfigNode> children;
 	std::map<std::string, sshs_node_attr> attributes;
 	std::vector<sshs_node_listener> nodeListeners;
 	std::vector<sshs_attribute_listener> attrListeners;
 	std::shared_timed_mutex traversal_lock;
 	std::recursive_mutex node_lock;
 
-	sshs_node(const std::string &_name, sshsNode _parent, sshs _global) :
+	dv_config_node(const std::string &_name, dvConfigNode _parent, dvConfigTree _global) :
 		name(_name),
 		global(_global),
 		parent(_parent) {
@@ -149,7 +149,7 @@ public:
 	}
 
 	void createAttribute(const std::string &key, const sshs_value &defaultValue,
-		const struct sshs_node_attr_ranges &ranges, int flags, const std::string &description) {
+		const struct dvConfigAttributeRanges &ranges, int flags, const std::string &description) {
 		// Check key name string against allowed characters via regexp.
 		if (!std::regex_match(key, sshsKeyRegexp)) {
 			boost::format errorMsg = boost::format("Invalid key name format: '%s'.") % key;
@@ -160,13 +160,13 @@ public:
 		// Strings are special, their length range goes from 0 to SIZE_MAX, but we
 		// have to restrict that to from 0 to INT32_MAX for languages like Java
 		// that only support integer string lengths. It's also reasonable.
-		if (defaultValue.getType() == SSHS_STRING) {
+		if (defaultValue.getType() == DVCFG_TYPE_STRING) {
 			if ((ranges.min.stringRange > INT32_MAX) || (ranges.max.stringRange > INT32_MAX)) {
 				boost::format errorMsg = boost::format("minimum/maximum string range value outside allowed limits. "
 													   "Please make sure the value is positive, between 0 and %d!")
 										 % INT32_MAX;
 
-				sshsNodeError("sshsNodeCreateAttribute", key, SSHS_STRING, errorMsg.str());
+				sshsNodeError("sshsNodeCreateAttribute", key, DVCFG_TYPE_STRING, errorMsg.str());
 			}
 		}
 
@@ -181,7 +181,7 @@ public:
 		}
 
 		// Restrict NOTIFY_ONLY flag to booleans only, for button-like behavior.
-		if ((flags & SSHS_FLAGS_NOTIFY_ONLY) && defaultValue.getType() != SSHS_BOOL) {
+		if ((flags & DVCFG_FLAGS_NOTIFY_ONLY) && defaultValue.getType() != DVCFG_TYPE_BOOL) {
 			// Fail on wrong notify-only flag usage.
 			sshsNodeError("sshsNodeCreateAttribute", key, defaultValue.getType(),
 				"the NOTIFY_ONLY flag is set, but "
@@ -191,7 +191,7 @@ public:
 
 		// Restrict NOTIFY_ONLY flag to a default value of false only. This avoids
 		// strange inverted logic for buttons.
-		if ((flags & SSHS_FLAGS_NOTIFY_ONLY) && defaultValue.getBool() != false) {
+		if ((flags & DVCFG_FLAGS_NOTIFY_ONLY) && defaultValue.getBool() != false) {
 			// Fail on wrong notify-only flag usage.
 			sshsNodeError("sshsNodeCreateAttribute", key, defaultValue.getType(),
 				"the NOTIFY_ONLY flag is set for this BOOL type attribute, only 'false' can be used as default value.");
@@ -206,15 +206,15 @@ public:
 			attributes[key] = newAttr;
 
 			// Listener support. Call only on change, which is always the case here.
-			sshsAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+			dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
 			if (globalListener != nullptr) {
 				// Global listener support.
-				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), SSHS_ATTRIBUTE_ADDED,
+				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), DVCFG_ATTRIBUTE_ADDED,
 					key.c_str(), newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
 			}
 
 			for (const auto &l : attrListeners) {
-				(*l.getListener())(this, l.getUserData(), SSHS_ATTRIBUTE_ADDED, key.c_str(),
+				(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_ADDED, key.c_str(),
 					newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
 			}
 		}
@@ -245,23 +245,23 @@ public:
 				attributes[key] = newAttr;
 
 				// Listener support. Call only on change, which is always the case here.
-				sshsAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+				dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
 				if (globalListener != nullptr) {
 					// Global listener support.
 					(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global),
-						SSHS_ATTRIBUTE_MODIFIED, key.c_str(), newAttr.getValue().getType(),
+						DVCFG_ATTRIBUTE_MODIFIED, key.c_str(), newAttr.getValue().getType(),
 						newAttr.getValue().toCUnion(true));
 				}
 
 				for (const auto &l : attrListeners) {
-					(*l.getListener())(this, l.getUserData(), SSHS_ATTRIBUTE_MODIFIED, key.c_str(),
+					(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_MODIFIED, key.c_str(),
 						newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
 				}
 			}
 		}
 	}
 
-	void removeAttribute(const std::string &key, enum sshs_node_attr_value_type type) {
+	void removeAttribute(const std::string &key, enum dvConfigAttributeType type) {
 		std::lock_guard<std::recursive_mutex> lock(node_lock);
 
 		if (!attributeExists(key, type)) {
@@ -273,15 +273,15 @@ public:
 		sshs_node_attr &attr = attributes[key];
 
 		// Listener support.
-		sshsAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+		dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
 		if (globalListener != nullptr) {
 			// Global listener support.
-			(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), SSHS_ATTRIBUTE_REMOVED,
+			(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), DVCFG_ATTRIBUTE_REMOVED,
 				key.c_str(), attr.getValue().getType(), attr.getValue().toCUnion(true));
 		}
 
 		for (const auto &l : attrListeners) {
-			(*l.getListener())(this, l.getUserData(), SSHS_ATTRIBUTE_REMOVED, key.c_str(), attr.getValue().getType(),
+			(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_REMOVED, key.c_str(), attr.getValue().getType(),
 				attr.getValue().toCUnion(true));
 		}
 
@@ -293,15 +293,15 @@ public:
 		std::lock_guard<std::recursive_mutex> lock(node_lock);
 
 		for (const auto &attr : attributes) {
-			sshsAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+			dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
 			if (globalListener != nullptr) {
 				// Global listener support.
-				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), SSHS_ATTRIBUTE_REMOVED,
+				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), DVCFG_ATTRIBUTE_REMOVED,
 					attr.first.c_str(), attr.second.getValue().getType(), attr.second.getValue().toCUnion(true));
 			}
 
 			for (const auto &l : attrListeners) {
-				(*l.getListener())(this, l.getUserData(), SSHS_ATTRIBUTE_REMOVED, attr.first.c_str(),
+				(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_REMOVED, attr.first.c_str(),
 					attr.second.getValue().getType(), attr.second.getValue().toCUnion(true));
 			}
 		}
@@ -309,7 +309,7 @@ public:
 		attributes.clear();
 	}
 
-	bool attributeExists(const std::string &key, enum sshs_node_attr_value_type type) {
+	bool attributeExists(const std::string &key, enum dvConfigAttributeType type) {
 		std::lock_guard<std::recursive_mutex> lockNode(node_lock);
 
 		if ((!attributes.count(key)) || (attributes[key].getValue().getType() != type)) {
@@ -321,7 +321,7 @@ public:
 		return (true);
 	}
 
-	const sshs_value getAttribute(const std::string &key, enum sshs_node_attr_value_type type) {
+	const sshs_value getAttribute(const std::string &key, enum dvConfigAttributeType type) {
 		std::lock_guard<std::recursive_mutex> lockNode(node_lock);
 
 		if (!attributeExists(key, type)) {
@@ -342,8 +342,8 @@ public:
 		sshs_node_attr &attr = attributes[key];
 
 		// Value must be present, so update old one, after checking range and flags.
-		if ((!forceReadOnlyUpdate && attr.isFlagSet(SSHS_FLAGS_READ_ONLY))
-			|| (forceReadOnlyUpdate && !attr.isFlagSet(SSHS_FLAGS_READ_ONLY))) {
+		if ((!forceReadOnlyUpdate && attr.isFlagSet(DVCFG_FLAGS_READ_ONLY))
+			|| (forceReadOnlyUpdate && !attr.isFlagSet(DVCFG_FLAGS_READ_ONLY))) {
 			// Read-only flag set, cannot put new value!
 			errno = EPERM;
 			return (false);
@@ -360,7 +360,7 @@ public:
 		// nothing to do, no listeners to call, and it doesn't make sense to
 		// set the value twice to the same content.
 		if (attr.getValue() != value) {
-			if (!attr.isFlagSet(SSHS_FLAGS_NOTIFY_ONLY)) {
+			if (!attr.isFlagSet(DVCFG_FLAGS_NOTIFY_ONLY)) {
 				// Only update stored value if NOTIFY_ONLY is not set.
 				attr.setValue(value);
 			}
@@ -370,16 +370,16 @@ public:
 			// the case where NOTIFY_ONLY prevented the updated of the stored
 			// attribute, but the call to the listeners has to happen with the
 			// new value (call-listeners-only behavior).
-			sshsAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+			dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
 			if (globalListener != nullptr) {
 				// Global listener support.
-				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), SSHS_ATTRIBUTE_MODIFIED,
+				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), DVCFG_ATTRIBUTE_MODIFIED,
 					key.c_str(), value.getType(), value.toCUnion(true));
 			}
 
 			for (const auto &l : attrListeners) {
 				(*l.getListener())(
-					this, l.getUserData(), SSHS_ATTRIBUTE_MODIFIED, key.c_str(), value.getType(), value.toCUnion(true));
+					this, l.getUserData(), DVCFG_ATTRIBUTE_MODIFIED, key.c_str(), value.getType(), value.toCUnion(true));
 			}
 		}
 
@@ -387,47 +387,47 @@ public:
 	}
 };
 
-static void sshsNodeDestroy(sshsNode node);
-static void sshsNodeRemoveSubTree(sshsNode node);
-static void sshsNodeRemoveChild(sshsNode node, const std::string childName);
-static void sshsNodeRemoveAllChildren(sshsNode node);
+static void sshsNodeDestroy(dvConfigNode node);
+static void sshsNodeRemoveSubTree(dvConfigNode node);
+static void sshsNodeRemoveChild(dvConfigNode node, const std::string childName);
+static void sshsNodeRemoveAllChildren(dvConfigNode node);
 
 #define XML_INDENT_SPACES 4
 
-static bool sshsNodeToXML(sshsNode node, int fd, bool recursive);
-static boost::property_tree::ptree sshsNodeGenerateXML(sshsNode node, bool recursive);
-static bool sshsNodeFromXML(sshsNode node, int fd, bool recursive, bool strict);
-static void sshsNodeConsumeXML(sshsNode node, const boost::property_tree::ptree &content, bool recursive);
+static bool sshsNodeToXML(dvConfigNode node, int fd, bool recursive);
+static boost::property_tree::ptree sshsNodeGenerateXML(dvConfigNode node, bool recursive);
+static bool sshsNodeFromXML(dvConfigNode node, int fd, bool recursive, bool strict);
+static void sshsNodeConsumeXML(dvConfigNode node, const boost::property_tree::ptree &content, bool recursive);
 
-sshsNode sshsNodeNew(const char *nodeName, sshsNode parent, sshs global) {
-	sshsNode newNode = new (std::nothrow) sshs_node(nodeName, parent, global);
+dvConfigNode sshsNodeNew(const char *nodeName, dvConfigNode parent, dvConfigTree global) {
+	dvConfigNode newNode = new (std::nothrow) dv_config_node(nodeName, parent, global);
 	sshsMemoryCheck(newNode, __func__);
 
 	return (newNode);
 }
 
 // children, attributes, and listeners must be cleaned up prior to this call.
-static void sshsNodeDestroy(sshsNode node) {
+static void sshsNodeDestroy(dvConfigNode node) {
 	delete node;
 }
 
-const char *sshsNodeGetName(sshsNode node) {
+const char *sshsNodeGetName(dvConfigNode node) {
 	return (node->name.c_str());
 }
 
-const char *sshsNodeGetPath(sshsNode node) {
+const char *sshsNodeGetPath(dvConfigNode node) {
 	return (node->path.c_str());
 }
 
-sshsNode sshsNodeGetParent(sshsNode node) {
+dvConfigNode sshsNodeGetParent(dvConfigNode node) {
 	return (node->parent);
 }
 
-sshs sshsNodeGetGlobal(sshsNode node) {
+dvConfigTree sshsNodeGetGlobal(dvConfigNode node) {
 	return (node->global);
 }
 
-sshsNode sshsNodeAddChild(sshsNode node, const char *childName) {
+dvConfigNode sshsNodeAddChild(dvConfigNode node, const char *childName) {
 	std::unique_lock<std::shared_timed_mutex> lock(node->traversal_lock);
 
 	if (node->children.count(childName)) {
@@ -435,7 +435,7 @@ sshsNode sshsNodeAddChild(sshsNode node, const char *childName) {
 	}
 	else {
 		// Create new child node with appropriate name and parent.
-		sshsNode newChild = sshsNodeNew(childName, node, node->global);
+		dvConfigNode newChild = sshsNodeNew(childName, node, node->global);
 
 		// No node present, let's add it.
 		node->children[childName] = newChild;
@@ -443,21 +443,21 @@ sshsNode sshsNodeAddChild(sshsNode node, const char *childName) {
 		// Listener support (only on new addition!).
 		std::lock_guard<std::recursive_mutex> nodeLock(node->node_lock);
 
-		sshsNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
+		dvConfigNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
 		if (globalListener != nullptr) {
 			// Global listener support.
-			(*globalListener)(node, sshsGlobalNodeListenerGetUserData(node->global), SSHS_CHILD_NODE_ADDED, childName);
+			(*globalListener)(node, sshsGlobalNodeListenerGetUserData(node->global), DVCFG_NODE_CHILD_ADDED, childName);
 		}
 
 		for (const auto &l : node->nodeListeners) {
-			(*l.getListener())(node, l.getUserData(), SSHS_CHILD_NODE_ADDED, childName);
+			(*l.getListener())(node, l.getUserData(), DVCFG_NODE_CHILD_ADDED, childName);
 		}
 
 		return (newChild);
 	}
 }
 
-sshsNode sshsNodeGetChild(sshsNode node, const char *childName) {
+dvConfigNode sshsNodeGetChild(dvConfigNode node, const char *childName) {
 	std::shared_lock<std::shared_timed_mutex> lock(node->traversal_lock);
 
 	if (node->children.count(childName)) {
@@ -468,7 +468,7 @@ sshsNode sshsNodeGetChild(sshsNode node, const char *childName) {
 	}
 }
 
-sshsNode *sshsNodeGetChildren(sshsNode node, size_t *numChildren) {
+dvConfigNode *sshsNodeGetChildren(dvConfigNode node, size_t *numChildren) {
 	std::shared_lock<std::shared_timed_mutex> lock(node->traversal_lock);
 
 	size_t childrenCount = node->children.size();
@@ -479,7 +479,7 @@ sshsNode *sshsNodeGetChildren(sshsNode node, size_t *numChildren) {
 		return (nullptr);
 	}
 
-	sshsNode *children = (sshsNode *) malloc(childrenCount * sizeof(*children));
+	dvConfigNode *children = (dvConfigNode *) malloc(childrenCount * sizeof(*children));
 	sshsMemoryCheck(children, __func__);
 
 	size_t i = 0;
@@ -491,7 +491,7 @@ sshsNode *sshsNodeGetChildren(sshsNode node, size_t *numChildren) {
 	return (children);
 }
 
-void sshsNodeAddNodeListener(sshsNode node, void *userData, sshsNodeChangeListener node_changed) {
+void sshsNodeAddNodeListener(dvConfigNode node, void *userData, dvConfigNodeChangeListener node_changed) {
 	sshs_node_listener listener(node_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
@@ -501,7 +501,7 @@ void sshsNodeAddNodeListener(sshsNode node, void *userData, sshsNodeChangeListen
 	}
 }
 
-void sshsNodeRemoveNodeListener(sshsNode node, void *userData, sshsNodeChangeListener node_changed) {
+void sshsNodeRemoveNodeListener(dvConfigNode node, void *userData, dvConfigNodeChangeListener node_changed) {
 	sshs_node_listener listener(node_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
@@ -510,13 +510,13 @@ void sshsNodeRemoveNodeListener(sshsNode node, void *userData, sshsNodeChangeLis
 		std::remove(node->nodeListeners.begin(), node->nodeListeners.end(), listener), node->nodeListeners.end());
 }
 
-void sshsNodeRemoveAllNodeListeners(sshsNode node) {
+void sshsNodeRemoveAllNodeListeners(dvConfigNode node) {
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
 
 	node->nodeListeners.clear();
 }
 
-void sshsNodeAddAttributeListener(sshsNode node, void *userData, sshsAttributeChangeListener attribute_changed) {
+void sshsNodeAddAttributeListener(dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed) {
 	sshs_attribute_listener listener(attribute_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
@@ -526,7 +526,7 @@ void sshsNodeAddAttributeListener(sshsNode node, void *userData, sshsAttributeCh
 	}
 }
 
-void sshsNodeRemoveAttributeListener(sshsNode node, void *userData, sshsAttributeChangeListener attribute_changed) {
+void sshsNodeRemoveAttributeListener(dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed) {
 	sshs_attribute_listener listener(attribute_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
@@ -535,13 +535,13 @@ void sshsNodeRemoveAttributeListener(sshsNode node, void *userData, sshsAttribut
 		std::remove(node->attrListeners.begin(), node->attrListeners.end(), listener), node->attrListeners.end());
 }
 
-void sshsNodeRemoveAllAttributeListeners(sshsNode node) {
+void sshsNodeRemoveAllAttributeListeners(dvConfigNode node) {
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
 
 	node->attrListeners.clear();
 }
 
-void sshsNodeClearSubTree(sshsNode startNode, bool clearStartNode) {
+void sshsNodeClearSubTree(dvConfigNode startNode, bool clearStartNode) {
 	std::lock_guard<std::recursive_mutex> lockNode(startNode->node_lock);
 
 	// Clear this node's attributes, if requested.
@@ -552,7 +552,7 @@ void sshsNodeClearSubTree(sshsNode startNode, bool clearStartNode) {
 
 	// Recurse down children and remove all attributes.
 	size_t numChildren;
-	sshsNode *children = sshsNodeGetChildren(startNode, &numChildren);
+	dvConfigNode *children = sshsNodeGetChildren(startNode, &numChildren);
 
 	for (size_t i = 0; i < numChildren; i++) {
 		sshsNodeClearSubTree(children[i], true);
@@ -564,7 +564,7 @@ void sshsNodeClearSubTree(sshsNode startNode, bool clearStartNode) {
 // Eliminates this node and any children. Nobody can have a reference, or
 // be in the process of getting one, to this node or any of its children.
 // You need to make sure of this in your application!
-void sshsNodeRemoveNode(sshsNode node) {
+void sshsNodeRemoveNode(dvConfigNode node) {
 	{
 		std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
@@ -584,10 +584,10 @@ void sshsNodeRemoveNode(sshsNode node) {
 	}
 }
 
-static void sshsNodeRemoveSubTree(sshsNode node) {
+static void sshsNodeRemoveSubTree(dvConfigNode node) {
 	// Recurse down first, we remove from the bottom up.
 	size_t numChildren;
-	sshsNode *children = sshsNodeGetChildren(node, &numChildren);
+	dvConfigNode *children = sshsNodeGetChildren(node, &numChildren);
 
 	for (size_t i = 0; i < numChildren; i++) {
 		sshsNodeRemoveSubTree(children[i]);
@@ -602,7 +602,7 @@ static void sshsNodeRemoveSubTree(sshsNode node) {
 
 // children, attributes, and listeners for the child to be removed
 // must be cleaned up prior to this call.
-static void sshsNodeRemoveChild(sshsNode node, const std::string childName) {
+static void sshsNodeRemoveChild(dvConfigNode node, const std::string childName) {
 	std::unique_lock<std::shared_timed_mutex> lock(node->traversal_lock);
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
@@ -613,15 +613,15 @@ static void sshsNodeRemoveChild(sshsNode node, const std::string childName) {
 	}
 
 	// Listener support.
-	sshsNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
+	dvConfigNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
 	if (globalListener != nullptr) {
 		// Global listener support.
 		(*globalListener)(
-			node, sshsGlobalNodeListenerGetUserData(node->global), SSHS_CHILD_NODE_REMOVED, childName.c_str());
+			node, sshsGlobalNodeListenerGetUserData(node->global), DVCFG_NODE_CHILD_REMOVED, childName.c_str());
 	}
 
 	for (const auto &l : node->nodeListeners) {
-		(*l.getListener())(node, l.getUserData(), SSHS_CHILD_NODE_REMOVED, childName.c_str());
+		(*l.getListener())(node, l.getUserData(), DVCFG_NODE_CHILD_REMOVED, childName.c_str());
 	}
 
 	sshsNodeDestroy(node->children[childName]);
@@ -632,20 +632,20 @@ static void sshsNodeRemoveChild(sshsNode node, const std::string childName) {
 
 // children, attributes, and listeners for the children to be removed
 // must be cleaned up prior to this call.
-static void sshsNodeRemoveAllChildren(sshsNode node) {
+static void sshsNodeRemoveAllChildren(dvConfigNode node) {
 	std::unique_lock<std::shared_timed_mutex> lock(node->traversal_lock);
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	for (const auto &child : node->children) {
-		sshsNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
+		dvConfigNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
 		if (globalListener != nullptr) {
 			// Global listener support.
 			(*globalListener)(
-				node, sshsGlobalNodeListenerGetUserData(node->global), SSHS_CHILD_NODE_REMOVED, child.first.c_str());
+				node, sshsGlobalNodeListenerGetUserData(node->global), DVCFG_NODE_CHILD_REMOVED, child.first.c_str());
 		}
 
 		for (const auto &l : node->nodeListeners) {
-			(*l.getListener())(node, l.getUserData(), SSHS_CHILD_NODE_REMOVED, child.first.c_str());
+			(*l.getListener())(node, l.getUserData(), DVCFG_NODE_CHILD_REMOVED, child.first.c_str());
 		}
 
 		sshsNodeDestroy(child.second);
@@ -654,8 +654,8 @@ static void sshsNodeRemoveAllChildren(sshsNode node) {
 	node->children.clear();
 }
 
-void sshsNodeCreateAttribute(sshsNode node, const char *key, enum sshs_node_attr_value_type type,
-	union sshs_node_attr_value defaultValue, const struct sshs_node_attr_ranges ranges, int flags,
+void sshsNodeCreateAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
+	union dvConfigAttributeValue defaultValue, const struct dvConfigAttributeRanges ranges, int flags,
 	const char *description) {
 	sshs_value val;
 	val.fromCUnion(defaultValue, type);
@@ -663,166 +663,166 @@ void sshsNodeCreateAttribute(sshsNode node, const char *key, enum sshs_node_attr
 	node->createAttribute(key, val, ranges, flags, description);
 }
 
-void sshsNodeRemoveAttribute(sshsNode node, const char *key, enum sshs_node_attr_value_type type) {
+void sshsNodeRemoveAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
 	node->removeAttribute(key, type);
 }
 
-void sshsNodeRemoveAllAttributes(sshsNode node) {
+void sshsNodeRemoveAllAttributes(dvConfigNode node) {
 	node->removeAllAttributes();
 }
 
-bool sshsNodeAttributeExists(sshsNode node, const char *key, enum sshs_node_attr_value_type type) {
+bool sshsNodeAttributeExists(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
 	return (node->attributeExists(key, type));
 }
 
 bool sshsNodePutAttribute(
-	sshsNode node, const char *key, enum sshs_node_attr_value_type type, union sshs_node_attr_value value) {
+	dvConfigNode node, const char *key, enum dvConfigAttributeType type, union dvConfigAttributeValue value) {
 	sshs_value val;
 	val.fromCUnion(value, type);
 
 	return (node->putAttribute(key, val));
 }
 
-union sshs_node_attr_value sshsNodeGetAttribute(sshsNode node, const char *key, enum sshs_node_attr_value_type type) {
+union dvConfigAttributeValue sshsNodeGetAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
 	return (node->getAttribute(key, type).toCUnion());
 }
 
 bool sshsNodeUpdateReadOnlyAttribute(
-	sshsNode node, const char *key, enum sshs_node_attr_value_type type, union sshs_node_attr_value value) {
+	dvConfigNode node, const char *key, enum dvConfigAttributeType type, union dvConfigAttributeValue value) {
 	sshs_value val;
 	val.fromCUnion(value, type);
 
 	return (node->putAttribute(key, val, true));
 }
 
-void sshsNodeCreateBool(sshsNode node, const char *key, bool defaultValue, int flags, const char *description) {
+void sshsNodeCreateBool(dvConfigNode node, const char *key, bool defaultValue, int flags, const char *description) {
 	sshs_value uValue;
 	uValue.setBool(defaultValue);
 
 	// No range for booleans.
-	struct sshs_node_attr_ranges ranges;
+	struct dvConfigAttributeRanges ranges;
 	ranges.min.ilongRange = 0;
 	ranges.max.ilongRange = 0;
 
 	node->createAttribute(key, uValue, ranges, flags, description);
 }
 
-bool sshsNodePutBool(sshsNode node, const char *key, bool value) {
+bool sshsNodePutBool(dvConfigNode node, const char *key, bool value) {
 	sshs_value uValue;
 	uValue.setBool(value);
 
 	return (node->putAttribute(key, uValue));
 }
 
-bool sshsNodeGetBool(sshsNode node, const char *key) {
-	return (node->getAttribute(key, SSHS_BOOL).getBool());
+bool sshsNodeGetBool(dvConfigNode node, const char *key) {
+	return (node->getAttribute(key, DVCFG_TYPE_BOOL).getBool());
 }
 
-void sshsNodeCreateInt(sshsNode node, const char *key, int32_t defaultValue, int32_t minValue, int32_t maxValue,
+void sshsNodeCreateInt(dvConfigNode node, const char *key, int32_t defaultValue, int32_t minValue, int32_t maxValue,
 	int flags, const char *description) {
 	sshs_value uValue;
 	uValue.setInt(defaultValue);
 
-	struct sshs_node_attr_ranges ranges;
+	struct dvConfigAttributeRanges ranges;
 	ranges.min.iintRange = minValue;
 	ranges.max.iintRange = maxValue;
 
 	node->createAttribute(key, uValue, ranges, flags, description);
 }
 
-bool sshsNodePutInt(sshsNode node, const char *key, int32_t value) {
+bool sshsNodePutInt(dvConfigNode node, const char *key, int32_t value) {
 	sshs_value uValue;
 	uValue.setInt(value);
 
 	return (node->putAttribute(key, uValue));
 }
 
-int32_t sshsNodeGetInt(sshsNode node, const char *key) {
-	return (node->getAttribute(key, SSHS_INT).getInt());
+int32_t sshsNodeGetInt(dvConfigNode node, const char *key) {
+	return (node->getAttribute(key, DVCFG_TYPE_INT).getInt());
 }
 
-void sshsNodeCreateLong(sshsNode node, const char *key, int64_t defaultValue, int64_t minValue, int64_t maxValue,
+void sshsNodeCreateLong(dvConfigNode node, const char *key, int64_t defaultValue, int64_t minValue, int64_t maxValue,
 	int flags, const char *description) {
 	sshs_value uValue;
 	uValue.setLong(defaultValue);
 
-	struct sshs_node_attr_ranges ranges;
+	struct dvConfigAttributeRanges ranges;
 	ranges.min.ilongRange = minValue;
 	ranges.max.ilongRange = maxValue;
 
 	node->createAttribute(key, uValue, ranges, flags, description);
 }
 
-bool sshsNodePutLong(sshsNode node, const char *key, int64_t value) {
+bool sshsNodePutLong(dvConfigNode node, const char *key, int64_t value) {
 	sshs_value uValue;
 	uValue.setLong(value);
 
 	return (node->putAttribute(key, uValue));
 }
 
-int64_t sshsNodeGetLong(sshsNode node, const char *key) {
-	return (node->getAttribute(key, SSHS_LONG).getLong());
+int64_t sshsNodeGetLong(dvConfigNode node, const char *key) {
+	return (node->getAttribute(key, DVCFG_TYPE_LONG).getLong());
 }
 
-void sshsNodeCreateFloat(sshsNode node, const char *key, float defaultValue, float minValue, float maxValue, int flags,
+void sshsNodeCreateFloat(dvConfigNode node, const char *key, float defaultValue, float minValue, float maxValue, int flags,
 	const char *description) {
 	sshs_value uValue;
 	uValue.setFloat(defaultValue);
 
-	struct sshs_node_attr_ranges ranges;
+	struct dvConfigAttributeRanges ranges;
 	ranges.min.ffloatRange = minValue;
 	ranges.max.ffloatRange = maxValue;
 
 	node->createAttribute(key, uValue, ranges, flags, description);
 }
 
-bool sshsNodePutFloat(sshsNode node, const char *key, float value) {
+bool sshsNodePutFloat(dvConfigNode node, const char *key, float value) {
 	sshs_value uValue;
 	uValue.setFloat(value);
 
 	return (node->putAttribute(key, uValue));
 }
 
-float sshsNodeGetFloat(sshsNode node, const char *key) {
-	return (node->getAttribute(key, SSHS_FLOAT).getFloat());
+float sshsNodeGetFloat(dvConfigNode node, const char *key) {
+	return (node->getAttribute(key, DVCFG_TYPE_FLOAT).getFloat());
 }
 
-void sshsNodeCreateDouble(sshsNode node, const char *key, double defaultValue, double minValue, double maxValue,
+void sshsNodeCreateDouble(dvConfigNode node, const char *key, double defaultValue, double minValue, double maxValue,
 	int flags, const char *description) {
 	sshs_value uValue;
 	uValue.setDouble(defaultValue);
 
-	struct sshs_node_attr_ranges ranges;
+	struct dvConfigAttributeRanges ranges;
 	ranges.min.ddoubleRange = minValue;
 	ranges.max.ddoubleRange = maxValue;
 
 	node->createAttribute(key, uValue, ranges, flags, description);
 }
 
-bool sshsNodePutDouble(sshsNode node, const char *key, double value) {
+bool sshsNodePutDouble(dvConfigNode node, const char *key, double value) {
 	sshs_value uValue;
 	uValue.setDouble(value);
 
 	return (node->putAttribute(key, uValue));
 }
 
-double sshsNodeGetDouble(sshsNode node, const char *key) {
-	return (node->getAttribute(key, SSHS_DOUBLE).getDouble());
+double sshsNodeGetDouble(dvConfigNode node, const char *key) {
+	return (node->getAttribute(key, DVCFG_TYPE_DOUBLE).getDouble());
 }
 
-void sshsNodeCreateString(sshsNode node, const char *key, const char *defaultValue, size_t minLength, size_t maxLength,
+void sshsNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, size_t minLength, size_t maxLength,
 	int flags, const char *description) {
 	sshs_value uValue;
 	uValue.setString(defaultValue);
 
-	struct sshs_node_attr_ranges ranges;
+	struct dvConfigAttributeRanges ranges;
 	ranges.min.stringRange = minLength;
 	ranges.max.stringRange = maxLength;
 
 	node->createAttribute(key, uValue, ranges, flags, description);
 }
 
-bool sshsNodePutString(sshsNode node, const char *key, const char *value) {
+bool sshsNodePutString(dvConfigNode node, const char *key, const char *value) {
 	sshs_value uValue;
 	uValue.setString(value);
 
@@ -830,19 +830,19 @@ bool sshsNodePutString(sshsNode node, const char *key, const char *value) {
 }
 
 // This is a copy of the string on the heap, remember to free() when done!
-char *sshsNodeGetString(sshsNode node, const char *key) {
-	return (node->getAttribute(key, SSHS_STRING).toCUnion().string);
+char *sshsNodeGetString(dvConfigNode node, const char *key) {
+	return (node->getAttribute(key, DVCFG_TYPE_STRING).toCUnion().string);
 }
 
-bool sshsNodeExportNodeToXML(sshsNode node, int fd) {
+bool sshsNodeExportNodeToXML(dvConfigNode node, int fd) {
 	return (sshsNodeToXML(node, fd, false));
 }
 
-bool sshsNodeExportSubTreeToXML(sshsNode node, int fd) {
+bool sshsNodeExportSubTreeToXML(dvConfigNode node, int fd) {
 	return (sshsNodeToXML(node, fd, true));
 }
 
-static bool sshsNodeToXML(sshsNode node, int fd, bool recursive) {
+static bool sshsNodeToXML(dvConfigNode node, int fd, bool recursive) {
 	boost::iostreams::stream_buffer<boost::iostreams::file_descriptor_sink> fdStream(
 		fd, boost::iostreams::never_close_handle);
 
@@ -882,7 +882,7 @@ static bool sshsNodeToXML(sshsNode node, int fd, bool recursive) {
 	return (true);
 }
 
-static boost::property_tree::ptree sshsNodeGenerateXML(sshsNode node, bool recursive) {
+static boost::property_tree::ptree sshsNodeGenerateXML(dvConfigNode node, bool recursive) {
 	boost::property_tree::ptree content;
 
 	// First recurse down all the way to the leaf children, where attributes are kept.
@@ -905,7 +905,7 @@ static boost::property_tree::ptree sshsNodeGenerateXML(sshsNode node, bool recur
 	auto attrFirstIterator = content.begin();
 	for (const auto &attr : node->attributes) {
 		// If an attribute is marked NO_EXPORT, we skip it.
-		if (attr.second.isFlagSet(SSHS_FLAGS_NO_EXPORT)) {
+		if (attr.second.isFlagSet(DVCFG_FLAGS_NO_EXPORT)) {
 			continue;
 		}
 
@@ -933,11 +933,11 @@ static boost::property_tree::ptree sshsNodeGenerateXML(sshsNode node, bool recur
 	return (content);
 }
 
-bool sshsNodeImportNodeFromXML(sshsNode node, int fd, bool strict) {
+bool sshsNodeImportNodeFromXML(dvConfigNode node, int fd, bool strict) {
 	return (sshsNodeFromXML(node, fd, false, strict));
 }
 
-bool sshsNodeImportSubTreeFromXML(sshsNode node, int fd, bool strict) {
+bool sshsNodeImportSubTreeFromXML(dvConfigNode node, int fd, bool strict) {
 	return (sshsNodeFromXML(node, fd, true, strict));
 }
 
@@ -954,7 +954,7 @@ static std::vector<std::reference_wrapper<const boost::property_tree::ptree>> ss
 	return (result);
 }
 
-static bool sshsNodeFromXML(sshsNode node, int fd, bool recursive, bool strict) {
+static bool sshsNodeFromXML(dvConfigNode node, int fd, bool recursive, bool strict) {
 	boost::iostreams::stream_buffer<boost::iostreams::file_descriptor_source> fdStream(
 		fd, boost::iostreams::never_close_handle);
 
@@ -1015,7 +1015,7 @@ static bool sshsNodeFromXML(sshsNode node, int fd, bool recursive, bool strict) 
 	return (true);
 }
 
-static void sshsNodeConsumeXML(sshsNode node, const boost::property_tree::ptree &content, bool recursive) {
+static void sshsNodeConsumeXML(dvConfigNode node, const boost::property_tree::ptree &content, bool recursive) {
 	auto attributes = sshsNodeXMLFilterChildNodes(content, "attr");
 
 	for (auto &attr : attributes) {
@@ -1055,7 +1055,7 @@ static void sshsNodeConsumeXML(sshsNode node, const boost::property_tree::ptree 
 			}
 
 			// Get the child node.
-			sshsNode childNode = sshsNodeGetChild(node, childName.c_str());
+			dvConfigNode childNode = sshsNodeGetChild(node, childName.c_str());
 
 			// If not existing, try to create.
 			if (childNode == nullptr) {
@@ -1069,17 +1069,17 @@ static void sshsNodeConsumeXML(sshsNode node, const boost::property_tree::ptree 
 }
 
 // For more precise failure reason, look at errno.
-bool sshsNodeStringToAttributeConverter(sshsNode node, const char *key, const char *typeStr, const char *valueStr) {
+bool sshsNodeStringToAttributeConverter(dvConfigNode node, const char *key, const char *typeStr, const char *valueStr) {
 	// Parse the values according to type and put them in the node.
-	enum sshs_node_attr_value_type type;
+	enum dvConfigAttributeType type;
 	type = sshsHelperCppStringToTypeConverter(typeStr);
 
-	if (type == SSHS_UNKNOWN) {
+	if (type == DVCFG_TYPE_UNKNOWN) {
 		errno = EINVAL;
 		return (false);
 	}
 
-	if ((type == SSHS_STRING) && (valueStr == nullptr)) {
+	if ((type == DVCFG_TYPE_STRING) && (valueStr == nullptr)) {
 		// Empty string.
 		valueStr = "";
 	}
@@ -1110,52 +1110,52 @@ bool sshsNodeStringToAttributeConverter(sshsNode node, const char *key, const ch
 	else {
 		// Create never fails, it may exit the program, but not fail!
 		result = true;
-		struct sshs_node_attr_ranges ranges;
+		struct dvConfigAttributeRanges ranges;
 
 		switch (type) {
-			case SSHS_BOOL:
+			case DVCFG_TYPE_BOOL:
 				ranges.min.ilongRange = 0;
 				ranges.max.ilongRange = 0;
 				node->createAttribute(
-					key, value, ranges, SSHS_FLAGS_NORMAL | SSHS_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
 
-			case SSHS_INT:
+			case DVCFG_TYPE_INT:
 				ranges.min.iintRange = INT32_MIN;
 				ranges.max.iintRange = INT32_MAX;
 				node->createAttribute(
-					key, value, ranges, SSHS_FLAGS_NORMAL | SSHS_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
 
-			case SSHS_LONG:
+			case DVCFG_TYPE_LONG:
 				ranges.min.ilongRange = INT64_MIN;
 				ranges.max.ilongRange = INT64_MAX;
 				node->createAttribute(
-					key, value, ranges, SSHS_FLAGS_NORMAL | SSHS_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
 
-			case SSHS_FLOAT:
+			case DVCFG_TYPE_FLOAT:
 				ranges.min.ffloatRange = -FLT_MAX;
 				ranges.max.ffloatRange = FLT_MAX;
 				node->createAttribute(
-					key, value, ranges, SSHS_FLAGS_NORMAL | SSHS_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
 
-			case SSHS_DOUBLE:
+			case DVCFG_TYPE_DOUBLE:
 				ranges.min.ddoubleRange = -DBL_MAX;
 				ranges.max.ddoubleRange = DBL_MAX;
 				node->createAttribute(
-					key, value, ranges, SSHS_FLAGS_NORMAL | SSHS_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
 
-			case SSHS_STRING:
+			case DVCFG_TYPE_STRING:
 				ranges.min.stringRange = 0;
 				ranges.max.stringRange = INT32_MAX;
 				node->createAttribute(
-					key, value, ranges, SSHS_FLAGS_NORMAL | SSHS_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
 
-			case SSHS_UNKNOWN:
+			case DVCFG_TYPE_UNKNOWN:
 				errno  = EINVAL;
 				result = false;
 				break;
@@ -1166,7 +1166,7 @@ bool sshsNodeStringToAttributeConverter(sshsNode node, const char *key, const ch
 }
 
 // Remember to free the resulting array.
-const char **sshsNodeGetChildNames(sshsNode node, size_t *numNames) {
+const char **sshsNodeGetChildNames(dvConfigNode node, size_t *numNames) {
 	std::shared_lock<std::shared_timed_mutex> lock(node->traversal_lock);
 
 	if (node->children.empty()) {
@@ -1208,7 +1208,7 @@ const char **sshsNodeGetChildNames(sshsNode node, size_t *numNames) {
 }
 
 // Remember to free the resulting array.
-const char **sshsNodeGetAttributeKeys(sshsNode node, size_t *numKeys) {
+const char **sshsNodeGetAttributeKeys(dvConfigNode node, size_t *numKeys) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	if (node->attributes.empty()) {
@@ -1250,20 +1250,20 @@ const char **sshsNodeGetAttributeKeys(sshsNode node, size_t *numKeys) {
 }
 
 // Remember to free the resulting array.
-enum sshs_node_attr_value_type sshsNodeGetAttributeType(sshsNode node, const char *key) {
+enum dvConfigAttributeType sshsNodeGetAttributeType(dvConfigNode node, const char *key) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	if (!node->attributes.count(key)) {
 		errno = ENOENT;
-		return (SSHS_UNKNOWN);
+		return (DVCFG_TYPE_UNKNOWN);
 	}
 
 	// There is exactly one type for one specific attribute key.
 	return (node->attributes[key].getValue().getType());
 }
 
-struct sshs_node_attr_ranges sshsNodeGetAttributeRanges(
-	sshsNode node, const char *key, enum sshs_node_attr_value_type type) {
+struct dvConfigAttributeRanges sshsNodeGetAttributeRanges(
+	dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, type)) {
@@ -1273,7 +1273,7 @@ struct sshs_node_attr_ranges sshsNodeGetAttributeRanges(
 	return (node->attributes[key].getRanges());
 }
 
-int sshsNodeGetAttributeFlags(sshsNode node, const char *key, enum sshs_node_attr_value_type type) {
+int sshsNodeGetAttributeFlags(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, type)) {
@@ -1284,7 +1284,7 @@ int sshsNodeGetAttributeFlags(sshsNode node, const char *key, enum sshs_node_att
 }
 
 // Remember to free the resulting string.
-char *sshsNodeGetAttributeDescription(sshsNode node, const char *key, enum sshs_node_attr_value_type type) {
+char *sshsNodeGetAttributeDescription(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, type)) {
@@ -1298,11 +1298,11 @@ char *sshsNodeGetAttributeDescription(sshsNode node, const char *key, enum sshs_
 }
 
 void sshsNodeCreateAttributeListOptions(
-	sshsNode node, const char *key, const char *listOptions, bool allowMultipleSelections) {
+	dvConfigNode node, const char *key, const char *listOptions, bool allowMultipleSelections) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
-	if (!node->attributeExists(key, SSHS_STRING)) {
-		sshsNodeErrorNoAttribute("sshsNodeCreateAttributeListOptions", key, SSHS_STRING);
+	if (!node->attributeExists(key, DVCFG_TYPE_STRING)) {
+		sshsNodeErrorNoAttribute("sshsNodeCreateAttributeListOptions", key, DVCFG_TYPE_STRING);
 	}
 
 	std::string fullKey(key);
@@ -1312,21 +1312,21 @@ void sshsNodeCreateAttributeListOptions(
 		fullKey += "Multi";
 	}
 
-	sshsNodeCreateString(node, fullKey.c_str(), listOptions, 1, INT32_MAX, SSHS_FLAGS_READ_ONLY,
+	sshsNodeCreateString(node, fullKey.c_str(), listOptions, 1, INT32_MAX, DVCFG_FLAGS_READ_ONLY,
 		"Comma separated list of possible associated attribute values.");
 }
 
-void sshsNodeCreateAttributeFileChooser(sshsNode node, const char *key, const char *allowedExtensions) {
+void sshsNodeCreateAttributeFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
-	if (!node->attributeExists(key, SSHS_STRING)) {
-		sshsNodeErrorNoAttribute("sshsNodeCreateAttributeFileChooser", key, SSHS_STRING);
+	if (!node->attributeExists(key, DVCFG_TYPE_STRING)) {
+		sshsNodeErrorNoAttribute("sshsNodeCreateAttributeFileChooser", key, DVCFG_TYPE_STRING);
 	}
 
 	std::string fullKey(key);
 	fullKey += "FileChooser";
 
 	sshsNodeCreateString(node, fullKey.c_str(), allowedExtensions, 1, INT32_MAX,
-		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Comma separated list of allowed extensions for the file chooser dialog.");
 }

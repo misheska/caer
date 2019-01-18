@@ -18,7 +18,7 @@ struct CameraCalibrationState_struct {
 
 typedef struct CameraCalibrationState_struct *CameraCalibrationState;
 
-static void caerCameraCalibrationConfigInit(sshsNode moduleNode);
+static void caerCameraCalibrationConfigInit(dvConfigNode moduleNode);
 static bool caerCameraCalibrationInit(caerModuleData moduleData);
 static void caerCameraCalibrationRun(
 	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
@@ -54,37 +54,37 @@ caerModuleInfo caerModuleGetInfo(void) {
 	return (&CameraCalibrationInfo);
 }
 
-static void caerCameraCalibrationConfigInit(sshsNode moduleNode) {
-	sshsNodeCreateBool(moduleNode, "doCalibration", false, SSHS_FLAGS_NORMAL, "Do calibration using live images.");
-	sshsNodeCreateString(moduleNode, "saveFileName", "camera_calib.xml", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+static void caerCameraCalibrationConfigInit(dvConfigNode moduleNode) {
+	sshsNodeCreateBool(moduleNode, "doCalibration", false, DVCFG_FLAGS_NORMAL, "Do calibration using live images.");
+	sshsNodeCreateString(moduleNode, "saveFileName", "camera_calib.xml", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
 		"The name of the file where to write the calculated calibration settings.");
-	sshsNodeCreateInt(moduleNode, "captureDelay", 500000, 0, 60000000, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(moduleNode, "captureDelay", 500000, 0, 60000000, DVCFG_FLAGS_NORMAL,
 		"Only use a frame for calibration if at least this much time has passed.");
-	sshsNodeCreateInt(moduleNode, "minNumberOfPoints", 20, 3, 100, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(moduleNode, "minNumberOfPoints", 20, 3, 100, DVCFG_FLAGS_NORMAL,
 		"Minimum number of points to start calibration with.");
-	sshsNodeCreateFloat(moduleNode, "maxTotalError", 0.30f, 0.0f, 1.0f, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateFloat(moduleNode, "maxTotalError", 0.30f, 0.0f, 1.0f, DVCFG_FLAGS_NORMAL,
 		"Maximum total average error allowed (in pixels).");
 	sshsNodeCreateString(
-		moduleNode, "calibrationPattern", "chessboard", 10, 21, SSHS_FLAGS_NORMAL, "Pattern to run calibration with.");
+		moduleNode, "calibrationPattern", "chessboard", 10, 21, DVCFG_FLAGS_NORMAL, "Pattern to run calibration with.");
 	sshsNodeCreateAttributeListOptions(
 		moduleNode, "calibrationPattern", "chessboard,circlesGrid,asymmetricCirclesGrid", false);
-	sshsNodeCreateInt(moduleNode, "boardWidth", 9, 1, 64, SSHS_FLAGS_NORMAL, "The size of the board (width).");
-	sshsNodeCreateInt(moduleNode, "boardHeigth", 5, 1, 64, SSHS_FLAGS_NORMAL, "The size of the board (heigth).");
-	sshsNodeCreateFloat(moduleNode, "boardSquareSize", 1.0f, 0.0f, 1000.0f, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(moduleNode, "boardWidth", 9, 1, 64, DVCFG_FLAGS_NORMAL, "The size of the board (width).");
+	sshsNodeCreateInt(moduleNode, "boardHeigth", 5, 1, 64, DVCFG_FLAGS_NORMAL, "The size of the board (heigth).");
+	sshsNodeCreateFloat(moduleNode, "boardSquareSize", 1.0f, 0.0f, 1000.0f, DVCFG_FLAGS_NORMAL,
 		"The size of a square in your defined unit (point, millimeter, etc.).");
-	sshsNodeCreateFloat(moduleNode, "aspectRatio", 0.0f, 0.0f, 1.0f, SSHS_FLAGS_NORMAL, "The aspect ratio.");
+	sshsNodeCreateFloat(moduleNode, "aspectRatio", 0.0f, 0.0f, 1.0f, DVCFG_FLAGS_NORMAL, "The aspect ratio.");
 	sshsNodeCreateBool(
-		moduleNode, "assumeZeroTangentialDistortion", false, SSHS_FLAGS_NORMAL, "Assume zero tangential distortion.");
+		moduleNode, "assumeZeroTangentialDistortion", false, DVCFG_FLAGS_NORMAL, "Assume zero tangential distortion.");
 	sshsNodeCreateBool(
-		moduleNode, "fixPrincipalPointAtCenter", false, SSHS_FLAGS_NORMAL, "Fix the principal point at the center.");
+		moduleNode, "fixPrincipalPointAtCenter", false, DVCFG_FLAGS_NORMAL, "Fix the principal point at the center.");
 	sshsNodeCreateBool(
-		moduleNode, "useFisheyeModel", false, SSHS_FLAGS_NORMAL, "Use fisheye camera model for calibration.");
+		moduleNode, "useFisheyeModel", false, DVCFG_FLAGS_NORMAL, "Use fisheye camera model for calibration.");
 
-	sshsNodeCreateBool(moduleNode, "doUndistortion", false, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateBool(moduleNode, "doUndistortion", false, DVCFG_FLAGS_NORMAL,
 		"Do undistortion of incoming images using calibration loaded from file.");
-	sshsNodeCreateString(moduleNode, "loadFileName", "camera_calib.xml", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateString(moduleNode, "loadFileName", "camera_calib.xml", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
 		"The name of the file from which to load the calibration settings for undistortion.");
-	sshsNodeCreateBool(moduleNode, "fitAllPixels", false, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateBool(moduleNode, "fitAllPixels", false, DVCFG_FLAGS_NORMAL,
 		"Whether to fit all the input pixels "
 		"(black borders) or maximize the image, "
 		"at the cost of loosing some pixels.");
@@ -104,7 +104,7 @@ static bool caerCameraCalibrationInit(caerModuleData moduleData) {
 
 	// Wait for input to be ready. All inputs, once they are up and running, will
 	// have a valid sourceInfo node to query, especially if dealing with data.
-	sshsNode sourceInfo = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
+	dvConfigNode sourceInfo = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
 	if (sourceInfo == NULL) {
 		return (false);
 	}

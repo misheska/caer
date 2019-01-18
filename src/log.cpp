@@ -19,8 +19,8 @@ static dvCfg::Node logNode  = nullptr;
 static void caerLogShutDownWriteBack(void);
 static void caerLogConfigLogger(const char *msg, bool fatal);
 static void caerLogMessagesToConfigTree(const char *msg, size_t msgLength);
-static void caerLogLevelListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+static void caerLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 void caerLogInit(void) {
 	logNode = dvCfg::Tree::getGlobal().getNode("/caer/logger/");
@@ -74,7 +74,7 @@ void caerLogInit(void) {
 }
 
 static void caerLogMessagesToConfigTree(const char *msg, size_t msgLength) {
-	sshs_node_attr_value logMessage;
+	dvConfigAttributeValue logMessage;
 	logMessage.string = const_cast<char *>(msg);
 
 	// Remove trailing newline (replace with NUL terminator).
@@ -107,12 +107,12 @@ static void caerLogConfigLogger(const char *msg, bool fatal) {
 	}
 }
 
-static void caerLogLevelListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_INT && caerStrEquals(changeKey, "logLevel")) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
 		// Update the global log level asynchronously.
 		caerLogLevelSet(static_cast<enum caer_log_level>(changeValue.iint));
 		caerLog(CAER_LOG_DEBUG, "Logger", "Log-level set to %d.", changeValue.iint);

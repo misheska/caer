@@ -16,13 +16,13 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
-static void caerConfigServerRestartListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+static void caerConfigServerRestartListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 static void caerConfigServerGlobalNodeChangeListener(
-	sshsNode node, void *userData, enum sshs_node_node_events event, const char *changeNode);
-static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *userData,
-	enum sshs_node_attribute_events event, const char *changeKey, enum sshs_node_attr_value_type changeType,
-	union sshs_node_attr_value changeValue);
+	dvConfigNode node, void *userData, enum dvConfigNodeEvents event, const char *changeNode);
+static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode node, void *userData,
+	enum dvConfigAttributeEvents event, const char *changeKey, enum dvConfigAttributeType changeType,
+	union dvConfigAttributeValue changeValue);
 
 ConfigServer::ConfigServer() :
 	ioThreadRun(true),
@@ -307,19 +307,19 @@ void caerConfigServerStop(void) {
 	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads terminated successfully.");
 }
 
-static void caerConfigServerRestartListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerConfigServerRestartListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BOOL && caerStrEquals(changeKey, "restart")
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "restart")
 		&& changeValue.boolean) {
 		globalConfigData.server.serviceRestart();
 	}
 }
 
 static void caerConfigServerGlobalNodeChangeListener(
-	sshsNode n, void *userData, enum sshs_node_node_events event, const char *changeNode) {
+	dvConfigNode n, void *userData, enum dvConfigNodeEvents event, const char *changeNode) {
 	UNUSED_ARGUMENT(userData);
 	dvCfg::Node node(n);
 
@@ -339,9 +339,9 @@ static void caerConfigServerGlobalNodeChangeListener(
 	}
 }
 
-static void caerConfigServerGlobalAttributeChangeListener(sshsNode n, void *userData,
-	enum sshs_node_attribute_events event, const char *changeKey, enum sshs_node_attr_value_type changeType,
-	union sshs_node_attr_value changeValue) {
+static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode n, void *userData,
+	enum dvConfigAttributeEvents event, const char *changeKey, enum dvConfigAttributeType changeType,
+	union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(userData);
 	dvCfg::Node node(n);
 	dvCfg::AttributeType type = static_cast<dvCfg::AttributeType>(changeType);
@@ -352,7 +352,7 @@ static void caerConfigServerGlobalAttributeChangeListener(sshsNode n, void *user
 		msg->setAction(caerConfigAction::PUSH_MESSAGE_ATTR);
 		msg->setType(type);
 
-		if (event == SSHS_ATTRIBUTE_ADDED) {
+		if (event == DVCFG_ATTRIBUTE_ADDED) {
 			// Need to get extra info when adding: flags, range, description.
 			const std::string flagsStr = dvCfg::Helper::flagsToStringConverter(node.getAttributeFlags(changeKey, type));
 

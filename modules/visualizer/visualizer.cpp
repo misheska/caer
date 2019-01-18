@@ -72,13 +72,13 @@ struct caer_visualizer_state {
 
 typedef struct caer_visualizer_state *caerVisualizerState;
 
-static void caerVisualizerConfigInit(sshsNode moduleNode);
+static void caerVisualizerConfigInit(dvConfigNode moduleNode);
 static bool caerVisualizerInit(caerModuleData moduleData);
 static void caerVisualizerExit(caerModuleData moduleData);
 static void caerVisualizerRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 static void caerVisualizerReset(caerModuleData moduleData, int16_t resetCallSourceID);
-static void caerVisualizerConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+static void caerVisualizerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 static void initSystemOnce(caerModuleData moduleData);
 static bool initRenderSize(caerModuleData moduleData);
 static void initRenderersHandlers(caerModuleData moduleData);
@@ -115,7 +115,7 @@ caerModuleInfo caerModuleGetInfo(void) {
 	return (&VisualizerInfo);
 }
 
-static void caerVisualizerConfigInit(sshsNode mn) {
+static void caerVisualizerConfigInit(dvConfigNode mn) {
 	dvCfg::Node moduleNode(mn);
 
 	moduleNode.create<dvCfgType::STRING>(
@@ -313,30 +313,30 @@ static void caerVisualizerReset(caerModuleData moduleData, int16_t resetCallSour
 	state->packetSubsampleCount = 0;
 }
 
-static void caerVisualizerConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerVisualizerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
 	caerVisualizerState state = (caerVisualizerState) userData;
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED) {
-		if (changeType == SSHS_FLOAT && caerStrEquals(changeKey, "zoomFactor")) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
+		if (changeType == DVCFG_TYPE_FLOAT && caerStrEquals(changeKey, "zoomFactor")) {
 			// Set resize flag.
 			state->windowResize.store(true);
 		}
-		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "showStatistics")) {
+		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "showStatistics")) {
 			// Set resize flag. This will then also update the showStatistics flag, ensuring
 			// statistics are never shown without the screen having been properly resized first.
 			state->windowResize.store(true);
 		}
-		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "subsampleRendering")) {
+		else if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "subsampleRendering")) {
 			state->packetSubsampleRendering.store(U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "windowPositionX")) {
+		else if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "windowPositionX")) {
 			// Set move flag.
 			state->windowMove.store(true);
 		}
-		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "windowPositionY")) {
+		else if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "windowPositionY")) {
 			// Set move flag.
 			state->windowMove.store(true);
 		}
@@ -384,7 +384,7 @@ static bool initRenderSize(caerModuleData moduleData) {
 
 	for (size_t i = 0; i < inputsSize; i++) {
 		// Get size information from source.
-		sshsNode sourceInfoNode = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, i);
+		dvConfigNode sourceInfoNode = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, i);
 		if (sourceInfoNode == nullptr) {
 			return (false);
 		}
@@ -395,11 +395,11 @@ static bool initRenderSize(caerModuleData moduleData) {
 
 		// Get sizes from sourceInfo node. visualizer prefix takes precedence,
 		// then generic data visualization size.
-		if (sshsNodeAttributeExists(sourceInfoNode, "visualizerSizeX", SSHS_INT)) {
+		if (sshsNodeAttributeExists(sourceInfoNode, "visualizerSizeX", DVCFG_TYPE_INT)) {
 			packetSizeX = U32T(sshsNodeGetInt(sourceInfoNode, "visualizerSizeX"));
 			packetSizeY = U32T(sshsNodeGetInt(sourceInfoNode, "visualizerSizeY"));
 		}
-		else if (sshsNodeAttributeExists(sourceInfoNode, "dataSizeX", SSHS_INT)) {
+		else if (sshsNodeAttributeExists(sourceInfoNode, "dataSizeX", DVCFG_TYPE_INT)) {
 			packetSizeX = U32T(sshsNodeGetInt(sourceInfoNode, "dataSizeX"));
 			packetSizeY = U32T(sshsNodeGetInt(sourceInfoNode, "dataSizeY"));
 		}

@@ -41,7 +41,7 @@ enum caer_module_status caerMainloopModuleGetStatus(int16_t id) {
 	return (glMainloopDataPtr->modules.at(id).runtimeData->moduleStatus);
 }
 
-sshsNode caerMainloopModuleGetConfigNode(int16_t id) {
+dvConfigNode caerMainloopModuleGetConfigNode(int16_t id) {
 	return (glMainloopDataPtr->modules.at(id).runtimeData->moduleNode);
 }
 
@@ -140,7 +140,7 @@ size_t caerMainloopModuleResetOutputRevDeps(int16_t id) {
 	return (numRevDeps);
 }
 
-sshsNode caerMainloopModuleGetSourceNodeForInput(int16_t id, size_t inputNum) {
+dvConfigNode caerMainloopModuleGetSourceNodeForInput(int16_t id, size_t inputNum) {
 	int16_t *inputModules;
 	size_t inputModulesNum = caerMainloopModuleGetInputDeps(id, &inputModules);
 
@@ -155,7 +155,7 @@ sshsNode caerMainloopModuleGetSourceNodeForInput(int16_t id, size_t inputNum) {
 	return (caerMainloopGetSourceNode(sourceId));
 }
 
-sshsNode caerMainloopModuleGetSourceInfoForInput(int16_t id, size_t inputNum) {
+dvConfigNode caerMainloopModuleGetSourceInfoForInput(int16_t id, size_t inputNum) {
 	int16_t *inputModules;
 	size_t inputModulesNum = caerMainloopModuleGetInputDeps(id, &inputModules);
 
@@ -193,7 +193,7 @@ static inline caerModuleData caerMainloopGetSourceData(int16_t sourceID) {
 	return (glMainloopDataPtr->modules.at(sourceID).runtimeData);
 }
 
-sshsNode caerMainloopGetSourceNode(int16_t sourceID) {
+dvConfigNode caerMainloopGetSourceNode(int16_t sourceID) {
 	caerModuleData moduleData = caerMainloopGetSourceData(sourceID);
 	if (moduleData == nullptr) {
 		return (nullptr);
@@ -211,7 +211,7 @@ void *caerMainloopGetSourceState(int16_t sourceID) {
 	return (moduleData->moduleState);
 }
 
-sshsNode caerMainloopGetSourceInfo(int16_t sourceID) {
+dvConfigNode caerMainloopGetSourceInfo(int16_t sourceID) {
 	caerModuleData moduleData = caerMainloopGetSourceData(sourceID);
 	if (moduleData == nullptr) {
 		return (nullptr);

@@ -4,76 +4,76 @@
 
 static const std::string typeStrings[] = {"bool", "byte", "short", "int", "long", "float", "double", "string"};
 
-const std::string &sshsHelperCppTypeToStringConverter(enum sshs_node_attr_value_type type) {
+const std::string &sshsHelperCppTypeToStringConverter(enum dvConfigAttributeType type) {
 	// Convert the value and its type into a string for XML output.
 	switch (type) {
-		case SSHS_BOOL:
-		case SSHS_INT:
-		case SSHS_LONG:
-		case SSHS_FLOAT:
-		case SSHS_DOUBLE:
-		case SSHS_STRING:
+		case DVCFG_TYPE_BOOL:
+		case DVCFG_TYPE_INT:
+		case DVCFG_TYPE_LONG:
+		case DVCFG_TYPE_FLOAT:
+		case DVCFG_TYPE_DOUBLE:
+		case DVCFG_TYPE_STRING:
 			return (typeStrings[type]);
 
-		case SSHS_UNKNOWN:
+		case DVCFG_TYPE_UNKNOWN:
 		default:
 			throw std::runtime_error("sshsHelperCppTypeToStringConverter(): invalid type given.");
 	}
 }
 
-enum sshs_node_attr_value_type sshsHelperCppStringToTypeConverter(const std::string &typeString) {
+enum dvConfigAttributeType sshsHelperCppStringToTypeConverter(const std::string &typeString) {
 	// Convert the value string back into the internal type representation.
-	if (typeString == typeStrings[SSHS_BOOL]) {
-		return (SSHS_BOOL);
+	if (typeString == typeStrings[DVCFG_TYPE_BOOL]) {
+		return (DVCFG_TYPE_BOOL);
 	}
 	else if (typeString == typeStrings[1]) {
-		return (SSHS_INT);
+		return (DVCFG_TYPE_INT);
 	}
 	else if (typeString == typeStrings[2]) {
-		return (SSHS_INT);
+		return (DVCFG_TYPE_INT);
 	}
-	else if (typeString == typeStrings[SSHS_INT]) {
-		return (SSHS_INT);
+	else if (typeString == typeStrings[DVCFG_TYPE_INT]) {
+		return (DVCFG_TYPE_INT);
 	}
-	else if (typeString == typeStrings[SSHS_LONG]) {
-		return (SSHS_LONG);
+	else if (typeString == typeStrings[DVCFG_TYPE_LONG]) {
+		return (DVCFG_TYPE_LONG);
 	}
-	else if (typeString == typeStrings[SSHS_FLOAT]) {
-		return (SSHS_FLOAT);
+	else if (typeString == typeStrings[DVCFG_TYPE_FLOAT]) {
+		return (DVCFG_TYPE_FLOAT);
 	}
-	else if (typeString == typeStrings[SSHS_DOUBLE]) {
-		return (SSHS_DOUBLE);
+	else if (typeString == typeStrings[DVCFG_TYPE_DOUBLE]) {
+		return (DVCFG_TYPE_DOUBLE);
 	}
-	else if (typeString == typeStrings[SSHS_STRING]) {
-		return (SSHS_STRING);
+	else if (typeString == typeStrings[DVCFG_TYPE_STRING]) {
+		return (DVCFG_TYPE_STRING);
 	}
 
-	return (SSHS_UNKNOWN); // UNKNOWN TYPE.
+	return (DVCFG_TYPE_UNKNOWN); // UNKNOWN TYPE.
 }
 
 std::string sshsHelperCppValueToStringConverter(const sshs_value &val) {
 	// Convert the value and its type into a string for XML output.
 	switch (val.getType()) {
-		case SSHS_BOOL:
+		case DVCFG_TYPE_BOOL:
 			// Manually generate true or false.
 			return ((val.getBool()) ? ("true") : ("false"));
 
-		case SSHS_INT:
+		case DVCFG_TYPE_INT:
 			return (std::to_string(val.getInt()));
 
-		case SSHS_LONG:
+		case DVCFG_TYPE_LONG:
 			return (std::to_string(val.getLong()));
 
-		case SSHS_FLOAT:
+		case DVCFG_TYPE_FLOAT:
 			return (std::to_string(val.getFloat()));
 
-		case SSHS_DOUBLE:
+		case DVCFG_TYPE_DOUBLE:
 			return (std::to_string(val.getDouble()));
 
-		case SSHS_STRING:
+		case DVCFG_TYPE_STRING:
 			return (val.getString());
 
-		case SSHS_UNKNOWN:
+		case DVCFG_TYPE_UNKNOWN:
 		default:
 			throw std::runtime_error("sshsHelperCppValueToStringConverter(): value has invalid type.");
 	}
@@ -82,36 +82,36 @@ std::string sshsHelperCppValueToStringConverter(const sshs_value &val) {
 // Return false on failure (unknown type / faulty conversion), the content of
 // value is undefined. For the STRING type, the returned value.string is a copy
 // of the input string. Remember to free() it after use!
-sshs_value sshsHelperCppStringToValueConverter(enum sshs_node_attr_value_type type, const std::string &valueString) {
+sshs_value sshsHelperCppStringToValueConverter(enum dvConfigAttributeType type, const std::string &valueString) {
 	sshs_value value;
 
 	switch (type) {
-		case SSHS_BOOL:
+		case DVCFG_TYPE_BOOL:
 			// Boolean uses custom true/false strings.
 			value.setBool(valueString == "true");
 			break;
 
-		case SSHS_INT:
+		case DVCFG_TYPE_INT:
 			value.setInt((int32_t) std::stol(valueString));
 			break;
 
-		case SSHS_LONG:
+		case DVCFG_TYPE_LONG:
 			value.setLong((int64_t) std::stoll(valueString));
 			break;
 
-		case SSHS_FLOAT:
+		case DVCFG_TYPE_FLOAT:
 			value.setFloat(std::stof(valueString));
 			break;
 
-		case SSHS_DOUBLE:
+		case DVCFG_TYPE_DOUBLE:
 			value.setDouble(std::stod(valueString));
 			break;
 
-		case SSHS_STRING:
+		case DVCFG_TYPE_STRING:
 			value.setString(valueString);
 			break;
 
-		case SSHS_UNKNOWN:
+		case DVCFG_TYPE_UNKNOWN:
 		default:
 			throw std::runtime_error("sshsHelperCppStringToValueConverter(): invalid type given.");
 			break;
@@ -125,16 +125,16 @@ sshs_value sshsHelperCppStringToValueConverter(enum sshs_node_attr_value_type ty
  */
 
 // Do not free or modify the resulting string in any way!
-const char *sshsHelperTypeToStringConverter(enum sshs_node_attr_value_type type) {
+const char *sshsHelperTypeToStringConverter(enum dvConfigAttributeType type) {
 	return (sshsHelperCppTypeToStringConverter(type).c_str());
 }
 
-enum sshs_node_attr_value_type sshsHelperStringToTypeConverter(const char *typeString) {
+enum dvConfigAttributeType sshsHelperStringToTypeConverter(const char *typeString) {
 	return (sshsHelperCppStringToTypeConverter(typeString));
 }
 
 // Remember to free the resulting string!
-char *sshsHelperValueToStringConverter(enum sshs_node_attr_value_type type, union sshs_node_attr_value value) {
+char *sshsHelperValueToStringConverter(enum dvConfigAttributeType type, union dvConfigAttributeValue value) {
 	sshs_value val;
 	val.fromCUnion(value, type);
 
@@ -147,9 +147,9 @@ char *sshsHelperValueToStringConverter(enum sshs_node_attr_value_type type, unio
 }
 
 // Remember to free the resulting union's "string" member, if the type was SSHS_STRING!
-union sshs_node_attr_value sshsHelperStringToValueConverter(
-	enum sshs_node_attr_value_type type, const char *valueString) {
-	if ((type == SSHS_STRING) && (valueString == nullptr)) {
+union dvConfigAttributeValue sshsHelperStringToValueConverter(
+	enum dvConfigAttributeType type, const char *valueString) {
+	if ((type == DVCFG_TYPE_STRING) && (valueString == nullptr)) {
 		// Empty string.
 		valueString = "";
 	}
@@ -160,17 +160,17 @@ union sshs_node_attr_value sshsHelperStringToValueConverter(
 char *sshsHelperFlagsToStringConverter(int flags) {
 	std::string flagsStr;
 
-	if (flags & SSHS_FLAGS_READ_ONLY) {
+	if (flags & DVCFG_FLAGS_READ_ONLY) {
 		flagsStr = "READ_ONLY";
 	}
-	else if (flags & SSHS_FLAGS_NOTIFY_ONLY) {
+	else if (flags & DVCFG_FLAGS_NOTIFY_ONLY) {
 		flagsStr = "NOTIFY_ONLY";
 	}
 	else {
 		flagsStr = "NORMAL";
 	}
 
-	if (flags & SSHS_FLAGS_NO_EXPORT) {
+	if (flags & DVCFG_FLAGS_NO_EXPORT) {
 		flagsStr += "|NO_EXPORT";
 	}
 
@@ -181,7 +181,7 @@ char *sshsHelperFlagsToStringConverter(int flags) {
 }
 
 int sshsHelperStringToFlagsConverter(const char *flagsString) {
-	int flags = SSHS_FLAGS_NORMAL;
+	int flags = DVCFG_FLAGS_NORMAL;
 
 	std::string flagsStr(flagsString);
 	boost::tokenizer<boost::char_separator<char>> flagsTokens(flagsStr, boost::char_separator<char>("|"));
@@ -189,47 +189,47 @@ int sshsHelperStringToFlagsConverter(const char *flagsString) {
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : flagsTokens) {
 		if (tok == "READ_ONLY") {
-			flags = SSHS_FLAGS_READ_ONLY;
+			flags = DVCFG_FLAGS_READ_ONLY;
 		}
 		else if (tok == "NOTIFY_ONLY") {
-			flags = SSHS_FLAGS_NOTIFY_ONLY;
+			flags = DVCFG_FLAGS_NOTIFY_ONLY;
 		}
 		else if (tok == "NO_EXPORT") {
-			flags |= SSHS_FLAGS_NO_EXPORT;
+			flags |= DVCFG_FLAGS_NO_EXPORT;
 		}
 	}
 
 	return (flags);
 }
 
-char *sshsHelperRangesToStringConverter(enum sshs_node_attr_value_type type, struct sshs_node_attr_ranges ranges) {
+char *sshsHelperRangesToStringConverter(enum dvConfigAttributeType type, struct dvConfigAttributeRanges ranges) {
 	// We need to return a string with the two ranges,
 	// separated by a | character.
 	char buf[256];
 
 	switch (type) {
-		case SSHS_UNKNOWN:
-		case SSHS_BOOL:
+		case DVCFG_TYPE_UNKNOWN:
+		case DVCFG_TYPE_BOOL:
 			snprintf(buf, 256, "0|0");
 			break;
 
-		case SSHS_INT:
+		case DVCFG_TYPE_INT:
 			snprintf(buf, 256, "%" PRIi32 "|%" PRIi32, ranges.min.iintRange, ranges.max.iintRange);
 			break;
 
-		case SSHS_LONG:
+		case DVCFG_TYPE_LONG:
 			snprintf(buf, 256, "%" PRIi64 "|%" PRIi64, ranges.min.ilongRange, ranges.max.ilongRange);
 			break;
 
-		case SSHS_FLOAT:
+		case DVCFG_TYPE_FLOAT:
 			snprintf(buf, 256, "%g|%g", (double) ranges.min.ffloatRange, (double) ranges.max.ffloatRange);
 			break;
 
-		case SSHS_DOUBLE:
+		case DVCFG_TYPE_DOUBLE:
 			snprintf(buf, 256, "%g|%g", ranges.min.ddoubleRange, ranges.max.ddoubleRange);
 			break;
 
-		case SSHS_STRING:
+		case DVCFG_TYPE_STRING:
 			snprintf(buf, 256, "%zu|%zu", ranges.min.stringRange, ranges.max.stringRange);
 			break;
 	}
@@ -240,34 +240,34 @@ char *sshsHelperRangesToStringConverter(enum sshs_node_attr_value_type type, str
 	return (resultString);
 }
 
-struct sshs_node_attr_ranges sshsHelperStringToRangesConverter(
-	enum sshs_node_attr_value_type type, const char *rangesString) {
-	struct sshs_node_attr_ranges ranges;
+struct dvConfigAttributeRanges sshsHelperStringToRangesConverter(
+	enum dvConfigAttributeType type, const char *rangesString) {
+	struct dvConfigAttributeRanges ranges;
 
 	switch (type) {
-		case SSHS_UNKNOWN:
-		case SSHS_BOOL:
+		case DVCFG_TYPE_UNKNOWN:
+		case DVCFG_TYPE_BOOL:
 			ranges.min.ilongRange = 0;
 			ranges.max.ilongRange = 0;
 			break;
 
-		case SSHS_INT:
+		case DVCFG_TYPE_INT:
 			sscanf(rangesString, "%" SCNi32 "|%" SCNi32, &ranges.min.iintRange, &ranges.max.iintRange);
 			break;
 
-		case SSHS_LONG:
+		case DVCFG_TYPE_LONG:
 			sscanf(rangesString, "%" SCNi64 "|%" SCNi64, &ranges.min.ilongRange, &ranges.max.ilongRange);
 			break;
 
-		case SSHS_FLOAT:
+		case DVCFG_TYPE_FLOAT:
 			sscanf(rangesString, "%g|%g", &ranges.min.ffloatRange, &ranges.max.ffloatRange);
 			break;
 
-		case SSHS_DOUBLE:
+		case DVCFG_TYPE_DOUBLE:
 			sscanf(rangesString, "%lg|%lg", &ranges.min.ddoubleRange, &ranges.max.ddoubleRange);
 			break;
 
-		case SSHS_STRING:
+		case DVCFG_TYPE_STRING:
 			sscanf(rangesString, "%zu|%zu", &ranges.min.stringRange, &ranges.max.stringRange);
 			break;
 	}

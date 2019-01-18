@@ -34,9 +34,9 @@ static bool caerInputNetTCPInit(caerModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	sshsNodeCreateString(
-		moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, SSHS_FLAGS_NORMAL, "IPv4 address to connect to.");
+		moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL, "IPv4 address to connect to.");
 	sshsNodeCreateInt(
-		moduleData->moduleNode, "portNumber", 7777, 1, UINT16_MAX, SSHS_FLAGS_NORMAL, "Port number to connect to.");
+		moduleData->moduleNode, "portNumber", 7777, 1, UINT16_MAX, DVCFG_FLAGS_NORMAL, "Port number to connect to.");
 
 	// Open a TCP socket to the remote client, to which we'll send data packets.
 	int sockFd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);

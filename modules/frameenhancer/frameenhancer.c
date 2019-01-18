@@ -13,7 +13,7 @@ struct FrameEnhancer_state {
 
 typedef struct FrameEnhancer_state *FrameEnhancerState;
 
-static void caerFrameEnhancerConfigInit(sshsNode moduleNode);
+static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode);
 static bool caerFrameEnhancerInit(caerModuleData moduleData);
 static void caerFrameEnhancerRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 static void caerFrameEnhancerConfig(caerModuleData moduleData);
@@ -48,18 +48,18 @@ caerModuleInfo caerModuleGetInfo(void) {
 	return (&FrameEnhancerInfo);
 }
 
-static void caerFrameEnhancerConfigInit(sshsNode moduleNode) {
+static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode) {
 	sshsNodeCreateBool(
-		moduleNode, "doDemosaic", false, SSHS_FLAGS_NORMAL, "Do demosaicing (color interpolation) on frame.");
-	sshsNodeCreateBool(moduleNode, "doContrast", false, SSHS_FLAGS_NORMAL, "Do contrast enhancement on frame.");
+		moduleNode, "doDemosaic", false, DVCFG_FLAGS_NORMAL, "Do demosaicing (color interpolation) on frame.");
+	sshsNodeCreateBool(moduleNode, "doContrast", false, DVCFG_FLAGS_NORMAL, "Do contrast enhancement on frame.");
 
 #if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
-	sshsNodeCreateString(moduleNode, "demosaicType", "opencv_edge_aware", 7, 17, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateString(moduleNode, "demosaicType", "opencv_edge_aware", 7, 17, DVCFG_FLAGS_NORMAL,
 		"Demoisaicing (color interpolation) algorithm to apply.");
 	sshsNodeCreateAttributeListOptions(
 		moduleNode, "demosaicType", "opencv_edge_aware,opencv_to_gray,opencv_standard,to_gray,standard", false);
 
-	sshsNodeCreateString(moduleNode, "contrastType", "opencv_normalization", 8, 29, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateString(moduleNode, "contrastType", "opencv_normalization", 8, 29, DVCFG_FLAGS_NORMAL,
 		"Contrast enhancement algorithm to apply.");
 	sshsNodeCreateAttributeListOptions(
 		moduleNode, "contrastType", "opencv_normalization,opencv_histogram_equalization,opencv_clahe,standard", false);
@@ -77,7 +77,7 @@ static void caerFrameEnhancerConfigInit(sshsNode moduleNode) {
 static bool caerFrameEnhancerInit(caerModuleData moduleData) {
 	// Wait for input to be ready. All inputs, once they are up and running, will
 	// have a valid sourceInfo node to query, especially if dealing with data.
-	sshsNode sourceInfoSource = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
+	dvConfigNode sourceInfoSource = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
 	if (sourceInfoSource == NULL) {
 		return (false);
 	}
@@ -85,14 +85,14 @@ static bool caerFrameEnhancerInit(caerModuleData moduleData) {
 	int16_t sizeX = sshsNodeGetInt(sourceInfoSource, "dataSizeX");
 	int16_t sizeY = sshsNodeGetInt(sourceInfoSource, "dataSizeY");
 
-	sshsNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
-	sshsNodeCreateInt(sourceInfoNode, "frameSizeX", sizeX, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	sshsNodeCreateInt(sourceInfoNode, "frameSizeX", sizeX, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Output frame width.");
-	sshsNodeCreateInt(sourceInfoNode, "frameSizeY", sizeY, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+	sshsNodeCreateInt(sourceInfoNode, "frameSizeY", sizeY, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Output frame height.");
 	sshsNodeCreateInt(
-		sourceInfoNode, "dataSizeX", sizeX, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Output data width.");
-	sshsNodeCreateInt(sourceInfoNode, "dataSizeY", sizeY, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+		sourceInfoNode, "dataSizeX", sizeX, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Output data width.");
+	sshsNodeCreateInt(sourceInfoNode, "dataSizeY", sizeY, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Output data height.");
 
 	// Initialize configuration.
@@ -237,6 +237,6 @@ static void caerFrameEnhancerExit(caerModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 
-	sshsNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	sshsNodeClearSubTree(sourceInfoNode, true);
 }

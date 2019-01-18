@@ -2,7 +2,7 @@
 
 #include "caer-sdk/mainloop.h"
 
-static void statisticsModuleConfigInit(sshsNode moduleNode);
+static void statisticsModuleConfigInit(dvConfigNode moduleNode);
 static bool statisticsModuleInit(caerModuleData moduleData);
 static void statisticsModuleRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 static void statisticsModuleReset(caerModuleData moduleData, int16_t resetCallSourceID);
@@ -39,17 +39,17 @@ caerModuleInfo caerModuleGetInfo(void) {
 	return (&StatisticsInfo);
 }
 
-static void statisticsModuleConfigInit(sshsNode moduleNode) {
-	sshsNodeCreateLong(moduleNode, "divisionFactor", 1000, 1, INT64_MAX, SSHS_FLAGS_NORMAL,
+static void statisticsModuleConfigInit(dvConfigNode moduleNode) {
+	sshsNodeCreateLong(moduleNode, "divisionFactor", 1000, 1, INT64_MAX, DVCFG_FLAGS_NORMAL,
 		"Division factor for statistics display, to get Kilo/Mega/... events shown.");
 
-	sshsNodeCreateLong(moduleNode, "eventsTotal", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+	sshsNodeCreateLong(moduleNode, "eventsTotal", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Number of events per second.");
 
-	sshsNodeCreateLong(moduleNode, "eventsValid", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+	sshsNodeCreateLong(moduleNode, "eventsValid", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Number of valid events per second.");
 
-	sshsNodeCreateLong(moduleNode, "packetTSDiff", 0, 0, INT64_MAX, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+	sshsNodeCreateLong(moduleNode, "packetTSDiff", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Maximum time difference (in µs) between consecutive packets.");
 }
 
@@ -73,12 +73,12 @@ static void statisticsModuleRun(caerModuleData moduleData, caerEventPacketContai
 	caerStatisticsState state = moduleData->moduleState;
 
 	if (caerStatisticsUpdate(packetHeader, state)) {
-		sshsNodeUpdateReadOnlyAttribute(moduleData->moduleNode, "eventsTotal", SSHS_LONG,
-			(union sshs_node_attr_value){.ilong = state->currStatsEventsTotal});
-		sshsNodeUpdateReadOnlyAttribute(moduleData->moduleNode, "eventsValid", SSHS_LONG,
-			(union sshs_node_attr_value){.ilong = state->currStatsEventsValid});
-		sshsNodeUpdateReadOnlyAttribute(moduleData->moduleNode, "packetTSDiff", SSHS_LONG,
-			(union sshs_node_attr_value){.ilong = state->currStatsPacketTSDiff});
+		sshsNodeUpdateReadOnlyAttribute(moduleData->moduleNode, "eventsTotal", DVCFG_TYPE_LONG,
+			(union dvConfigAttributeValue){.ilong = state->currStatsEventsTotal});
+		sshsNodeUpdateReadOnlyAttribute(moduleData->moduleNode, "eventsValid", DVCFG_TYPE_LONG,
+			(union dvConfigAttributeValue){.ilong = state->currStatsEventsValid});
+		sshsNodeUpdateReadOnlyAttribute(moduleData->moduleNode, "packetTSDiff", DVCFG_TYPE_LONG,
+			(union dvConfigAttributeValue){.ilong = state->currStatsPacketTSDiff});
 	}
 }
 

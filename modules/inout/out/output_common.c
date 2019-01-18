@@ -87,8 +87,8 @@
 
 #include <stdatomic.h>
 
-static void caerOutputCommonConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+static void caerOutputCommonConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 /**
  * ============================================================================
@@ -173,7 +173,7 @@ static void copyPacketsToTransferRing(outputCommonState state, caerEventPacketCo
 			int16_t sourceID = I16T(atomic_load_explicit(&state->sourceID, memory_order_relaxed));
 
 			if (sourceID == -1) {
-				sshsNode sourceInfoNode = caerMainloopGetSourceInfo(eventSource);
+				dvConfigNode sourceInfoNode = caerMainloopGetSourceInfo(eventSource);
 				if (sourceInfoNode == NULL) {
 					// This should never happen, but we handle it gracefully.
 					caerModuleLog(
@@ -1383,17 +1383,17 @@ bool caerOutputCommonInit(caerModuleData moduleData, int fileDescriptor, outputC
 	// If in server mode, add SSHS attribute to track connected client IPs.
 	if (state->isNetworkStream && state->networkIO->server != NULL) {
 		sshsNodeCreateString(state->parentModule->moduleNode, "connectedClients", "", 0, INT32_MAX,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "IPs of clients currently connected to output server.");
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "IPs of clients currently connected to output server.");
 	}
 
 	// Initial source ID has to be -1 (invalid).
 	atomic_store(&state->sourceID, -1);
 
 	// Handle configuration.
-	sshsNodeCreateBool(moduleData->moduleNode, "validOnly", false, SSHS_FLAGS_NORMAL, "Only send valid events.");
-	sshsNodeCreateBool(moduleData->moduleNode, "keepPackets", false, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateBool(moduleData->moduleNode, "validOnly", false, DVCFG_FLAGS_NORMAL, "Only send valid events.");
+	sshsNodeCreateBool(moduleData->moduleNode, "keepPackets", false, DVCFG_FLAGS_NORMAL,
 		"Ensure all packets are kept (stall output if transfer-buffer full).");
-	sshsNodeCreateInt(moduleData->moduleNode, "ringBufferSize", 512, 8, 4096, SSHS_FLAGS_NORMAL,
+	sshsNodeCreateInt(moduleData->moduleNode, "ringBufferSize", 512, 8, 4096, DVCFG_FLAGS_NORMAL,
 		"Size of EventPacketContainer and EventPacket queues, used for transfers between mainloop and output threads.");
 
 	atomic_store(&state->validOnly, sshsNodeGetBool(moduleData->moduleNode, "validOnly"));
@@ -1535,7 +1535,7 @@ void caerOutputCommonExit(caerModuleData moduleData) {
 	if (state->isNetworkStream) {
 		if (state->networkIO->server != NULL) {
 			// Server shut down, no more clients.
-			sshsNodeRemoveAttribute(state->parentModule->moduleNode, "connectedClients", SSHS_STRING);
+			sshsNodeRemoveAttribute(state->parentModule->moduleNode, "connectedClients", DVCFG_TYPE_STRING);
 		}
 
 		// Cleanup all remaining handles and run until all callbacks are done.
@@ -1570,19 +1570,19 @@ void caerOutputCommonExit(caerModuleData moduleData) {
 		(state->statistics.packetsTotalSize - state->statistics.dataWritten));
 }
 
-static void caerOutputCommonConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerOutputCommonConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
 	caerModuleData moduleData = userData;
 	outputCommonState state   = moduleData->moduleState;
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED) {
-		if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "validOnly")) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
+		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "validOnly")) {
 			// Set valid only flag to given value.
 			atomic_store(&state->validOnly, changeValue.boolean);
 		}
-		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "keepPackets")) {
+		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "keepPackets")) {
 			// Set keep packets flag to given value.
 			atomic_store(&state->keepPackets, changeValue.boolean);
 		}
