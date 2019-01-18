@@ -209,11 +209,6 @@ void caerMainloopRun(void) {
 			continue;
 		}
 
-		// Write config to file on startup. This will contain all basic info and
-		// clean up the modules, which will be rewritten after module parsing and
-		// init if the mainloop has valid connectivity.
-		caerConfigWriteBack();
-
 		// Run mainloop.
 		int result = caerMainloopRunner();
 
@@ -1387,6 +1382,9 @@ static int caerMainloopRunner() {
 		auto modules = glMainloopData.configNode.getChildren();
 
 		if (modules.empty()) {
+			// Write basic config file.
+			caerConfigWriteBack();
+
 			// Empty configuration.
 			log(logLevel::ERROR, "Mainloop", "No modules configuration found.");
 			return (EXIT_FAILURE);
