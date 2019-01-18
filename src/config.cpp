@@ -98,7 +98,7 @@ void caerConfigInit(int argc, char *argv[]) {
 		fstat(configFileFd, &configFileStat);
 
 		if (configFileStat.st_size > 0) {
-			sshsNodeImportSubTreeFromXML(sshsGetNode(sshsGetGlobal(), "/"), configFileFd, true);
+			dv::Config::GLOBAL.getRootNode().importSubTreeFromXML(configFileFd, true);
 		}
 
 		close(configFileFd);
@@ -121,18 +121,16 @@ void caerConfigInit(int argc, char *argv[]) {
 
 		while (iter != configOverrides.end()) {
 			// Get node.
-			sshsNode node = sshsGetNode(sshsGetGlobal(), iter[0].c_str());
+			try {
+				auto node = dv::Config::GLOBAL.getNode(iter[0]);
 
-			if (node == nullptr) {
-				std::cout << "SSHS: invalid node path specification '" << iter[0] << "' on override." << std::endl;
-
-				iter += 4;
-				continue;
+				if (!node.stringToAttributeConverter(iter[1], iter[2], iter[3])) {
+					std::cout << "SSHS: failed to convert attribute '" << iter[1] << "' of type '" << iter[2]
+							  << "' with value '" << iter[3] << "' on override." << std::endl;
+				}
 			}
-
-			if (!sshsNodeStringToAttributeConverter(node, iter[1].c_str(), iter[2].c_str(), iter[3].c_str())) {
-				std::cout << "SSHS: failed to convert attribute '" << iter[1] << "' of type '" << iter[2]
-						  << "' with value '" << iter[3] << "' on override." << std::endl;
+			catch (const std::out_of_range &) {
+				std::cout << "SSHS: invalid node path specification '" << iter[0] << "' on override." << std::endl;
 			}
 
 			iter += 4;
@@ -146,7 +144,7 @@ void caerConfigWriteBack(void) {
 	int configFileFd = open(configFile.string().c_str(), O_WRONLY | O_TRUNC);
 
 	if (configFileFd >= 0) {
-		sshsNodeExportSubTreeToXML(sshsGetNode(sshsGetGlobal(), "/"), configFileFd);
+		dv::Config::GLOBAL.getRootNode().exportSubTreeToXML(configFileFd);
 
 		portable_fsync(configFileFd);
 		close(configFileFd);
