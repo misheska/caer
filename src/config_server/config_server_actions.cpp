@@ -15,6 +15,8 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
+static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnection *client);
+
 static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> client, const std::string &errorMsg) {
 	caerConfigActionData &response = client->getData();
 	response.reset();
@@ -496,7 +498,11 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 		case caerConfigAction::DUMP_TREE: {
 			// Run through the whole ConfigTree as it is currently and dump its content.
-			// TODO: complete.
+			dumpNodeToClientRecursive(configStore.getRootNode(), client.get());
+
+			// Send back confirmation of operation completed to the client.
+			caerConfigSendBoolResponse(client, caerConfigAction::DUMP_TREE, true);
+
 			break;
 		}
 
@@ -506,5 +512,56 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			break;
 		}
+	}
+}
+
+static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnection *client) {
+	// Dump node path.
+	{
+		auto msgNode = std::make_shared<caerConfigActionData>();
+
+		msgNode->setAction(caerConfigAction::DUMP_TREE_NODE);
+		msgNode->setNode(node.getPath());
+
+		client->writePushMessage(msgNode);
+	}
+
+	// Dump all attribute keys.
+	for (const auto &key : node.getAttributeKeys()) {
+		auto type = node.getAttributeType(key);
+
+		auto msgAttr = std::make_shared<caerConfigActionData>();
+
+		msgAttr->setAction(caerConfigAction::DUMP_TREE_ATTR);
+		msgAttr->setType(type);
+
+		// Need to get extra info when adding: flags, range, description.
+		const std::string flagsStr = dvCfg::Helper::flagsToStringConverter(node.getAttributeFlags(key, type));
+
+		const std::string rangesStr = dvCfg::Helper::rangesToStringConverter(type, node.getAttributeRanges(key, type));
+
+		const std::string descriptionStr = node.getAttributeDescription(key, type);
+
+		std::string extraStr(flagsStr);
+		extraStr.push_back('\0');
+		extraStr += rangesStr;
+		extraStr.push_back('\0');
+		extraStr += descriptionStr;
+
+		msgAttr->setExtra(extraStr);
+
+		msgAttr->setNode(node.getPath());
+		msgAttr->setKey(key);
+
+		const std::string valueStr = dvCfg::Helper::valueToStringConverter(type, node.getAttribute(key, type));
+
+		msgAttr->setValue(valueStr);
+
+		client->writePushMessage(msgAttr);
+	}
+
+	// Recurse over all children.
+	for (const auto &child : node.getChildren()) {
+		dumpNodeToClientRecursive(child, client);
 	}
 }

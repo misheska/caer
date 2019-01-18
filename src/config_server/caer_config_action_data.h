@@ -22,6 +22,8 @@ enum class caerConfigAction {
 	PUSH_MESSAGE_NODE  = 15,
 	PUSH_MESSAGE_ATTR  = 16,
 	DUMP_TREE          = 17,
+	DUMP_TREE_NODE     = 18,
+	DUMP_TREE_ATTR     = 19,
 };
 
 // Control message format: 1 byte ACTION, 1 byte TYPE, 2 bytes EXTRA_LEN,
