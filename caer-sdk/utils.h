@@ -6,7 +6,7 @@
 
 #include <libcaer/events/packetContainer.h>
 
-#include "sshs/sshs.h"
+#include "config/dvConfig.h"
 
 // Suppress unused argument warnings, if needed
 #define UNUSED_ARGUMENT(arg) (void) (arg)
@@ -17,7 +17,7 @@
 
 #	include <libcaercpp/events/packetContainer.hpp>
 
-#	include "sshs/dvConfig.hpp"
+#	include "config/dvConfig.hpp"
 
 #	include <algorithm>
 #	include <vector>

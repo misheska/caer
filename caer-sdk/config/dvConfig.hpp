@@ -1,7 +1,7 @@
 #ifndef DVCONFIG_HPP_
 #define DVCONFIG_HPP_
 
-#include "sshs.h"
+#include "dvConfig.h"
 
 #include <stdexcept>
 #include <string>

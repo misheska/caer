@@ -1,5 +1,5 @@
-#ifndef SSHS_H_
-#define SSHS_H_
+#ifndef DVCONFIG_H_
+#define DVCONFIG_H_
 
 #ifdef __cplusplus
 
@@ -251,4 +251,4 @@ int16_t sshsNodeGetShort(sshsNode node, const char *key);
 }
 #endif
 
-#endif /* SSHS_H_ */
+#endif /* DVCONFIG_H_ */
