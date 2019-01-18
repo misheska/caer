@@ -93,7 +93,7 @@ typedef struct caer_event_stream_out const *caerEventStreamOut;
 
 struct caer_module_data {
 	int16_t moduleID;
-	sshsNode moduleNode;
+	dvConfigNode moduleNode;
 	enum caer_module_status moduleStatus;
 	atomic_bool running;
 	atomic_uint_fast8_t moduleLogLevel;
@@ -106,7 +106,7 @@ struct caer_module_data {
 typedef struct caer_module_data *caerModuleData;
 
 struct caer_module_functions {
-	void (*const moduleConfigInit)(sshsNode moduleNode); // Can be NULL.
+	void (*const moduleConfigInit)(dvConfigNode moduleNode); // Can be NULL.
 	bool (*const moduleInit)(caerModuleData moduleData); // Can be NULL.
 	void (*const moduleRun)(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 	void (*const moduleConfig)(caerModuleData moduleData);                           // Can be NULL.
@@ -138,8 +138,8 @@ caerModuleInfo caerModuleGetInfo(void);
 void caerModuleLog(caerModuleData moduleData, enum caer_log_level logLevel, const char *format, ...)
 	ATTRIBUTE_FORMAT(3);
 bool caerModuleSetSubSystemString(caerModuleData moduleData, const char *subSystemString);
-void caerModuleConfigDefaultListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+void caerModuleConfigDefaultListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 #ifdef __cplusplus
 }
