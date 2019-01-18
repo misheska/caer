@@ -1,6 +1,7 @@
 #include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/utils.h"
 
+#include "../../src/config_server/caer_config_action_data.h"
 #include "utils/ext/linenoise-ng/linenoise.h"
 
 #include <boost/algorithm/string/join.hpp>
@@ -13,7 +14,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "../../src/config_server/caer_config_action_data.h"
 
 namespace asio    = boost::asio;
 namespace asioSSL = boost::asio::ssl;
@@ -418,8 +418,8 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			enum sshs_node_attr_value_type type = sshsHelperStringToTypeConverter(commandParts[CMD_PART_TYPE]);
-			if (type == SSHS_UNKNOWN) {
+			auto type = dv::Config::Helper::stringToTypeConverter(commandParts[CMD_PART_TYPE]);
+			if (type == dv::Config::AttributeType::UNKNOWN) {
 				std::cerr << "Error: invalid type parameter." << std::endl;
 				return;
 			}
@@ -454,8 +454,8 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			enum sshs_node_attr_value_type type = sshsHelperStringToTypeConverter(commandParts[CMD_PART_TYPE]);
-			if (type == SSHS_UNKNOWN) {
+			auto type = dv::Config::Helper::stringToTypeConverter(commandParts[CMD_PART_TYPE]);
+			if (type == dv::Config::AttributeType::UNKNOWN) {
 				std::cerr << "Error: invalid type parameter." << std::endl;
 				return;
 			}
@@ -561,7 +561,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 
 	// Display results.
 	boost::format resultMsg = boost::format("Result: action=%s, type=%s, msgLength=%" PRIu16 ", msg='%s'.")
-							  % actionString % sshsHelperTypeToStringConverter(dataBuffer.getType())
+							  % actionString % dv::Config::Helper::typeToStringConverter(dataBuffer.getType())
 							  % dataBuffer.getNodeLength() % dataBuffer.getNode();
 
 	std::cout << resultMsg.str() << std::endl;
@@ -734,7 +734,8 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		return;
 	}
 
-	if (dataBuffer.getAction() == caerConfigAction::ERROR || dataBuffer.getType() != SSHS_STRING) {
+	if (dataBuffer.getAction() == caerConfigAction::ERROR
+		|| dataBuffer.getType() != dv::Config::AttributeType::STRING) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -789,7 +790,8 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 		return;
 	}
 
-	if (dataBuffer.getAction() == caerConfigAction::ERROR || dataBuffer.getType() != SSHS_STRING) {
+	if (dataBuffer.getAction() == caerConfigAction::ERROR
+		|| dataBuffer.getType() != dv::Config::AttributeType::STRING) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -843,7 +845,8 @@ static void typeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		return;
 	}
 
-	if (dataBuffer.getAction() == caerConfigAction::ERROR || dataBuffer.getType() != SSHS_STRING) {
+	if (dataBuffer.getAction() == caerConfigAction::ERROR
+		|| dataBuffer.getType() != dv::Config::AttributeType::STRING) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -860,8 +863,8 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 	const std::string &partialValueString) {
 	UNUSED_ARGUMENT(action);
 
-	enum sshs_node_attr_value_type type = sshsHelperStringToTypeConverter(typeString.c_str());
-	if (type == SSHS_UNKNOWN) {
+	auto type = dv::Config::Helper::stringToTypeConverter(typeString);
+	if (type == dv::Config::AttributeType::UNKNOWN) {
 		// Invalid type, no auto-completion.
 		return;
 	}
@@ -870,7 +873,7 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 		// If there already is content, we can't do any auto-completion here, as
 		// we have no idea about what a valid value would be to complete ...
 		// Unless this is a boolean, then we can propose true/false strings.
-		if (type == SSHS_BOOL) {
+		if (type == dv::Config::AttributeType::BOOL) {
 			if (partialValueString == std::string("true").substr(0, partialValueString.length())) {
 				addCompletionSuffix(
 					autoComplete, buf.c_str(), buf.length() - partialValueString.length(), "true", false, false);
@@ -928,7 +931,7 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 	addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), dataBuffer.getNode().c_str(), false, false);
 
 	// If this is a boolean value, we can also add the inverse as a second completion.
-	if (type == SSHS_BOOL) {
+	if (type == dv::Config::AttributeType::BOOL) {
 		if (dataBuffer.getNode() == "true") {
 			addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), "false", false, false);
 		}

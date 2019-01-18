@@ -125,12 +125,12 @@ void caerConfigInit(int argc, char *argv[]) {
 				auto node = dv::Config::GLOBAL.getNode(iter[0]);
 
 				if (!node.stringToAttributeConverter(iter[1], iter[2], iter[3])) {
-					std::cout << "SSHS: failed to convert attribute '" << iter[1] << "' of type '" << iter[2]
+					std::cout << "Config: failed to convert attribute '" << iter[1] << "' of type '" << iter[2]
 							  << "' with value '" << iter[3] << "' on override." << std::endl;
 				}
 			}
 			catch (const std::out_of_range &) {
-				std::cout << "SSHS: invalid node path specification '" << iter[0] << "' on override." << std::endl;
+				std::cout << "Config: invalid node path specification '" << iter[0] << "' on override." << std::endl;
 			}
 
 			iter += 4;

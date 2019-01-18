@@ -20,7 +20,7 @@ static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> c
 	response.reset();
 
 	response.setAction(caerConfigAction::ERROR);
-	response.setType(SSHS_STRING);
+	response.setType(dvCfgType::STRING);
 	response.setNode(errorMsg);
 
 	client->writeResponse();
@@ -35,7 +35,7 @@ static inline void caerConfigSendResponse(std::shared_ptr<ConfigServerConnection
 	response.reset();
 
 	response.setAction(action);
-	response.setType(static_cast<enum sshs_node_attr_value_type>(type));
+	response.setType(type);
 	response.setNode(message);
 
 	client->writeResponse();

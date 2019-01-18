@@ -316,8 +316,9 @@ static void caerConfigServerRestartListener(sshsNode node, void *userData, enum 
 }
 
 static void caerConfigServerGlobalNodeChangeListener(
-	sshsNode node, void *userData, enum sshs_node_node_events event, const char *changeNode) {
+	sshsNode n, void *userData, enum sshs_node_node_events event, const char *changeNode) {
 	UNUSED_ARGUMENT(userData);
+	dv::Config::Node node(n);
 
 	if (globalConfigData.server.pushClientsPresent()) {
 		auto msg = std::make_shared<caerConfigActionData>();
@@ -326,7 +327,7 @@ static void caerConfigServerGlobalNodeChangeListener(
 
 		msg->setExtra(std::string(1, (char) event));
 
-		std::string nodePath(sshsNodeGetPath(node));
+		std::string nodePath(node.getPath());
 		nodePath += changeNode;
 		nodePath.push_back('/');
 		msg->setNode(nodePath);
@@ -335,38 +336,28 @@ static void caerConfigServerGlobalNodeChangeListener(
 	}
 }
 
-static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *userData,
+static void caerConfigServerGlobalAttributeChangeListener(sshsNode n, void *userData,
 	enum sshs_node_attribute_events event, const char *changeKey, enum sshs_node_attr_value_type changeType,
 	union sshs_node_attr_value changeValue) {
 	UNUSED_ARGUMENT(userData);
+	dv::Config::Node node(n);
+	dv::Config::AttributeType type = static_cast<dv::Config::AttributeType>(changeType);
 
 	if (globalConfigData.server.pushClientsPresent()) {
 		auto msg = std::make_shared<caerConfigActionData>();
 
 		msg->setAction(caerConfigAction::PUSH_MESSAGE_ATTR);
-		msg->setType(changeType);
+		msg->setType(static_cast<dv::Config::AttributeType>(changeType));
 
 		if (event == SSHS_ATTRIBUTE_ADDED) {
 			// Need to get extra info when adding: flags, range, description.
-			char *flagsString
-				= sshsHelperFlagsToStringConverter(sshsNodeGetAttributeFlags(node, changeKey, changeType));
+			const std::string flagsStr
+				= dv::Config::Helper::flagsToStringConverter(node.getAttributeFlags(changeKey, type));
 
-			std::string flagsStr(flagsString);
+			const std::string rangesStr
+				= dv::Config::Helper::rangesToStringConverter(type, node.getAttributeRanges(changeKey, type));
 
-			free(flagsString);
-
-			char *rangesString = sshsHelperRangesToStringConverter(
-				changeType, sshsNodeGetAttributeRanges(node, changeKey, changeType));
-
-			std::string rangesStr(rangesString);
-
-			free(rangesString);
-
-			char *descriptionString = sshsNodeGetAttributeDescription(node, changeKey, changeType);
-
-			std::string descriptionStr(descriptionString);
-
-			free(descriptionString);
+			const std::string descriptionStr = node.getAttributeDescription(changeKey, type);
 
 			std::string extraStr(1, (char) event);
 			extraStr.push_back('\0');
@@ -374,7 +365,7 @@ static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *u
 			extraStr.push_back('\0');
 			extraStr += rangesStr;
 			extraStr.push_back('\0');
-			extraStr += descriptionString;
+			extraStr += descriptionStr;
 
 			msg->setExtra(extraStr);
 		}
@@ -382,19 +373,12 @@ static void caerConfigServerGlobalAttributeChangeListener(sshsNode node, void *u
 			msg->setExtra(std::string(1, (char) event));
 		}
 
-		msg->setNode(sshsNodeGetPath(node));
+		msg->setNode(node.getPath());
 		msg->setKey(changeKey);
 
-		char *valueStr = sshsHelperValueToStringConverter(changeType, changeValue);
+		const std::string valueStr = dv::Config::Helper::valueToStringConverter(type, changeValue);
 
-		if (valueStr == nullptr) {
-			return;
-		}
-		else {
-			msg->setValue(valueStr);
-
-			free(valueStr);
-		}
+		msg->setValue(valueStr);
 
 		globalConfigData.server.pushMessageToClients(msg);
 	}

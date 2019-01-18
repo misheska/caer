@@ -52,12 +52,12 @@ public:
 		return (static_cast<caerConfigAction>(buffer[0]));
 	}
 
-	void setType(sshs_node_attr_value_type type) {
+	void setType(dv::Config::AttributeType type) {
 		buffer[1] = static_cast<uint8_t>(type);
 	}
 
-	sshs_node_attr_value_type getType() const {
-		return (static_cast<sshs_node_attr_value_type>(buffer[1]));
+	dv::Config::AttributeType getType() const {
+		return (static_cast<dv::Config::AttributeType>(buffer[1]));
 	}
 
 	void setExtraLength(uint16_t extraLen) {
