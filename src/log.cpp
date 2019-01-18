@@ -17,8 +17,8 @@ static int CAER_LOG_FILE_FD = -1;
 static dvCfg::Node logNode  = nullptr;
 
 static void caerLogShutDownWriteBack(void);
-static void caerLogSSHSLogger(const char *msg, bool fatal);
-static void caerLogMessagesToSSHS(const char *msg, size_t msgLength);
+static void caerLogConfigLogger(const char *msg, bool fatal);
+static void caerLogMessagesToConfigTree(const char *msg, size_t msgLength);
 static void caerLogLevelListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
 	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
 
@@ -62,18 +62,18 @@ void caerLogInit(void) {
 	// Make sure log file gets flushed at exit time.
 	atexit(&caerLogShutDownWriteBack);
 
-	// Send any log messages out via SSHS from now on.
-	caerLogCallbackSet(&caerLogMessagesToSSHS);
+	// Send any log messages out via ConfigTree from now on.
+	caerLogCallbackSet(&caerLogMessagesToConfigTree);
 
 	// Now that config is initialized (has to be!) and logging too, we can
-	// set the SSHS logger to use our internal logger too.
-	sshsSetGlobalErrorLogCallback(&caerLogSSHSLogger);
+	// set the ConfigTree logger to use our internal logger too.
+	sshsSetGlobalErrorLogCallback(&caerLogConfigLogger);
 
 	// Log sub-system initialized fully and correctly, log this.
 	caerLog(CAER_LOG_DEBUG, "Logger", "Started with log file '%s', log-level %d.", logFile.c_str(), logLevel);
 }
 
-static void caerLogMessagesToSSHS(const char *msg, size_t msgLength) {
+static void caerLogMessagesToConfigTree(const char *msg, size_t msgLength) {
 	sshs_node_attr_value logMessage;
 	logMessage.string = const_cast<char *>(msg);
 
@@ -83,7 +83,7 @@ static void caerLogMessagesToSSHS(const char *msg, size_t msgLength) {
 	// and passing it to the callback last by design.
 	logMessage.string[msgLength - 1] = '\0';
 
-	logNode.updateReadOnlyAttribute<dvCfgType::STRING>("lastLogMessage", logMessage);
+	logNode.updateReadOnlyAttribute("lastLogMessage", dvCfgType::STRING, logMessage);
 }
 
 static void caerLogShutDownWriteBack(void) {
@@ -98,12 +98,12 @@ static void caerLogShutDownWriteBack(void) {
 	close(CAER_LOG_FILE_FD);
 }
 
-static void caerLogSSHSLogger(const char *msg, bool fatal) {
+static void caerLogConfigLogger(const char *msg, bool fatal) {
 	if (fatal) {
 		throw std::runtime_error(msg);
 	}
 	else {
-		caerLog(CAER_LOG_ERROR, "SSHS", "%s", msg);
+		caerLog(CAER_LOG_ERROR, "Config", "%s", msg);
 	}
 }
 

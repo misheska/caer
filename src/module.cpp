@@ -179,9 +179,9 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 
 		if (dependantModulesSize > 0) {
 			for (size_t i = 0; i < dependantModulesSize; i++) {
-				sshsNode moduleConfigNode = caerMainloopModuleGetConfigNode(dependantModules[i]);
+				dvCfg::Node moduleConfigNode(caerMainloopModuleGetConfigNode(dependantModules[i]));
 
-				if (sshsNodeGetBool(moduleConfigNode, "runAtStartup")) {
+				if (moduleConfigNode.get<dvCfgType::BOOL>("runAtStartup")) {
 					moduleNode.put<dvCfgType::BOOL>("running", true);
 				}
 			}
@@ -600,10 +600,10 @@ void caerUpdateModulesInformation() {
 			continue;
 		}
 
-		// Get SSHS node under /caer/modules/.
+		// Get ConfigTree node under /caer/modules/.
 		auto moduleNode = modulesNode.getRelativeNode(moduleName + "/");
 
-		// Parse caerModuleInfo into SSHS.
+		// Parse caerModuleInfo into ConfigTree.
 		moduleNode.create<dvCfgType::INT>("version", I32T(mLoad.second->version), {0, INT32_MAX},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module version.");
 		moduleNode.create<dvCfgType::STRING>(

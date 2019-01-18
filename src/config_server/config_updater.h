@@ -2,7 +2,7 @@
 #define SRC_CONFIG_SERVER_CONFIG_UPDATER_H_
 
 #include "caer-sdk/cross/portable_threads.h"
-#include "caer-sdk/sshs/sshs.hpp"
+#include "caer-sdk/sshs/dvConfig.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -12,13 +12,13 @@ class ConfigUpdater {
 private:
 	std::thread updateThread;
 	std::atomic_bool runThread;
-	sshs configTree;
+	dv::Config::Tree configTree;
 
 public:
-	ConfigUpdater() : ConfigUpdater(sshsGetGlobal()) {
+	ConfigUpdater() : configTree(dv::Config::GLOBAL) {
 	}
 
-	ConfigUpdater(sshs tree) : configTree(tree) {
+	ConfigUpdater(dv::Config::Tree tree) : configTree(tree) {
 	}
 
 	void threadStart() {
@@ -29,7 +29,7 @@ public:
 			portable_thread_set_name("ConfigUpdater");
 
 			while (runThread.load()) {
-				sshsAttributeUpdaterRun(configTree);
+				configTree.attributeUpdaterRun();
 
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}

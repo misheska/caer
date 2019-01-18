@@ -495,8 +495,8 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 		}
 
 		case caerConfigAction::DUMP_TREE: {
-			// Run through the whole SSHS tree as it is currently and dump its content.
-
+			// Run through the whole ConfigTree as it is currently and dump its content.
+			// TODO: complete.
 			break;
 		}
 

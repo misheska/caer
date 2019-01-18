@@ -217,7 +217,7 @@ sshsNode caerMainloopGetSourceInfo(int16_t sourceID) {
 		return (nullptr);
 	}
 
-	// All sources should have a sub-node in SSHS called 'sourceInfo/',
+	// All sources should have a sub-node in ConfigTree called 'sourceInfo/',
 	// while they are running only (so check running and existence).
 	if (moduleData->moduleStatus == CAER_MODULE_STOPPED) {
 		return (nullptr);

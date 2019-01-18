@@ -197,7 +197,7 @@ void caerMainloopRun(void) {
 			continue;
 		}
 
-		// Get information on available modules, put it into SSHS.
+		// Get information on available modules, put it into ConfigTree.
 		try {
 			caerUpdateModulesInformation();
 		}
@@ -1914,7 +1914,7 @@ static void caerUpdateModulesInformationListener(sshsNode node, void *userData, 
 
 	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BOOL
 		&& caerStrEquals(changeKey, "updateModulesInformation") && changeValue.boolean) {
-		// Get information on available modules, put it into SSHS.
+		// Get information on available modules, put it into ConfigTree.
 		try {
 			caerUpdateModulesInformation();
 		}
