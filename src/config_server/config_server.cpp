@@ -108,11 +108,11 @@ void ConfigServer::pushMessageToClients(std::shared_ptr<const caerConfigActionDa
 
 void ConfigServer::serviceConfigure() {
 	// Get config.
-	sshsNode serverNode = sshsGetNode(sshsGetGlobal(), "/caer/server/");
+	auto serverNode = dvCfg::GLOBAL.getNode("/caer/server/");
 
 	// Configure acceptor.
-	auto endpoint = asioTCP::endpoint(asioIP::address::from_string(sshsNodeGetStdString(serverNode, "ipAddress")),
-		U16T(sshsNodeGetInt(serverNode, "portNumber")));
+	auto endpoint = asioTCP::endpoint(asioIP::address::from_string(serverNode.get<dvCfgType::STRING>("ipAddress")),
+		U16T(serverNode.get<dvCfgType::INT>("portNumber")));
 
 	acceptor.open(endpoint.protocol());
 	acceptor.set_option(asioTCP::socket::reuse_address(true));
@@ -120,11 +120,11 @@ void ConfigServer::serviceConfigure() {
 	acceptor.listen();
 
 	// Configure SSL support.
-	sslEnabled = sshsNodeGetBool(serverNode, "ssl");
+	sslEnabled = serverNode.get<dvCfgType::BOOL>("ssl");
 
 	if (sslEnabled) {
 		try {
-			sslContext.use_certificate_chain_file(sshsNodeGetStdString(serverNode, "sslCertFile"));
+			sslContext.use_certificate_chain_file(serverNode.get<dvCfgType::STRING>("sslCertFile"));
 		}
 		catch (const boost::system::system_error &ex) {
 			logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
@@ -135,7 +135,7 @@ void ConfigServer::serviceConfigure() {
 
 		try {
 			sslContext.use_private_key_file(
-				sshsNodeGetStdString(serverNode, "sslKeyFile"), boost::asio::ssl::context::pem);
+				serverNode.get<dvCfgType::STRING>("sslKeyFile"), boost::asio::ssl::context::pem);
 		}
 		catch (const boost::system::system_error &ex) {
 			logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
@@ -150,8 +150,8 @@ void ConfigServer::serviceConfigure() {
 		// Default: no client verification enforced.
 		sslContext.set_verify_mode(asioSSL::context::verify_peer);
 
-		if (sshsNodeGetBool(serverNode, "sslClientVerification")) {
-			const std::string sslVerifyFile = sshsNodeGetStdString(serverNode, "sslClientVerificationFile");
+		if (serverNode.get<dvCfgType::BOOL>("sslClientVerification")) {
+			const std::string sslVerifyFile = serverNode.get<dvCfgType::STRING>("sslClientVerificationFile");
 
 			if (sslVerifyFile.empty()) {
 				sslContext.set_default_verify_paths();
@@ -182,8 +182,8 @@ void ConfigServer::serviceStart() {
 
 	ioThreadState = IOThreadState::RUNNING;
 
-	sshsGlobalNodeListenerSet(sshsGetGlobal(), &caerConfigServerGlobalNodeChangeListener, nullptr);
-	sshsGlobalAttributeListenerSet(sshsGetGlobal(), &caerConfigServerGlobalAttributeChangeListener, nullptr);
+	dvCfg::GLOBAL.globalNodeListenerSet(&caerConfigServerGlobalNodeChangeListener, nullptr);
+	dvCfg::GLOBAL.globalAttributeListenerSet(&caerConfigServerGlobalAttributeChangeListener, nullptr);
 
 	// Run IO service.
 	ioService.run();
@@ -197,8 +197,8 @@ void ConfigServer::serviceStop() {
 
 	ioThreadState = IOThreadState::STOPPING;
 
-	sshsGlobalAttributeListenerSet(sshsGetGlobal(), nullptr, nullptr);
-	sshsGlobalNodeListenerSet(sshsGetGlobal(), nullptr, nullptr);
+	dvCfg::GLOBAL.globalAttributeListenerSet(nullptr, nullptr);
+	dvCfg::GLOBAL.globalNodeListenerSet(nullptr, nullptr);
 
 	// Stop accepting connections.
 	acceptor.close();
@@ -240,29 +240,29 @@ static struct {
 
 void caerConfigServerStart(void) {
 	// Get the right configuration node first.
-	sshsNode serverNode = sshsGetNode(sshsGetGlobal(), "/caer/server/");
+	auto serverNode = dvCfg::GLOBAL.getNode("/caer/server/");
 
 	// Support restarting the config server.
-	sshsNodeCreate(serverNode, "restart", false, SSHS_FLAGS_NOTIFY_ONLY | SSHS_FLAGS_NO_EXPORT,
+	serverNode.create<dvCfgType::BOOL>("restart", false, {}, dvCfgFlags::NOTIFY_ONLY | dvCfgFlags::NO_EXPORT,
 		"Restart configuration server, disconnects all clients and reloads itself.");
 
 	// Ensure default values are present for IP/Port.
-	sshsNodeCreate(serverNode, "ipAddress", "127.0.0.1", 2, 39, SSHS_FLAGS_NORMAL,
+	serverNode.create<dvCfgType::STRING>("ipAddress", "127.0.0.1", {2, 39}, dvCfgFlags::NORMAL,
 		"IP address to listen on for configuration server connections.");
-	sshsNodeCreate(serverNode, "portNumber", 4040, 1, UINT16_MAX, SSHS_FLAGS_NORMAL,
+	serverNode.create<dvCfgType::INT>("portNumber", 4040, {1, UINT16_MAX}, dvCfgFlags::NORMAL,
 		"Port to listen on for configuration server connections.");
 
 	// Default values for SSL encryption support.
-	sshsNodeCreate(
-		serverNode, "ssl", false, SSHS_FLAGS_NORMAL, "Require SSL encryption for configuration server communication.");
-	sshsNodeCreate(
-		serverNode, "sslCertFile", "", 0, PATH_MAX, SSHS_FLAGS_NORMAL, "Path to SSL certificate file (PEM format).");
-	sshsNodeCreate(
-		serverNode, "sslKeyFile", "", 0, PATH_MAX, SSHS_FLAGS_NORMAL, "Path to SSL private key file (PEM format).");
+	serverNode.create<dvCfgType::BOOL>(
+		"ssl", false, {}, dvCfgFlags::NORMAL, "Require SSL encryption for configuration server communication.");
+	serverNode.create<dvCfgType::STRING>(
+		"sslCertFile", "", {0, PATH_MAX}, dvCfgFlags::NORMAL, "Path to SSL certificate file (PEM format).");
+	serverNode.create<dvCfgType::STRING>(
+		"sslKeyFile", "", {0, PATH_MAX}, dvCfgFlags::NORMAL, "Path to SSL private key file (PEM format).");
 
-	sshsNodeCreate(
-		serverNode, "sslClientVerification", false, SSHS_FLAGS_NORMAL, "Require SSL client certificate verification.");
-	sshsNodeCreate(serverNode, "sslClientVerificationFile", "", 0, PATH_MAX, SSHS_FLAGS_NORMAL,
+	serverNode.create<dvCfgType::BOOL>(
+		"sslClientVerification", false, {}, dvCfgFlags::NORMAL, "Require SSL client certificate verification.");
+	serverNode.create<dvCfgType::STRING>("sslClientVerificationFile", "", {0, PATH_MAX}, dvCfgFlags::NORMAL,
 		"Path to SSL CA file for client verification (PEM format). Leave empty to use system defaults.");
 
 	try {
@@ -278,17 +278,17 @@ void caerConfigServerStart(void) {
 	}
 
 	// Listen for restart commands.
-	sshsNodeAddAttributeListener(serverNode, nullptr, &caerConfigServerRestartListener);
+	serverNode.addAttributeListener(nullptr, &caerConfigServerRestartListener);
 
 	// Successfully started threads.
 	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads created successfully.");
 }
 
 void caerConfigServerStop(void) {
-	sshsNode serverNode = sshsGetNode(sshsGetGlobal(), "/caer/server/");
+	auto serverNode = dvCfg::GLOBAL.getNode("/caer/server/");
 
 	// Remove restart listener first.
-	sshsNodeRemoveAttributeListener(serverNode, nullptr, &caerConfigServerRestartListener);
+	serverNode.removeAttributeListener(nullptr, &caerConfigServerRestartListener);
 
 	try {
 		// Stop threads.
@@ -321,7 +321,7 @@ static void caerConfigServerRestartListener(sshsNode node, void *userData, enum 
 static void caerConfigServerGlobalNodeChangeListener(
 	sshsNode n, void *userData, enum sshs_node_node_events event, const char *changeNode) {
 	UNUSED_ARGUMENT(userData);
-	dv::Config::Node node(n);
+	dvCfg::Node node(n);
 
 	if (globalConfigData.server.pushClientsPresent()) {
 		auto msg = std::make_shared<caerConfigActionData>();
@@ -343,22 +343,21 @@ static void caerConfigServerGlobalAttributeChangeListener(sshsNode n, void *user
 	enum sshs_node_attribute_events event, const char *changeKey, enum sshs_node_attr_value_type changeType,
 	union sshs_node_attr_value changeValue) {
 	UNUSED_ARGUMENT(userData);
-	dv::Config::Node node(n);
-	dv::Config::AttributeType type = static_cast<dv::Config::AttributeType>(changeType);
+	dvCfg::Node node(n);
+	dvCfg::AttributeType type = static_cast<dvCfg::AttributeType>(changeType);
 
 	if (globalConfigData.server.pushClientsPresent()) {
 		auto msg = std::make_shared<caerConfigActionData>();
 
 		msg->setAction(caerConfigAction::PUSH_MESSAGE_ATTR);
-		msg->setType(static_cast<dv::Config::AttributeType>(changeType));
+		msg->setType(type);
 
 		if (event == SSHS_ATTRIBUTE_ADDED) {
 			// Need to get extra info when adding: flags, range, description.
-			const std::string flagsStr
-				= dv::Config::Helper::flagsToStringConverter(node.getAttributeFlags(changeKey, type));
+			const std::string flagsStr = dvCfg::Helper::flagsToStringConverter(node.getAttributeFlags(changeKey, type));
 
 			const std::string rangesStr
-				= dv::Config::Helper::rangesToStringConverter(type, node.getAttributeRanges(changeKey, type));
+				= dvCfg::Helper::rangesToStringConverter(type, node.getAttributeRanges(changeKey, type));
 
 			const std::string descriptionStr = node.getAttributeDescription(changeKey, type);
 
@@ -379,7 +378,7 @@ static void caerConfigServerGlobalAttributeChangeListener(sshsNode n, void *user
 		msg->setNode(node.getPath());
 		msg->setKey(changeKey);
 
-		const std::string valueStr = dv::Config::Helper::valueToStringConverter(type, changeValue);
+		const std::string valueStr = dvCfg::Helper::valueToStringConverter(type, changeValue);
 
 		msg->setValue(valueStr);
 
