@@ -6,6 +6,10 @@
 #	include <sys/types.h>
 #	include <unistd.h>
 
+namespace dvCfg  = dv::Config;
+using dvCfgType  = dvCfg::AttributeType;
+using dvCfgFlags = dvCfg::AttributeFlags;
+
 static void caerUnixDaemonize(void);
 
 static void caerUnixDaemonize(void) {
@@ -76,12 +80,12 @@ static void caerUnixDaemonize(void) {
 #endif
 
 void caerServiceInit(void (*runner)(void)) {
-	sshsNode systemNode = sshsGetNode(sshsGetGlobal(), "/caer/");
+	auto systemNode = dv::Config::GLOBAL.getNode("/caer/");
 
-	sshsNodeCreate(
-		systemNode, "backgroundService", false, SSHS_FLAGS_READ_ONLY, "Start program as a background service.");
+	systemNode.create<dvCfgType::BOOL>(
+		"backgroundService", false, {}, dvCfgFlags::READ_ONLY, "Start program as a background service.");
 
-	bool backgroundService = sshsNodeGetBool(systemNode, "backgroundService");
+	bool backgroundService = systemNode.get<dvCfgType::BOOL>("backgroundService");
 
 	if (backgroundService) {
 #if defined(OS_WINDOWS)

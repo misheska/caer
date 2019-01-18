@@ -6,6 +6,7 @@
 #include "config_server_connection.h"
 #include "config_server_main.h"
 
+#include <boost/algorithm/string/join.hpp>
 #include <boost/tokenizer.hpp>
 #include <regex>
 
@@ -109,7 +110,7 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			dvCfg::Node wantedNode = configStore.getNode(data.getNode());
 
 			// Check if attribute exists.
-			bool result = sshsNodeAttributeExists(wantedNode, data.getKey(), type);
+			bool result = wantedNode.existsAttribute(data.getKey(), type);
 
 			// Send back result to client. Format is the same as incoming data.
 			caerConfigSendBoolResponse(client, caerConfigAction::ATTR_EXISTS, result);
@@ -123,32 +124,17 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
+			dvCfg::Node wantedNode = configStore.getNode(data.getNode());
 
 			if (!checkAttributeExists(wantedNode, data.getKey(), type, client)) {
 				break;
 			}
 
-			union sshs_node_attr_value result = sshsNodeGetAttribute(wantedNode, data.getKey().c_str(), type);
+			union sshs_node_attr_value result = wantedNode.getAttribute(data.getKey(), type);
 
-			char *resultStr = sshsHelperValueToStringConverter(type, result);
+			const std::string resultStr = dvCfg::Helper::valueToStringConverter(type, result);
 
-			if (resultStr == nullptr) {
-				// Send back error message to client.
-				caerConfigSendError(client, "Failed to allocate memory for value string.");
-			}
-			else {
-				caerConfigSendResponse(client, caerConfigAction::GET, type, resultStr);
-
-				free(resultStr);
-			}
-
-			// If this is a string, we must remember to free the original result.str
-			// too, since it will also be a copy of the string coming from SSHS.
-			if (type == SSHS_STRING) {
-				free(result.string);
-			}
-
+			caerConfigSendResponse(client, caerConfigAction::GET, type, resultStr);
 			break;
 		}
 
@@ -158,16 +144,16 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
+			dvCfg::Node wantedNode = configStore.getNode(data.getNode());
 
 			if (!checkAttributeExists(wantedNode, data.getKey(), type, client)) {
 				break;
 			}
 
 			// Put given value into config node. Node, attr and type are already verified.
-			const char *typeStr = sshsHelperTypeToStringConverter(type);
-			if (!sshsNodeStringToAttributeConverter(
-					wantedNode, data.getKey().c_str(), typeStr, data.getValue().c_str())) {
+			const std::string typeStr = dvCfg::Helper::typeToStringConverter(type);
+
+			if (!wantedNode.stringToAttributeConverter(data.getKey(), typeStr, data.getValue())) {
 				// Send back correct error message to client.
 				if (errno == EINVAL) {
 					caerConfigSendError(client, "Impossible to convert value according to type.");
@@ -198,14 +184,13 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
+			dvCfg::Node wantedNode = configStore.getNode(data.getNode());
 
 			// Get the names of all the child nodes and return them.
-			size_t numNames;
-			const char **childNames = sshsNodeGetChildNames(wantedNode, &numNames);
+			auto childNames = wantedNode.getChildNames();
 
 			// No children at all, return empty.
-			if (childNames == nullptr) {
+			if (childNames.empty()) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Node has no children.");
 
@@ -214,28 +199,9 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			// We need to return a big string with all of the child names,
 			// separated by a | character.
-			size_t namesLength = 0;
+			const std::string namesString = boost::algorithm::join(childNames, "|");
 
-			for (size_t i = 0; i < numNames; i++) {
-				namesLength += strlen(childNames[i]) + 1; // +1 for | separator.
-			}
-
-			// Allocate a buffer for the names and copy them over.
-			char namesBuffer[namesLength];
-
-			for (size_t i = 0, acc = 0; i < numNames; i++) {
-				size_t len = strlen(childNames[i]);
-
-				memcpy(namesBuffer + acc, childNames[i], len);
-				acc += len;
-
-				namesBuffer[acc++] = '|';
-			}
-
-			free(childNames);
-
-			caerConfigSendResponse(
-				client, caerConfigAction::GET_CHILDREN, SSHS_STRING, std::string(namesBuffer, namesLength - 1));
+			caerConfigSendResponse(client, caerConfigAction::GET_CHILDREN, dvCfgType::STRING, namesString);
 
 			break;
 		}
@@ -246,14 +212,13 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
+			dvCfg::Node wantedNode = configStore.getNode(data.getNode());
 
 			// Get the keys of all the attributes and return them.
-			size_t numKeys;
-			const char **attrKeys = sshsNodeGetAttributeKeys(wantedNode, &numKeys);
+			auto attrKeys = wantedNode.getAttributeKeys();
 
 			// No attributes at all, return empty.
-			if (attrKeys == nullptr) {
+			if (attrKeys.empty()) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Node has no attributes.");
 
@@ -262,28 +227,9 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			// We need to return a big string with all of the attribute keys,
 			// separated by a | character.
-			size_t keysLength = 0;
+			const std::string attrKeysString = boost::algorithm::join(attrKeys, "|");
 
-			for (size_t i = 0; i < numKeys; i++) {
-				keysLength += strlen(attrKeys[i]) + 1; // +1 for | separator.
-			}
-
-			// Allocate a buffer for the keys and copy them over.
-			char keysBuffer[keysLength];
-
-			for (size_t i = 0, acc = 0; i < numKeys; i++) {
-				size_t len = strlen(attrKeys[i]);
-
-				memcpy(keysBuffer + acc, attrKeys[i], len);
-				acc += len;
-
-				keysBuffer[acc++] = '|';
-			}
-
-			free(attrKeys);
-
-			caerConfigSendResponse(
-				client, caerConfigAction::GET_ATTRIBUTES, SSHS_STRING, std::string(keysBuffer, keysLength - 1));
+			caerConfigSendResponse(client, caerConfigAction::GET_ATTRIBUTES, dvCfgType::STRING, attrKeysString);
 
 			break;
 		}
@@ -294,13 +240,13 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
+			dvCfg::Node wantedNode = configStore.getNode(data.getNode());
 
 			// Check if any keys match the given one and return its type.
-			enum sshs_node_attr_value_type attrType = sshsNodeGetAttributeType(wantedNode, data.getKey().c_str());
+			auto attrType = wantedNode.getAttributeType(data.getKey());
 
 			// No attributes for specified key, return empty.
-			if (attrType == SSHS_UNKNOWN) {
+			if (attrType == dvCfgType::UNKNOWN) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Node has no attributes with specified key.");
 
@@ -309,9 +255,9 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 
 			// We need to return a string with the attribute type,
 			// separated by a NUL character.
-			const char *typeStr = sshsHelperTypeToStringConverter(attrType);
+			const std::string typeStr = dvCfg::Helper::typeToStringConverter(attrType);
 
-			caerConfigSendResponse(client, caerConfigAction::GET_TYPE, SSHS_STRING, typeStr);
+			caerConfigSendResponse(client, caerConfigAction::GET_TYPE, dvCfgType::STRING, typeStr);
 
 			break;
 		}
@@ -322,19 +268,15 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
+			dvCfg::Node wantedNode = configStore.getNode(data.getNode());
 
 			if (!checkAttributeExists(wantedNode, data.getKey(), type, client)) {
 				break;
 			}
 
-			struct sshs_node_attr_ranges ranges = sshsNodeGetAttributeRanges(wantedNode, data.getKey().c_str(), type);
+			struct sshs_node_attr_ranges ranges = wantedNode.getAttributeRanges(data.getKey(), type);
 
-			char *rangesString = sshsHelperRangesToStringConverter(type, ranges);
-
-			std::string rangesStr(rangesString);
-
-			free(rangesString);
+			const std::string rangesStr = dvCfg::Helper::rangesToStringConverter(type, ranges);
 
 			caerConfigSendResponse(client, caerConfigAction::GET_RANGES, type, rangesStr);
 
@@ -347,21 +289,17 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
+			dvCfg::Node wantedNode = configStore.getNode(data.getNode());
 
 			if (!checkAttributeExists(wantedNode, data.getKey(), type, client)) {
 				break;
 			}
 
-			int flags = sshsNodeGetAttributeFlags(wantedNode, data.getKey().c_str(), type);
+			int flags = wantedNode.getAttributeFlags(data.getKey(), type);
 
-			char *flagsString = sshsHelperFlagsToStringConverter(flags);
+			const std::string flagsStr = dvCfg::Helper::flagsToStringConverter(flags);
 
-			std::string flagsStr(flagsString);
-
-			free(flagsString);
-
-			caerConfigSendResponse(client, caerConfigAction::GET_FLAGS, SSHS_STRING, flagsStr);
+			caerConfigSendResponse(client, caerConfigAction::GET_FLAGS, dvCfgType::STRING, flagsStr);
 
 			break;
 		}
@@ -372,17 +310,15 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// This cannot fail, since we know the node exists from above.
-			sshsNode wantedNode = sshsGetNode(configStore, data.getNode());
+			dvCfg::Node wantedNode = configStore.getNode(data.getNode());
 
 			if (!checkAttributeExists(wantedNode, data.getKey(), type, client)) {
 				break;
 			}
 
-			char *description = sshsNodeGetAttributeDescription(wantedNode, data.getKey().c_str(), type);
+			const std::string description = wantedNode.getAttributeDescription(data.getKey(), type);
 
-			caerConfigSendResponse(client, caerConfigAction::GET_DESCRIPTION, SSHS_STRING, description);
-
-			free(description);
+			caerConfigSendResponse(client, caerConfigAction::GET_DESCRIPTION, dvCfgType::STRING, description);
 
 			break;
 		}
@@ -417,14 +353,14 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 				break;
 			}
 
-			if (sshsExistsNode(configStore, "/" + moduleName + "/")) {
+			if (configStore.existsNode("/" + moduleName + "/")) {
 				caerConfigSendError(client, "Name is already in use.");
 				break;
 			}
 
 			// Check module library.
-			sshsNode modulesSysNode              = sshsGetNode(configStore, "/caer/modules/");
-			const std::string modulesListOptions = sshsNodeGetStdString(modulesSysNode, "modulesListOptions");
+			auto modulesSysNode                  = configStore.getNode("/caer/modules/");
+			const std::string modulesListOptions = modulesSysNode.get<dvCfgType::STRING>("modulesListOptions");
 
 			boost::tokenizer<boost::char_separator<char>> modulesList(
 				modulesListOptions, boost::char_separator<char>(","));
@@ -435,23 +371,18 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// Name and library are fine, let's determine the next free ID.
-			size_t rootNodesSize;
-			sshsNode *rootNodes = sshsNodeGetChildren(sshsGetNode(configStore, "/"), &rootNodesSize);
+			auto rootNodes = configStore.getRootNode().getChildren();
 
 			std::vector<int16_t> usedModuleIDs;
 
-			for (size_t i = 0; i < rootNodesSize; i++) {
-				sshsNode mNode = rootNodes[i];
-
-				if (!sshsNodeAttributeExists(mNode, "moduleId", SSHS_INT)) {
+			for (const auto &mNode : rootNodes) {
+				if (!mNode.exists<dvCfgType::INT>("moduleId")) {
 					continue;
 				}
 
-				int16_t moduleID = I16T(sshsNodeGetInt(mNode, "moduleId"));
+				int16_t moduleID = I16T(mNode.get<dvCfgType::INT>("moduleId"));
 				usedModuleIDs.push_back(moduleID);
 			}
-
-			free(rootNodes);
 
 			vectorSortUnique(usedModuleIDs);
 
@@ -464,35 +395,35 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 			}
 
 			// Let's create the needed configuration for the new module.
-			sshsNode newModuleNode = sshsGetNode(configStore, "/" + moduleName + "/");
+			auto newModuleNode = configStore.getNode("/" + moduleName + "/");
 
-			sshsNodeCreate(newModuleNode, "moduleId", nextFreeModuleID, I16T(1), I16T(INT16_MAX), SSHS_FLAGS_READ_ONLY,
-				"Module ID.");
-			sshsNodeCreate(
-				newModuleNode, "moduleLibrary", moduleLibrary, 1, PATH_MAX, SSHS_FLAGS_READ_ONLY, "Module library.");
+			newModuleNode.create<dvCfgType::INT>(
+				"moduleId", nextFreeModuleID, {1, INT16_MAX}, dvCfgFlags::READ_ONLY, "Module ID.");
+			newModuleNode.create<dvCfgType::STRING>(
+				"moduleLibrary", moduleLibrary, {1, PATH_MAX}, dvCfgFlags::READ_ONLY, "Module library.");
 
 			// Add moduleInput/moduleOutput as appropriate.
-			sshsNode moduleSysNode = sshsGetRelativeNode(modulesSysNode, moduleLibrary + "/");
-			std::string inputType  = sshsNodeGetStdString(moduleSysNode, "type");
+			auto moduleSysNode          = modulesSysNode.getRelativeNode(moduleLibrary + "/");
+			const std::string inputType = moduleSysNode.get<dvCfgType::STRING>("type");
 
 			if (inputType != "INPUT") {
 				// CAER_MODULE_OUTPUT / CAER_MODULE_PROCESSOR
 				// moduleInput must exist for OUTPUT and PROCESSOR modules.
-				sshsNodeCreate(
-					newModuleNode, "moduleInput", "", 0, 1024, SSHS_FLAGS_NORMAL, "Module dynamic input definition.");
+				newModuleNode.create<dvCfgType::STRING>(
+					"moduleInput", "", {0, 1024}, dvCfgFlags::NORMAL, "Module dynamic input definition.");
 			}
 
 			if (inputType != "OUTPUT") {
 				// CAER_MODULE_INPUT / CAER_MODULE_PROCESSOR
 				// moduleOutput must exist for INPUT and PROCESSOR modules, only
 				// if their outputs are undefined (-1).
-				if (sshsExistsRelativeNode(moduleSysNode, "outputStreams/0/")) {
-					sshsNode outputNode0    = sshsGetRelativeNode(moduleSysNode, "outputStreams/0/");
-					int32_t outputNode0Type = sshsNodeGetInt(outputNode0, "type");
+				if (moduleSysNode.existsRelativeNode("outputStreams/0/")) {
+					auto outputNode0        = moduleSysNode.getRelativeNode("outputStreams/0/");
+					int32_t outputNode0Type = outputNode0.get<dvCfgType::INT>("type");
 
 					if (outputNode0Type == -1) {
-						sshsNodeCreate(newModuleNode, "moduleOutput", "", 0, 1024, SSHS_FLAGS_NORMAL,
-							"Module dynamic output definition.");
+						newModuleNode.create<dvCfgType::STRING>(
+							"moduleOutput", "", {0, 1024}, dvCfgFlags::NORMAL, "Module dynamic output definition.");
 					}
 				}
 			}
@@ -523,21 +454,21 @@ void caerConfigServerHandleRequest(std::shared_ptr<ConfigServerConnection> clien
 				break;
 			}
 
-			if (!sshsExistsNode(configStore, "/" + moduleName + "/")) {
+			if (!configStore.existsNode("/" + moduleName + "/")) {
 				caerConfigSendError(client, "Name is not in use.");
 				break;
 			}
 
 			// Modules can only be deleted while the mainloop is not running, to not
 			// destroy data the system is relying on.
-			bool isMainloopRunning = sshsNodeGetBool(sshsGetNode(configStore, "/"), "running");
+			bool isMainloopRunning = configStore.getRootNode().get<dvCfgType::BOOL>("running");
 			if (isMainloopRunning) {
 				caerConfigSendError(client, "Mainloop is running.");
 				break;
 			}
 
 			// Truly delete the node and all its children.
-			sshsNodeRemoveNode(sshsGetNode(configStore, "/" + moduleName + "/"));
+			configStore.getNode("/" + moduleName + "/").removeNode();
 
 			// Send back confirmation to the client.
 			caerConfigSendBoolResponse(client, caerConfigAction::REMOVE_MODULE, true);

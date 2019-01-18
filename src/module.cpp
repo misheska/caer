@@ -10,6 +10,10 @@
 #include <thread>
 #include <vector>
 
+namespace dvCfg  = dv::Config;
+using dvCfgType  = dvCfg::AttributeType;
+using dvCfgFlags = dvCfg::AttributeFlags;
+
 static struct {
 	std::vector<boost::filesystem::path> modulePaths;
 	std::recursive_mutex modulePathsMutex;
@@ -20,17 +24,17 @@ static void caerModuleShutdownListener(sshsNode node, void *userData, enum sshs_
 static void caerModuleLogLevelListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
 	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
 
-void caerModuleConfigInit(sshsNode moduleNode) {
+void caerModuleConfigInit(dv::Config::Node moduleNode) {
 	// Per-module log level support. Initialize with global log level value.
-	sshsNodeCreateInt(moduleNode, "logLevel", caerLogLevelGet(), CAER_LOG_EMERGENCY, CAER_LOG_DEBUG, SSHS_FLAGS_NORMAL,
-		"Module-specific log-level.");
+	moduleNode.create<dvCfgType::INT>("logLevel", caerLogLevelGet(), {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
+		dvCfgFlags::NORMAL, "Module-specific log-level.");
 
 	// Initialize shutdown controls. By default modules always run.
-	sshsNodeCreateBool(moduleNode, "runAtStartup", true, SSHS_FLAGS_NORMAL,
+	moduleNode.create<dvCfgType::BOOL>("runAtStartup", true, {}, dvCfgFlags::NORMAL,
 		"Start this module when the mainloop starts."); // Allow for users to disable a module at start.
 
 	// Call module's configInit function to create default static config.
-	const std::string moduleName = sshsNodeGetStdString(moduleNode, "moduleLibrary");
+	const std::string moduleName = moduleNode.get<dvCfgType::STRING>("moduleLibrary");
 
 	// Load library to get module functions.
 	std::pair<ModuleLibrary, caerModuleInfo> mLoad;
@@ -40,17 +44,17 @@ void caerModuleConfigInit(sshsNode moduleNode) {
 	}
 	catch (const std::exception &ex) {
 		boost::format exMsg = boost::format("moduleConfigInit() load for '%s': %s") % moduleName % ex.what();
-		libcaer::log::log(libcaer::log::logLevel::ERROR, sshsNodeGetName(moduleNode), exMsg.str().c_str());
+		libcaer::log::log(libcaer::log::logLevel::ERROR, moduleNode.getName().c_str(), exMsg.str().c_str());
 		return;
 	}
 
 	if (mLoad.second->functions->moduleConfigInit != nullptr) {
 		try {
-			mLoad.second->functions->moduleConfigInit(moduleNode);
+			mLoad.second->functions->moduleConfigInit(static_cast<sshsNode>(moduleNode));
 		}
 		catch (const std::exception &ex) {
 			boost::format exMsg = boost::format("moduleConfigInit() for '%s': %s") % moduleName % ex.what();
-			libcaer::log::log(libcaer::log::logLevel::ERROR, sshsNodeGetName(moduleNode), exMsg.str().c_str());
+			libcaer::log::log(libcaer::log::logLevel::ERROR, moduleNode.getName().c_str(), exMsg.str().c_str());
 		}
 	}
 
@@ -60,6 +64,7 @@ void caerModuleConfigInit(sshsNode moduleNode) {
 void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData, size_t memSize,
 	caerEventPacketContainer in, caerEventPacketContainer *out) {
 	bool running = moduleData->running.load(std::memory_order_relaxed);
+	dvCfg::Node moduleNode(moduleData->moduleNode);
 
 	if (moduleData->moduleStatus == CAER_MODULE_RUNNING && running) {
 		if (moduleData->configUpdate.load(std::memory_order_relaxed) != 0) {
@@ -73,7 +78,7 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 				catch (const std::exception &ex) {
 					libcaer::log::log(libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString,
 						"moduleConfig(): '%s', disabling module.", ex.what());
-					sshsNodePut(moduleData->moduleNode, "running", false);
+					moduleNode.put<dvCfgType::BOOL>("running", false);
 					return;
 				}
 			}
@@ -86,7 +91,7 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 			catch (const std::exception &ex) {
 				libcaer::log::log(libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString,
 					"moduleRun(): '%s', disabling module.", ex.what());
-				sshsNodePut(moduleData->moduleNode, "running", false);
+				moduleNode.put<dvCfgType::BOOL>("running", false);
 				return;
 			}
 		}
@@ -102,7 +107,7 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 				catch (const std::exception &ex) {
 					libcaer::log::log(libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString,
 						"moduleReset(): '%s', disabling module.", ex.what());
-					sshsNodePut(moduleData->moduleNode, "running", false);
+					moduleNode.put<dvCfgType::BOOL>("running", false);
 					return;
 				}
 			}
@@ -177,7 +182,7 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 				sshsNode moduleConfigNode = caerMainloopModuleGetConfigNode(dependantModules[i]);
 
 				if (sshsNodeGetBool(moduleConfigNode, "runAtStartup")) {
-					sshsNodePut(moduleConfigNode, "running", true);
+					moduleNode.put<dvCfgType::BOOL>("running", true);
 				}
 			}
 
@@ -210,9 +215,9 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 
 		if (dependantModulesSize > 0) {
 			for (size_t i = 0; i < dependantModulesSize; i++) {
-				sshsNode moduleConfigNode = caerMainloopModuleGetConfigNode(dependantModules[i]);
+				dvCfg::Node moduleConfigNode(caerMainloopModuleGetConfigNode(dependantModules[i]));
 
-				sshsNodePut(moduleConfigNode, "running", false);
+				moduleConfigNode.put<dvCfgType::BOOL>("running", false);
 			}
 
 			free(dependantModules);
@@ -220,7 +225,7 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 	}
 }
 
-caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, sshsNode moduleNode) {
+caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dvCfg::Node moduleNode) {
 	// Allocate memory for the module.
 	caerModuleData moduleData = (caerModuleData) calloc(1, sizeof(struct caer_module_data));
 	if (moduleData == nullptr) {
@@ -232,7 +237,7 @@ caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, ss
 	moduleData->moduleID = moduleID;
 
 	// Set configuration node (so it's user accessible).
-	moduleData->moduleNode = moduleNode;
+	moduleData->moduleNode = static_cast<sshsNode>(moduleNode);
 
 	// Put module into startup state. 'running' flag is updated later based on user startup wishes.
 	moduleData->moduleStatus = CAER_MODULE_STOPPED;
@@ -254,20 +259,20 @@ caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, ss
 	caerModuleConfigInit(moduleNode);
 
 	// Per-module log level support.
-	uint8_t logLevel = U8T(sshsNodeGetInt(moduleData->moduleNode, "logLevel"));
+	uint8_t logLevel = U8T(moduleNode.get<dvCfgType::INT>("logLevel"));
 
 	moduleData->moduleLogLevel.store(logLevel, std::memory_order_relaxed);
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleLogLevelListener);
+	moduleNode.addAttributeListener(moduleData, &caerModuleLogLevelListener);
 
 	// Initialize shutdown controls.
-	bool runModule = sshsNodeGetBool(moduleData->moduleNode, "runAtStartup");
+	bool runModule = moduleNode.get<dvCfgType::BOOL>("runAtStartup");
 
-	sshsNodeCreateBool(
-		moduleData->moduleNode, "running", false, SSHS_FLAGS_NORMAL | SSHS_FLAGS_NO_EXPORT, "Module start/stop.");
-	sshsNodePutBool(moduleData->moduleNode, "running", runModule);
+	moduleNode.create<dvCfgType::BOOL>(
+		"running", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Module start/stop.");
+	moduleNode.put<dvCfgType::BOOL>("running", runModule);
 
 	moduleData->running.store(runModule, std::memory_order_relaxed);
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleShutdownListener);
+	moduleNode.addAttributeListener(moduleData, &caerModuleShutdownListener);
 
 	std::atomic_thread_fence(std::memory_order_release);
 
@@ -512,14 +517,14 @@ static void checkOutputStreamDefinitions(caerEventStreamOut outputStreams, size_
 void caerUpdateModulesInformation() {
 	std::lock_guard<std::recursive_mutex> lock(glModuleData.modulePathsMutex);
 
-	sshsNode modulesNode = sshsGetNode(sshsGetGlobal(), "/caer/modules/");
+	auto modulesNode = dvCfg::GLOBAL.getNode("/caer/modules/");
 
 	// Clear out modules information.
-	sshsNodeClearSubTree(modulesNode, false);
+	modulesNode.clearSubTree(false);
 	glModuleData.modulePaths.clear();
 
 	// Search for available modules. Will be loaded as needed later.
-	const std::string modulesSearchPath = sshsNodeGetStdString(modulesNode, "modulesSearchPath");
+	const std::string modulesSearchPath = modulesNode.get<dvCfgType::STRING>("modulesSearchPath");
 
 	// Split on '|'.
 	boost::tokenizer<boost::char_separator<char>> searchPaths(modulesSearchPath, boost::char_separator<char>("|"));
@@ -596,49 +601,50 @@ void caerUpdateModulesInformation() {
 		}
 
 		// Get SSHS node under /caer/modules/.
-		sshsNode moduleNode = sshsGetRelativeNode(modulesNode, moduleName + "/");
+		auto moduleNode = modulesNode.getRelativeNode(moduleName + "/");
 
 		// Parse caerModuleInfo into SSHS.
-		sshsNodeCreate(moduleNode, "version", I32T(mLoad.second->version), 0, INT32_MAX,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Module version.");
-		sshsNodeCreate(moduleNode, "name", mLoad.second->name, 1, 256, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
-			"Module name.");
-		sshsNodeCreate(moduleNode, "description", mLoad.second->description, 1, 8192,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Module description.");
-		sshsNodeCreate(moduleNode, "type", caerModuleTypeToString(mLoad.second->type), 1, 64,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Module type.");
+		moduleNode.create<dvCfgType::INT>("version", I32T(mLoad.second->version), {0, INT32_MAX},
+			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module version.");
+		moduleNode.create<dvCfgType::STRING>(
+			"name", mLoad.second->name, {1, 256}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module name.");
+		moduleNode.create<dvCfgType::STRING>("description", mLoad.second->description, {1, 8192},
+			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module description.");
+		moduleNode.create<dvCfgType::STRING>("type", caerModuleTypeToString(mLoad.second->type), {1, 64},
+			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module type.");
 
 		if (mLoad.second->inputStreamsSize > 0) {
-			sshsNode inputStreamsNode = sshsGetRelativeNode(moduleNode, "inputStreams/");
+			auto inputStreamsNode = moduleNode.getRelativeNode("inputStreams/");
 
-			sshsNodeCreate(inputStreamsNode, "size", I32T(mLoad.second->inputStreamsSize), 1, INT16_MAX,
-				SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Number of input streams.");
+			inputStreamsNode.create<dvCfgType::INT>("size", I32T(mLoad.second->inputStreamsSize), {1, INT16_MAX},
+				dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Number of input streams.");
 
 			for (size_t i = 0; i < mLoad.second->inputStreamsSize; i++) {
-				sshsNode inputStreamNode      = sshsGetRelativeNode(inputStreamsNode, std::to_string(i) + "/");
+				auto inputStreamNode          = inputStreamsNode.getRelativeNode(std::to_string(i) + "/");
 				caerEventStreamIn inputStream = &mLoad.second->inputStreams[i];
 
-				sshsNodeCreate(inputStreamNode, "type", inputStream->type, I16T(-1), I16T(INT16_MAX),
-					SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Input event type (-1 for any type).");
-				sshsNodeCreate(inputStreamNode, "number", inputStream->number, I16T(-1), I16T(INT16_MAX),
-					SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Number of inputs of this type (-1 for any number).");
-				sshsNodeCreate(inputStreamNode, "readOnly", inputStream->readOnly,
-					SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Whether this input is modified or not.");
+				inputStreamNode.create<dvCfgType::INT>("type", inputStream->type, {I16T(-1), I16T(INT16_MAX)},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Input event type (-1 for any type).");
+				inputStreamNode.create<dvCfgType::INT>("number", inputStream->number, {I16T(-1), I16T(INT16_MAX)},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT,
+					"Number of inputs of this type (-1 for any number).");
+				inputStreamNode.create<dvCfgType::BOOL>("readOnly", inputStream->readOnly, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Whether this input is modified or not.");
 			}
 		}
 
 		if (mLoad.second->outputStreamsSize > 0) {
-			sshsNode outputStreamsNode = sshsGetRelativeNode(moduleNode, "outputStreams/");
+			auto outputStreamsNode = moduleNode.getRelativeNode("outputStreams/");
 
-			sshsNodeCreate(outputStreamsNode, "size", I32T(mLoad.second->outputStreamsSize), 1, INT16_MAX,
-				SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Number of output streams.");
+			outputStreamsNode.create<dvCfgType::INT>("size", I32T(mLoad.second->outputStreamsSize), {1, INT16_MAX},
+				dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Number of output streams.");
 
 			for (size_t i = 0; i < mLoad.second->outputStreamsSize; i++) {
-				sshsNode outputStreamNode       = sshsGetRelativeNode(outputStreamsNode, std::to_string(i) + "/");
+				auto outputStreamNode           = outputStreamsNode.getRelativeNode(std::to_string(i) + "/");
 				caerEventStreamOut outputStream = &mLoad.second->outputStreams[i];
 
-				sshsNodeCreate(outputStreamNode, "type", outputStream->type, I16T(-1), I16T(INT16_MAX),
-					SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+				outputStreamNode.create<dvCfgType::INT>("type", outputStream->type, {I16T(-1), I16T(INT16_MAX)},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT,
 					"Output event type (-1 for undefined output determined at runtime).");
 			}
 		}
@@ -663,5 +669,5 @@ void caerUpdateModulesInformation() {
 	}
 	modulesList.pop_back(); // Remove trailing comma.
 
-	sshsNodeUpdateReadOnlyAttribute(modulesNode, "modulesListOptions", modulesList);
+	modulesNode.updateReadOnly<dvCfgType::STRING>("modulesListOptions", modulesList);
 }
