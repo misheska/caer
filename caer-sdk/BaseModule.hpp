@@ -501,6 +501,15 @@ public:
 	 */
 	virtual void run(const libcaer::events::EventPacketContainer &in) = 0;
 };
+
+    /**
+     * Instantiation of thread_local static moduleData pointer.
+     * This pointer is set prior to construction to allow the constructor
+     * to access relevant data.
+     */
+    thread_local caerModuleData BaseModule::__moduleData = nullptr;
+
+
 } // namespace caer
 
 #endif // CAER_MODULES_SDK_BASEMODULE_H

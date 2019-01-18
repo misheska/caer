@@ -12,7 +12,7 @@ namespace caer {
     class LogStream {
     private:
         caerModuleData moduleData_ = nullptr;
-        inline void logImpl(const std::string &message) {
+        inline void logImpl(const std::string &message) const {
             if (moduleData_) {
                 caerModuleLog(moduleData_, L, "%s", message.c_str());
             } else {
