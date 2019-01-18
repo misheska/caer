@@ -1,5 +1,5 @@
-#ifndef SSHS_INTERNAL_HPP_
-#define SSHS_INTERNAL_HPP_
+#ifndef CONFIG_TREE_INTERNAL_HPP_
+#define CONFIG_TREE_INTERNAL_HPP_
 
 // Implementation relevant common includes.
 #include "caer-sdk/config/dvConfig.h"
@@ -310,4 +310,4 @@ static inline void sshsNodeErrorNoAttribute(
 	sshsNodeError(funcName, key, type, "attribute doesn't exist, you must create it first");
 }
 
-#endif /* SSHS_INTERNAL_HPP_ */
+#endif /* CONFIG_TREE_INTERNAL_HPP_ */

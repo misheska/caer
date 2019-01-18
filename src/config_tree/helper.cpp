@@ -1,4 +1,4 @@
-#include "sshs_internal.hpp"
+#include "internal.hpp"
 
 #include <boost/tokenizer.hpp>
 
