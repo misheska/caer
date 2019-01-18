@@ -293,11 +293,15 @@ public:
 	Node(sshsNode n) : node(n) {
 	}
 
-	std::string getName() {
+	explicit operator sshsNode() const {
+		return (node);
+	}
+
+	std::string getName() const {
 		return (sshsNodeGetName(node));
 	}
 
-	std::string getPath() {
+	std::string getPath() const {
 		return (sshsNodeGetPath(node));
 	}
 
@@ -305,7 +309,7 @@ public:
 	 * This returns a reference to a node, and as such must be carefully mediated with
 	 * any sshsNodeRemoveNode() calls.
 	 */
-	Node getParent() {
+	Node getParent() const {
 		return (sshsNodeGetParent(node));
 	}
 
@@ -313,7 +317,7 @@ public:
 	 * This returns a reference to a node, and as such must be carefully mediated with
 	 * any sshsNodeRemoveNode() calls.
 	 */
-	std::vector<Node> getChildren() {
+	std::vector<Node> getChildren() const {
 		std::vector<Node> children;
 
 		size_t numChildren      = 0;
@@ -396,12 +400,12 @@ public:
 		sshsNodeRemoveAllAttributes(node);
 	}
 
-	template<AttributeType T> bool existsAttribute(const std::string &key) {
+	template<AttributeType T> bool existsAttribute(const std::string &key) const {
 		return (sshsNodeAttributeExists(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType));
 	}
 
 	// Non-templated version for dynamic runtime types.
-	bool existsAttribute(const std::string &key, AttributeType type) {
+	bool existsAttribute(const std::string &key, AttributeType type) const {
 		return (sshsNodeAttributeExists(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type)));
 	}
 
@@ -414,7 +418,7 @@ public:
 		return (sshsNodePutAttribute(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type), value));
 	}
 
-	template<AttributeType T> AttributeValue<T> getAttribute(const std::string &key) {
+	template<AttributeType T> AttributeValue<T> getAttribute(const std::string &key) const {
 		sshs_node_attr_value cVal = sshsNodeGetAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType);
 
 		AttributeValue<T> retVal(cVal);
@@ -427,7 +431,7 @@ public:
 	}
 
 	// Non-templated version for dynamic runtime types. Remember to free retVal.string if type == STRING.
-	sshs_node_attr_value getAttribute(const std::string &key, AttributeType type) {
+	sshs_node_attr_value getAttribute(const std::string &key, AttributeType type) const {
 		return (sshsNodeGetAttribute(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type)));
 	}
 
@@ -453,7 +457,7 @@ public:
 		removeAttribute<T>(key);
 	}
 
-	template<AttributeType T> bool exists(const std::string &key) {
+	template<AttributeType T> bool exists(const std::string &key) const {
 		return (existsAttribute<T>(key));
 	}
 
@@ -468,15 +472,15 @@ public:
 		return (updateReadOnlyAttribute<T>(key, val));
 	}
 
-	template<AttributeType T> typename AttributeTypeGenerator<T>::type get(const std::string &key) {
+	template<AttributeType T> typename AttributeTypeGenerator<T>::type get(const std::string &key) const {
 		return (getAttribute<T>(key).value);
 	}
 
-	bool exportNodeToXML(int fd) {
+	bool exportNodeToXML(int fd) const {
 		return (sshsNodeExportNodeToXML(node, fd));
 	}
 
-	bool exportSubTreeToXML(int fd) {
+	bool exportSubTreeToXML(int fd) const {
 		return (sshsNodeExportSubTreeToXML(node, fd));
 	}
 
@@ -492,7 +496,7 @@ public:
 		return (sshsNodeStringToAttributeConverter(node, key.c_str(), type.c_str(), value.c_str()));
 	}
 
-	std::vector<std::string> getChildNames() {
+	std::vector<std::string> getChildNames() const {
 		std::vector<std::string> childNames;
 
 		size_t numChildNames         = 0;
@@ -511,7 +515,7 @@ public:
 		return (childNames);
 	}
 
-	std::vector<std::string> getAttributeKeys() {
+	std::vector<std::string> getAttributeKeys() const {
 		std::vector<std::string> attributeKeys;
 
 		size_t numAttributeKeys         = 0;
@@ -530,29 +534,29 @@ public:
 		return (attributeKeys);
 	}
 
-	AttributeType getAttributeType(const std::string &key) {
+	AttributeType getAttributeType(const std::string &key) const {
 		return (static_cast<AttributeType>(sshsNodeGetAttributeType(node, key.c_str())));
 	}
 
-	template<AttributeType T> AttributeRanges<T> getAttributeRanges(const std::string &key) {
+	template<AttributeType T> AttributeRanges<T> getAttributeRanges(const std::string &key) const {
 		return (sshsNodeGetAttributeRanges(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType));
 	}
 
 	// Non-templated version for dynamic runtime types.
-	struct sshs_node_attr_ranges getAttributeRanges(const std::string &key, AttributeType type) {
+	struct sshs_node_attr_ranges getAttributeRanges(const std::string &key, AttributeType type) const {
 		return (sshsNodeGetAttributeRanges(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type)));
 	}
 
-	template<AttributeType T> int getAttributeFlags(const std::string &key) {
+	template<AttributeType T> int getAttributeFlags(const std::string &key) const {
 		return (sshsNodeGetAttributeFlags(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType));
 	}
 
 	// Non-templated version for dynamic runtime types.
-	int getAttributeFlags(const std::string &key, AttributeType type) {
+	int getAttributeFlags(const std::string &key, AttributeType type) const {
 		return (sshsNodeGetAttributeFlags(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type)));
 	}
 
-	template<AttributeType T> std::string getAttributeDescription(const std::string &key) {
+	template<AttributeType T> std::string getAttributeDescription(const std::string &key) const {
 		char *desc = sshsNodeGetAttributeDescription(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType);
 
 		std::string retVal(desc);
@@ -563,7 +567,7 @@ public:
 	}
 
 	// Non-templated version for dynamic runtime types.
-	std::string getAttributeDescription(const std::string &key, AttributeType type) {
+	std::string getAttributeDescription(const std::string &key, AttributeType type) const {
 		char *desc
 			= sshsNodeGetAttributeDescription(node, key.c_str(), static_cast<enum sshs_node_attr_value_type>(type));
 
@@ -583,7 +587,7 @@ public:
 		sshsNodeCreateAttributeFileChooser(node, key.c_str(), allowedExtensions.c_str());
 	}
 
-	bool existsRelativeNode(const std::string &nodePath) {
+	bool existsRelativeNode(const std::string &nodePath) const {
 		return (sshsExistsRelativeNode(node, nodePath.c_str()));
 	}
 
@@ -591,7 +595,7 @@ public:
 	 * This returns a reference to a node, and as such must be carefully mediated with
 	 * any sshsNodeRemoveNode() calls.
 	 */
-	Node getRelativeNode(const std::string &nodePath) {
+	Node getRelativeNode(const std::string &nodePath) const {
 		return (sshsGetRelativeNode(node, nodePath.c_str()));
 	}
 
@@ -675,6 +679,10 @@ public:
 	Tree(sshs t) : tree(t) {
 	}
 
+	explicit operator sshs() const {
+		return (tree);
+	}
+
 	static Tree getGlobal() {
 		return (sshsGetGlobal());
 	}
@@ -687,15 +695,19 @@ public:
 		return (sshsGetGlobalErrorLogCallback());
 	}
 
-	bool existsNode(const std::string &nodePath) {
+	bool existsNode(const std::string &nodePath) const {
 		return (sshsExistsNode(tree, nodePath.c_str()));
+	}
+
+	Node getRootNode() const {
+		return (sshsGetNode(tree, "/"));
 	}
 
 	/**
 	 * This returns a reference to a node, and as such must be carefully mediated with
 	 * any sshsNodeRemoveNode() calls.
 	 */
-	Node getNode(const std::string &nodePath) {
+	Node getNode(const std::string &nodePath) const {
 		return (sshsGetNode(tree, nodePath.c_str()));
 	}
 
