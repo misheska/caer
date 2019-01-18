@@ -1330,30 +1330,3 @@ void sshsNodeCreateAttributeFileChooser(sshsNode node, const char *key, const ch
 		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
 		"Comma separated list of allowed extensions for the file chooser dialog.");
 }
-
-// Deprecated.
-void sshsNodeCreateByte(sshsNode node, const char *key, int8_t defaultValue, int8_t minValue, int8_t maxValue,
-	int flags, const char *description) {
-	sshsNodeCreateInt(node, key, defaultValue, minValue, maxValue, flags, description);
-}
-
-bool sshsNodePutByte(sshsNode node, const char *key, int8_t value) {
-	return (sshsNodePutInt(node, key, value));
-}
-
-int8_t sshsNodeGetByte(sshsNode node, const char *key) {
-	return ((int8_t) sshsNodeGetInt(node, key));
-}
-
-void sshsNodeCreateShort(sshsNode node, const char *key, int16_t defaultValue, int16_t minValue, int16_t maxValue,
-	int flags, const char *description) {
-	sshsNodeCreateInt(node, key, defaultValue, minValue, maxValue, flags, description);
-}
-
-bool sshsNodePutShort(sshsNode node, const char *key, int16_t value) {
-	return (sshsNodePutInt(node, key, value));
-}
-
-int16_t sshsNodeGetShort(sshsNode node, const char *key) {
-	return ((int16_t) sshsNodeGetInt(node, key));
-}

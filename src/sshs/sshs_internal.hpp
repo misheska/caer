@@ -2,7 +2,7 @@
 #define SSHS_INTERNAL_HPP_
 
 // Implementation relevant common includes.
-#include "caer-sdk/sshs/sshs.h"
+#include "caer-sdk/config/dvConfig.h"
 
 #include <boost/format.hpp>
 #include <cstring>
