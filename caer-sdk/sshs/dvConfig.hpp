@@ -604,13 +604,13 @@ public:
 	 * This returns a reference to a node, and as such must be carefully mediated with
 	 * any sshsNodeRemoveNode() calls.
 	 *
-	 * @throws std::out_of_range Node not found.
+	 * @throws std::out_of_range Invalid node path.
 	 */
 	Node getRelativeNode(const std::string &nodePath) const {
 		sshsNode node = sshsGetRelativeNode(node, nodePath.c_str());
 
 		if (node == nullptr) {
-			throw std::out_of_range("Node not found.");
+			throw std::out_of_range("Invalid node path.");
 		}
 
 		return (node);
@@ -724,13 +724,13 @@ public:
 	 * This returns a reference to a node, and as such must be carefully mediated with
 	 * any sshsNodeRemoveNode() calls.
 	 *
-	 * @throws std::out_of_range Node not found.
+	 * @throws std::out_of_range Invalid node path.
 	 */
 	Node getNode(const std::string &nodePath) const {
 		sshsNode node = sshsGetNode(tree, nodePath.c_str());
 
 		if (node == nullptr) {
-			throw std::out_of_range("Node not found.");
+			throw std::out_of_range("Invalid node path.");
 		}
 
 		return (node);
