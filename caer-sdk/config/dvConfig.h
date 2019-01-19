@@ -83,107 +83,110 @@ typedef void (*dvConfigNodeChangeListener)(
 typedef void (*dvConfigAttributeChangeListener)(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-const char *sshsNodeGetName(dvConfigNode node);
-const char *sshsNodeGetPath(dvConfigNode node);
+const char *dvConfigNodeGetName(dvConfigNode node);
+const char *dvConfigNodeGetPath(dvConfigNode node);
 
 /**
  * This returns a reference to a node, and as such must be carefully mediated with
- * any sshsNodeRemoveNode() calls.
+ * any dvConfigNodeRemoveNode() calls.
  */
-dvConfigNode sshsNodeGetParent(dvConfigNode node);
+dvConfigNode dvConfigNodeGetParent(dvConfigNode node);
 /**
  * Remember to free the resulting array. This returns references to nodes,
- * and as such must be carefully mediated with any sshsNodeRemoveNode() calls.
+ * and as such must be carefully mediated with any dvConfigNodeRemoveNode() calls.
  */
-dvConfigNode *sshsNodeGetChildren(dvConfigNode node, size_t *numChildren); // Walk all children.
+dvConfigNode *dvConfigNodeGetChildren(dvConfigNode node, size_t *numChildren); // Walk all children.
 
-void sshsNodeAddNodeListener(dvConfigNode node, void *userData, dvConfigNodeChangeListener node_changed);
-void sshsNodeRemoveNodeListener(dvConfigNode node, void *userData, dvConfigNodeChangeListener node_changed);
-void sshsNodeRemoveAllNodeListeners(dvConfigNode node);
+void dvConfigNodeAddNodeListener(dvConfigNode node, void *userData, dvConfigNodeChangeListener node_changed);
+void dvConfigNodeRemoveNodeListener(dvConfigNode node, void *userData, dvConfigNodeChangeListener node_changed);
+void dvConfigNodeRemoveAllNodeListeners(dvConfigNode node);
 
-void sshsNodeAddAttributeListener(dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed);
-void sshsNodeRemoveAttributeListener(
+void dvConfigNodeAddAttributeListener(
 	dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed);
-void sshsNodeRemoveAllAttributeListeners(dvConfigNode node);
+void dvConfigNodeRemoveAttributeListener(
+	dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed);
+void dvConfigNodeRemoveAllAttributeListeners(dvConfigNode node);
 
 /**
  * Careful, only use if no references exist to this node and all its children.
- * References are created by sshsGetNode(), sshsGetRelativeNode(),
- * sshsNodeGetParent() and sshsNodeGetChildren().
+ * References are created by dvConfigTreeGetNode(), dvConfigNodeGetRelativeNode(),
+ * dvConfigNodeGetParent() and dvConfigNodeGetChildren().
  */
-void sshsNodeRemoveNode(dvConfigNode node);
-void sshsNodeClearSubTree(dvConfigNode startNode, bool clearStartNode);
+void dvConfigNodeRemoveNode(dvConfigNode node);
+void dvConfigNodeClearSubTree(dvConfigNode startNode, bool clearStartNode);
 
-void sshsNodeCreateAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
+void dvConfigNodeCreateAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
 	union dvConfigAttributeValue defaultValue, const struct dvConfigAttributeRanges ranges, int flags,
 	const char *description);
-void sshsNodeRemoveAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
-void sshsNodeRemoveAllAttributes(dvConfigNode node);
-bool sshsNodeExistsAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
-bool sshsNodePutAttribute(
+void dvConfigNodeRemoveAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
+void dvConfigNodeRemoveAllAttributes(dvConfigNode node);
+bool dvConfigNodeExistsAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
+bool dvConfigNodePutAttribute(
 	dvConfigNode node, const char *key, enum dvConfigAttributeType type, union dvConfigAttributeValue value);
-union dvConfigAttributeValue sshsNodeGetAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
-bool sshsNodeUpdateReadOnlyAttribute(
-	dvConfigNode node, const char *key, enum dvConfigAttributeType type, union dvConfigAttributeValue value);
-
-void sshsNodeCreateBool(dvConfigNode node, const char *key, bool defaultValue, int flags, const char *description);
-bool sshsNodePutBool(dvConfigNode node, const char *key, bool value);
-bool sshsNodeGetBool(dvConfigNode node, const char *key);
-void sshsNodeCreateInt(dvConfigNode node, const char *key, int32_t defaultValue, int32_t minValue, int32_t maxValue,
-	int flags, const char *description);
-bool sshsNodePutInt(dvConfigNode node, const char *key, int32_t value);
-int32_t sshsNodeGetInt(dvConfigNode node, const char *key);
-void sshsNodeCreateLong(dvConfigNode node, const char *key, int64_t defaultValue, int64_t minValue, int64_t maxValue,
-	int flags, const char *description);
-bool sshsNodePutLong(dvConfigNode node, const char *key, int64_t value);
-int64_t sshsNodeGetLong(dvConfigNode node, const char *key);
-void sshsNodeCreateFloat(dvConfigNode node, const char *key, float defaultValue, float minValue, float maxValue,
-	int flags, const char *description);
-bool sshsNodePutFloat(dvConfigNode node, const char *key, float value);
-float sshsNodeGetFloat(dvConfigNode node, const char *key);
-void sshsNodeCreateDouble(dvConfigNode node, const char *key, double defaultValue, double minValue, double maxValue,
-	int flags, const char *description);
-bool sshsNodePutDouble(dvConfigNode node, const char *key, double value);
-double sshsNodeGetDouble(dvConfigNode node, const char *key);
-void sshsNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, size_t minLength,
-	size_t maxLength, int flags, const char *description);
-bool sshsNodePutString(dvConfigNode node, const char *key, const char *value);
-char *sshsNodeGetString(dvConfigNode node, const char *key);
-
-bool sshsNodeExportNodeToXML(dvConfigNode node, int fd);
-bool sshsNodeExportSubTreeToXML(dvConfigNode node, int fd);
-bool sshsNodeImportNodeFromXML(dvConfigNode node, int fd, bool strict);
-bool sshsNodeImportSubTreeFromXML(dvConfigNode node, int fd, bool strict);
-
-bool sshsNodeStringToAttributeConverter(dvConfigNode node, const char *key, const char *type, const char *value);
-const char **sshsNodeGetChildNames(dvConfigNode node, size_t *numNames);
-const char **sshsNodeGetAttributeKeys(dvConfigNode node, size_t *numKeys);
-enum dvConfigAttributeType sshsNodeGetAttributeType(dvConfigNode node, const char *key);
-struct dvConfigAttributeRanges sshsNodeGetAttributeRanges(
+union dvConfigAttributeValue dvConfigNodeGetAttribute(
 	dvConfigNode node, const char *key, enum dvConfigAttributeType type);
-int sshsNodeGetAttributeFlags(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
-char *sshsNodeGetAttributeDescription(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
+bool dvConfigNodeUpdateReadOnlyAttribute(
+	dvConfigNode node, const char *key, enum dvConfigAttributeType type, union dvConfigAttributeValue value);
 
-void sshsNodeCreateAttributeListOptions(
+void dvConfigNodeCreateBool(dvConfigNode node, const char *key, bool defaultValue, int flags, const char *description);
+bool dvConfigNodePutBool(dvConfigNode node, const char *key, bool value);
+bool dvConfigNodeGetBool(dvConfigNode node, const char *key);
+void dvConfigNodeCreateInt(dvConfigNode node, const char *key, int32_t defaultValue, int32_t minValue, int32_t maxValue,
+	int flags, const char *description);
+bool dvConfigNodePutInt(dvConfigNode node, const char *key, int32_t value);
+int32_t dvConfigNodeGetInt(dvConfigNode node, const char *key);
+void dvConfigNodeCreateLong(dvConfigNode node, const char *key, int64_t defaultValue, int64_t minValue,
+	int64_t maxValue, int flags, const char *description);
+bool dvConfigNodePutLong(dvConfigNode node, const char *key, int64_t value);
+int64_t dvConfigNodeGetLong(dvConfigNode node, const char *key);
+void dvConfigNodeCreateFloat(dvConfigNode node, const char *key, float defaultValue, float minValue, float maxValue,
+	int flags, const char *description);
+bool dvConfigNodePutFloat(dvConfigNode node, const char *key, float value);
+float dvConfigNodeGetFloat(dvConfigNode node, const char *key);
+void dvConfigNodeCreateDouble(dvConfigNode node, const char *key, double defaultValue, double minValue, double maxValue,
+	int flags, const char *description);
+bool dvConfigNodePutDouble(dvConfigNode node, const char *key, double value);
+double dvConfigNodeGetDouble(dvConfigNode node, const char *key);
+void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, size_t minLength,
+	size_t maxLength, int flags, const char *description);
+bool dvConfigNodePutString(dvConfigNode node, const char *key, const char *value);
+char *dvConfigNodeGetString(dvConfigNode node, const char *key);
+
+bool dvConfigNodeExportNodeToXML(dvConfigNode node, int fd);
+bool dvConfigNodeExportSubTreeToXML(dvConfigNode node, int fd);
+bool dvConfigNodeImportNodeFromXML(dvConfigNode node, int fd, bool strict);
+bool dvConfigNodeImportSubTreeFromXML(dvConfigNode node, int fd, bool strict);
+
+bool dvConfigNodeStringToAttributeConverter(dvConfigNode node, const char *key, const char *type, const char *value);
+const char **dvConfigNodeGetChildNames(dvConfigNode node, size_t *numNames);
+const char **dvConfigNodeGetAttributeKeys(dvConfigNode node, size_t *numKeys);
+enum dvConfigAttributeType dvConfigNodeGetAttributeType(dvConfigNode node, const char *key);
+struct dvConfigAttributeRanges dvConfigNodeGetAttributeRanges(
+	dvConfigNode node, const char *key, enum dvConfigAttributeType type);
+int dvConfigNodeGetAttributeFlags(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
+char *dvConfigNodeGetAttributeDescription(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
+
+void dvConfigNodeCreateAttributeListOptions(
 	dvConfigNode node, const char *key, const char *listOptions, bool allowMultipleSelections);
-void sshsNodeCreateAttributeFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions);
+void dvConfigNodeCreateAttributeFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions);
 
-bool sshsNodeExistsRelativeNode(dvConfigNode node, const char *nodePath);
+bool dvConfigNodeExistsRelativeNode(dvConfigNode node, const char *nodePath);
 /**
  * This returns a reference to a node, and as such must be carefully mediated with
- * any sshsNodeRemoveNode() calls.
+ * any dvConfigNodeRemoveNode() calls.
  */
-dvConfigNode sshsNodeGetRelativeNode(dvConfigNode node, const char *nodePath);
+dvConfigNode dvConfigNodeGetRelativeNode(dvConfigNode node, const char *nodePath);
 
 // dv::Config Helper functions
-const char *sshsHelperTypeToStringConverter(enum dvConfigAttributeType type);
-enum dvConfigAttributeType sshsHelperStringToTypeConverter(const char *typeString);
-char *sshsHelperValueToStringConverter(enum dvConfigAttributeType type, union dvConfigAttributeValue value);
-union dvConfigAttributeValue sshsHelperStringToValueConverter(enum dvConfigAttributeType type, const char *valueString);
-char *sshsHelperFlagsToStringConverter(int flags);
-int sshsHelperStringToFlagsConverter(const char *flagsString);
-char *sshsHelperRangesToStringConverter(enum dvConfigAttributeType type, struct dvConfigAttributeRanges ranges);
-struct dvConfigAttributeRanges sshsHelperStringToRangesConverter(
+const char *dvConfigHelperTypeToStringConverter(enum dvConfigAttributeType type);
+enum dvConfigAttributeType dvConfigHelperStringToTypeConverter(const char *typeString);
+char *dvConfigHelperValueToStringConverter(enum dvConfigAttributeType type, union dvConfigAttributeValue value);
+union dvConfigAttributeValue dvConfigHelperStringToValueConverter(
+	enum dvConfigAttributeType type, const char *valueString);
+char *dvConfigHelperFlagsToStringConverter(int flags);
+int dvConfigHelperStringToFlagsConverter(const char *flagsString);
+char *dvConfigHelperRangesToStringConverter(enum dvConfigAttributeType type, struct dvConfigAttributeRanges ranges);
+struct dvConfigAttributeRanges dvConfigHelperStringToRangesConverter(
 	enum dvConfigAttributeType type, const char *rangesString);
 
 // dv::Config Tree
@@ -198,7 +201,7 @@ dvConfigTreeErrorLogCallback dvConfigTreeErrorLogCallbackGet(void);
 bool dvConfigTreeExistsNode(dvConfigTree st, const char *nodePath);
 /**
  * This returns a reference to a node, and as such must be carefully mediated with
- * any sshsNodeRemoveNode() calls.
+ * any dvConfigNodeRemoveNode() calls.
  */
 dvConfigNode dvConfigTreeGetNode(dvConfigTree st, const char *nodePath);
 

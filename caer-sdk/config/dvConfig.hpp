@@ -93,7 +93,7 @@ public:
 				break;
 
 			default:
-				static_assert(true, "sshsAttributeValue<STRING> is specialized.");
+				static_assert(true, "AttributeValue<STRING> is specialized.");
 				break;
 		}
 	}
@@ -123,7 +123,7 @@ public:
 				break;
 
 			default:
-				static_assert(true, "sshsAttributeValue<STRING> is specialized.");
+				static_assert(true, "AttributeValue<STRING> is specialized.");
 				break;
 		}
 
@@ -200,7 +200,7 @@ public:
 				break;
 
 			default:
-				static_assert(true, "sshsAttributeRanges<BOOL> is specialized.");
+				static_assert(true, "AttributeRanges<BOOL> is specialized.");
 				break;
 		}
 	}
@@ -235,7 +235,7 @@ public:
 				break;
 
 			default:
-				static_assert(true, "sshsAttributeRanges<BOOL> is specialized.");
+				static_assert(true, "AttributeRanges<BOOL> is specialized.");
 				break;
 		}
 
@@ -299,21 +299,21 @@ public:
 	}
 
 	std::string getName() const {
-		return (sshsNodeGetName(node));
+		return (dvConfigNodeGetName(node));
 	}
 
 	std::string getPath() const {
-		return (sshsNodeGetPath(node));
+		return (dvConfigNodeGetPath(node));
 	}
 
 	/**
 	 * This returns a reference to a node, and as such must be carefully mediated with
-	 * any sshsNodeRemoveNode() calls.
+	 * any dvConfigNodeRemoveNode() calls.
 	 *
 	 * @throws std::out_of_range Node is root and has no parent.
 	 */
 	Node getParent() const {
-		dvConfigNode parent = sshsNodeGetParent(node);
+		dvConfigNode parent = dvConfigNodeGetParent(node);
 
 		if (parent == nullptr) {
 			throw std::out_of_range("Node is root and has no parent.");
@@ -324,13 +324,13 @@ public:
 
 	/**
 	 * This returns a reference to a node, and as such must be carefully mediated with
-	 * any sshsNodeRemoveNode() calls.
+	 * any dvConfigNodeRemoveNode() calls.
 	 */
 	std::vector<Node> getChildren() const {
 		std::vector<Node> children;
 
 		size_t numChildren          = 0;
-		dvConfigNode *childrenArray = sshsNodeGetChildren(node, &numChildren);
+		dvConfigNode *childrenArray = dvConfigNodeGetChildren(node, &numChildren);
 
 		if (numChildren > 0) {
 			children.reserve(numChildren);
@@ -346,90 +346,91 @@ public:
 	}
 
 	void addNodeListener(void *userData, dvConfigNodeChangeListener node_changed) {
-		sshsNodeAddNodeListener(node, userData, node_changed);
+		dvConfigNodeAddNodeListener(node, userData, node_changed);
 	}
 
 	void removeNodeListener(void *userData, dvConfigNodeChangeListener node_changed) {
-		sshsNodeRemoveNodeListener(node, userData, node_changed);
+		dvConfigNodeRemoveNodeListener(node, userData, node_changed);
 	}
 
 	void removeAllNodeListeners() {
-		sshsNodeRemoveAllNodeListeners(node);
+		dvConfigNodeRemoveAllNodeListeners(node);
 	}
 
 	void addAttributeListener(void *userData, dvConfigAttributeChangeListener attribute_changed) {
-		sshsNodeAddAttributeListener(node, userData, attribute_changed);
+		dvConfigNodeAddAttributeListener(node, userData, attribute_changed);
 	}
 
 	void removeAttributeListener(void *userData, dvConfigAttributeChangeListener attribute_changed) {
-		sshsNodeRemoveAttributeListener(node, userData, attribute_changed);
+		dvConfigNodeRemoveAttributeListener(node, userData, attribute_changed);
 	}
 
 	void removeAllAttributeListeners() {
-		sshsNodeRemoveAllAttributeListeners(node);
+		dvConfigNodeRemoveAllAttributeListeners(node);
 	}
 
 	/**
 	 * Careful, only use if no references exist to this node and all its children.
-	 * References are created by sshsg::getNode(), sshsg::getRelativeNode(),
-	 * getParent() and getChildren().
+	 * References are created by dv::Config::Tree::getNode(), dv::Config::Node::getRelativeNode(),
+	 * dv::Config::Node::getParent() and dv::Config::Node::getChildren().
 	 */
 	void removeNode() {
-		sshsNodeRemoveNode(node);
+		dvConfigNodeRemoveNode(node);
 	}
 
 	void clearSubTree(bool clearThisNode) {
-		sshsNodeClearSubTree(node, clearThisNode);
+		dvConfigNodeClearSubTree(node, clearThisNode);
 	}
 
 	template<AttributeType T>
 	void createAttribute(const std::string &key, const AttributeValue<T> &defaultValue,
 		const AttributeRanges<T> &ranges, AttributeFlags flags, const std::string &description) {
-		sshsNodeCreateAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType, defaultValue.getCUnion(),
-			ranges.getCStruct(), getCFlags(flags), description.c_str());
+		dvConfigNodeCreateAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType,
+			defaultValue.getCUnion(), ranges.getCStruct(), getCFlags(flags), description.c_str());
 	}
 
 	// Non-templated version for dynamic runtime types.
 	void createAttribute(const std::string &key, AttributeType type, const dvConfigAttributeValue defaultValue,
 		const dvConfigAttributeRanges &ranges, AttributeFlags flags, const std::string &description) {
-		sshsNodeCreateAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type), defaultValue, ranges,
-			getCFlags(flags), description.c_str());
+		dvConfigNodeCreateAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type), defaultValue,
+			ranges, getCFlags(flags), description.c_str());
 	}
 
 	template<AttributeType T> void removeAttribute(const std::string &key) {
-		sshsNodeRemoveAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType);
+		dvConfigNodeRemoveAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType);
 	}
 
 	// Non-templated version for dynamic runtime types.
 	void removeAttribute(const std::string &key, AttributeType type) {
-		sshsNodeRemoveAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type));
+		dvConfigNodeRemoveAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type));
 	}
 
 	void removeAllAttributes() {
-		sshsNodeRemoveAllAttributes(node);
+		dvConfigNodeRemoveAllAttributes(node);
 	}
 
 	template<AttributeType T> bool existsAttribute(const std::string &key) const {
-		return (sshsNodeExistsAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType));
+		return (dvConfigNodeExistsAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType));
 	}
 
 	// Non-templated version for dynamic runtime types.
 	bool existsAttribute(const std::string &key, AttributeType type) const {
-		return (sshsNodeExistsAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type)));
+		return (dvConfigNodeExistsAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type)));
 	}
 
 	template<AttributeType T> bool putAttribute(const std::string &key, const AttributeValue<T> &value) {
-		return (sshsNodePutAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType, value.getCUnion()));
+		return (
+			dvConfigNodePutAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType, value.getCUnion()));
 	}
 
 	// Non-templated version for dynamic runtime types.
 	bool putAttribute(const std::string &key, AttributeType type, const dvConfigAttributeValue value) {
-		return (sshsNodePutAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type), value));
+		return (dvConfigNodePutAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type), value));
 	}
 
 	template<AttributeType T> AttributeValue<T> getAttribute(const std::string &key) const {
 		dvConfigAttributeValue cVal
-			= sshsNodeGetAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType);
+			= dvConfigNodeGetAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType);
 
 		AttributeValue<T> retVal(cVal);
 
@@ -442,18 +443,18 @@ public:
 
 	// Non-templated version for dynamic runtime types. Remember to free retVal.string if type == STRING.
 	dvConfigAttributeValue getAttribute(const std::string &key, AttributeType type) const {
-		return (sshsNodeGetAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type)));
+		return (dvConfigNodeGetAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type)));
 	}
 
 	template<AttributeType T> bool updateReadOnlyAttribute(const std::string &key, const AttributeValue<T> &value) {
-		return (sshsNodeUpdateReadOnlyAttribute(
+		return (dvConfigNodeUpdateReadOnlyAttribute(
 			node, key.c_str(), AttributeTypeGenerator<T>::underlyingType, value.getCUnion()));
 	}
 
 	// Non-templated version for dynamic runtime types.
 	bool updateReadOnlyAttribute(const std::string &key, AttributeType type, const dvConfigAttributeValue value) {
-		return (
-			sshsNodeUpdateReadOnlyAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type), value));
+		return (dvConfigNodeUpdateReadOnlyAttribute(
+			node, key.c_str(), static_cast<enum dvConfigAttributeType>(type), value));
 	}
 
 	template<AttributeType T>
@@ -487,30 +488,30 @@ public:
 	}
 
 	bool exportNodeToXML(int fd) const {
-		return (sshsNodeExportNodeToXML(node, fd));
+		return (dvConfigNodeExportNodeToXML(node, fd));
 	}
 
 	bool exportSubTreeToXML(int fd) const {
-		return (sshsNodeExportSubTreeToXML(node, fd));
+		return (dvConfigNodeExportSubTreeToXML(node, fd));
 	}
 
 	bool importNodeFromXML(int fd, bool strict = true) {
-		return (sshsNodeImportNodeFromXML(node, fd, strict));
+		return (dvConfigNodeImportNodeFromXML(node, fd, strict));
 	}
 
 	bool importSubTreeFromXML(int fd, bool strict = true) {
-		return (sshsNodeImportSubTreeFromXML(node, fd, strict));
+		return (dvConfigNodeImportSubTreeFromXML(node, fd, strict));
 	}
 
 	bool stringToAttributeConverter(const std::string &key, const std::string &type, const std::string &value) {
-		return (sshsNodeStringToAttributeConverter(node, key.c_str(), type.c_str(), value.c_str()));
+		return (dvConfigNodeStringToAttributeConverter(node, key.c_str(), type.c_str(), value.c_str()));
 	}
 
 	std::vector<std::string> getChildNames() const {
 		std::vector<std::string> childNames;
 
 		size_t numChildNames         = 0;
-		const char **childNamesArray = sshsNodeGetChildNames(node, &numChildNames);
+		const char **childNamesArray = dvConfigNodeGetChildNames(node, &numChildNames);
 
 		if (numChildNames > 0) {
 			childNames.reserve(numChildNames);
@@ -529,7 +530,7 @@ public:
 		std::vector<std::string> attributeKeys;
 
 		size_t numAttributeKeys         = 0;
-		const char **attributeKeysArray = sshsNodeGetAttributeKeys(node, &numAttributeKeys);
+		const char **attributeKeysArray = dvConfigNodeGetAttributeKeys(node, &numAttributeKeys);
 
 		if (numAttributeKeys > 0) {
 			attributeKeys.reserve(numAttributeKeys);
@@ -545,29 +546,29 @@ public:
 	}
 
 	AttributeType getAttributeType(const std::string &key) const {
-		return (static_cast<AttributeType>(sshsNodeGetAttributeType(node, key.c_str())));
+		return (static_cast<AttributeType>(dvConfigNodeGetAttributeType(node, key.c_str())));
 	}
 
 	template<AttributeType T> AttributeRanges<T> getAttributeRanges(const std::string &key) const {
-		return (sshsNodeGetAttributeRanges(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType));
+		return (dvConfigNodeGetAttributeRanges(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType));
 	}
 
 	// Non-templated version for dynamic runtime types.
 	struct dvConfigAttributeRanges getAttributeRanges(const std::string &key, AttributeType type) const {
-		return (sshsNodeGetAttributeRanges(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type)));
+		return (dvConfigNodeGetAttributeRanges(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type)));
 	}
 
 	template<AttributeType T> int getAttributeFlags(const std::string &key) const {
-		return (sshsNodeGetAttributeFlags(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType));
+		return (dvConfigNodeGetAttributeFlags(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType));
 	}
 
 	// Non-templated version for dynamic runtime types.
 	int getAttributeFlags(const std::string &key, AttributeType type) const {
-		return (sshsNodeGetAttributeFlags(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type)));
+		return (dvConfigNodeGetAttributeFlags(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type)));
 	}
 
 	template<AttributeType T> std::string getAttributeDescription(const std::string &key) const {
-		char *desc = sshsNodeGetAttributeDescription(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType);
+		char *desc = dvConfigNodeGetAttributeDescription(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType);
 
 		std::string retVal(desc);
 
@@ -578,7 +579,8 @@ public:
 
 	// Non-templated version for dynamic runtime types.
 	std::string getAttributeDescription(const std::string &key, AttributeType type) const {
-		char *desc = sshsNodeGetAttributeDescription(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type));
+		char *desc
+			= dvConfigNodeGetAttributeDescription(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type));
 
 		std::string retVal(desc);
 
@@ -589,25 +591,25 @@ public:
 
 	void createAttributeListOptions(
 		const std::string &key, const std::string &listOptions, bool allowMultipleSelections) {
-		sshsNodeCreateAttributeListOptions(node, key.c_str(), listOptions.c_str(), allowMultipleSelections);
+		dvConfigNodeCreateAttributeListOptions(node, key.c_str(), listOptions.c_str(), allowMultipleSelections);
 	}
 
 	void createAttributeFileChooser(const std::string &key, const std::string &allowedExtensions) {
-		sshsNodeCreateAttributeFileChooser(node, key.c_str(), allowedExtensions.c_str());
+		dvConfigNodeCreateAttributeFileChooser(node, key.c_str(), allowedExtensions.c_str());
 	}
 
 	bool existsRelativeNode(const std::string &nodePath) const {
-		return (sshsNodeExistsRelativeNode(node, nodePath.c_str()));
+		return (dvConfigNodeExistsRelativeNode(node, nodePath.c_str()));
 	}
 
 	/**
 	 * This returns a reference to a node, and as such must be carefully mediated with
-	 * any sshsNodeRemoveNode() calls.
+	 * any dvConfigNodeRemoveNode() calls.
 	 *
 	 * @throws std::out_of_range Invalid relative node path.
 	 */
 	Node getRelativeNode(const std::string &relativeNodePath) const {
-		dvConfigNode relativeNode = sshsNodeGetRelativeNode(node, relativeNodePath.c_str());
+		dvConfigNode relativeNode = dvConfigNodeGetRelativeNode(node, relativeNodePath.c_str());
 
 		if (relativeNode == nullptr) {
 			throw std::out_of_range("Invalid relative node path.");
@@ -636,15 +638,15 @@ public:
 class Helper {
 public:
 	static std::string typeToStringConverter(AttributeType type) {
-		return (sshsHelperTypeToStringConverter(static_cast<enum dvConfigAttributeType>(type)));
+		return (dvConfigHelperTypeToStringConverter(static_cast<enum dvConfigAttributeType>(type)));
 	}
 
 	static AttributeType stringToTypeConverter(const std::string &typeString) {
-		return (static_cast<AttributeType>(sshsHelperStringToTypeConverter(typeString.c_str())));
+		return (static_cast<AttributeType>(dvConfigHelperStringToTypeConverter(typeString.c_str())));
 	}
 
 	static std::string valueToStringConverter(AttributeType type, union dvConfigAttributeValue value) {
-		char *val = sshsHelperValueToStringConverter(static_cast<enum dvConfigAttributeType>(type), value);
+		char *val = dvConfigHelperValueToStringConverter(static_cast<enum dvConfigAttributeType>(type), value);
 
 		std::string retVal(val);
 
@@ -654,11 +656,11 @@ public:
 	}
 
 	static union dvConfigAttributeValue stringToValueConverter(AttributeType type, const std::string &valueString) {
-		return (sshsHelperStringToValueConverter(static_cast<enum dvConfigAttributeType>(type), valueString.c_str()));
+		return (dvConfigHelperStringToValueConverter(static_cast<enum dvConfigAttributeType>(type), valueString.c_str()));
 	}
 
 	static std::string flagsToStringConverter(int flags) {
-		char *val = sshsHelperFlagsToStringConverter(flags);
+		char *val = dvConfigHelperFlagsToStringConverter(flags);
 
 		std::string retVal(val);
 
@@ -668,11 +670,11 @@ public:
 	}
 
 	static int stringToFlagsConverter(const std::string &flagsString) {
-		return (sshsHelperStringToFlagsConverter(flagsString.c_str()));
+		return (dvConfigHelperStringToFlagsConverter(flagsString.c_str()));
 	}
 
 	static std::string rangesToStringConverter(AttributeType type, struct dvConfigAttributeRanges ranges) {
-		char *val = sshsHelperRangesToStringConverter(static_cast<enum dvConfigAttributeType>(type), ranges);
+		char *val = dvConfigHelperRangesToStringConverter(static_cast<enum dvConfigAttributeType>(type), ranges);
 
 		std::string retVal(val);
 
@@ -682,7 +684,7 @@ public:
 	}
 
 	static struct dvConfigAttributeRanges stringToRangesConverter(AttributeType type, const std::string &rangesString) {
-		return (sshsHelperStringToRangesConverter(static_cast<enum dvConfigAttributeType>(type), rangesString.c_str()));
+		return (dvConfigHelperStringToRangesConverter(static_cast<enum dvConfigAttributeType>(type), rangesString.c_str()));
 	}
 };
 
@@ -724,7 +726,7 @@ public:
 
 	/**
 	 * This returns a reference to a node, and as such must be carefully mediated with
-	 * any sshsNodeRemoveNode() calls.
+	 * any dvConfigNodeRemoveNode() calls.
 	 *
 	 * @throws std::out_of_range Invalid absolute node path.
 	 */
