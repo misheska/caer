@@ -132,7 +132,7 @@ dvConfigTree dvConfigTreeNew(void) {
 	sshsMemoryCheck(newSshs, __func__);
 
 	// Create root node.
-	newSshs->root = sshsNodeNew("", nullptr, newSshs);
+	newSshs->root = dvConfigNodeNew("", nullptr, newSshs);
 
 	// Initialize C++ objects using placement new.
 	new (&newSshs->attributeUpdaters) std::vector<sshs_attribute_updater>();
@@ -166,7 +166,7 @@ bool dvConfigTreeExistsNode(dvConfigTree st, const char *nodePathC) {
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {
-		dvConfigNode next = sshsNodeGetChild(curr, tok.c_str());
+		dvConfigNode next = dvConfigNodeGetChild(curr, tok.c_str());
 
 		// If node doesn't exist, return that.
 		if (next == nullptr) {
@@ -201,11 +201,11 @@ dvConfigNode dvConfigTreeGetNode(dvConfigTree st, const char *nodePathC) {
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {
-		dvConfigNode next = sshsNodeGetChild(curr, tok.c_str());
+		dvConfigNode next = dvConfigNodeGetChild(curr, tok.c_str());
 
 		// Create next node in path if not existing.
 		if (next == nullptr) {
-			next = sshsNodeAddChild(curr, tok.c_str());
+			next = dvConfigNodeAddChild(curr, tok.c_str());
 		}
 
 		curr = next;
@@ -215,7 +215,7 @@ dvConfigNode dvConfigTreeGetNode(dvConfigTree st, const char *nodePathC) {
 	return (curr);
 }
 
-bool sshsNodeExistsRelativeNode(dvConfigNode node, const char *nodePathC) {
+bool dvConfigNodeExistsRelativeNode(dvConfigNode node, const char *nodePathC) {
 	const std::string nodePath(nodePathC);
 
 	if (!sshsCheckRelativeNodePath(nodePath)) {
@@ -230,7 +230,7 @@ bool sshsNodeExistsRelativeNode(dvConfigNode node, const char *nodePathC) {
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {
-		dvConfigNode next = sshsNodeGetChild(curr, tok.c_str());
+		dvConfigNode next = dvConfigNodeGetChild(curr, tok.c_str());
 
 		// If node doesn't exist, return that.
 		if (next == nullptr) {
@@ -245,7 +245,7 @@ bool sshsNodeExistsRelativeNode(dvConfigNode node, const char *nodePathC) {
 	return (true);
 }
 
-dvConfigNode sshsNodeGetRelativeNode(dvConfigNode node, const char *nodePathC) {
+dvConfigNode dvConfigNodeGetRelativeNode(dvConfigNode node, const char *nodePathC) {
 	const std::string nodePath(nodePathC);
 
 	if (!sshsCheckRelativeNodePath(nodePath)) {
@@ -260,11 +260,11 @@ dvConfigNode sshsNodeGetRelativeNode(dvConfigNode node, const char *nodePathC) {
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {
-		dvConfigNode next = sshsNodeGetChild(curr, tok.c_str());
+		dvConfigNode next = dvConfigNodeGetChild(curr, tok.c_str());
 
 		// Create next node in path if not existing.
 		if (next == nullptr) {
-			next = sshsNodeAddChild(curr, tok.c_str());
+			next = dvConfigNodeAddChild(curr, tok.c_str());
 		}
 
 		curr = next;
@@ -278,14 +278,14 @@ void dvConfigNodeAttributeUpdaterAdd(dvConfigNode node, const char *key, enum dv
 	dvConfigAttributeUpdater updater, void *updaterUserData) {
 	sshs_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
 
-	dvConfigTree tree = sshsNodeGetGlobal(node);
+	dvConfigTree tree = dvConfigNodeGetGlobal(node);
 	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
 
 	// Check no other updater already exists that matches this one.
 	if (!findBool(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(), attrUpdater)) {
 		// Verify referenced attribute actually exists.
-		if (!sshsNodeExistsAttribute(node, key, type)) {
-			sshsNodeErrorNoAttribute("sshsAttributeUpdaterAdd", key, type);
+		if (!dvConfigNodeExistsAttribute(node, key, type)) {
+			dvConfigNodeErrorNoAttribute("sshsAttributeUpdaterAdd", key, type);
 		}
 
 		tree->attributeUpdaters.push_back(attrUpdater);
@@ -296,7 +296,7 @@ void dvConfigNodeAttributeUpdaterRemove(dvConfigNode node, const char *key, enum
 	dvConfigAttributeUpdater updater, void *updaterUserData) {
 	sshs_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
 
-	dvConfigTree tree = sshsNodeGetGlobal(node);
+	dvConfigTree tree = dvConfigNodeGetGlobal(node);
 	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
 
 	tree->attributeUpdaters.erase(
@@ -305,7 +305,7 @@ void dvConfigNodeAttributeUpdaterRemove(dvConfigNode node, const char *key, enum
 }
 
 void dvConfigNodeAttributeUpdaterRemoveAll(dvConfigNode node) {
-	dvConfigTree tree = sshsNodeGetGlobal(node);
+	dvConfigTree tree = dvConfigNodeGetGlobal(node);
 	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
 
 	tree->attributeUpdaters.erase(std::remove_if(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(),
@@ -327,7 +327,7 @@ bool dvConfigTreeAttributeUpdaterRun(dvConfigTree tree) {
 	for (const auto &up : tree->attributeUpdaters) {
 		union dvConfigAttributeValue newValue = (*up.getUpdater())(up.getUserData(), up.getKey().c_str(), up.getType());
 
-		if (!sshsNodePutAttribute(up.getNode(), up.getKey().c_str(), up.getType(), newValue)) {
+		if (!dvConfigNodePutAttribute(up.getNode(), up.getKey().c_str(), up.getType(), newValue)) {
 			allSuccess = false;
 		}
 	}

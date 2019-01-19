@@ -49,38 +49,38 @@ caerModuleInfo caerModuleGetInfo(void) {
 }
 
 static void caerDVSNoiseFilterConfigInit(dvConfigNode moduleNode) {
-	sshsNodeCreateBool(moduleNode, "hotPixelLearn", false, DVCFG_FLAGS_NOTIFY_ONLY,
+	dvConfigNodeCreateBool(moduleNode, "hotPixelLearn", false, DVCFG_FLAGS_NOTIFY_ONLY,
 		"Learn the position of current hot (abnormally active) pixels, so they can be filtered out.");
-	sshsNodeCreateInt(moduleNode, "hotPixelTime", 1000000, 0, 30000000, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleNode, "hotPixelTime", 1000000, 0, 30000000, DVCFG_FLAGS_NORMAL,
 		"Time in µs to accumulate events for learning new hot pixels.");
-	sshsNodeCreateInt(moduleNode, "hotPixelCount", 10000, 0, 10000000, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleNode, "hotPixelCount", 10000, 0, 10000000, DVCFG_FLAGS_NORMAL,
 		"Number of events needed in a learning time period for a pixel to be considered hot.");
 
-	sshsNodeCreateBool(moduleNode, "hotPixelEnable", false, DVCFG_FLAGS_NORMAL, "Enable the hot pixel filter.");
-	sshsNodeCreateLong(moduleNode, "hotPixelFiltered", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
+	dvConfigNodeCreateBool(moduleNode, "hotPixelEnable", false, DVCFG_FLAGS_NORMAL, "Enable the hot pixel filter.");
+	dvConfigNodeCreateLong(moduleNode, "hotPixelFiltered", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Number of events filtered out by the hot pixel filter.");
 
-	sshsNodeCreateBool(
+	dvConfigNodeCreateBool(
 		moduleNode, "backgroundActivityEnable", true, DVCFG_FLAGS_NORMAL, "Enable the background activity filter.");
-	sshsNodeCreateBool(moduleNode, "backgroundActivityTwoLevels", false, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateBool(moduleNode, "backgroundActivityTwoLevels", false, DVCFG_FLAGS_NORMAL,
 		"Use two-level background activity filtering.");
-	sshsNodeCreateBool(moduleNode, "backgroundActivityCheckPolarity", false, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateBool(moduleNode, "backgroundActivityCheckPolarity", false, DVCFG_FLAGS_NORMAL,
 		"Consider polarity when filtering background activity.");
-	sshsNodeCreateInt(moduleNode, "backgroundActivitySupportMin", 1, 1, 8, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleNode, "backgroundActivitySupportMin", 1, 1, 8, DVCFG_FLAGS_NORMAL,
 		"Minimum number of direct neighbor pixels that must support this pixel for it to be valid.");
-	sshsNodeCreateInt(moduleNode, "backgroundActivitySupportMax", 8, 1, 8, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleNode, "backgroundActivitySupportMax", 8, 1, 8, DVCFG_FLAGS_NORMAL,
 		"Maximum number of direct neighbor pixels that can support this pixel for it to be valid.");
-	sshsNodeCreateInt(moduleNode, "backgroundActivityTime", 2000, 0, 10000000, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleNode, "backgroundActivityTime", 2000, 0, 10000000, DVCFG_FLAGS_NORMAL,
 		"Maximum time difference in µs for events to be considered correlated and not be filtered out.");
-	sshsNodeCreateLong(moduleNode, "backgroundActivityFiltered", 0, 0, INT64_MAX,
+	dvConfigNodeCreateLong(moduleNode, "backgroundActivityFiltered", 0, 0, INT64_MAX,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Number of events filtered out by the background activity filter.");
 
-	sshsNodeCreateBool(
+	dvConfigNodeCreateBool(
 		moduleNode, "refractoryPeriodEnable", true, DVCFG_FLAGS_NORMAL, "Enable the refractory period filter.");
-	sshsNodeCreateInt(moduleNode, "refractoryPeriodTime", 100, 0, 10000000, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleNode, "refractoryPeriodTime", 100, 0, 10000000, DVCFG_FLAGS_NORMAL,
 		"Minimum time between events to not be filtered out.");
-	sshsNodeCreateLong(moduleNode, "refractoryPeriodFiltered", 0, 0, INT64_MAX,
+	dvConfigNodeCreateLong(moduleNode, "refractoryPeriodFiltered", 0, 0, INT64_MAX,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of events filtered out by the refractory period filter.");
 }
 
@@ -134,8 +134,8 @@ static bool caerDVSNoiseFilterInit(caerModuleData moduleData) {
 		return (false);
 	}
 
-	int32_t sizeX = sshsNodeGetInt(sourceInfo, "polaritySizeX");
-	int32_t sizeY = sshsNodeGetInt(sourceInfo, "polaritySizeY");
+	int32_t sizeX = dvConfigNodeGetInt(sourceInfo, "polaritySizeX");
+	int32_t sizeY = dvConfigNodeGetInt(sourceInfo, "polaritySizeY");
 
 	moduleData->moduleState = caerFilterDVSNoiseInitialize(U16T(sizeX), U16T(sizeY));
 	if (moduleData->moduleState == NULL) {
@@ -156,8 +156,8 @@ static bool caerDVSNoiseFilterInit(caerModuleData moduleData) {
 		&updateRefractoryPeriodFiltered, moduleData->moduleState);
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData->moduleState, &caerDVSNoiseFilterConfigCustom);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData->moduleState, &caerDVSNoiseFilterConfigCustom);
 
 	// Nothing that can fail here.
 	return (true);
@@ -177,33 +177,33 @@ static void caerDVSNoiseFilterConfig(caerModuleData moduleData) {
 	caerFilterDVSNoise state = moduleData->moduleState;
 
 	caerFilterDVSNoiseConfigSet(
-		state, CAER_FILTER_DVS_HOTPIXEL_TIME, U32T(sshsNodeGetInt(moduleData->moduleNode, "hotPixelTime")));
+		state, CAER_FILTER_DVS_HOTPIXEL_TIME, U32T(dvConfigNodeGetInt(moduleData->moduleNode, "hotPixelTime")));
 	caerFilterDVSNoiseConfigSet(
-		state, CAER_FILTER_DVS_HOTPIXEL_COUNT, U32T(sshsNodeGetInt(moduleData->moduleNode, "hotPixelCount")));
+		state, CAER_FILTER_DVS_HOTPIXEL_COUNT, U32T(dvConfigNodeGetInt(moduleData->moduleNode, "hotPixelCount")));
 
 	caerFilterDVSNoiseConfigSet(
-		state, CAER_FILTER_DVS_HOTPIXEL_ENABLE, sshsNodeGetBool(moduleData->moduleNode, "hotPixelEnable"));
+		state, CAER_FILTER_DVS_HOTPIXEL_ENABLE, dvConfigNodeGetBool(moduleData->moduleNode, "hotPixelEnable"));
 
 	caerFilterDVSNoiseConfigSet(state, CAER_FILTER_DVS_BACKGROUND_ACTIVITY_ENABLE,
-		sshsNodeGetBool(moduleData->moduleNode, "backgroundActivityEnable"));
+		dvConfigNodeGetBool(moduleData->moduleNode, "backgroundActivityEnable"));
 	caerFilterDVSNoiseConfigSet(state, CAER_FILTER_DVS_BACKGROUND_ACTIVITY_TWO_LEVELS,
-		sshsNodeGetBool(moduleData->moduleNode, "backgroundActivityTwoLevels"));
+		dvConfigNodeGetBool(moduleData->moduleNode, "backgroundActivityTwoLevels"));
 	caerFilterDVSNoiseConfigSet(state, CAER_FILTER_DVS_BACKGROUND_ACTIVITY_CHECK_POLARITY,
-		sshsNodeGetBool(moduleData->moduleNode, "backgroundActivityCheckPolarity"));
+		dvConfigNodeGetBool(moduleData->moduleNode, "backgroundActivityCheckPolarity"));
 	caerFilterDVSNoiseConfigSet(state, CAER_FILTER_DVS_BACKGROUND_ACTIVITY_SUPPORT_MIN,
-		U8T(sshsNodeGetInt(moduleData->moduleNode, "backgroundActivitySupportMin")));
+		U8T(dvConfigNodeGetInt(moduleData->moduleNode, "backgroundActivitySupportMin")));
 	caerFilterDVSNoiseConfigSet(state, CAER_FILTER_DVS_BACKGROUND_ACTIVITY_SUPPORT_MAX,
-		U8T(sshsNodeGetInt(moduleData->moduleNode, "backgroundActivitySupportMax")));
+		U8T(dvConfigNodeGetInt(moduleData->moduleNode, "backgroundActivitySupportMax")));
 	caerFilterDVSNoiseConfigSet(state, CAER_FILTER_DVS_BACKGROUND_ACTIVITY_TIME,
-		U32T(sshsNodeGetInt(moduleData->moduleNode, "backgroundActivityTime")));
+		U32T(dvConfigNodeGetInt(moduleData->moduleNode, "backgroundActivityTime")));
 
 	caerFilterDVSNoiseConfigSet(state, CAER_FILTER_DVS_REFRACTORY_PERIOD_ENABLE,
-		sshsNodeGetBool(moduleData->moduleNode, "refractoryPeriodEnable"));
+		dvConfigNodeGetBool(moduleData->moduleNode, "refractoryPeriodEnable"));
 	caerFilterDVSNoiseConfigSet(state, CAER_FILTER_DVS_REFRACTORY_PERIOD_TIME,
-		U32T(sshsNodeGetInt(moduleData->moduleNode, "refractoryPeriodTime")));
+		U32T(dvConfigNodeGetInt(moduleData->moduleNode, "refractoryPeriodTime")));
 
 	caerFilterDVSNoiseConfigSet(
-		state, CAER_FILTER_DVS_LOG_LEVEL, U8T(sshsNodeGetInt(moduleData->moduleNode, "logLevel")));
+		state, CAER_FILTER_DVS_LOG_LEVEL, U8T(dvConfigNodeGetInt(moduleData->moduleNode, "logLevel")));
 }
 
 static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -225,8 +225,8 @@ static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, en
 
 static void caerDVSNoiseFilterExit(caerModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData->moduleState, &caerDVSNoiseFilterConfigCustom);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData->moduleState, &caerDVSNoiseFilterConfigCustom);
 
 	dvConfigNodeAttributeUpdaterRemoveAll(moduleData->moduleNode);
 

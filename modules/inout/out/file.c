@@ -101,19 +101,19 @@ static bool caerOutputFileInit(caerModuleData moduleData) {
 		return (false);
 	}
 
-	sshsNodeCreateString(moduleData->moduleNode, "directory", userHomeDir, 1, (PATH_MAX - MAX_PREFIX_LENGTH),
+	dvConfigNodeCreateString(moduleData->moduleNode, "directory", userHomeDir, 1, (PATH_MAX - MAX_PREFIX_LENGTH),
 		DVCFG_FLAGS_NORMAL, "Directory to write output data files in.");
 	free(userHomeDir);
 
 	// Support file-chooser in GUI, select any directory.
-	sshsNodeCreateAttributeFileChooser(moduleData->moduleNode, "directory", "DIRECTORY");
+	dvConfigNodeCreateAttributeFileChooser(moduleData->moduleNode, "directory", "DIRECTORY");
 
-	sshsNodeCreateString(moduleData->moduleNode, "prefix", DEFAULT_PREFIX, 1, MAX_PREFIX_LENGTH, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleData->moduleNode, "prefix", DEFAULT_PREFIX, 1, MAX_PREFIX_LENGTH, DVCFG_FLAGS_NORMAL,
 		"Output data files name prefix.");
 
 	// Generate current file name and open it.
-	char *directory = sshsNodeGetString(moduleData->moduleNode, "directory");
-	char *prefix    = sshsNodeGetString(moduleData->moduleNode, "prefix");
+	char *directory = dvConfigNodeGetString(moduleData->moduleNode, "directory");
+	char *prefix    = dvConfigNodeGetString(moduleData->moduleNode, "prefix");
 
 	char *filePath = getFullFilePath(moduleData, directory, prefix);
 	free(directory);

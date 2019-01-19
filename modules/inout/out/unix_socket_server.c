@@ -35,15 +35,15 @@ caerModuleInfo caerModuleGetInfo(void) {
 static bool caerOutputUnixSocketServerInit(caerModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
-	sshsNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
 		"Unix Socket path for writing output data (server mode, create new socket).");
-	sshsNodeCreateInt(
+	dvConfigNodeCreateInt(
 		moduleData->moduleNode, "backlogSize", 5, 1, 32, DVCFG_FLAGS_NORMAL, "Maximum number of pending connections.");
-	sshsNodeCreateInt(moduleData->moduleNode, "concurrentConnections", 10, 1, 128, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleData->moduleNode, "concurrentConnections", 10, 1, 128, DVCFG_FLAGS_NORMAL,
 		"Maximum number of concurrent active connections.");
 
 	// Allocate memory.
-	size_t numClients         = (size_t) sshsNodeGetInt(moduleData->moduleNode, "concurrentConnections");
+	size_t numClients         = (size_t) dvConfigNodeGetInt(moduleData->moduleNode, "concurrentConnections");
 	outputCommonNetIO streams = malloc(sizeof(*streams) + (numClients * sizeof(uv_stream_t *)));
 	if (streams == NULL) {
 		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
@@ -69,7 +69,7 @@ static bool caerOutputUnixSocketServerInit(caerModuleData moduleData) {
 	}
 
 	// Remember address.
-	streams->address = sshsNodeGetString(moduleData->moduleNode, "socketPath");
+	streams->address = dvConfigNodeGetString(moduleData->moduleNode, "socketPath");
 
 	streams->server->data = streams;
 
@@ -87,7 +87,7 @@ static bool caerOutputUnixSocketServerInit(caerModuleData moduleData) {
 				 uv_loop_close(&streams->loop); free(streams->address); free(streams); return (false));
 
 	retVal = uv_listen(
-		streams->server, sshsNodeGetInt(moduleData->moduleNode, "backlogSize"), &caerOutputCommonOnServerConnection);
+		streams->server, dvConfigNodeGetInt(moduleData->moduleNode, "backlogSize"), &caerOutputCommonOnServerConnection);
 	UV_RET_CHECK(retVal, moduleData->moduleSubSystemString, "uv_listen", libuvCloseLoopHandles(&streams->loop);
 				 uv_loop_close(&streams->loop); free(streams->address); free(streams); return (false));
 

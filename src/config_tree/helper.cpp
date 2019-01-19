@@ -4,7 +4,7 @@
 
 static const std::string typeStrings[] = {"bool", "byte", "short", "int", "long", "float", "double", "string"};
 
-const std::string &sshsHelperCppTypeToStringConverter(enum dvConfigAttributeType type) {
+const std::string &dvConfigHelperCppTypeToStringConverter(enum dvConfigAttributeType type) {
 	// Convert the value and its type into a string for XML output.
 	switch (type) {
 		case DVCFG_TYPE_BOOL:
@@ -17,11 +17,11 @@ const std::string &sshsHelperCppTypeToStringConverter(enum dvConfigAttributeType
 
 		case DVCFG_TYPE_UNKNOWN:
 		default:
-			throw std::runtime_error("sshsHelperCppTypeToStringConverter(): invalid type given.");
+			throw std::runtime_error("dvConfigHelperCppTypeToStringConverter(): invalid type given.");
 	}
 }
 
-enum dvConfigAttributeType sshsHelperCppStringToTypeConverter(const std::string &typeString) {
+enum dvConfigAttributeType dvConfigHelperCppStringToTypeConverter(const std::string &typeString) {
 	// Convert the value string back into the internal type representation.
 	if (typeString == typeStrings[DVCFG_TYPE_BOOL]) {
 		return (DVCFG_TYPE_BOOL);
@@ -51,7 +51,7 @@ enum dvConfigAttributeType sshsHelperCppStringToTypeConverter(const std::string 
 	return (DVCFG_TYPE_UNKNOWN); // UNKNOWN TYPE.
 }
 
-std::string sshsHelperCppValueToStringConverter(const sshs_value &val) {
+std::string dvConfigHelperCppValueToStringConverter(const sshs_value &val) {
 	// Convert the value and its type into a string for XML output.
 	switch (val.getType()) {
 		case DVCFG_TYPE_BOOL:
@@ -75,14 +75,14 @@ std::string sshsHelperCppValueToStringConverter(const sshs_value &val) {
 
 		case DVCFG_TYPE_UNKNOWN:
 		default:
-			throw std::runtime_error("sshsHelperCppValueToStringConverter(): value has invalid type.");
+			throw std::runtime_error("dvConfigHelperCppValueToStringConverter(): value has invalid type.");
 	}
 }
 
 // Return false on failure (unknown type / faulty conversion), the content of
 // value is undefined. For the STRING type, the returned value.string is a copy
 // of the input string. Remember to free() it after use!
-sshs_value sshsHelperCppStringToValueConverter(enum dvConfigAttributeType type, const std::string &valueString) {
+sshs_value dvConfigHelperCppStringToValueConverter(enum dvConfigAttributeType type, const std::string &valueString) {
 	sshs_value value;
 
 	switch (type) {
@@ -113,7 +113,7 @@ sshs_value sshsHelperCppStringToValueConverter(enum dvConfigAttributeType type, 
 
 		case DVCFG_TYPE_UNKNOWN:
 		default:
-			throw std::runtime_error("sshsHelperCppStringToValueConverter(): invalid type given.");
+			throw std::runtime_error("dvConfigHelperCppStringToValueConverter(): invalid type given.");
 			break;
 	}
 
@@ -125,20 +125,20 @@ sshs_value sshsHelperCppStringToValueConverter(enum dvConfigAttributeType type, 
  */
 
 // Do not free or modify the resulting string in any way!
-const char *sshsHelperTypeToStringConverter(enum dvConfigAttributeType type) {
-	return (sshsHelperCppTypeToStringConverter(type).c_str());
+const char *dvConfigHelperTypeToStringConverter(enum dvConfigAttributeType type) {
+	return (dvConfigHelperCppTypeToStringConverter(type).c_str());
 }
 
-enum dvConfigAttributeType sshsHelperStringToTypeConverter(const char *typeString) {
-	return (sshsHelperCppStringToTypeConverter(typeString));
+enum dvConfigAttributeType dvConfigHelperStringToTypeConverter(const char *typeString) {
+	return (dvConfigHelperCppStringToTypeConverter(typeString));
 }
 
 // Remember to free the resulting string!
-char *sshsHelperValueToStringConverter(enum dvConfigAttributeType type, union dvConfigAttributeValue value) {
+char *dvConfigHelperValueToStringConverter(enum dvConfigAttributeType type, union dvConfigAttributeValue value) {
 	sshs_value val;
 	val.fromCUnion(value, type);
 
-	const std::string typeString = sshsHelperCppValueToStringConverter(val);
+	const std::string typeString = dvConfigHelperCppValueToStringConverter(val);
 
 	char *resultString = strdup(typeString.c_str());
 	sshsMemoryCheck(resultString, __func__);
@@ -147,17 +147,17 @@ char *sshsHelperValueToStringConverter(enum dvConfigAttributeType type, union dv
 }
 
 // Remember to free the resulting union's "string" member, if the type was SSHS_STRING!
-union dvConfigAttributeValue sshsHelperStringToValueConverter(
+union dvConfigAttributeValue dvConfigHelperStringToValueConverter(
 	enum dvConfigAttributeType type, const char *valueString) {
 	if ((type == DVCFG_TYPE_STRING) && (valueString == nullptr)) {
 		// Empty string.
 		valueString = "";
 	}
 
-	return (sshsHelperCppStringToValueConverter(type, valueString).toCUnion());
+	return (dvConfigHelperCppStringToValueConverter(type, valueString).toCUnion());
 }
 
-char *sshsHelperFlagsToStringConverter(int flags) {
+char *dvConfigHelperFlagsToStringConverter(int flags) {
 	std::string flagsStr;
 
 	if (flags & DVCFG_FLAGS_READ_ONLY) {
@@ -180,7 +180,7 @@ char *sshsHelperFlagsToStringConverter(int flags) {
 	return (resultString);
 }
 
-int sshsHelperStringToFlagsConverter(const char *flagsString) {
+int dvConfigHelperStringToFlagsConverter(const char *flagsString) {
 	int flags = DVCFG_FLAGS_NORMAL;
 
 	std::string flagsStr(flagsString);
@@ -202,7 +202,7 @@ int sshsHelperStringToFlagsConverter(const char *flagsString) {
 	return (flags);
 }
 
-char *sshsHelperRangesToStringConverter(enum dvConfigAttributeType type, struct dvConfigAttributeRanges ranges) {
+char *dvConfigHelperRangesToStringConverter(enum dvConfigAttributeType type, struct dvConfigAttributeRanges ranges) {
 	// We need to return a string with the two ranges,
 	// separated by a | character.
 	char buf[256];
@@ -240,7 +240,7 @@ char *sshsHelperRangesToStringConverter(enum dvConfigAttributeType type, struct 
 	return (resultString);
 }
 
-struct dvConfigAttributeRanges sshsHelperStringToRangesConverter(
+struct dvConfigAttributeRanges dvConfigHelperStringToRangesConverter(
 	enum dvConfigAttributeType type, const char *rangesString) {
 	struct dvConfigAttributeRanges ranges;
 

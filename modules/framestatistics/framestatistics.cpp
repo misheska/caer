@@ -66,7 +66,7 @@ static bool caerFrameStatisticsInit(caerModuleData moduleData) {
 	caerFrameStatisticsConfig(moduleData);
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 
 	cv::namedWindow(moduleData->moduleSubSystemString,
 		cv::WindowFlags::WINDOW_AUTOSIZE | cv::WindowFlags::WINDOW_KEEPRATIO | cv::WindowFlags::WINDOW_GUI_EXPANDED);
@@ -129,7 +129,7 @@ static void caerFrameStatisticsExit(caerModuleData moduleData) {
 	cv::destroyWindow(moduleData->moduleSubSystemString);
 
 	// Remove listener, which can reference invalid memory in userData.
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 }
 
 static void caerFrameStatisticsConfig(caerModuleData moduleData) {

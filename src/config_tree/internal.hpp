@@ -12,21 +12,21 @@
 // C linkage to guarantee no name mangling.
 extern "C" {
 // Internal node functions.
-dvConfigNode sshsNodeNew(const char *nodeName, dvConfigNode parent, dvConfigTree global);
+dvConfigNode dvConfigNodeNew(const char *nodeName, dvConfigNode parent, dvConfigTree global);
 /**
  * This returns a reference to a node, and as such must be carefully mediated with
- * any sshsNodeRemoveNode() calls.
+ * any dvConfigNodeRemoveNode() calls.
  */
-dvConfigNode sshsNodeAddChild(dvConfigNode node, const char *childName);
+dvConfigNode dvConfigNodeAddChild(dvConfigNode node, const char *childName);
 /**
  * This returns a reference to a node, and as such must be carefully mediated with
- * any sshsNodeRemoveNode() calls.
+ * any dvConfigNodeRemoveNode() calls.
  */
-dvConfigNode sshsNodeGetChild(dvConfigNode node, const char *childName);
+dvConfigNode dvConfigNodeGetChild(dvConfigNode node, const char *childName);
 /**
  * Get link to global SSHS tree.
  */
-dvConfigTree sshsNodeGetGlobal(dvConfigNode node);
+dvConfigTree dvConfigNodeGetGlobal(dvConfigNode node);
 
 // Internal global functions.
 dvConfigNodeChangeListener sshsGlobalNodeListenerGetFunction(dvConfigTree tree);
@@ -291,23 +291,23 @@ public:
 };
 
 // C++ helper functions.
-const std::string &sshsHelperCppTypeToStringConverter(enum dvConfigAttributeType type);
-enum dvConfigAttributeType sshsHelperCppStringToTypeConverter(const std::string &typeString);
-std::string sshsHelperCppValueToStringConverter(const sshs_value &val);
-sshs_value sshsHelperCppStringToValueConverter(enum dvConfigAttributeType type, const std::string &valueString);
+const std::string &dvConfigHelperCppTypeToStringConverter(enum dvConfigAttributeType type);
+enum dvConfigAttributeType dvConfigHelperCppStringToTypeConverter(const std::string &typeString);
+std::string dvConfigHelperCppValueToStringConverter(const sshs_value &val);
+sshs_value dvConfigHelperCppStringToValueConverter(enum dvConfigAttributeType type, const std::string &valueString);
 
 // We don't care about unlocking anything here, as we exit hard on error anyway.
-static inline void sshsNodeError(const std::string &funcName, const std::string &key,
+static inline void dvConfigNodeError(const std::string &funcName, const std::string &key,
 	enum dvConfigAttributeType type, const std::string &msg, bool fatal = true) {
 	boost::format errorMsg = boost::format("%s(): attribute '%s' (type '%s'): %s.") % funcName % key
-							 % sshsHelperCppTypeToStringConverter(type) % msg;
+							 % dvConfigHelperCppTypeToStringConverter(type) % msg;
 
 	(*dvConfigTreeErrorLogCallbackGet())(errorMsg.str().c_str(), fatal);
 }
 
-static inline void sshsNodeErrorNoAttribute(
+static inline void dvConfigNodeErrorNoAttribute(
 	const std::string &funcName, const std::string &key, enum dvConfigAttributeType type) {
-	sshsNodeError(funcName, key, type, "attribute doesn't exist, you must create it first");
+	dvConfigNodeError(funcName, key, type, "attribute doesn't exist, you must create it first");
 }
 
 #endif /* CONFIG_TREE_INTERNAL_HPP_ */

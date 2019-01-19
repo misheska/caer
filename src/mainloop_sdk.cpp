@@ -223,9 +223,9 @@ dvConfigNode caerMainloopGetSourceInfo(int16_t sourceID) {
 		return (nullptr);
 	}
 
-	if (!sshsNodeExistsRelativeNode(moduleData->moduleNode, "sourceInfo/")) {
+	if (!dvConfigNodeExistsRelativeNode(moduleData->moduleNode, "sourceInfo/")) {
 		return (nullptr);
 	}
 
-	return (sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/"));
+	return (dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/"));
 }

@@ -181,7 +181,7 @@ static void copyPacketsToTransferRing(outputCommonState state, caerEventPacketCo
 					return;
 				}
 
-				state->sourceInfoString = sshsNodeGetString(sourceInfoNode, "sourceString");
+				state->sourceInfoString = dvConfigNodeGetString(sourceInfoNode, "sourceString");
 
 				atomic_store(&state->sourceID, eventSource); // Remember this!
 			}
@@ -830,7 +830,7 @@ static inline _Noreturn void errorExit(outputCommonState state, libuvWriteBuf pa
 
 	// Ensure parent also shuts down on unrecoverable failures, taking the
 	// compressor thread with it.
-	sshsNodePutBool(state->parentModule->moduleNode, "running", false);
+	dvConfigNodePutBool(state->parentModule->moduleNode, "running", false);
 
 	thrd_exit(thrd_error);
 }
@@ -1382,7 +1382,7 @@ bool caerOutputCommonInit(caerModuleData moduleData, int fileDescriptor, outputC
 
 	// If in server mode, add SSHS attribute to track connected client IPs.
 	if (state->isNetworkStream && state->networkIO->server != NULL) {
-		sshsNodeCreateString(state->parentModule->moduleNode, "connectedClients", "", 0, INT32_MAX,
+		dvConfigNodeCreateString(state->parentModule->moduleNode, "connectedClients", "", 0, INT32_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "IPs of clients currently connected to output server.");
 	}
 
@@ -1390,15 +1390,15 @@ bool caerOutputCommonInit(caerModuleData moduleData, int fileDescriptor, outputC
 	atomic_store(&state->sourceID, -1);
 
 	// Handle configuration.
-	sshsNodeCreateBool(moduleData->moduleNode, "validOnly", false, DVCFG_FLAGS_NORMAL, "Only send valid events.");
-	sshsNodeCreateBool(moduleData->moduleNode, "keepPackets", false, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateBool(moduleData->moduleNode, "validOnly", false, DVCFG_FLAGS_NORMAL, "Only send valid events.");
+	dvConfigNodeCreateBool(moduleData->moduleNode, "keepPackets", false, DVCFG_FLAGS_NORMAL,
 		"Ensure all packets are kept (stall output if transfer-buffer full).");
-	sshsNodeCreateInt(moduleData->moduleNode, "ringBufferSize", 512, 8, 4096, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleData->moduleNode, "ringBufferSize", 512, 8, 4096, DVCFG_FLAGS_NORMAL,
 		"Size of EventPacketContainer and EventPacket queues, used for transfers between mainloop and output threads.");
 
-	atomic_store(&state->validOnly, sshsNodeGetBool(moduleData->moduleNode, "validOnly"));
-	atomic_store(&state->keepPackets, sshsNodeGetBool(moduleData->moduleNode, "keepPackets"));
-	int ringSize = sshsNodeGetInt(moduleData->moduleNode, "ringBufferSize");
+	atomic_store(&state->validOnly, dvConfigNodeGetBool(moduleData->moduleNode, "validOnly"));
+	atomic_store(&state->keepPackets, dvConfigNodeGetBool(moduleData->moduleNode, "keepPackets"));
+	int ringSize = dvConfigNodeGetInt(moduleData->moduleNode, "ringBufferSize");
 
 	// Format configuration (compression modes).
 	state->formatID = 0x00; // RAW format by default.
@@ -1481,14 +1481,14 @@ bool caerOutputCommonInit(caerModuleData moduleData, int fileDescriptor, outputC
 	}
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerOutputCommonConfigListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerOutputCommonConfigListener);
 
 	return (true);
 }
 
 void caerOutputCommonExit(caerModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerOutputCommonConfigListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerOutputCommonConfigListener);
 
 	outputCommonState state = moduleData->moduleState;
 
@@ -1535,7 +1535,7 @@ void caerOutputCommonExit(caerModuleData moduleData) {
 	if (state->isNetworkStream) {
 		if (state->networkIO->server != NULL) {
 			// Server shut down, no more clients.
-			sshsNodeRemoveAttribute(state->parentModule->moduleNode, "connectedClients", DVCFG_TYPE_STRING);
+			dvConfigNodeRemoveAttribute(state->parentModule->moduleNode, "connectedClients", DVCFG_TYPE_STRING);
 		}
 
 		// Cleanup all remaining handles and run until all callbacks are done.

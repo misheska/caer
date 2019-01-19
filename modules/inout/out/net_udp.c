@@ -31,9 +31,9 @@ caerModuleInfo caerModuleGetInfo(void) {
 static bool caerOutputNetUDPInit(caerModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
-	sshsNodeCreateString(moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL,
 		"IPv4 address to connect to (client mode).");
-	sshsNodeCreateInt(moduleData->moduleNode, "portNumber", 6666, 1, UINT16_MAX, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleData->moduleNode, "portNumber", 6666, 1, UINT16_MAX, DVCFG_FLAGS_NORMAL,
 		"Port number to connect to (client mode).");
 
 	int retVal;
@@ -41,8 +41,8 @@ static bool caerOutputNetUDPInit(caerModuleData moduleData) {
 	// Generate address.
 	struct sockaddr_in serverAddress;
 
-	char *ipAddress = sshsNodeGetString(moduleData->moduleNode, "ipAddress");
-	retVal          = uv_ip4_addr(ipAddress, sshsNodeGetInt(moduleData->moduleNode, "portNumber"), &serverAddress);
+	char *ipAddress = dvConfigNodeGetString(moduleData->moduleNode, "ipAddress");
+	retVal          = uv_ip4_addr(ipAddress, dvConfigNodeGetInt(moduleData->moduleNode, "portNumber"), &serverAddress);
 	UV_RET_CHECK(retVal, moduleData->moduleSubSystemString, "uv_ip4_addr", free(ipAddress); return (false));
 	free(ipAddress);
 

@@ -281,8 +281,8 @@ caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv
 
 void caerModuleDestroy(caerModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleShutdownListener);
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleLogLevelListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleShutdownListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleLogLevelListener);
 
 	// Deallocate module memory. Module state has already been destroyed.
 	free(moduleData->moduleSubSystemString);

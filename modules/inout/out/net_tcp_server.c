@@ -32,13 +32,13 @@ caerModuleInfo caerModuleGetInfo(void) {
 static bool caerOutputNetTCPServerInit(caerModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
-	sshsNodeCreateString(moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL,
 		"IPv4 address to listen on (server mode).");
-	sshsNodeCreateInt(moduleData->moduleNode, "portNumber", 7777, 1, UINT16_MAX, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleData->moduleNode, "portNumber", 7777, 1, UINT16_MAX, DVCFG_FLAGS_NORMAL,
 		"Port number to listen on (server mode).");
-	sshsNodeCreateInt(
+	dvConfigNodeCreateInt(
 		moduleData->moduleNode, "backlogSize", 5, 1, 32, DVCFG_FLAGS_NORMAL, "Maximum number of pending connections.");
-	sshsNodeCreateInt(moduleData->moduleNode, "concurrentConnections", 10, 1, 128, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleData->moduleNode, "concurrentConnections", 10, 1, 128, DVCFG_FLAGS_NORMAL,
 		"Maximum number of concurrent active connections.");
 
 	int retVal;
@@ -46,13 +46,13 @@ static bool caerOutputNetTCPServerInit(caerModuleData moduleData) {
 	// Generate address.
 	struct sockaddr_in serverAddress;
 
-	char *ipAddress = sshsNodeGetString(moduleData->moduleNode, "ipAddress");
-	retVal          = uv_ip4_addr(ipAddress, sshsNodeGetInt(moduleData->moduleNode, "portNumber"), &serverAddress);
+	char *ipAddress = dvConfigNodeGetString(moduleData->moduleNode, "ipAddress");
+	retVal          = uv_ip4_addr(ipAddress, dvConfigNodeGetInt(moduleData->moduleNode, "portNumber"), &serverAddress);
 	UV_RET_CHECK(retVal, moduleData->moduleSubSystemString, "uv_ip4_addr", free(ipAddress); return (false));
 	free(ipAddress);
 
 	// Allocate memory.
-	size_t numClients         = (size_t) sshsNodeGetInt(moduleData->moduleNode, "concurrentConnections");
+	size_t numClients         = (size_t) dvConfigNodeGetInt(moduleData->moduleNode, "concurrentConnections");
 	outputCommonNetIO streams = malloc(sizeof(*streams) + (numClients * sizeof(uv_stream_t *)));
 	if (streams == NULL) {
 		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
@@ -105,7 +105,7 @@ static bool caerOutputNetTCPServerInit(caerModuleData moduleData) {
 				 uv_loop_close(&streams->loop); free(streams->address); free(streams); return (false));
 
 	retVal = uv_listen(
-		streams->server, sshsNodeGetInt(moduleData->moduleNode, "backlogSize"), &caerOutputCommonOnServerConnection);
+		streams->server, dvConfigNodeGetInt(moduleData->moduleNode, "backlogSize"), &caerOutputCommonOnServerConnection);
 	UV_RET_CHECK(retVal, moduleData->moduleSubSystemString, "uv_listen", libuvCloseLoopHandles(&streams->loop);
 				 uv_loop_close(&streams->loop); free(streams->address); free(streams); return (false));
 

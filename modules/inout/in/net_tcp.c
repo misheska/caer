@@ -33,9 +33,9 @@ caerModuleInfo caerModuleGetInfo(void) {
 static bool caerInputNetTCPInit(caerModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
-	sshsNodeCreateString(
+	dvConfigNodeCreateString(
 		moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL, "IPv4 address to connect to.");
-	sshsNodeCreateInt(
+	dvConfigNodeCreateInt(
 		moduleData->moduleNode, "portNumber", 7777, 1, UINT16_MAX, DVCFG_FLAGS_NORMAL, "Port number to connect to.");
 
 	// Open a TCP socket to the remote client, to which we'll send data packets.
@@ -49,9 +49,9 @@ static bool caerInputNetTCPInit(caerModuleData moduleData) {
 	memset(&tcpClient, 0, sizeof(struct sockaddr_in));
 
 	tcpClient.sin_family = AF_INET;
-	tcpClient.sin_port   = htons(U16T(sshsNodeGetInt(moduleData->moduleNode, "portNumber")));
+	tcpClient.sin_port   = htons(U16T(dvConfigNodeGetInt(moduleData->moduleNode, "portNumber")));
 
-	char *ipAddress = sshsNodeGetString(moduleData->moduleNode, "ipAddress");
+	char *ipAddress = dvConfigNodeGetString(moduleData->moduleNode, "ipAddress");
 	if (inet_pton(AF_INET, ipAddress, &tcpClient.sin_addr) == 0) {
 		close(sockFd);
 

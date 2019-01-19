@@ -395,13 +395,13 @@ static bool initRenderSize(caerModuleData moduleData) {
 
 		// Get sizes from sourceInfo node. visualizer prefix takes precedence,
 		// then generic data visualization size.
-		if (sshsNodeExistsAttribute(sourceInfoNode, "visualizerSizeX", DVCFG_TYPE_INT)) {
-			packetSizeX = U32T(sshsNodeGetInt(sourceInfoNode, "visualizerSizeX"));
-			packetSizeY = U32T(sshsNodeGetInt(sourceInfoNode, "visualizerSizeY"));
+		if (dvConfigNodeExistsAttribute(sourceInfoNode, "visualizerSizeX", DVCFG_TYPE_INT)) {
+			packetSizeX = U32T(dvConfigNodeGetInt(sourceInfoNode, "visualizerSizeX"));
+			packetSizeY = U32T(dvConfigNodeGetInt(sourceInfoNode, "visualizerSizeY"));
 		}
-		else if (sshsNodeExistsAttribute(sourceInfoNode, "dataSizeX", DVCFG_TYPE_INT)) {
-			packetSizeX = U32T(sshsNodeGetInt(sourceInfoNode, "dataSizeX"));
-			packetSizeY = U32T(sshsNodeGetInt(sourceInfoNode, "dataSizeY"));
+		else if (dvConfigNodeExistsAttribute(sourceInfoNode, "dataSizeX", DVCFG_TYPE_INT)) {
+			packetSizeX = U32T(dvConfigNodeGetInt(sourceInfoNode, "dataSizeX"));
+			packetSizeY = U32T(dvConfigNodeGetInt(sourceInfoNode, "dataSizeY"));
 		}
 
 		if (packetSizeX > sizeX) {
@@ -585,7 +585,7 @@ static void handleEvents(caerModuleData moduleData) {
 	while (state->renderWindow->pollEvent(event)) {
 		if (event.type == sf::Event::Closed) {
 			// Stop visualizer module on window close.
-			sshsNodePutBool(moduleData->moduleNode, "running", false);
+			dvConfigNodePutBool(moduleData->moduleNode, "running", false);
 		}
 		else if (event.type == sf::Event::Resized) {
 			// Handle resize events, the window is non-resizeable, so in theory all
@@ -601,7 +601,7 @@ static void handleEvents(caerModuleData moduleData) {
 				 || event.type == sf::Event::TextEntered) {
 			// React to key presses, but only if they came from the corresponding display.
 			if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::PageUp) {
-				float currentZoomFactor = sshsNodeGetFloat(moduleData->moduleNode, "zoomFactor");
+				float currentZoomFactor = dvConfigNodeGetFloat(moduleData->moduleNode, "zoomFactor");
 
 				currentZoomFactor += VISUALIZER_ZOOM_INC;
 
@@ -610,10 +610,10 @@ static void handleEvents(caerModuleData moduleData) {
 					currentZoomFactor = VISUALIZER_ZOOM_MAX;
 				}
 
-				sshsNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
+				dvConfigNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::PageDown) {
-				float currentZoomFactor = sshsNodeGetFloat(moduleData->moduleNode, "zoomFactor");
+				float currentZoomFactor = dvConfigNodeGetFloat(moduleData->moduleNode, "zoomFactor");
 
 				currentZoomFactor -= VISUALIZER_ZOOM_INC;
 
@@ -622,14 +622,14 @@ static void handleEvents(caerModuleData moduleData) {
 					currentZoomFactor = VISUALIZER_ZOOM_MIN;
 				}
 
-				sshsNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
+				dvConfigNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::Home) {
 				// Reset zoom factor to default value.
-				sshsNodePutFloat(moduleData->moduleNode, "zoomFactor", VISUALIZER_ZOOM_DEF);
+				dvConfigNodePutFloat(moduleData->moduleNode, "zoomFactor", VISUALIZER_ZOOM_DEF);
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::W) {
-				int32_t currentSubsampling = sshsNodeGetInt(moduleData->moduleNode, "subsampleRendering");
+				int32_t currentSubsampling = dvConfigNodeGetInt(moduleData->moduleNode, "subsampleRendering");
 
 				currentSubsampling--;
 
@@ -638,10 +638,10 @@ static void handleEvents(caerModuleData moduleData) {
 					currentSubsampling = 1;
 				}
 
-				sshsNodePutInt(moduleData->moduleNode, "subsampleRendering", currentSubsampling);
+				dvConfigNodePutInt(moduleData->moduleNode, "subsampleRendering", currentSubsampling);
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::E) {
-				int32_t currentSubsampling = sshsNodeGetInt(moduleData->moduleNode, "subsampleRendering");
+				int32_t currentSubsampling = dvConfigNodeGetInt(moduleData->moduleNode, "subsampleRendering");
 
 				currentSubsampling++;
 
@@ -650,12 +650,12 @@ static void handleEvents(caerModuleData moduleData) {
 					currentSubsampling = 100000;
 				}
 
-				sshsNodePutInt(moduleData->moduleNode, "subsampleRendering", currentSubsampling);
+				dvConfigNodePutInt(moduleData->moduleNode, "subsampleRendering", currentSubsampling);
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::Q) {
-				bool currentShowStatistics = sshsNodeGetBool(moduleData->moduleNode, "showStatistics");
+				bool currentShowStatistics = dvConfigNodeGetBool(moduleData->moduleNode, "showStatistics");
 
-				sshsNodePutBool(moduleData->moduleNode, "showStatistics", !currentShowStatistics);
+				dvConfigNodePutBool(moduleData->moduleNode, "showStatistics", !currentShowStatistics);
 			}
 			else {
 				// Forward event to user-defined event handler.
@@ -668,7 +668,7 @@ static void handleEvents(caerModuleData moduleData) {
 				 || event.type == sf::Event::MouseWheelScrolled || event.type == sf::Event::MouseEntered
 				 || event.type == sf::Event::MouseLeft || event.type == sf::Event::MouseMoved) {
 			if (event.type == sf::Event::MouseWheelScrolled && event.mouseWheelScroll.delta > 0) {
-				float currentZoomFactor = sshsNodeGetFloat(moduleData->moduleNode, "zoomFactor");
+				float currentZoomFactor = dvConfigNodeGetFloat(moduleData->moduleNode, "zoomFactor");
 
 				currentZoomFactor += (VISUALIZER_ZOOM_INC * (float) event.mouseWheelScroll.delta);
 
@@ -677,10 +677,10 @@ static void handleEvents(caerModuleData moduleData) {
 					currentZoomFactor = VISUALIZER_ZOOM_MAX;
 				}
 
-				sshsNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
+				dvConfigNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
 			}
 			else if (event.type == sf::Event::MouseWheelScrolled && event.mouseWheelScroll.delta < 0) {
-				float currentZoomFactor = sshsNodeGetFloat(moduleData->moduleNode, "zoomFactor");
+				float currentZoomFactor = dvConfigNodeGetFloat(moduleData->moduleNode, "zoomFactor");
 
 				// Add because delta is negative for scroll-down.
 				currentZoomFactor += (VISUALIZER_ZOOM_INC * (float) event.mouseWheelScroll.delta);
@@ -690,7 +690,7 @@ static void handleEvents(caerModuleData moduleData) {
 					currentZoomFactor = VISUALIZER_ZOOM_MIN;
 				}
 
-				sshsNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
+				dvConfigNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
 			}
 			else {
 				// Forward event to user-defined event handler.
