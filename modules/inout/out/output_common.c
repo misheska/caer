@@ -1380,7 +1380,7 @@ bool caerOutputCommonInit(caerModuleData moduleData, int fileDescriptor, outputC
 	state->fileIO          = fileDescriptor;
 	state->networkIO       = streams;
 
-	// If in server mode, add SSHS attribute to track connected client IPs.
+	// If in server mode, add configuration attribute to track connected client IPs.
 	if (state->isNetworkStream && state->networkIO->server != NULL) {
 		dvConfigNodeCreateString(state->parentModule->moduleNode, "connectedClients", "", 0, INT32_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "IPs of clients currently connected to output server.");

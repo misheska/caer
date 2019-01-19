@@ -64,13 +64,15 @@ static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode) {
 	dvConfigNodeCreateAttributeListOptions(
 		moduleNode, "contrastType", "opencv_normalization,opencv_histogram_equalization,opencv_clahe,standard", false);
 #else
-	dvConfigNodeCreateString(moduleNode, "demosaicType", "standard", 7, 8, SSHS_FLAGS_NORMAL,
+    dvConfigNodeCreateString(moduleNode, "demosaicType", "standard", 7, 8, DVCFG_FLAGS_NORMAL,
 		"Demoisaicing (color interpolation) algorithm to apply.");
-	dvConfigNodeCreateAttributeListOptions(moduleNode, "demosaicType", "to_gray,standard", false);
+	dvConfigNodeCreateAttributeListOptions(
+		moduleNode, "demosaicType", "to_gray,standard", false);
 
-	dvConfigNodeCreateString(
-		moduleNode, "contrastType", "standard", 8, 8, SSHS_FLAGS_NORMAL, "Contrast enhancement algorithm to apply.");
-	dvConfigNodeCreateAttributeListOptions(moduleNode, "contrastType", "standard", false);
+	dvConfigNodeCreateString(moduleNode, "contrastType", "standard", 8, 8, DVCFG_FLAGS_NORMAL,
+		"Contrast enhancement algorithm to apply.");
+	dvConfigNodeCreateAttributeListOptions(
+		moduleNode, "contrastType", "standard", false);
 #endif
 }
 

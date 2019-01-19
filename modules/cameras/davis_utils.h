@@ -48,20 +48,20 @@ static void systemConfigListener(dvConfigNode node, void *userData, enum dvConfi
 static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-static union dvConfigAttributeValue statisticsUpdater(
-	void *userData, const char *key, enum dvConfigAttributeType type);
+static union dvConfigAttributeValue statisticsUpdater(void *userData, const char *key, enum dvConfigAttributeType type);
 static union dvConfigAttributeValue apsExposureUpdater(
 	void *userData, const char *key, enum dvConfigAttributeType type);
 
-static void createVDACBiasSetting(dvConfigNode biasNode, const char *biasName, uint8_t voltageValue, uint8_t currentValue);
+static void createVDACBiasSetting(
+	dvConfigNode biasNode, const char *biasName, uint8_t voltageValue, uint8_t currentValue);
 static uint16_t generateVDACBiasParent(dvConfigNode biasNode, const char *biasName);
 static uint16_t generateVDACBias(dvConfigNode biasNode);
-static void createCoarseFineBiasSetting(dvConfigNode biasNode, const char *biasName, uint8_t coarseValue, uint8_t fineValue,
-	bool enabled, const char *sex, const char *type);
+static void createCoarseFineBiasSetting(dvConfigNode biasNode, const char *biasName, uint8_t coarseValue,
+	uint8_t fineValue, bool enabled, const char *sex, const char *type);
 static uint16_t generateCoarseFineBiasParent(dvConfigNode biasNode, const char *biasName);
 static uint16_t generateCoarseFineBias(dvConfigNode biasNode);
-static void createShiftedSourceBiasSetting(dvConfigNode biasNode, const char *biasName, uint8_t refValue, uint8_t regValue,
-	const char *operatingMode, const char *voltageLevel);
+static void createShiftedSourceBiasSetting(dvConfigNode biasNode, const char *biasName, uint8_t refValue,
+	uint8_t regValue, const char *operatingMode, const char *voltageLevel);
 static uint16_t generateShiftedSourceBiasParent(dvConfigNode biasNode, const char *biasName);
 static uint16_t generateShiftedSourceBias(dvConfigNode biasNode);
 
@@ -127,7 +127,7 @@ static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davi
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_LOG, CAER_HOST_CONFIG_LOG_LEVEL,
 		atomic_load(&moduleData->moduleLogLevel));
 
-	// Put global source information into SSHS.
+	// Put global source information into config.
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 
 	dvConfigNodeCreateInt(sourceInfoNode, "firmwareVersion", devInfo->firmwareVersion, devInfo->firmwareVersion,
@@ -141,7 +141,8 @@ static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davi
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Timestamp synchronization support: device master status.");
 
 	dvConfigNodeCreateBool(sourceInfoNode, "muxHasStatistics", devInfo->muxHasStatistics,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device supports FPGA Multiplexer statistics (USB event drops).");
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
+		"Device supports FPGA Multiplexer statistics (USB event drops).");
 
 	dvConfigNodeCreateInt(sourceInfoNode, "polaritySizeX", devInfo->dvsSizeX, devInfo->dvsSizeX, devInfo->dvsSizeX,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Polarity events width.");
@@ -166,7 +167,8 @@ static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davi
 	dvConfigNodeCreateInt(sourceInfoNode, "frameSizeY", devInfo->apsSizeY, devInfo->apsSizeY, devInfo->apsSizeY,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Frame events height.");
 	dvConfigNodeCreateInt(sourceInfoNode, "apsColorFilter", I8T(devInfo->apsColorFilter), I8T(devInfo->apsColorFilter),
-		I8T(devInfo->apsColorFilter), DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "APS sensor color-filter pattern.");
+		I8T(devInfo->apsColorFilter), DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
+		"APS sensor color-filter pattern.");
 	dvConfigNodeCreateBool(sourceInfoNode, "apsHasGlobalShutter", devInfo->apsHasGlobalShutter,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "APS sensor supports global-shutter mode.");
 
@@ -384,10 +386,11 @@ static void createDefaultBiasConfiguration(caerModuleData moduleData, const char
 		"Turn off the integrate and fire calibration neuron (bias generator).");
 	dvConfigNodeCreateBool(chipNode, "TypeNCalibNeuron", false, DVCFG_FLAGS_NORMAL,
 		"Make the integrate and fire calibration neuron measure N-type biases; otherwise measures P-type biases.");
-	dvConfigNodeCreateBool(chipNode, "ResetTestPixel", true, DVCFG_FLAGS_NORMAL, "Keep the test pixel in reset (disabled).");
-	dvConfigNodeCreateBool(chipNode, "AERnArow", false, DVCFG_FLAGS_NORMAL, "Use nArow in the AER state machine.");
 	dvConfigNodeCreateBool(
-		chipNode, "UseAOut", false, DVCFG_FLAGS_NORMAL, "Enable analog pads for the analog debug multiplexers outputs.");
+		chipNode, "ResetTestPixel", true, DVCFG_FLAGS_NORMAL, "Keep the test pixel in reset (disabled).");
+	dvConfigNodeCreateBool(chipNode, "AERnArow", false, DVCFG_FLAGS_NORMAL, "Use nArow in the AER state machine.");
+	dvConfigNodeCreateBool(chipNode, "UseAOut", false, DVCFG_FLAGS_NORMAL,
+		"Enable analog pads for the analog debug multiplexers outputs.");
 
 	// No GlobalShutter flag here, it's controlled by the APS module's GS flag, and libcaer
 	// ensures that both the chip SR and the APS module flags are kept in sync.
@@ -457,36 +460,36 @@ static void createDefaultLogicConfiguration(
 	if (devInfo->dvsHasPixelFilter) {
 		dvConfigNodeCreateInt(dvsNode, "FilterPixel0Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, DVCFG_FLAGS_NORMAL,
 			"Row/Y address of pixel 0 to filter out.");
-		dvConfigNodeCreateInt(dvsNode, "FilterPixel0Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, DVCFG_FLAGS_NORMAL,
-			"Column/X address of pixel 0 to filter out.");
+		dvConfigNodeCreateInt(dvsNode, "FilterPixel0Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX,
+			DVCFG_FLAGS_NORMAL, "Column/X address of pixel 0 to filter out.");
 		dvConfigNodeCreateInt(dvsNode, "FilterPixel1Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, DVCFG_FLAGS_NORMAL,
 			"Row/Y address of pixel 1 to filter out.");
-		dvConfigNodeCreateInt(dvsNode, "FilterPixel1Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, DVCFG_FLAGS_NORMAL,
-			"Column/X address of pixel 1 to filter out.");
+		dvConfigNodeCreateInt(dvsNode, "FilterPixel1Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX,
+			DVCFG_FLAGS_NORMAL, "Column/X address of pixel 1 to filter out.");
 		dvConfigNodeCreateInt(dvsNode, "FilterPixel2Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, DVCFG_FLAGS_NORMAL,
 			"Row/Y address of pixel 2 to filter out.");
-		dvConfigNodeCreateInt(dvsNode, "FilterPixel2Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, DVCFG_FLAGS_NORMAL,
-			"Column/X address of pixel 2 to filter out.");
+		dvConfigNodeCreateInt(dvsNode, "FilterPixel2Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX,
+			DVCFG_FLAGS_NORMAL, "Column/X address of pixel 2 to filter out.");
 		dvConfigNodeCreateInt(dvsNode, "FilterPixel3Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, DVCFG_FLAGS_NORMAL,
 			"Row/Y address of pixel 3 to filter out.");
-		dvConfigNodeCreateInt(dvsNode, "FilterPixel3Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, DVCFG_FLAGS_NORMAL,
-			"Column/X address of pixel 3 to filter out.");
+		dvConfigNodeCreateInt(dvsNode, "FilterPixel3Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX,
+			DVCFG_FLAGS_NORMAL, "Column/X address of pixel 3 to filter out.");
 		dvConfigNodeCreateInt(dvsNode, "FilterPixel4Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, DVCFG_FLAGS_NORMAL,
 			"Row/Y address of pixel 4 to filter out.");
-		dvConfigNodeCreateInt(dvsNode, "FilterPixel4Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, DVCFG_FLAGS_NORMAL,
-			"Column/X address of pixel 4 to filter out.");
+		dvConfigNodeCreateInt(dvsNode, "FilterPixel4Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX,
+			DVCFG_FLAGS_NORMAL, "Column/X address of pixel 4 to filter out.");
 		dvConfigNodeCreateInt(dvsNode, "FilterPixel5Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, DVCFG_FLAGS_NORMAL,
 			"Row/Y address of pixel 5 to filter out.");
-		dvConfigNodeCreateInt(dvsNode, "FilterPixel5Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, DVCFG_FLAGS_NORMAL,
-			"Column/X address of pixel 5 to filter out.");
+		dvConfigNodeCreateInt(dvsNode, "FilterPixel5Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX,
+			DVCFG_FLAGS_NORMAL, "Column/X address of pixel 5 to filter out.");
 		dvConfigNodeCreateInt(dvsNode, "FilterPixel6Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, DVCFG_FLAGS_NORMAL,
 			"Row/Y address of pixel 6 to filter out.");
-		dvConfigNodeCreateInt(dvsNode, "FilterPixel6Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, DVCFG_FLAGS_NORMAL,
-			"Column/X address of pixel 6 to filter out.");
+		dvConfigNodeCreateInt(dvsNode, "FilterPixel6Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX,
+			DVCFG_FLAGS_NORMAL, "Column/X address of pixel 6 to filter out.");
 		dvConfigNodeCreateInt(dvsNode, "FilterPixel7Row", devInfo->dvsSizeY, 0, devInfo->dvsSizeY, DVCFG_FLAGS_NORMAL,
 			"Row/Y address of pixel 7 to filter out.");
-		dvConfigNodeCreateInt(dvsNode, "FilterPixel7Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX, DVCFG_FLAGS_NORMAL,
-			"Column/X address of pixel 7 to filter out.");
+		dvConfigNodeCreateInt(dvsNode, "FilterPixel7Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX,
+			DVCFG_FLAGS_NORMAL, "Column/X address of pixel 7 to filter out.");
 		dvConfigNodeCreateBool(dvsNode, "FilterPixelAutoTrain", false, DVCFG_FLAGS_NOTIFY_ONLY,
 			"Set hardware pixel filter up automatically using software hot-pixel detection.");
 	}
@@ -507,8 +510,8 @@ static void createDefaultLogicConfiguration(
 			"Column/X address of ROI filter start point.");
 		dvConfigNodeCreateInt(dvsNode, "FilterROIStartRow", 0, 0, I16T(devInfo->dvsSizeY - 1), DVCFG_FLAGS_NORMAL,
 			"Row/Y address of ROI filter start point.");
-		dvConfigNodeCreateInt(dvsNode, "FilterROIEndColumn", I16T(devInfo->dvsSizeX - 1), 0, I16T(devInfo->dvsSizeX - 1),
-			DVCFG_FLAGS_NORMAL, "Column/X address of ROI filter end point.");
+		dvConfigNodeCreateInt(dvsNode, "FilterROIEndColumn", I16T(devInfo->dvsSizeX - 1), 0,
+			I16T(devInfo->dvsSizeX - 1), DVCFG_FLAGS_NORMAL, "Column/X address of ROI filter end point.");
 		dvConfigNodeCreateInt(dvsNode, "FilterROIEndRow", I16T(devInfo->dvsSizeY - 1), 0, I16T(devInfo->dvsSizeY - 1),
 			DVCFG_FLAGS_NORMAL, "Row/Y address of ROI filter end point.");
 	}
@@ -550,9 +553,9 @@ static void createDefaultLogicConfiguration(
 	dvConfigNodeCreateInt(apsNode, "EndRow0", I16T(devInfo->apsSizeY - 1), 0, I16T(devInfo->apsSizeY - 1),
 		DVCFG_FLAGS_NORMAL, "Row/Y address of ROI 0 end point.");
 
-	dvConfigNodeCreateInt(apsNode, "Exposure", 4000, 0, (0x01 << 22) - 1, DVCFG_FLAGS_NORMAL, "Set exposure time (in µs).");
-	// Initialize exposure in backend (libcaer), so that read-modifier that bypasses SSHS to access
-	// libcaer directly will read the correct value.
+	dvConfigNodeCreateInt(
+		apsNode, "Exposure", 4000, 0, (0x01 << 22) - 1, DVCFG_FLAGS_NORMAL, "Set exposure time (in µs).");
+	// Initialize exposure in backend (libcaer), so that value is synchronized with it.
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE,
 		U32T(dvConfigNodeGetInt(apsNode, "Exposure")));
 	dvConfigNodeAttributeUpdaterAdd(apsNode, "Exposure", DVCFG_TYPE_INT, &apsExposureUpdater, moduleData->moduleState);
@@ -578,7 +581,8 @@ static void createDefaultLogicConfiguration(
 			apsNode, "GSPDResetTime", 1000, 0, (60 * 128), DVCFG_FLAGS_NORMAL, "GS counter 0 (in cycles).");
 		dvConfigNodeCreateInt(
 			apsNode, "GSResetFallTime", 1000, 0, (60 * 128), DVCFG_FLAGS_NORMAL, "GS counter 1 (in cycles).");
-		dvConfigNodeCreateInt(apsNode, "GSTXFallTime", 1000, 0, (60 * 128), DVCFG_FLAGS_NORMAL, "GS counter 3 (in cycles).");
+		dvConfigNodeCreateInt(
+			apsNode, "GSTXFallTime", 1000, 0, (60 * 128), DVCFG_FLAGS_NORMAL, "GS counter 3 (in cycles).");
 		dvConfigNodeCreateInt(
 			apsNode, "GSFDResetTime", 1000, 0, (60 * 128), DVCFG_FLAGS_NORMAL, "GS counter 4 (in cycles).");
 	}
@@ -590,7 +594,8 @@ static void createDefaultLogicConfiguration(
 		dvConfigNodeCreateBool(imuNode, "RunAccel", true, DVCFG_FLAGS_NORMAL, "Enable IMU accelerometer.");
 		dvConfigNodeCreateBool(imuNode, "RunGyro", true, DVCFG_FLAGS_NORMAL, "Enable IMU gyroscope.");
 		dvConfigNodeCreateBool(imuNode, "RunTemp", true, DVCFG_FLAGS_NORMAL, "Enable IMU temperature sensor.");
-		dvConfigNodeCreateInt(imuNode, "SampleRateDivider", 0, 0, 255, DVCFG_FLAGS_NORMAL, "Sample-rate divider value.");
+		dvConfigNodeCreateInt(
+			imuNode, "SampleRateDivider", 0, 0, 255, DVCFG_FLAGS_NORMAL, "Sample-rate divider value.");
 
 		if (devInfo->imuType == 2) {
 			// InvenSense MPU 9250 IMU.
@@ -605,7 +610,8 @@ static void createDefaultLogicConfiguration(
 				"Accelerometer/Gyroscope digital low-pass filter configuration.");
 		}
 
-		dvConfigNodeCreateInt(imuNode, "AccelFullScale", 1, 0, 3, DVCFG_FLAGS_NORMAL, "Accelerometer scale configuration.");
+		dvConfigNodeCreateInt(
+			imuNode, "AccelFullScale", 1, 0, 3, DVCFG_FLAGS_NORMAL, "Accelerometer scale configuration.");
 		dvConfigNodeCreateInt(imuNode, "GyroFullScale", 1, 0, 3, DVCFG_FLAGS_NORMAL, "Gyroscope scale configuration.");
 	}
 
@@ -617,14 +623,16 @@ static void createDefaultLogicConfiguration(
 		extNode, "DetectRisingEdges", false, DVCFG_FLAGS_NORMAL, "Emit special event if a rising edge is detected.");
 	dvConfigNodeCreateBool(
 		extNode, "DetectFallingEdges", false, DVCFG_FLAGS_NORMAL, "Emit special event if a falling edge is detected.");
-	dvConfigNodeCreateBool(extNode, "DetectPulses", true, DVCFG_FLAGS_NORMAL, "Emit special event if a pulse is detected.");
+	dvConfigNodeCreateBool(
+		extNode, "DetectPulses", true, DVCFG_FLAGS_NORMAL, "Emit special event if a pulse is detected.");
 	dvConfigNodeCreateBool(
 		extNode, "DetectPulsePolarity", true, DVCFG_FLAGS_NORMAL, "Polarity of the pulse to be detected.");
 	dvConfigNodeCreateInt(extNode, "DetectPulseLength", 10, 1, ((0x01 << 20) - 1), DVCFG_FLAGS_NORMAL,
 		"Minimal length of the pulse to be detected (in µs).");
 
 	if (devInfo->extInputHasGenerator) {
-		dvConfigNodeCreateBool(extNode, "RunGenerator", false, DVCFG_FLAGS_NORMAL, "Enable signal generator (PWM-like).");
+		dvConfigNodeCreateBool(
+			extNode, "RunGenerator", false, DVCFG_FLAGS_NORMAL, "Enable signal generator (PWM-like).");
 		dvConfigNodeCreateBool(
 			extNode, "GeneratePulsePolarity", true, DVCFG_FLAGS_NORMAL, "Polarity of the generated pulse.");
 		dvConfigNodeCreateInt(extNode, "GeneratePulseInterval", 10, 1, ((0x01 << 20) - 1), DVCFG_FLAGS_NORMAL,
@@ -641,13 +649,15 @@ static void createDefaultLogicConfiguration(
 	if (devInfo->muxHasStatistics) {
 		dvConfigNode statNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "statistics/");
 
-		dvConfigNodeCreateLong(statNode, "muxDroppedExtInput", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-			"Number of dropped External Input events due to USB full.");
-		dvConfigNodeAttributeUpdaterAdd(statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeCreateLong(statNode, "muxDroppedExtInput", 0, 0, INT64_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped External Input events due to USB full.");
+		dvConfigNodeAttributeUpdaterAdd(
+			statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
-		dvConfigNodeCreateLong(statNode, "muxDroppedDVS", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-			"Number of dropped DVS events due to USB full.");
-		dvConfigNodeAttributeUpdaterAdd(statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeCreateLong(statNode, "muxDroppedDVS", 0, 0, INT64_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped DVS events due to USB full.");
+		dvConfigNodeAttributeUpdaterAdd(
+			statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 	}
 
 	if (devInfo->dvsHasStatistics) {
@@ -655,15 +665,18 @@ static void createDefaultLogicConfiguration(
 
 		dvConfigNodeCreateLong(statNode, "dvsEventsRow", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 			"Number of row events handled.");
-		dvConfigNodeAttributeUpdaterAdd(statNode, "dvsEventsRow", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeAttributeUpdaterAdd(
+			statNode, "dvsEventsRow", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
-		dvConfigNodeCreateLong(statNode, "dvsEventsColumn", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-			"Number of column events handled.");
-		dvConfigNodeAttributeUpdaterAdd(statNode, "dvsEventsColumn", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeCreateLong(statNode, "dvsEventsColumn", 0, 0, INT64_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of column events handled.");
+		dvConfigNodeAttributeUpdaterAdd(
+			statNode, "dvsEventsColumn", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
-		dvConfigNodeCreateLong(statNode, "dvsEventsDropped", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-			"Number of dropped events (groups of events).");
-		dvConfigNodeAttributeUpdaterAdd(statNode, "dvsEventsDropped", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeCreateLong(statNode, "dvsEventsDropped", 0, 0, INT64_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped events (groups of events).");
+		dvConfigNodeAttributeUpdaterAdd(
+			statNode, "dvsEventsDropped", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		if (devInfo->dvsHasPixelFilter) {
 			dvConfigNodeCreateLong(statNode, "dvsFilteredPixel", 0, 0, INT64_MAX,
@@ -673,9 +686,11 @@ static void createDefaultLogicConfiguration(
 		}
 
 		if (devInfo->dvsHasBackgroundActivityFilter) {
-			dvConfigNodeCreateLong(statNode, "dvsFilteredBA", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
+			dvConfigNodeCreateLong(statNode, "dvsFilteredBA", 0, 0, INT64_MAX,
+				DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 				"Number of events filtered out by the Background Activity Filter.");
-			dvConfigNodeAttributeUpdaterAdd(statNode, "dvsFilteredBA", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			dvConfigNodeAttributeUpdaterAdd(
+				statNode, "dvsFilteredBA", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 			dvConfigNodeCreateLong(statNode, "dvsFilteredRefractory", 0, 0, INT64_MAX,
 				DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
@@ -1292,8 +1307,8 @@ static void chipConfigSend(dvConfigNode node, caerModuleData moduleData, struct 
 		dvConfigNodeGetBool(node, "TypeNCalibNeuron"));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_RESETTESTPIXEL,
 		dvConfigNodeGetBool(node, "ResetTestPixel"));
-	caerDeviceConfigSet(
-		moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_AERNAROW, dvConfigNodeGetBool(node, "AERnArow"));
+	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_AERNAROW,
+		dvConfigNodeGetBool(node, "AERnArow"));
 	caerDeviceConfigSet(
 		moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_USEAOUT, dvConfigNodeGetBool(node, "UseAOut"));
 
@@ -1309,8 +1324,8 @@ static void chipConfigSend(dvConfigNode node, caerModuleData moduleData, struct 
 	}
 
 	if (IS_DAVIS346(devInfo->chipID) || IS_DAVIS640(devInfo->chipID) || IS_DAVIS640H(devInfo->chipID)) {
-		caerDeviceConfigSet(
-			moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS346_CONFIG_CHIP_TESTADC, dvConfigNodeGetBool(node, "TestADC"));
+		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS346_CONFIG_CHIP_TESTADC,
+			dvConfigNodeGetBool(node, "TestADC"));
 	}
 
 	if (IS_DAVIS208(devInfo->chipID)) {
@@ -1464,7 +1479,8 @@ static void muxConfigSend(dvConfigNode node, caerModuleData moduleData) {
 		moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_RUN_CHIP, dvConfigNodeGetBool(node, "RunChip"));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_TIMESTAMP_RUN,
 		dvConfigNodeGetBool(node, "TimestampRun"));
-	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_RUN, dvConfigNodeGetBool(node, "Run"));
+	caerDeviceConfigSet(
+		moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_RUN, dvConfigNodeGetBool(node, "Run"));
 }
 
 static void muxConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -1581,7 +1597,8 @@ static void dvsConfigSend(dvConfigNode node, caerModuleData moduleData, struct c
 			dvConfigNodeGetBool(node, "FilterPolaritySuppressType"));
 	}
 
-	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_RUN, dvConfigNodeGetBool(node, "Run"));
+	caerDeviceConfigSet(
+		moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_RUN, dvConfigNodeGetBool(node, "Run"));
 }
 
 static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -1752,11 +1769,11 @@ static void apsConfigSend(dvConfigNode node, caerModuleData moduleData, struct c
 		U32T(dvConfigNodeGetInt(node, "StartRow0")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_END_COLUMN_0,
 		U32T(dvConfigNodeGetInt(node, "EndColumn0")));
-	caerDeviceConfigSet(
-		moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_END_ROW_0, U32T(dvConfigNodeGetInt(node, "EndRow0")));
+	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_END_ROW_0,
+		U32T(dvConfigNodeGetInt(node, "EndRow0")));
 
-	caerDeviceConfigSet(
-		moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE, U32T(dvConfigNodeGetInt(node, "Exposure")));
+	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE,
+		U32T(dvConfigNodeGetInt(node, "Exposure")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_FRAME_INTERVAL,
 		U32T(dvConfigNodeGetInt(node, "FrameInterval")));
 
@@ -1784,7 +1801,8 @@ static void apsConfigSend(dvConfigNode node, caerModuleData moduleData, struct c
 		moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_FRAME_MODE, parseAPSFrameMode(frameModeStr));
 	free(frameModeStr);
 
-	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_RUN, dvConfigNodeGetBool(node, "Run"));
+	caerDeviceConfigSet(
+		moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_RUN, dvConfigNodeGetBool(node, "Run"));
 }
 
 static void apsConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -1966,7 +1984,8 @@ static void extInputConfigSend(dvConfigNode node, caerModuleData moduleData, str
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_EXTINPUT, DAVIS_CONFIG_EXTINPUT_GENERATE_PULSE_LENGTH,
 			U32T(dvConfigNodeGetInt(node, "GeneratePulseLength")));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_EXTINPUT,
-			DAVIS_CONFIG_EXTINPUT_GENERATE_INJECT_ON_RISING_EDGE, dvConfigNodeGetBool(node, "GenerateInjectOnRisingEdge"));
+			DAVIS_CONFIG_EXTINPUT_GENERATE_INJECT_ON_RISING_EDGE,
+			dvConfigNodeGetBool(node, "GenerateInjectOnRisingEdge"));
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_EXTINPUT,
 			DAVIS_CONFIG_EXTINPUT_GENERATE_INJECT_ON_FALLING_EDGE,
 			dvConfigNodeGetBool(node, "GenerateInjectOnFallingEdge"));
@@ -2035,7 +2054,8 @@ static void extInputConfigListener(dvConfigNode node, void *userData, enum dvCon
 
 static void systemConfigSend(dvConfigNode node, caerModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
-		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_PACKET_SIZE, U32T(dvConfigNodeGetInt(node, "PacketContainerMaxPacketSize")));
+		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_PACKET_SIZE,
+		U32T(dvConfigNodeGetInt(node, "PacketContainerMaxPacketSize")));
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
 		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL, U32T(dvConfigNodeGetInt(node, "PacketContainerInterval")));
 
@@ -2078,7 +2098,7 @@ static union dvConfigAttributeValue statisticsUpdater(
 	void *userData, const char *key, enum dvConfigAttributeType type) {
 	UNUSED_ARGUMENT(type); // We know all statistics are always LONG.
 
-	caerDeviceHandle handle                   = userData;
+	caerDeviceHandle handle                     = userData;
 	union dvConfigAttributeValue statisticValue = {.ilong = 0};
 
 	if (caerStrEquals(key, "muxDroppedExtInput")) {
@@ -2122,7 +2142,7 @@ static union dvConfigAttributeValue apsExposureUpdater(
 	UNUSED_ARGUMENT(key);  // This is for the Exposure key only.
 	UNUSED_ARGUMENT(type); // We know Exposure is always INT.
 
-	caerDeviceHandle handle                         = userData;
+	caerDeviceHandle handle                           = userData;
 	union dvConfigAttributeValue currentExposureValue = {.iint = 0};
 
 	caerDeviceConfigGet(handle, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE, (uint32_t *) &currentExposureValue.iint);
@@ -2130,7 +2150,8 @@ static union dvConfigAttributeValue apsExposureUpdater(
 	return (currentExposureValue);
 }
 
-static void createVDACBiasSetting(dvConfigNode biasNode, const char *biasName, uint8_t voltageValue, uint8_t currentValue) {
+static void createVDACBiasSetting(
+	dvConfigNode biasNode, const char *biasName, uint8_t voltageValue, uint8_t currentValue) {
 	// Add trailing slash to node name (required!).
 	size_t biasNameLength = strlen(biasName);
 	char biasNameFull[biasNameLength + 2];
@@ -2144,8 +2165,8 @@ static void createVDACBiasSetting(dvConfigNode biasNode, const char *biasName, u
 	// Add bias settings.
 	dvConfigNodeCreateInt(biasConfigNode, "voltageValue", I8T(voltageValue), 0, 63, DVCFG_FLAGS_NORMAL,
 		"Voltage, as a fraction of 1/64th of VDD=3.3V.");
-	dvConfigNodeCreateInt(
-		biasConfigNode, "currentValue", I8T(currentValue), 0, 7, DVCFG_FLAGS_NORMAL, "Current that drives the voltage.");
+	dvConfigNodeCreateInt(biasConfigNode, "currentValue", I8T(currentValue), 0, 7, DVCFG_FLAGS_NORMAL,
+		"Current that drives the voltage.");
 }
 
 static uint16_t generateVDACBiasParent(dvConfigNode biasNode, const char *biasName) {
@@ -2172,8 +2193,8 @@ static uint16_t generateVDACBias(dvConfigNode biasNode) {
 	return (caerBiasVDACGenerate(biasValue));
 }
 
-static void createCoarseFineBiasSetting(dvConfigNode biasNode, const char *biasName, uint8_t coarseValue, uint8_t fineValue,
-	bool enabled, const char *sex, const char *type) {
+static void createCoarseFineBiasSetting(dvConfigNode biasNode, const char *biasName, uint8_t coarseValue,
+	uint8_t fineValue, bool enabled, const char *sex, const char *type) {
 	// Add trailing slash to node name (required!).
 	size_t biasNameLength = strlen(biasName);
 	char biasNameFull[biasNameLength + 2];
@@ -2235,8 +2256,8 @@ static uint16_t generateCoarseFineBias(dvConfigNode biasNode) {
 	return (caerBiasCoarseFineGenerate(biasValue));
 }
 
-static void createShiftedSourceBiasSetting(dvConfigNode biasNode, const char *biasName, uint8_t refValue, uint8_t regValue,
-	const char *operatingMode, const char *voltageLevel) {
+static void createShiftedSourceBiasSetting(dvConfigNode biasNode, const char *biasName, uint8_t refValue,
+	uint8_t regValue, const char *operatingMode, const char *voltageLevel) {
 	// Add trailing slash to node name (required!).
 	size_t biasNameLength = strlen(biasName);
 	char biasNameFull[biasNameLength + 2];

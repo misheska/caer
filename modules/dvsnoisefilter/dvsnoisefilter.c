@@ -215,7 +215,7 @@ static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, en
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "hotPixelLearn")
 		&& changeValue.boolean) {
-		// Button-like, NOTIFY_ONLY SSHS configuration parameters need special
+		// Button-like, NOTIFY_ONLY configuration parameters need special
 		// handling as only the change is delivered, so we have to listen for
 		// it directly. The usual Config mechanism doesn't work, as Get()
 		// would always return false.

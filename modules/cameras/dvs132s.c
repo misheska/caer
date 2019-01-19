@@ -127,7 +127,7 @@ static bool caerInputDVS132SInit(caerModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_LOG, CAER_HOST_CONFIG_LOG_LEVEL,
 		atomic_load(&moduleData->moduleLogLevel));
 
-	// Put global source information into SSHS.
+	// Put global source information into config.
 	struct caer_dvs132s_info devInfo = caerDVS132SInfoGet(moduleData->moduleState);
 
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");

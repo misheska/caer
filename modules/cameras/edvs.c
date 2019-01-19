@@ -10,7 +10,7 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode);
 static bool caerInputEDVSInit(caerModuleData moduleData);
 static void caerInputEDVSRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 // CONFIG: Nothing to do here in the main thread!
-// All configuration is asynchronous through SSHS listeners.
+// All configuration is asynchronous through config listeners.
 static void caerInputEDVSExit(caerModuleData moduleData);
 
 static const struct caer_module_functions EDVSFunctions = {.moduleConfigInit = &caerInputEDVSConfigInit,
@@ -131,7 +131,7 @@ static bool caerInputEDVSInit(caerModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_LOG, CAER_HOST_CONFIG_LOG_LEVEL,
 		atomic_load(&moduleData->moduleLogLevel));
 
-	// Put global source information into SSHS.
+	// Put global source information into config.
 	struct caer_edvs_info devInfo = caerEDVSInfoGet(moduleData->moduleState);
 
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
