@@ -68,7 +68,7 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
 		moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL, "Automatically restart module after shutdown.");
 
 	// Set default biases, from EDVSFast.xml settings.
-	dvConfigNode biasNode = sshsGetRelativeNode(moduleNode, "bias/");
+	dvConfigNode biasNode = sshsNodeGetRelativeNode(moduleNode, "bias/");
 	sshsNodeCreateInt(biasNode, "cas", 1992, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Photoreceptor cascode.");
 	sshsNodeCreateInt(
 		biasNode, "injGnd", 1108364, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Differentiator switch level.");
@@ -89,16 +89,16 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
 	sshsNodeCreateInt(biasNode, "pr", 217, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Photoreceptor.");
 
 	// DVS settings.
-	dvConfigNode dvsNode = sshsGetRelativeNode(moduleNode, "dvs/");
+	dvConfigNode dvsNode = sshsNodeGetRelativeNode(moduleNode, "dvs/");
 	sshsNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Run DVS to get polarity events.");
 	sshsNodeCreateBool(dvsNode, "TimestampReset", false, DVCFG_FLAGS_NOTIFY_ONLY, "Reset timestamps to zero.");
 
 	// Serial communication buffer settings.
-	dvConfigNode serialNode = sshsGetRelativeNode(moduleNode, "serial/");
+	dvConfigNode serialNode = sshsNodeGetRelativeNode(moduleNode, "serial/");
 	sshsNodeCreateInt(serialNode, "ReadSize", 1024, 128, 32768, DVCFG_FLAGS_NORMAL,
 		"Size in bytes of data buffer for serial port read operations.");
 
-	dvConfigNode sysNode = sshsGetRelativeNode(moduleNode, "system/");
+	dvConfigNode sysNode = sshsNodeGetRelativeNode(moduleNode, "system/");
 
 	// Packet settings (size (in events) and time interval (in µs)).
 	sshsNodeCreateInt(sysNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024, DVCFG_FLAGS_NORMAL,
@@ -134,7 +134,7 @@ static bool caerInputEDVSInit(caerModuleData moduleData) {
 	// Put global source information into SSHS.
 	struct caer_edvs_info devInfo = caerEDVSInfoGet(moduleData->moduleState);
 
-	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 
 	sshsNodeCreateBool(sourceInfoNode, "deviceIsMaster", devInfo.deviceIsMaster,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Timestamp synchronization support: device master status.");
@@ -185,16 +185,16 @@ static bool caerInputEDVSInit(caerModuleData moduleData) {
 	}
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNode biasNode = sshsGetRelativeNode(moduleData->moduleNode, "bias/");
+	dvConfigNode biasNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "bias/");
 	sshsNodeAddAttributeListener(biasNode, moduleData, &biasConfigListener);
 
-	dvConfigNode dvsNode = sshsGetRelativeNode(moduleData->moduleNode, "dvs/");
+	dvConfigNode dvsNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "dvs/");
 	sshsNodeAddAttributeListener(dvsNode, moduleData, &dvsConfigListener);
 
-	dvConfigNode serialNode = sshsGetRelativeNode(moduleData->moduleNode, "serial/");
+	dvConfigNode serialNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "serial/");
 	sshsNodeAddAttributeListener(serialNode, moduleData, &serialConfigListener);
 
-	dvConfigNode sysNode = sshsGetRelativeNode(moduleData->moduleNode, "system/");
+	dvConfigNode sysNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "system/");
 	sshsNodeAddAttributeListener(sysNode, moduleData, &systemConfigListener);
 
 	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
@@ -206,16 +206,16 @@ static void caerInputEDVSExit(caerModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
 
-	dvConfigNode biasNode = sshsGetRelativeNode(moduleData->moduleNode, "bias/");
+	dvConfigNode biasNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "bias/");
 	sshsNodeRemoveAttributeListener(biasNode, moduleData, &biasConfigListener);
 
-	dvConfigNode dvsNode = sshsGetRelativeNode(moduleData->moduleNode, "dvs/");
+	dvConfigNode dvsNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "dvs/");
 	sshsNodeRemoveAttributeListener(dvsNode, moduleData, &dvsConfigListener);
 
-	dvConfigNode serialNode = sshsGetRelativeNode(moduleData->moduleNode, "serial/");
+	dvConfigNode serialNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "serial/");
 	sshsNodeRemoveAttributeListener(serialNode, moduleData, &serialConfigListener);
 
-	dvConfigNode sysNode = sshsGetRelativeNode(moduleData->moduleNode, "system/");
+	dvConfigNode sysNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "system/");
 	sshsNodeRemoveAttributeListener(sysNode, moduleData, &systemConfigListener);
 
 	caerDeviceDataStop(moduleData->moduleState);
@@ -223,7 +223,7 @@ static void caerInputEDVSExit(caerModuleData moduleData) {
 	caerDeviceClose((caerDeviceHandle *) &moduleData->moduleState);
 
 	// Clear sourceInfo node.
-	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	sshsNodeRemoveAllAttributes(sourceInfoNode);
 
 	if (sshsNodeGetBool(moduleData->moduleNode, "autoRestart")) {
@@ -251,10 +251,10 @@ static void caerInputEDVSRun(caerModuleData moduleData, caerEventPacketContainer
 
 static void sendDefaultConfiguration(caerModuleData moduleData) {
 	// Send cAER configuration to libcaer and device.
-	biasConfigSend(sshsGetRelativeNode(moduleData->moduleNode, "bias/"), moduleData);
-	systemConfigSend(sshsGetRelativeNode(moduleData->moduleNode, "system/"), moduleData);
-	serialConfigSend(sshsGetRelativeNode(moduleData->moduleNode, "serial/"), moduleData);
-	dvsConfigSend(sshsGetRelativeNode(moduleData->moduleNode, "dvs/"), moduleData);
+	biasConfigSend(sshsNodeGetRelativeNode(moduleData->moduleNode, "bias/"), moduleData);
+	systemConfigSend(sshsNodeGetRelativeNode(moduleData->moduleNode, "system/"), moduleData);
+	serialConfigSend(sshsNodeGetRelativeNode(moduleData->moduleNode, "serial/"), moduleData);
+	dvsConfigSend(sshsNodeGetRelativeNode(moduleData->moduleNode, "dvs/"), moduleData);
 }
 
 static void moduleShutdownNotify(void *p) {

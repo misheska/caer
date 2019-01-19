@@ -23,7 +23,7 @@ static void caerLogLevelListener(dvConfigNode node, void *userData, enum dvConfi
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 void caerLogInit(void) {
-	logNode = dvCfg::Tree::getGlobal().getNode("/caer/logger/");
+	logNode = dvCfg::Tree::globalTree().getNode("/caer/logger/");
 
 	// Ensure default log file and value are present.
 	char *userHome                       = portable_get_user_home_directory();
@@ -67,7 +67,7 @@ void caerLogInit(void) {
 
 	// Now that config is initialized (has to be!) and logging too, we can
 	// set the ConfigTree logger to use our internal logger too.
-	sshsSetGlobalErrorLogCallback(&caerLogConfigLogger);
+	dvConfigTreeErrorLogCallbackSet(&caerLogConfigLogger);
 
 	// Log sub-system initialized fully and correctly, log this.
 	caerLog(CAER_LOG_DEBUG, "Logger", "Started with log file '%s', log-level %d.", logFile.c_str(), logLevel);

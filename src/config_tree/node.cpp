@@ -671,7 +671,7 @@ void sshsNodeRemoveAllAttributes(dvConfigNode node) {
 	node->removeAllAttributes();
 }
 
-bool sshsNodeAttributeExists(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
+bool sshsNodeExistsAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
 	return (node->attributeExists(key, type));
 }
 
@@ -875,7 +875,7 @@ static bool sshsNodeToXML(dvConfigNode node, int fd, bool recursive) {
 	}
 	catch (const boost::property_tree::xml_parser_error &ex) {
 		const std::string errorMsg = std::string("Failed to write XML to output stream. Exception: ") + ex.what();
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str(), false);
+		(*dvConfigTreeErrorLogCallbackGet())(errorMsg.c_str(), false);
 		return (false);
 	}
 
@@ -968,7 +968,7 @@ static bool sshsNodeFromXML(dvConfigNode node, int fd, bool recursive, bool stri
 	}
 	catch (const boost::property_tree::xml_parser_error &ex) {
 		const std::string errorMsg = std::string("Failed to load XML from input stream. Exception: ") + ex.what();
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str(), false);
+		(*dvConfigTreeErrorLogCallbackGet())(errorMsg.c_str(), false);
 		return (false);
 	}
 
@@ -981,14 +981,14 @@ static bool sshsNodeFromXML(dvConfigNode node, int fd, bool recursive, bool stri
 	}
 	catch (const boost::property_tree::ptree_error &ex) {
 		const std::string errorMsg = std::string("Invalid XML content. Exception: ") + ex.what();
-		(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str(), false);
+		(*dvConfigTreeErrorLogCallbackGet())(errorMsg.c_str(), false);
 		return (false);
 	}
 
 	auto root = sshsNodeXMLFilterChildNodes(xmlTree.get_child("sshs"), "node");
 
 	if (root.size() != 1) {
-		(*sshsGetGlobalErrorLogCallback())("Multiple or no root child nodes present.", false);
+		(*dvConfigTreeErrorLogCallbackGet())("Multiple or no root child nodes present.", false);
 		return (false);
 	}
 
@@ -1005,7 +1005,7 @@ static bool sshsNodeFromXML(dvConfigNode node, int fd, bool recursive, bool stri
 		}
 		catch (const boost::property_tree::ptree_error &ex) {
 			const std::string errorMsg = std::string("Invalid root node. Exception: ") + ex.what();
-			(*sshsGetGlobalErrorLogCallback())(errorMsg.c_str(), false);
+			(*dvConfigTreeErrorLogCallbackGet())(errorMsg.c_str(), false);
 			return (false);
 		}
 	}

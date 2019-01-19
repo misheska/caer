@@ -395,11 +395,11 @@ static bool initRenderSize(caerModuleData moduleData) {
 
 		// Get sizes from sourceInfo node. visualizer prefix takes precedence,
 		// then generic data visualization size.
-		if (sshsNodeAttributeExists(sourceInfoNode, "visualizerSizeX", DVCFG_TYPE_INT)) {
+		if (sshsNodeExistsAttribute(sourceInfoNode, "visualizerSizeX", DVCFG_TYPE_INT)) {
 			packetSizeX = U32T(sshsNodeGetInt(sourceInfoNode, "visualizerSizeX"));
 			packetSizeY = U32T(sshsNodeGetInt(sourceInfoNode, "visualizerSizeY"));
 		}
-		else if (sshsNodeAttributeExists(sourceInfoNode, "dataSizeX", DVCFG_TYPE_INT)) {
+		else if (sshsNodeExistsAttribute(sourceInfoNode, "dataSizeX", DVCFG_TYPE_INT)) {
 			packetSizeX = U32T(sshsNodeGetInt(sourceInfoNode, "dataSizeX"));
 			packetSizeY = U32T(sshsNodeGetInt(sourceInfoNode, "dataSizeY"));
 		}

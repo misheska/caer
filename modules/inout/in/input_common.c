@@ -1869,7 +1869,7 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 	inputCommonState state = moduleData->moduleState;
 
 	state->parentModule   = moduleData;
-	state->sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	state->sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 
 	// Check for invalid file descriptors.
 	if (readFd < -1) {
@@ -2085,7 +2085,7 @@ void caerInputCommonExit(caerModuleData moduleData) {
 	free(state->packets.currPacket);
 
 	// Clear sourceInfo node.
-	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	sshsNodeRemoveAllAttributes(sourceInfoNode);
 
 	if (sshsNodeGetBool(moduleData->moduleNode, "autoRestart")) {

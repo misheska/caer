@@ -108,7 +108,7 @@ static inline const char *chipIDToName(int16_t chipID, bool withEndSlash) {
 }
 
 static void caerInputDAVISCommonSystemConfigInit(dvConfigNode moduleNode) {
-	dvConfigNode sysNode = sshsGetRelativeNode(moduleNode, "system/");
+	dvConfigNode sysNode = sshsNodeGetRelativeNode(moduleNode, "system/");
 
 	// Packet settings (size (in events) and time interval (in µs)).
 	sshsNodeCreateInt(sysNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024, DVCFG_FLAGS_NORMAL,
@@ -128,7 +128,7 @@ static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davi
 		atomic_load(&moduleData->moduleLogLevel));
 
 	// Put global source information into SSHS.
-	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 
 	sshsNodeCreateInt(sourceInfoNode, "firmwareVersion", devInfo->firmwareVersion, devInfo->firmwareVersion,
 		devInfo->firmwareVersion, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device firmware version.");
@@ -223,7 +223,7 @@ static void caerInputDAVISCommonRun(
 			// Update master/slave information.
 			struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 
-			dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+			dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 			sshsNodeUpdateReadOnlyAttribute(sourceInfoNode, "deviceIsMaster", DVCFG_TYPE_BOOL,
 				(union dvConfigAttributeValue){.boolean = devInfo.deviceIsMaster});
 		}
@@ -239,10 +239,10 @@ static void moduleShutdownNotify(void *p) {
 
 static void createDefaultBiasConfiguration(caerModuleData moduleData, const char *nodePrefix, int16_t chipID) {
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = sshsGetRelativeNode(moduleData->moduleNode, nodePrefix);
+	dvConfigNode deviceConfigNode = sshsNodeGetRelativeNode(moduleData->moduleNode, nodePrefix);
 
 	// Chip biases, based on testing defaults.
-	dvConfigNode biasNode = sshsGetRelativeNode(deviceConfigNode, "bias/");
+	dvConfigNode biasNode = sshsNodeGetRelativeNode(deviceConfigNode, "bias/");
 
 	if (IS_DAVIS240(chipID)) {
 		createCoarseFineBiasSetting(biasNode, "DiffBn", 4, 39, true, "N", "Normal");
@@ -369,7 +369,7 @@ static void createDefaultBiasConfiguration(caerModuleData moduleData, const char
 	}
 
 	// Chip configuration shift register.
-	dvConfigNode chipNode = sshsGetRelativeNode(deviceConfigNode, "chip/");
+	dvConfigNode chipNode = sshsNodeGetRelativeNode(deviceConfigNode, "chip/");
 
 	sshsNodeCreateInt(chipNode, "DigitalMux0", 0, 0, 15, DVCFG_FLAGS_NORMAL, "Digital debug multiplexer 0.");
 	sshsNodeCreateInt(chipNode, "DigitalMux1", 0, 0, 15, DVCFG_FLAGS_NORMAL, "Digital debug multiplexer 1.");
@@ -431,10 +431,10 @@ static void createDefaultBiasConfiguration(caerModuleData moduleData, const char
 static void createDefaultLogicConfiguration(
 	caerModuleData moduleData, const char *nodePrefix, struct caer_davis_info *devInfo) {
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = sshsGetRelativeNode(moduleData->moduleNode, nodePrefix);
+	dvConfigNode deviceConfigNode = sshsNodeGetRelativeNode(moduleData->moduleNode, nodePrefix);
 
 	// Subsystem 0: Multiplexer
-	dvConfigNode muxNode = sshsGetRelativeNode(deviceConfigNode, "multiplexer/");
+	dvConfigNode muxNode = sshsNodeGetRelativeNode(deviceConfigNode, "multiplexer/");
 
 	sshsNodeCreateBool(muxNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable multiplexer state machine.");
 	sshsNodeCreateBool(muxNode, "TimestampRun", true, DVCFG_FLAGS_NORMAL, "Enable µs-timestamp generation.");
@@ -446,7 +446,7 @@ static void createDefaultLogicConfiguration(
 		muxNode, "DropDVSOnTransferStall", true, DVCFG_FLAGS_NORMAL, "Drop Polarity events when USB FIFO is full.");
 
 	// Subsystem 1: DVS AER
-	dvConfigNode dvsNode = sshsGetRelativeNode(deviceConfigNode, "dvs/");
+	dvConfigNode dvsNode = sshsNodeGetRelativeNode(deviceConfigNode, "dvs/");
 
 	sshsNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable DVS (Polarity events).");
 	sshsNodeCreateBool(dvsNode, "WaitOnTransferStall", false, DVCFG_FLAGS_NORMAL,
@@ -529,7 +529,7 @@ static void createDefaultLogicConfiguration(
 	}
 
 	// Subsystem 2: APS ADC
-	dvConfigNode apsNode = sshsGetRelativeNode(deviceConfigNode, "aps/");
+	dvConfigNode apsNode = sshsNodeGetRelativeNode(deviceConfigNode, "aps/");
 
 	sshsNodeCreateBool(apsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable APS (Frame events).");
 	sshsNodeCreateBool(apsNode, "WaitOnTransferStall", true, DVCFG_FLAGS_NORMAL,
@@ -555,7 +555,7 @@ static void createDefaultLogicConfiguration(
 	// libcaer directly will read the correct value.
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE,
 		U32T(sshsNodeGetInt(apsNode, "Exposure")));
-	sshsAttributeUpdaterAdd(apsNode, "Exposure", DVCFG_TYPE_INT, &apsExposureUpdater, moduleData->moduleState);
+	dvConfigNodeAttributeUpdaterAdd(apsNode, "Exposure", DVCFG_TYPE_INT, &apsExposureUpdater, moduleData->moduleState);
 
 	sshsNodeCreateInt(
 		apsNode, "FrameInterval", 40000, 0, (0x01 << 23) - 1, DVCFG_FLAGS_NORMAL, "Set time between frames (in µs).");
@@ -585,7 +585,7 @@ static void createDefaultLogicConfiguration(
 
 	// Subsystem 3: IMU
 	if (devInfo->imuType != 0) {
-		dvConfigNode imuNode = sshsGetRelativeNode(deviceConfigNode, "imu/");
+		dvConfigNode imuNode = sshsNodeGetRelativeNode(deviceConfigNode, "imu/");
 
 		sshsNodeCreateBool(imuNode, "RunAccel", true, DVCFG_FLAGS_NORMAL, "Enable IMU accelerometer.");
 		sshsNodeCreateBool(imuNode, "RunGyro", true, DVCFG_FLAGS_NORMAL, "Enable IMU gyroscope.");
@@ -610,7 +610,7 @@ static void createDefaultLogicConfiguration(
 	}
 
 	// Subsystem 4: External Input
-	dvConfigNode extNode = sshsGetRelativeNode(deviceConfigNode, "externalInput/");
+	dvConfigNode extNode = sshsNodeGetRelativeNode(deviceConfigNode, "externalInput/");
 
 	sshsNodeCreateBool(extNode, "RunDetector", false, DVCFG_FLAGS_NORMAL, "Enable signal detector 0.");
 	sshsNodeCreateBool(
@@ -639,48 +639,48 @@ static void createDefaultLogicConfiguration(
 
 	// Device event statistics.
 	if (devInfo->muxHasStatistics) {
-		dvConfigNode statNode = sshsGetRelativeNode(deviceConfigNode, "statistics/");
+		dvConfigNode statNode = sshsNodeGetRelativeNode(deviceConfigNode, "statistics/");
 
 		sshsNodeCreateLong(statNode, "muxDroppedExtInput", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 			"Number of dropped External Input events due to USB full.");
-		sshsAttributeUpdaterAdd(statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeAttributeUpdaterAdd(statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		sshsNodeCreateLong(statNode, "muxDroppedDVS", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 			"Number of dropped DVS events due to USB full.");
-		sshsAttributeUpdaterAdd(statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeAttributeUpdaterAdd(statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 	}
 
 	if (devInfo->dvsHasStatistics) {
-		dvConfigNode statNode = sshsGetRelativeNode(deviceConfigNode, "statistics/");
+		dvConfigNode statNode = sshsNodeGetRelativeNode(deviceConfigNode, "statistics/");
 
 		sshsNodeCreateLong(statNode, "dvsEventsRow", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 			"Number of row events handled.");
-		sshsAttributeUpdaterAdd(statNode, "dvsEventsRow", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeAttributeUpdaterAdd(statNode, "dvsEventsRow", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		sshsNodeCreateLong(statNode, "dvsEventsColumn", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 			"Number of column events handled.");
-		sshsAttributeUpdaterAdd(statNode, "dvsEventsColumn", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeAttributeUpdaterAdd(statNode, "dvsEventsColumn", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		sshsNodeCreateLong(statNode, "dvsEventsDropped", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 			"Number of dropped events (groups of events).");
-		sshsAttributeUpdaterAdd(statNode, "dvsEventsDropped", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeAttributeUpdaterAdd(statNode, "dvsEventsDropped", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		if (devInfo->dvsHasPixelFilter) {
 			sshsNodeCreateLong(statNode, "dvsFilteredPixel", 0, 0, INT64_MAX,
 				DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of events filtered out by the Pixel Filter.");
-			sshsAttributeUpdaterAdd(
+			dvConfigNodeAttributeUpdaterAdd(
 				statNode, "dvsFilteredPixel", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 		}
 
 		if (devInfo->dvsHasBackgroundActivityFilter) {
 			sshsNodeCreateLong(statNode, "dvsFilteredBA", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 				"Number of events filtered out by the Background Activity Filter.");
-			sshsAttributeUpdaterAdd(statNode, "dvsFilteredBA", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			dvConfigNodeAttributeUpdaterAdd(statNode, "dvsFilteredBA", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 			sshsNodeCreateLong(statNode, "dvsFilteredRefractory", 0, 0, INT64_MAX,
 				DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 				"Number of events filtered out by the Refractory Period Filter.");
-			sshsAttributeUpdaterAdd(
+			dvConfigNodeAttributeUpdaterAdd(
 				statNode, "dvsFilteredRefractory", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 		}
 	}
@@ -2139,7 +2139,7 @@ static void createVDACBiasSetting(dvConfigNode biasNode, const char *biasName, u
 	biasNameFull[biasNameLength + 1] = '\0';
 
 	// Create configuration node for this particular bias.
-	dvConfigNode biasConfigNode = sshsGetRelativeNode(biasNode, biasNameFull);
+	dvConfigNode biasConfigNode = sshsNodeGetRelativeNode(biasNode, biasNameFull);
 
 	// Add bias settings.
 	sshsNodeCreateInt(biasConfigNode, "voltageValue", I8T(voltageValue), 0, 63, DVCFG_FLAGS_NORMAL,
@@ -2157,7 +2157,7 @@ static uint16_t generateVDACBiasParent(dvConfigNode biasNode, const char *biasNa
 	biasNameFull[biasNameLength + 1] = '\0';
 
 	// Get bias configuration node.
-	dvConfigNode biasConfigNode = sshsGetRelativeNode(biasNode, biasNameFull);
+	dvConfigNode biasConfigNode = sshsNodeGetRelativeNode(biasNode, biasNameFull);
 
 	return (generateVDACBias(biasConfigNode));
 }
@@ -2182,7 +2182,7 @@ static void createCoarseFineBiasSetting(dvConfigNode biasNode, const char *biasN
 	biasNameFull[biasNameLength + 1] = '\0';
 
 	// Create configuration node for this particular bias.
-	dvConfigNode biasConfigNode = sshsGetRelativeNode(biasNode, biasNameFull);
+	dvConfigNode biasConfigNode = sshsNodeGetRelativeNode(biasNode, biasNameFull);
 
 	// Add bias settings.
 	sshsNodeCreateInt(biasConfigNode, "coarseValue", I8T(coarseValue), 0, 7, DVCFG_FLAGS_NORMAL,
@@ -2207,7 +2207,7 @@ static uint16_t generateCoarseFineBiasParent(dvConfigNode biasNode, const char *
 	biasNameFull[biasNameLength + 1] = '\0';
 
 	// Get bias configuration node.
-	dvConfigNode biasConfigNode = sshsGetRelativeNode(biasNode, biasNameFull);
+	dvConfigNode biasConfigNode = sshsNodeGetRelativeNode(biasNode, biasNameFull);
 
 	return (generateCoarseFineBias(biasConfigNode));
 }
@@ -2245,7 +2245,7 @@ static void createShiftedSourceBiasSetting(dvConfigNode biasNode, const char *bi
 	biasNameFull[biasNameLength + 1] = '\0';
 
 	// Create configuration node for this particular bias.
-	dvConfigNode biasConfigNode = sshsGetRelativeNode(biasNode, biasNameFull);
+	dvConfigNode biasConfigNode = sshsNodeGetRelativeNode(biasNode, biasNameFull);
 
 	// Add bias settings.
 	sshsNodeCreateInt(
@@ -2269,7 +2269,7 @@ static uint16_t generateShiftedSourceBiasParent(dvConfigNode biasNode, const cha
 	biasNameFull[biasNameLength + 1] = '\0';
 
 	// Get bias configuration node.
-	dvConfigNode biasConfigNode = sshsGetRelativeNode(biasNode, biasNameFull);
+	dvConfigNode biasConfigNode = sshsNodeGetRelativeNode(biasNode, biasNameFull);
 
 	return (generateShiftedSourceBias(biasConfigNode));
 }

@@ -90,7 +90,7 @@ static void caerInputDVS132SConfigInit(dvConfigNode moduleNode) {
 	sshsNodeCreateBool(
 		moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL, "Automatically restart module after shutdown.");
 
-	dvConfigNode sysNode = sshsGetRelativeNode(moduleNode, "system/");
+	dvConfigNode sysNode = sshsNodeGetRelativeNode(moduleNode, "system/");
 
 	// Packet settings (size (in events) and time interval (in µs)).
 	sshsNodeCreateInt(sysNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024, DVCFG_FLAGS_NORMAL,
@@ -130,7 +130,7 @@ static bool caerInputDVS132SInit(caerModuleData moduleData) {
 	// Put global source information into SSHS.
 	struct caer_dvs132s_info devInfo = caerDVS132SInfoGet(moduleData->moduleState);
 
-	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 
 	sshsNodeCreateInt(sourceInfoNode, "firmwareVersion", devInfo.firmwareVersion, devInfo.firmwareVersion,
 		devInfo.firmwareVersion, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device USB firmware version.");
@@ -218,28 +218,28 @@ static bool caerInputDVS132SInit(caerModuleData moduleData) {
 	sendDefaultConfiguration(moduleData, &devInfo);
 
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = sshsGetRelativeNode(moduleData->moduleNode, "DVS132S/");
+	dvConfigNode deviceConfigNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNode biasNode = sshsGetRelativeNode(deviceConfigNode, "bias/");
+	dvConfigNode biasNode = sshsNodeGetRelativeNode(deviceConfigNode, "bias/");
 	sshsNodeAddAttributeListener(biasNode, moduleData, &biasConfigListener);
 
-	dvConfigNode muxNode = sshsGetRelativeNode(deviceConfigNode, "multiplexer/");
+	dvConfigNode muxNode = sshsNodeGetRelativeNode(deviceConfigNode, "multiplexer/");
 	sshsNodeAddAttributeListener(muxNode, moduleData, &muxConfigListener);
 
-	dvConfigNode dvsNode = sshsGetRelativeNode(deviceConfigNode, "dvs/");
+	dvConfigNode dvsNode = sshsNodeGetRelativeNode(deviceConfigNode, "dvs/");
 	sshsNodeAddAttributeListener(dvsNode, moduleData, &dvsConfigListener);
 
-	dvConfigNode imuNode = sshsGetRelativeNode(deviceConfigNode, "imu/");
+	dvConfigNode imuNode = sshsNodeGetRelativeNode(deviceConfigNode, "imu/");
 	sshsNodeAddAttributeListener(imuNode, moduleData, &imuConfigListener);
 
-	dvConfigNode extNode = sshsGetRelativeNode(deviceConfigNode, "externalInput/");
+	dvConfigNode extNode = sshsNodeGetRelativeNode(deviceConfigNode, "externalInput/");
 	sshsNodeAddAttributeListener(extNode, moduleData, &extInputConfigListener);
 
-	dvConfigNode usbNode = sshsGetRelativeNode(deviceConfigNode, "usb/");
+	dvConfigNode usbNode = sshsNodeGetRelativeNode(deviceConfigNode, "usb/");
 	sshsNodeAddAttributeListener(usbNode, moduleData, &usbConfigListener);
 
-	dvConfigNode sysNode = sshsGetRelativeNode(moduleData->moduleNode, "system/");
+	dvConfigNode sysNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "system/");
 	sshsNodeAddAttributeListener(sysNode, moduleData, &systemConfigListener);
 
 	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
@@ -264,7 +264,7 @@ static void caerInputDVS132SRun(caerModuleData moduleData, caerEventPacketContai
 			// Update master/slave information.
 			struct caer_dvs132s_info devInfo = caerDVS132SInfoGet(moduleData->moduleState);
 
-			dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+			dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 			sshsNodeUpdateReadOnlyAttribute(sourceInfoNode, "deviceIsMaster", DVCFG_TYPE_BOOL,
 				(union dvConfigAttributeValue){.boolean = devInfo.deviceIsMaster});
 		}
@@ -273,42 +273,42 @@ static void caerInputDVS132SRun(caerModuleData moduleData, caerEventPacketContai
 
 static void caerInputDVS132SExit(caerModuleData moduleData) {
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = sshsGetRelativeNode(moduleData->moduleNode, "DVS132S/");
+	dvConfigNode deviceConfigNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
 	// Remove listener, which can reference invalid memory in userData.
 	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
 
-	dvConfigNode biasNode = sshsGetRelativeNode(deviceConfigNode, "bias/");
+	dvConfigNode biasNode = sshsNodeGetRelativeNode(deviceConfigNode, "bias/");
 	sshsNodeRemoveAttributeListener(biasNode, moduleData, &biasConfigListener);
 
-	dvConfigNode muxNode = sshsGetRelativeNode(deviceConfigNode, "multiplexer/");
+	dvConfigNode muxNode = sshsNodeGetRelativeNode(deviceConfigNode, "multiplexer/");
 	sshsNodeRemoveAttributeListener(muxNode, moduleData, &muxConfigListener);
 
-	dvConfigNode dvsNode = sshsGetRelativeNode(deviceConfigNode, "dvs/");
+	dvConfigNode dvsNode = sshsNodeGetRelativeNode(deviceConfigNode, "dvs/");
 	sshsNodeRemoveAttributeListener(dvsNode, moduleData, &dvsConfigListener);
 
-	dvConfigNode imuNode = sshsGetRelativeNode(deviceConfigNode, "imu/");
+	dvConfigNode imuNode = sshsNodeGetRelativeNode(deviceConfigNode, "imu/");
 	sshsNodeRemoveAttributeListener(imuNode, moduleData, &imuConfigListener);
 
-	dvConfigNode extNode = sshsGetRelativeNode(deviceConfigNode, "externalInput/");
+	dvConfigNode extNode = sshsNodeGetRelativeNode(deviceConfigNode, "externalInput/");
 	sshsNodeRemoveAttributeListener(extNode, moduleData, &extInputConfigListener);
 
-	dvConfigNode usbNode = sshsGetRelativeNode(deviceConfigNode, "usb/");
+	dvConfigNode usbNode = sshsNodeGetRelativeNode(deviceConfigNode, "usb/");
 	sshsNodeRemoveAttributeListener(usbNode, moduleData, &usbConfigListener);
 
-	dvConfigNode sysNode = sshsGetRelativeNode(moduleData->moduleNode, "system/");
+	dvConfigNode sysNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "system/");
 	sshsNodeRemoveAttributeListener(sysNode, moduleData, &systemConfigListener);
 
 	// Remove statistics read modifiers.
-	dvConfigNode statNode = sshsGetRelativeNode(deviceConfigNode, "statistics/");
-	sshsAttributeUpdaterRemoveAllForNode(statNode);
+	dvConfigNode statNode = sshsNodeGetRelativeNode(deviceConfigNode, "statistics/");
+	dvConfigNodeAttributeUpdaterRemoveAll(statNode);
 
 	caerDeviceDataStop(moduleData->moduleState);
 
 	caerDeviceClose((caerDeviceHandle *) &moduleData->moduleState);
 
 	// Clear sourceInfo node.
-	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	sshsNodeRemoveAllAttributes(sourceInfoNode);
 
 	if (sshsNodeGetBool(moduleData->moduleNode, "autoRestart")) {
@@ -327,10 +327,10 @@ static void moduleShutdownNotify(void *p) {
 
 static void createDefaultBiasConfiguration(caerModuleData moduleData) {
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = sshsGetRelativeNode(moduleData->moduleNode, "DVS132S/");
+	dvConfigNode deviceConfigNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
 	// Chip biases, based on testing defaults.
-	dvConfigNode biasNode = sshsGetRelativeNode(deviceConfigNode, "bias/");
+	dvConfigNode biasNode = sshsNodeGetRelativeNode(deviceConfigNode, "bias/");
 
 	sshsNodeCreateBool(biasNode, "BiasEnable", true, DVCFG_FLAGS_NORMAL, "Enable bias generator to power chip.");
 
@@ -364,10 +364,10 @@ static void createDefaultBiasConfiguration(caerModuleData moduleData) {
 
 static void createDefaultLogicConfiguration(caerModuleData moduleData, const struct caer_dvs132s_info *devInfo) {
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = sshsGetRelativeNode(moduleData->moduleNode, "DVS132S/");
+	dvConfigNode deviceConfigNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
 	// Subsystem 0: Multiplexer
-	dvConfigNode muxNode = sshsGetRelativeNode(deviceConfigNode, "multiplexer/");
+	dvConfigNode muxNode = sshsNodeGetRelativeNode(deviceConfigNode, "multiplexer/");
 
 	sshsNodeCreateBool(muxNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable multiplexer state machine.");
 	sshsNodeCreateBool(muxNode, "TimestampRun", true, DVCFG_FLAGS_NORMAL, "Enable µs-timestamp generation.");
@@ -379,7 +379,7 @@ static void createDefaultLogicConfiguration(caerModuleData moduleData, const str
 		"Drop ExternalInput events when USB FIFO is full.");
 
 	// Subsystem 1: DVS
-	dvConfigNode dvsNode = sshsGetRelativeNode(deviceConfigNode, "dvs/");
+	dvConfigNode dvsNode = sshsNodeGetRelativeNode(deviceConfigNode, "dvs/");
 
 	sshsNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable DVS (Polarity events).");
 	sshsNodeCreateBool(dvsNode, "WaitOnTransferStall", true, DVCFG_FLAGS_NORMAL, "On event FIFO full, pause readout.");
@@ -401,7 +401,7 @@ static void createDefaultLogicConfiguration(caerModuleData moduleData, const str
 		DVCFG_FLAGS_NORMAL, "Enable columns to be read-out (ROI filter).");
 
 	// Subsystem 3: IMU
-	dvConfigNode imuNode = sshsGetRelativeNode(deviceConfigNode, "imu/");
+	dvConfigNode imuNode = sshsNodeGetRelativeNode(deviceConfigNode, "imu/");
 
 	sshsNodeCreateBool(imuNode, "RunAccelerometer", true, DVCFG_FLAGS_NORMAL, "Enable accelerometer.");
 	sshsNodeCreateBool(imuNode, "RunGyroscope", true, DVCFG_FLAGS_NORMAL, "Enable gyroscope.");
@@ -414,7 +414,7 @@ static void createDefaultLogicConfiguration(caerModuleData moduleData, const str
 	sshsNodeCreateInt(imuNode, "GyroRange", 2, 0, 4, DVCFG_FLAGS_NORMAL, "Gyroscope range configuration.");
 
 	// Subsystem 4: External Input
-	dvConfigNode extNode = sshsGetRelativeNode(deviceConfigNode, "externalInput/");
+	dvConfigNode extNode = sshsNodeGetRelativeNode(deviceConfigNode, "externalInput/");
 
 	sshsNodeCreateBool(extNode, "RunDetector", false, DVCFG_FLAGS_NORMAL, "Enable signal detector 0.");
 	sshsNodeCreateBool(
@@ -443,47 +443,47 @@ static void createDefaultLogicConfiguration(caerModuleData moduleData, const str
 
 	// Device event statistics.
 	if (devInfo->muxHasStatistics) {
-		dvConfigNode statNode = sshsGetRelativeNode(deviceConfigNode, "statistics/");
+		dvConfigNode statNode = sshsNodeGetRelativeNode(deviceConfigNode, "statistics/");
 
 		sshsNodeCreateLong(statNode, "muxDroppedDVS", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 			"Number of dropped DVS events due to USB full.");
-		sshsAttributeUpdaterAdd(statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeAttributeUpdaterAdd(statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		sshsNodeCreateLong(statNode, "muxDroppedExtInput", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 			"Number of dropped External Input events due to USB full.");
-		sshsAttributeUpdaterAdd(statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeAttributeUpdaterAdd(statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 	}
 
 	if (devInfo->dvsHasStatistics) {
-		dvConfigNode statNode = sshsGetRelativeNode(deviceConfigNode, "statistics/");
+		dvConfigNode statNode = sshsNodeGetRelativeNode(deviceConfigNode, "statistics/");
 
 		sshsNodeCreateLong(statNode, "dvsTransactionsSuccess", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of groups of events received successfully.");
-		sshsAttributeUpdaterAdd(
+		dvConfigNodeAttributeUpdaterAdd(
 			statNode, "dvsTransactionsSuccess", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		sshsNodeCreateLong(statNode, "dvsTransactionsSkipped", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped groups of events due to full buffers.");
-		sshsAttributeUpdaterAdd(
+		dvConfigNodeAttributeUpdaterAdd(
 			statNode, "dvsTransactionsSkipped", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		sshsNodeCreateLong(statNode, "dvsTransactionsAll", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 			"Number of dropped groups of events due to full buffers.");
-		sshsAttributeUpdaterAdd(statNode, "dvsTransactionsAll", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeAttributeUpdaterAdd(statNode, "dvsTransactionsAll", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		sshsNodeCreateLong(statNode, "dvsTransactionsErrored", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of erroneous groups of events.");
-		sshsAttributeUpdaterAdd(
+		dvConfigNodeAttributeUpdaterAdd(
 			statNode, "dvsTransactionsErrored", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 	}
 }
 
 static void createDefaultUSBConfiguration(caerModuleData moduleData) {
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = sshsGetRelativeNode(moduleData->moduleNode, "DVS132S/");
+	dvConfigNode deviceConfigNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
 	// Subsystem 9: FX2/3 USB Configuration and USB buffer settings.
-	dvConfigNode usbNode = sshsGetRelativeNode(deviceConfigNode, "usb/");
+	dvConfigNode usbNode = sshsNodeGetRelativeNode(deviceConfigNode, "usb/");
 	sshsNodeCreateBool(
 		usbNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable the USB state machine (FPGA to USB data exchange).");
 	sshsNodeCreateInt(usbNode, "EarlyPacketDelay", 8, 1, 8000, DVCFG_FLAGS_NORMAL,
@@ -496,26 +496,26 @@ static void createDefaultUSBConfiguration(caerModuleData moduleData) {
 
 static void sendDefaultConfiguration(caerModuleData moduleData, const struct caer_dvs132s_info *devInfo) {
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = sshsGetRelativeNode(moduleData->moduleNode, "DVS132S/");
+	dvConfigNode deviceConfigNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
 	// Send cAER configuration to libcaer and device.
-	biasConfigSend(sshsGetRelativeNode(deviceConfigNode, "bias/"), moduleData);
+	biasConfigSend(sshsNodeGetRelativeNode(deviceConfigNode, "bias/"), moduleData);
 
 	// Wait 200 ms for biases to stabilize.
 	struct timespec biasEnSleep = {.tv_sec = 0, .tv_nsec = 200000000};
 	thrd_sleep(&biasEnSleep, NULL);
 
-	systemConfigSend(sshsGetRelativeNode(moduleData->moduleNode, "system/"), moduleData);
-	usbConfigSend(sshsGetRelativeNode(deviceConfigNode, "usb/"), moduleData);
-	muxConfigSend(sshsGetRelativeNode(deviceConfigNode, "multiplexer/"), moduleData);
+	systemConfigSend(sshsNodeGetRelativeNode(moduleData->moduleNode, "system/"), moduleData);
+	usbConfigSend(sshsNodeGetRelativeNode(deviceConfigNode, "usb/"), moduleData);
+	muxConfigSend(sshsNodeGetRelativeNode(deviceConfigNode, "multiplexer/"), moduleData);
 
 	// Wait 50 ms for data transfer to be ready.
 	struct timespec noDataSleep = {.tv_sec = 0, .tv_nsec = 50000000};
 	thrd_sleep(&noDataSleep, NULL);
 
-	dvsConfigSend(sshsGetRelativeNode(deviceConfigNode, "dvs/"), moduleData);
-	imuConfigSend(sshsGetRelativeNode(deviceConfigNode, "imu/"), moduleData);
-	extInputConfigSend(sshsGetRelativeNode(deviceConfigNode, "externalInput/"), moduleData, devInfo);
+	dvsConfigSend(sshsNodeGetRelativeNode(deviceConfigNode, "dvs/"), moduleData);
+	imuConfigSend(sshsNodeGetRelativeNode(deviceConfigNode, "imu/"), moduleData);
+	extInputConfigSend(sshsNodeGetRelativeNode(deviceConfigNode, "externalInput/"), moduleData, devInfo);
 }
 
 static void biasConfigSend(dvConfigNode node, caerModuleData moduleData) {

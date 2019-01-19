@@ -148,11 +148,11 @@ static bool caerDVSNoiseFilterInit(caerModuleData moduleData) {
 	caerFilterDVSNoiseConfigSet(
 		moduleData->moduleState, CAER_FILTER_DVS_LOG_LEVEL, atomic_load(&moduleData->moduleLogLevel));
 
-	sshsAttributeUpdaterAdd(
+	dvConfigNodeAttributeUpdaterAdd(
 		moduleData->moduleNode, "hotPixelFiltered", DVCFG_TYPE_LONG, &updateHotPixelFiltered, moduleData->moduleState);
-	sshsAttributeUpdaterAdd(moduleData->moduleNode, "backgroundActivityFiltered", DVCFG_TYPE_LONG,
+	dvConfigNodeAttributeUpdaterAdd(moduleData->moduleNode, "backgroundActivityFiltered", DVCFG_TYPE_LONG,
 		&updateBackgroundActivityFiltered, moduleData->moduleState);
-	sshsAttributeUpdaterAdd(moduleData->moduleNode, "refractoryPeriodFiltered", DVCFG_TYPE_LONG,
+	dvConfigNodeAttributeUpdaterAdd(moduleData->moduleNode, "refractoryPeriodFiltered", DVCFG_TYPE_LONG,
 		&updateRefractoryPeriodFiltered, moduleData->moduleState);
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
@@ -228,7 +228,7 @@ static void caerDVSNoiseFilterExit(caerModuleData moduleData) {
 	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData->moduleState, &caerDVSNoiseFilterConfigCustom);
 
-	sshsAttributeUpdaterRemoveAllForNode(moduleData->moduleNode);
+	dvConfigNodeAttributeUpdaterRemoveAll(moduleData->moduleNode);
 
 	caerFilterDVSNoiseDestroy(moduleData->moduleState);
 }

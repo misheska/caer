@@ -68,7 +68,7 @@ static void caerInputDVS128ConfigInit(dvConfigNode moduleNode) {
 		moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL, "Automatically restart module after shutdown.");
 
 	// Set default biases, from DVS128Fast.xml settings.
-	dvConfigNode biasNode = sshsGetRelativeNode(moduleNode, "bias/");
+	dvConfigNode biasNode = sshsNodeGetRelativeNode(moduleNode, "bias/");
 	sshsNodeCreateInt(biasNode, "cas", 1992, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Photoreceptor cascode.");
 	sshsNodeCreateInt(
 		biasNode, "injGnd", 1108364, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Differentiator switch level.");
@@ -89,18 +89,18 @@ static void caerInputDVS128ConfigInit(dvConfigNode moduleNode) {
 	sshsNodeCreateInt(biasNode, "pr", 217, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Photoreceptor.");
 
 	// DVS settings.
-	dvConfigNode dvsNode = sshsGetRelativeNode(moduleNode, "dvs/");
+	dvConfigNode dvsNode = sshsNodeGetRelativeNode(moduleNode, "dvs/");
 	sshsNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Run DVS to get polarity events.");
 	sshsNodeCreateBool(dvsNode, "TimestampReset", false, DVCFG_FLAGS_NOTIFY_ONLY, "Reset timestamps to zero.");
 	sshsNodeCreateBool(dvsNode, "ArrayReset", false, DVCFG_FLAGS_NOTIFY_ONLY, "Reset DVS pixel array.");
 
 	// USB buffer settings.
-	dvConfigNode usbNode = sshsGetRelativeNode(moduleNode, "usb/");
+	dvConfigNode usbNode = sshsNodeGetRelativeNode(moduleNode, "usb/");
 	sshsNodeCreateInt(usbNode, "BufferNumber", 8, 2, 128, DVCFG_FLAGS_NORMAL, "Number of USB transfers.");
 	sshsNodeCreateInt(
 		usbNode, "BufferSize", 4096, 512, 32768, DVCFG_FLAGS_NORMAL, "Size in bytes of data buffers for USB transfers.");
 
-	dvConfigNode sysNode = sshsGetRelativeNode(moduleNode, "system/");
+	dvConfigNode sysNode = sshsNodeGetRelativeNode(moduleNode, "system/");
 
 	// Packet settings (size (in events) and time interval (in µs)).
 	sshsNodeCreateInt(sysNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024, DVCFG_FLAGS_NORMAL,
@@ -137,7 +137,7 @@ static bool caerInputDVS128Init(caerModuleData moduleData) {
 	// Put global source information into SSHS.
 	struct caer_dvs128_info devInfo = caerDVS128InfoGet(moduleData->moduleState);
 
-	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 
 	sshsNodeCreateInt(sourceInfoNode, "logicVersion", devInfo.logicVersion, devInfo.logicVersion, devInfo.logicVersion,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device FPGA logic version.");
@@ -209,16 +209,16 @@ static bool caerInputDVS128Init(caerModuleData moduleData) {
 	}
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNode biasNode = sshsGetRelativeNode(moduleData->moduleNode, "bias/");
+	dvConfigNode biasNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "bias/");
 	sshsNodeAddAttributeListener(biasNode, moduleData, &biasConfigListener);
 
-	dvConfigNode dvsNode = sshsGetRelativeNode(moduleData->moduleNode, "dvs/");
+	dvConfigNode dvsNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "dvs/");
 	sshsNodeAddAttributeListener(dvsNode, moduleData, &dvsConfigListener);
 
-	dvConfigNode usbNode = sshsGetRelativeNode(moduleData->moduleNode, "usb/");
+	dvConfigNode usbNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "usb/");
 	sshsNodeAddAttributeListener(usbNode, moduleData, &usbConfigListener);
 
-	dvConfigNode sysNode = sshsGetRelativeNode(moduleData->moduleNode, "system/");
+	dvConfigNode sysNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "system/");
 	sshsNodeAddAttributeListener(sysNode, moduleData, &systemConfigListener);
 
 	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
@@ -230,16 +230,16 @@ static void caerInputDVS128Exit(caerModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
 
-	dvConfigNode biasNode = sshsGetRelativeNode(moduleData->moduleNode, "bias/");
+	dvConfigNode biasNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "bias/");
 	sshsNodeRemoveAttributeListener(biasNode, moduleData, &biasConfigListener);
 
-	dvConfigNode dvsNode = sshsGetRelativeNode(moduleData->moduleNode, "dvs/");
+	dvConfigNode dvsNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "dvs/");
 	sshsNodeRemoveAttributeListener(dvsNode, moduleData, &dvsConfigListener);
 
-	dvConfigNode usbNode = sshsGetRelativeNode(moduleData->moduleNode, "usb/");
+	dvConfigNode usbNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "usb/");
 	sshsNodeRemoveAttributeListener(usbNode, moduleData, &usbConfigListener);
 
-	dvConfigNode sysNode = sshsGetRelativeNode(moduleData->moduleNode, "system/");
+	dvConfigNode sysNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "system/");
 	sshsNodeRemoveAttributeListener(sysNode, moduleData, &systemConfigListener);
 
 	caerDeviceDataStop(moduleData->moduleState);
@@ -247,7 +247,7 @@ static void caerInputDVS128Exit(caerModuleData moduleData) {
 	caerDeviceClose((caerDeviceHandle *) &moduleData->moduleState);
 
 	// Clear sourceInfo node.
-	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	sshsNodeRemoveAllAttributes(sourceInfoNode);
 
 	if (sshsNodeGetBool(moduleData->moduleNode, "autoRestart")) {
@@ -273,7 +273,7 @@ static void caerInputDVS128Run(caerModuleData moduleData, caerEventPacketContain
 			// Update master/slave information.
 			struct caer_dvs128_info devInfo = caerDVS128InfoGet(moduleData->moduleState);
 
-			dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+			dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 			sshsNodeUpdateReadOnlyAttribute(sourceInfoNode, "deviceIsMaster", DVCFG_TYPE_BOOL,
 				(union dvConfigAttributeValue){.boolean = devInfo.deviceIsMaster});
 		}
@@ -282,10 +282,10 @@ static void caerInputDVS128Run(caerModuleData moduleData, caerEventPacketContain
 
 static void sendDefaultConfiguration(caerModuleData moduleData) {
 	// Send cAER configuration to libcaer and device.
-	biasConfigSend(sshsGetRelativeNode(moduleData->moduleNode, "bias/"), moduleData);
-	systemConfigSend(sshsGetRelativeNode(moduleData->moduleNode, "system/"), moduleData);
-	usbConfigSend(sshsGetRelativeNode(moduleData->moduleNode, "usb/"), moduleData);
-	dvsConfigSend(sshsGetRelativeNode(moduleData->moduleNode, "dvs/"), moduleData);
+	biasConfigSend(sshsNodeGetRelativeNode(moduleData->moduleNode, "bias/"), moduleData);
+	systemConfigSend(sshsNodeGetRelativeNode(moduleData->moduleNode, "system/"), moduleData);
+	usbConfigSend(sshsNodeGetRelativeNode(moduleData->moduleNode, "usb/"), moduleData);
+	dvsConfigSend(sshsNodeGetRelativeNode(moduleData->moduleNode, "dvs/"), moduleData);
 }
 
 static void moduleShutdownNotify(void *p) {

@@ -85,7 +85,7 @@ static bool caerFrameEnhancerInit(caerModuleData moduleData) {
 	int16_t sizeX = sshsNodeGetInt(sourceInfoSource, "dataSizeX");
 	int16_t sizeY = sshsNodeGetInt(sourceInfoSource, "dataSizeY");
 
-	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	sshsNodeCreateInt(sourceInfoNode, "frameSizeX", sizeX, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Output frame width.");
 	sshsNodeCreateInt(sourceInfoNode, "frameSizeY", sizeY, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
@@ -237,6 +237,6 @@ static void caerFrameEnhancerExit(caerModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 
-	dvConfigNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNode sourceInfoNode = sshsNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	sshsNodeClearSubTree(sourceInfoNode, true);
 }
