@@ -119,7 +119,7 @@ void sshsNodeCreateAttribute(dvConfigNode node, const char *key, enum dvConfigAt
 	const char *description);
 void sshsNodeRemoveAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
 void sshsNodeRemoveAllAttributes(dvConfigNode node);
-bool sshsNodeAttributeExists(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
+bool sshsNodeExistsAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
 bool sshsNodePutAttribute(
 	dvConfigNode node, const char *key, enum dvConfigAttributeType type, union dvConfigAttributeValue value);
 union dvConfigAttributeValue sshsNodeGetAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
@@ -164,7 +164,18 @@ struct dvConfigAttributeRanges sshsNodeGetAttributeRanges(
 int sshsNodeGetAttributeFlags(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
 char *sshsNodeGetAttributeDescription(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
 
-// Helper functions
+void sshsNodeCreateAttributeListOptions(
+	dvConfigNode node, const char *key, const char *listOptions, bool allowMultipleSelections);
+void sshsNodeCreateAttributeFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions);
+
+bool sshsNodeExistsRelativeNode(dvConfigNode node, const char *nodePath);
+/**
+ * This returns a reference to a node, and as such must be carefully mediated with
+ * any sshsNodeRemoveNode() calls.
+ */
+dvConfigNode sshsNodeGetRelativeNode(dvConfigNode node, const char *nodePath);
+
+// dv::Config Helper functions
 const char *sshsHelperTypeToStringConverter(enum dvConfigAttributeType type);
 enum dvConfigAttributeType sshsHelperStringToTypeConverter(const char *typeString);
 char *sshsHelperValueToStringConverter(enum dvConfigAttributeType type, union dvConfigAttributeValue value);
@@ -175,52 +186,43 @@ char *sshsHelperRangesToStringConverter(enum dvConfigAttributeType type, struct 
 struct dvConfigAttributeRanges sshsHelperStringToRangesConverter(
 	enum dvConfigAttributeType type, const char *rangesString);
 
-void sshsNodeCreateAttributeListOptions(
-	dvConfigNode node, const char *key, const char *listOptions, bool allowMultipleSelections);
-void sshsNodeCreateAttributeFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions);
-
 // dv::Config Tree
 typedef struct dv_config_tree *dvConfigTree;
 typedef void (*dvConfigTreeErrorLogCallback)(const char *msg, bool fatal);
 
-dvConfigTree sshsGetGlobal(void);
-void sshsSetGlobalErrorLogCallback(dvConfigTreeErrorLogCallback error_log_cb);
-dvConfigTreeErrorLogCallback sshsGetGlobalErrorLogCallback(void);
-dvConfigTree sshsNew(void);
-bool sshsExistsNode(dvConfigTree st, const char *nodePath);
+dvConfigTree dvConfigTreeGlobal(void);
+dvConfigTree dvConfigTreeNew(void);
+void dvConfigTreeErrorLogCallbackSet(dvConfigTreeErrorLogCallback error_log_cb);
+dvConfigTreeErrorLogCallback dvConfigTreeErrorLogCallbackGet(void);
+
+bool dvConfigTreeExistsNode(dvConfigTree st, const char *nodePath);
 /**
  * This returns a reference to a node, and as such must be carefully mediated with
  * any sshsNodeRemoveNode() calls.
  */
-dvConfigNode sshsGetNode(dvConfigTree st, const char *nodePath);
-bool sshsExistsRelativeNode(dvConfigNode node, const char *nodePath);
-/**
- * This returns a reference to a node, and as such must be carefully mediated with
- * any sshsNodeRemoveNode() calls.
- */
-dvConfigNode sshsGetRelativeNode(dvConfigNode node, const char *nodePath);
+dvConfigNode dvConfigTreeGetNode(dvConfigTree st, const char *nodePath);
 
 typedef union dvConfigAttributeValue (*dvConfigAttributeUpdater)(
 	void *userData, const char *key, enum dvConfigAttributeType type);
 
-void sshsAttributeUpdaterAdd(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
+void dvConfigNodeAttributeUpdaterAdd(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
 	dvConfigAttributeUpdater updater, void *updaterUserData);
-void sshsAttributeUpdaterRemove(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
+void dvConfigNodeAttributeUpdaterRemove(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
 	dvConfigAttributeUpdater updater, void *updaterUserData);
-void sshsAttributeUpdaterRemoveAllForNode(dvConfigNode node);
-void sshsAttributeUpdaterRemoveAll(dvConfigTree tree);
-bool sshsAttributeUpdaterRun(dvConfigTree tree);
+void dvConfigNodeAttributeUpdaterRemoveAll(dvConfigNode node);
+void dvConfigTreeAttributeUpdaterRemoveAll(dvConfigTree tree);
+bool dvConfigTreeAttributeUpdaterRun(dvConfigTree tree);
 
 /**
  * Listener must be able to deal with userData being NULL at any moment.
  * This can happen due to concurrent changes from this setter.
  */
-void sshsGlobalNodeListenerSet(dvConfigTree tree, dvConfigNodeChangeListener node_changed, void *userData);
+void dvConfigTreeGlobalNodeListenerSet(dvConfigTree tree, dvConfigNodeChangeListener node_changed, void *userData);
 /**
  * Listener must be able to deal with userData being NULL at any moment.
  * This can happen due to concurrent changes from this setter.
  */
-void sshsGlobalAttributeListenerSet(
+void dvConfigTreeGlobalAttributeListenerSet(
 	dvConfigTree tree, dvConfigAttributeChangeListener attribute_changed, void *userData);
 
 #ifdef __cplusplus

@@ -410,12 +410,12 @@ public:
 	}
 
 	template<AttributeType T> bool existsAttribute(const std::string &key) const {
-		return (sshsNodeAttributeExists(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType));
+		return (sshsNodeExistsAttribute(node, key.c_str(), AttributeTypeGenerator<T>::underlyingType));
 	}
 
 	// Non-templated version for dynamic runtime types.
 	bool existsAttribute(const std::string &key, AttributeType type) const {
-		return (sshsNodeAttributeExists(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type)));
+		return (sshsNodeExistsAttribute(node, key.c_str(), static_cast<enum dvConfigAttributeType>(type)));
 	}
 
 	template<AttributeType T> bool putAttribute(const std::string &key, const AttributeValue<T> &value) {
@@ -597,7 +597,7 @@ public:
 	}
 
 	bool existsRelativeNode(const std::string &nodePath) const {
-		return (sshsExistsRelativeNode(node, nodePath.c_str()));
+		return (sshsNodeExistsRelativeNode(node, nodePath.c_str()));
 	}
 
 	/**
@@ -607,7 +607,7 @@ public:
 	 * @throws std::out_of_range Invalid relative node path.
 	 */
 	Node getRelativeNode(const std::string &relativeNodePath) const {
-		dvConfigNode relativeNode = sshsGetRelativeNode(node, relativeNodePath.c_str());
+		dvConfigNode relativeNode = sshsNodeGetRelativeNode(node, relativeNodePath.c_str());
 
 		if (relativeNode == nullptr) {
 			throw std::out_of_range("Invalid relative node path.");
@@ -618,18 +618,18 @@ public:
 
 	void attributeUpdaterAdd(
 		const std::string &key, AttributeType type, dvConfigAttributeUpdater updater, void *updaterUserData) {
-		sshsAttributeUpdaterAdd(
+		dvConfigNodeAttributeUpdaterAdd(
 			node, key.c_str(), static_cast<enum dvConfigAttributeType>(type), updater, updaterUserData);
 	}
 
 	void attributeUpdaterRemove(
 		const std::string &key, AttributeType type, dvConfigAttributeUpdater updater, void *updaterUserData) {
-		sshsAttributeUpdaterRemove(
+		dvConfigNodeAttributeUpdaterRemove(
 			node, key.c_str(), static_cast<enum dvConfigAttributeType>(type), updater, updaterUserData);
 	}
 
-	void attributeUpdaterRemoveAllForNode() {
-		sshsAttributeUpdaterRemoveAllForNode(node);
+	void attributeUpdaterRemoveAll() {
+		dvConfigNodeAttributeUpdaterRemoveAll(node);
 	}
 };
 
@@ -698,24 +698,28 @@ public:
 		return (tree);
 	}
 
-	static Tree getGlobal() {
-		return (sshsGetGlobal());
+	static Tree globalTree() {
+		return (dvConfigTreeGlobal());
 	}
 
-	static void setGlobalErrorLogCallback(dvConfigTreeErrorLogCallback error_log_cb) {
-		sshsSetGlobalErrorLogCallback(error_log_cb);
+	static Tree newTree() {
+		return (dvConfigTreeNew());
 	}
 
-	static dvConfigTreeErrorLogCallback getGlobalErrorLogCallback() {
-		return (sshsGetGlobalErrorLogCallback());
+	static void errorLogCallbackSet(dvConfigTreeErrorLogCallback error_log_cb) {
+		dvConfigTreeErrorLogCallbackSet(error_log_cb);
+	}
+
+	static dvConfigTreeErrorLogCallback errorLogCallbackGet() {
+		return (dvConfigTreeErrorLogCallbackGet());
 	}
 
 	bool existsNode(const std::string &nodePath) const {
-		return (sshsExistsNode(tree, nodePath.c_str()));
+		return (dvConfigTreeExistsNode(tree, nodePath.c_str()));
 	}
 
 	Node getRootNode() const {
-		return (sshsGetNode(tree, "/"));
+		return (dvConfigTreeGetNode(tree, "/"));
 	}
 
 	/**
@@ -725,7 +729,7 @@ public:
 	 * @throws std::out_of_range Invalid absolute node path.
 	 */
 	Node getNode(const std::string &nodePath) const {
-		dvConfigNode node = sshsGetNode(tree, nodePath.c_str());
+		dvConfigNode node = dvConfigTreeGetNode(tree, nodePath.c_str());
 
 		if (node == nullptr) {
 			throw std::out_of_range("Invalid absolute node path.");
@@ -735,11 +739,11 @@ public:
 	}
 
 	void attributeUpdaterRemoveAll() {
-		sshsAttributeUpdaterRemoveAll(tree);
+		dvConfigTreeAttributeUpdaterRemoveAll(tree);
 	}
 
 	bool attributeUpdaterRun() {
-		return (sshsAttributeUpdaterRun(tree));
+		return (dvConfigTreeAttributeUpdaterRun(tree));
 	}
 
 	/**
@@ -747,7 +751,7 @@ public:
 	 * This can happen due to concurrent changes from this setter.
 	 */
 	void globalNodeListenerSet(dvConfigNodeChangeListener node_changed, void *userData) {
-		sshsGlobalNodeListenerSet(tree, node_changed, userData);
+		dvConfigTreeGlobalNodeListenerSet(tree, node_changed, userData);
 	}
 
 	/**
@@ -755,11 +759,11 @@ public:
 	 * This can happen due to concurrent changes from this setter.
 	 */
 	void globalAttributeListenerSet(dvConfigAttributeChangeListener attribute_changed, void *userData) {
-		sshsGlobalAttributeListenerSet(tree, attribute_changed, userData);
+		dvConfigTreeGlobalAttributeListenerSet(tree, attribute_changed, userData);
 	}
 };
 
-static Tree GLOBAL = Tree::getGlobal();
+static Tree GLOBAL = Tree::globalTree();
 
 } // namespace Config
 } // namespace dv
