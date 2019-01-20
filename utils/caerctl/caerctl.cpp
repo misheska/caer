@@ -1,6 +1,7 @@
 #include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/utils.h"
 
+#include "../../src/config_server/asio.h"
 #include "../../src/config_server/caer_config_action_data.h"
 #include "utils/ext/linenoise-ng/linenoise.h"
 
@@ -13,18 +14,17 @@
 #include <boost/tokenizer.hpp>
 #include <iostream>
 #include <string>
+#include <thread>
 #include <vector>
 
-namespace asio    = boost::asio;
-namespace asioSSL = boost::asio::ssl;
-namespace asioIP  = boost::asio::ip;
-using asioTCP     = boost::asio::ip::tcp;
-namespace po      = boost::program_options;
+namespace po = boost::program_options;
 
 #define CAERCTL_HISTORY_FILE_NAME ".caer-ctl.history"
 
 static void handleInputLine(const char *buf, size_t bufLength);
 static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoComplete);
+
+static void configIOHandler(TCPTLSWriteOrderedSocket *sock);
 
 static void actionCompletion(
 	const std::string &buf, linenoiseCompletions *autoComplete, const std::string &partialActionString);
@@ -58,12 +58,16 @@ static caerConfigActionData dataBuffer;
 
 static asio::io_service ioService;
 static asioSSL::context sslContext(asioSSL::context::tlsv12_client);
-static asioSSL::stream<asioTCP::socket> sslSocket(ioService, sslContext);
-static bool sslConnection = false;
+static TCPTLSWriteOrderedSocket *netSocket = nullptr;
+static bool sslConnection                  = false;
 
 [[noreturn]] static inline void printHelpAndExit(po::options_description &desc) {
 	std::cout << std::endl << desc << std::endl;
 	exit(EXIT_FAILURE);
+}
+
+static void configIOHandler(TCPTLSWriteOrderedSocket *sock) {
+	sock->start([](const boost::system::error_code &) {}, asioSSL::stream_base::client);
 }
 
 int main(int argc, char *argv[]) {
@@ -160,9 +164,6 @@ int main(int argc, char *argv[]) {
 		}
 
 		sslContext.set_verify_mode(asioSSL::context::verify_peer);
-
-		// Rebuild SSL socket, so it picks up changes to SSL context above.
-		new (&sslSocket) asioSSL::stream<asioTCP::socket>(ioService, sslContext);
 	}
 
 	bool scriptMode = false;
@@ -206,26 +207,18 @@ int main(int argc, char *argv[]) {
 
 	// Connect to the remote cAER config server.
 	try {
-		asioTCP::resolver resolver(ioService);
-		asio::connect(sslSocket.next_layer(), resolver.resolve({ipAddress, portNumber}));
+		asioTCP::socket sock{ioService};
+		asioTCP::resolver resolver{ioService};
+		asio::connect(sock, resolver.resolve({ipAddress, portNumber}));
+
+		// SSL connection support.
+		netSocket = new TCPTLSWriteOrderedSocket{std::move(sock), sslConnection, sslContext};
 	}
 	catch (const boost::system::system_error &ex) {
 		boost::format exMsg = boost::format("Failed to connect to %s:%s, error message is:\n\t%s.") % ipAddress
 							  % portNumber % ex.what();
 		std::cerr << exMsg.str() << std::endl;
 		return (EXIT_FAILURE);
-	}
-
-	// SSL connection support.
-	if (sslConnection) {
-		try {
-			sslSocket.handshake(asioSSL::stream_base::client);
-		}
-		catch (const boost::system::system_error &ex) {
-			boost::format exMsg = boost::format("Failed SSL handshake, error message is:\n\t%s.") % ex.what();
-			std::cerr << exMsg.str() << std::endl;
-			return (EXIT_FAILURE);
-		}
 	}
 
 	// Load command history file.
@@ -248,6 +241,9 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	else {
+		// Start thread to handle updates between local and remote config tree.
+		std::thread configIOThread{&configIOHandler, netSocket};
+
 		// Create a shell prompt with the IP:Port displayed.
 		boost::format shellPrompt = boost::format("cAER @ %s:%s >> ") % ipAddress % portNumber;
 
