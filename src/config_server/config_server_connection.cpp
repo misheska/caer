@@ -24,14 +24,16 @@ ConfigServerConnection::~ConfigServerConnection() {
 void ConfigServerConnection::start() {
 	auto self(shared_from_this());
 
-	socket.start([this, self](const boost::system::error_code &error) {
-		if (error) {
-			handleError(error, "Failed startup (SSL handshake)");
-		}
-		else {
-			readHeader();
-		}
-	});
+	socket.start(
+		[this, self](const boost::system::error_code &error) {
+			if (error) {
+				handleError(error, "Failed startup (SSL handshake)");
+			}
+			else {
+				readHeader();
+			}
+		},
+		asioSSL::stream_base::server);
 }
 
 void ConfigServerConnection::close() {

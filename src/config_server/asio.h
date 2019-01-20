@@ -63,9 +63,10 @@ public:
 	 * Startup handler needs following signature:
 	 * void (const boost::system::error_code &)
 	 */
-	template<typename StartupHandler> void start(StartupHandler &&stHandler) {
+	template<typename StartupHandler>
+	void start(StartupHandler &&stHandler, asioSSL::stream_base::handshake_type type) {
 		if (sslConnection) {
-			socket.async_handshake(asioSSL::stream_base::server, stHandler);
+			socket.async_handshake(type, stHandler);
 		}
 		else {
 			stHandler(boost::system::error_code());
