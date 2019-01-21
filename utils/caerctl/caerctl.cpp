@@ -1,4 +1,5 @@
 #include "caer-sdk/cross/portable_io.h"
+#include "caer-sdk/cross/portable_threads.h"
 #include "caer-sdk/utils.h"
 
 #include "../../src/config_server/asio.h"
@@ -24,8 +25,6 @@ namespace po = boost::program_options;
 static void handleInputLine(const char *buf, size_t bufLength);
 static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoComplete);
 
-static void configIOHandler(TCPTLSWriteOrderedSocket *sock);
-
 static void actionCompletion(
 	const std::string &buf, linenoiseCompletions *autoComplete, const std::string &partialActionString);
 static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caerConfigAction action,
@@ -37,8 +36,8 @@ static void typeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 static void valueCompletion(const std::string &buf, linenoiseCompletions *autoComplete, caerConfigAction action,
 	const std::string &nodeString, const std::string &keyString, const std::string &typeString,
 	const std::string &partialValueString);
-static void addCompletionSuffix(linenoiseCompletions *lc, const char *buf, size_t completionPoint, const char *suffix,
-	bool endSpace, bool endSlash);
+static void addCompletionSuffix(linenoiseCompletions *autocomplete, const char *buf, size_t completionPoint,
+	const char *suffix, bool endSpace, bool endSlash);
 
 static const struct {
 	const std::string name;
@@ -58,17 +57,55 @@ static caerConfigActionData dataBuffer;
 
 static asio::io_service ioService;
 static asioSSL::context sslContext(asioSSL::context::tlsv12_client);
-static TCPTLSWriteOrderedSocket *netSocket = nullptr;
-static bool sslConnection                  = false;
+static bool sslConnection = false;
 
-[[noreturn]] static inline void printHelpAndExit(po::options_description &desc) {
+[[noreturn]] static inline void printHelpAndExit(const po::options_description &desc) {
 	std::cout << std::endl << desc << std::endl;
 	exit(EXIT_FAILURE);
 }
 
-static void configIOHandler(TCPTLSWriteOrderedSocket *sock) {
-	sock->start([](const boost::system::error_code &) {}, asioSSL::stream_base::client);
-}
+class ConfigIOHandler {
+private:
+	std::shared_ptr<TCPTLSWriteOrderedSocket> sock;
+	std::thread ioThread;
+
+public:
+	explicit ConfigIOHandler(std::shared_ptr<TCPTLSWriteOrderedSocket> s) : sock(std::move(s)) {
+	}
+
+	void threadStart() {
+		ioThread = std::thread([this]() {
+			// Set thread name.
+			portable_thread_set_name("ConfigIOHandler");
+
+			// Initialize connection.
+			sock->start(
+				[this](const boost::system::error_code &error) {
+					if (error) {
+						std::cout << "Failed to start connection (SSL handshake failure)." << std::endl;
+					}
+					else {
+						startPushClient();
+					}
+				},
+				asioSSL::stream_base::client);
+
+			// Run IO service.
+			ioService.run();
+		});
+	}
+
+	void threadStop() {
+		// Stop IO service.
+		ioService.stop();
+
+		// Wait for thread to terminate.
+		ioThread.join();
+	}
+
+	void startPushClient() {
+	}
+};
 
 int main(int argc, char *argv[]) {
 	// Allowed command-line options for caer-ctl.
@@ -206,13 +243,15 @@ int main(int argc, char *argv[]) {
 	commandHistoryFilePath.append(CAERCTL_HISTORY_FILE_NAME, boost::filesystem::path::codecvt());
 
 	// Connect to the remote cAER config server.
+	std::shared_ptr<TCPTLSWriteOrderedSocket> netSocket;
+
 	try {
 		asioTCP::socket sock{ioService};
 		asioTCP::resolver resolver{ioService};
 		asio::connect(sock, resolver.resolve({ipAddress, portNumber}));
 
 		// SSL connection support.
-		netSocket = new TCPTLSWriteOrderedSocket{std::move(sock), sslConnection, sslContext};
+		netSocket = std::make_shared<TCPTLSWriteOrderedSocket>(std::move(sock), sslConnection, &sslContext);
 	}
 	catch (const boost::system::system_error &ex) {
 		boost::format exMsg = boost::format("Failed to connect to %s:%s, error message is:\n\t%s.") % ipAddress
@@ -242,7 +281,8 @@ int main(int argc, char *argv[]) {
 	}
 	else {
 		// Start thread to handle updates between local and remote config tree.
-		std::thread configIOThread{&configIOHandler, netSocket};
+		ConfigIOHandler ioHandler(netSocket);
+		ioHandler.threadStart();
 
 		// Create a shell prompt with the IP:Port displayed.
 		boost::format shellPrompt = boost::format("cAER @ %s:%s >> ") % ipAddress % portNumber;
@@ -280,47 +320,22 @@ int main(int argc, char *argv[]) {
 			// Free input after use.
 			free(inputLine);
 		}
+
+		ioHandler.threadStop();
 	}
 
 	// Save command history file.
 	linenoiseHistorySave(commandHistoryFilePath.string().c_str());
-
-	// Close SSL connection properly.
-	if (sslConnection) {
-		boost::system::error_code error;
-		sslSocket.shutdown(error);
-
-		// EOF is expected for good SSL shutdown. See:
-		// https://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
-		if (error != asio::error::eof) {
-			boost::format errMsg = boost::format("Failed SSL shutdown, error message is:\n\t%s.") % error.message();
-			std::cerr << errMsg.str() << std::endl;
-		}
-	}
 
 	return (EXIT_SUCCESS);
 }
 
 static inline void asioSocketWrite(const asio::const_buffer &buf) {
 	const asio::const_buffers_1 buf2(buf);
-
-	if (sslConnection) {
-		asio::write(sslSocket, buf2);
-	}
-	else {
-		asio::write(sslSocket.next_layer(), buf2);
-	}
 }
 
 static inline void asioSocketRead(const asio::mutable_buffer &buf) {
 	const asio::mutable_buffers_1 buf2(buf);
-
-	if (sslConnection) {
-		asio::read(sslSocket, buf2);
-	}
-	else {
-		asio::read(sslSocket.next_layer(), buf2);
-	}
 }
 
 #define MAX_CMD_PARTS 5
