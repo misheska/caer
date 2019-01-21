@@ -380,9 +380,9 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	// Let's get the action code first thing.
 	caerConfigAction action = caerConfigAction::ERROR;
 
-	for (size_t i = 0; i < actionsLength; i++) {
-		if (actions[i].name == commandParts[CMD_PART_ACTION]) {
-			action = actions[i].code;
+	for (const auto &act : actions) {
+		if (act.name == commandParts[CMD_PART_ACTION]) {
+			action = act.code;
 		}
 	}
 
@@ -563,9 +563,9 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 		actionString = "error";
 	}
 	else {
-		for (size_t i = 0; i < actionsLength; i++) {
-			if (actions[i].code == dataBuffer.getAction()) {
-				actionString = actions[i].name;
+		for (const auto &act : actions) {
+			if (act.code == dataBuffer.getAction()) {
+				actionString = act.name;
 			}
 		}
 	}
@@ -621,9 +621,9 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 	// Let's get the action code first thing.
 	caerConfigAction action = caerConfigAction::ERROR;
 
-	for (size_t i = 0; i < actionsLength; i++) {
-		if (actions[i].name == commandParts[CMD_PART_ACTION]) {
-			action = actions[i].code;
+	for (const auto &act : actions) {
+		if (act.name == commandParts[CMD_PART_ACTION]) {
+			action = act.code;
 		}
 	}
 
@@ -678,9 +678,9 @@ static void actionCompletion(
 	UNUSED_ARGUMENT(buf);
 
 	// Always start off with a command.
-	for (size_t i = 0; i < actionsLength; i++) {
-		if (partialActionString == actions[i].name.substr(0, partialActionString.length())) {
-			addCompletionSuffix(autoComplete, "", 0, actions[i].name.c_str(), true, false);
+	for (const auto &act : actions) {
+		if (partialActionString == act.name.substr(0, partialActionString.length())) {
+			addCompletionSuffix(autoComplete, "", 0, act.name.c_str(), true, false);
 		}
 	}
 

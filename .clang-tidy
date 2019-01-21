@@ -1,4 +1,4 @@
-Checks: '*,-abseil*,-fuchsia*,-hicpp*,-mpi*,-objc*,-zircon*,-llvm-header-guard,-cppcoreguidelines-pro-type-reinterpret-cast,-cppcoreguidelines-pro-bounds-constant-array-index,-cppcoreguidelines-special-member-functions,-cert-err58-cpp'
+Checks: '*,-abseil*,-fuchsia*,-hicpp*,-mpi*,-objc*,-zircon*,-llvm-header-guard,-cppcoreguidelines-pro-type-reinterpret-cast,-cppcoreguidelines-pro-bounds-constant-array-index,-cppcoreguidelines-special-member-functions,-cert-err58-cpp,-readability-implicit-bool-conversion'
 WarningsAsErrors: ''
 HeaderFilterRegex: ''
 AnalyzeTemporaryDtors: false
