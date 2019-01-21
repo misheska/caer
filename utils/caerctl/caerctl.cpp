@@ -51,7 +51,6 @@ static const struct {
 	{"add_module", caerConfigAction::ADD_MODULE},
 	{"remove_module", caerConfigAction::REMOVE_MODULE},
 };
-static const size_t actionsLength = sizeof(actions) / sizeof(actions[0]);
 
 static caerConfigActionData dataBuffer;
 
