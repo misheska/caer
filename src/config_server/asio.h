@@ -9,9 +9,9 @@
 #include <utility>
 
 namespace asio    = boost::asio;
-namespace asioSSL = boost::asio::ssl;
-namespace asioIP  = boost::asio::ip;
-using asioTCP     = boost::asio::ip::tcp;
+namespace asioSSL = asio::ssl;
+namespace asioIP  = asio::ip;
+using asioTCP     = asioIP::tcp;
 
 class TCPTLSSocket {
 private:
@@ -22,13 +22,13 @@ private:
 	bool sslConnection;
 
 public:
-	TCPTLSSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
+	TCPTLSSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext) :
 		localEndpoint(s.local_endpoint()),
 		remoteEndpoint(s.remote_endpoint()),
 #if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 66
-		socket(std::move(s), sslContext),
+		socket(std::move(s), *sslContext),
 #else
-		socket(s.get_io_service(), sslContext),
+		socket(s.get_io_service(), *sslContext),
 #endif
 		socketClosed(false),
 		sslConnection(sslEnabled) {
@@ -135,7 +135,7 @@ private:
 
 class TCPTLSWriteOrderedSocket : public TCPTLSSocket {
 public:
-	TCPTLSWriteOrderedSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext) :
+	TCPTLSWriteOrderedSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext) :
 		TCPTLSSocket(std::move(s), sslEnabled, sslContext) {
 	}
 

@@ -7,7 +7,7 @@
 namespace logger = libcaer::log;
 
 ConfigServerConnection::ConfigServerConnection(
-	asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext, ConfigServer *server) :
+	asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext, ConfigServer *server) :
 	parent(server),
 	socket(std::move(s), sslEnabled, sslContext) {
 	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "New connection from client %s:%d.",

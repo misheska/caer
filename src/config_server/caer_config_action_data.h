@@ -3,6 +3,8 @@
 
 #include "caer-sdk/utils.h"
 
+#include <array>
+
 enum class caerConfigAction {
 	NODE_EXISTS        = 0,
 	ATTR_EXISTS        = 1,
@@ -39,10 +41,10 @@ enum class caerConfigAction {
 
 class caerConfigActionData {
 private:
-	uint8_t buffer[CAER_CONFIG_SERVER_BUFFER_SIZE];
+	std::array<uint8_t, CAER_CONFIG_SERVER_BUFFER_SIZE> buffer;
 
 public:
-	caerConfigActionData() {
+	caerConfigActionData() noexcept {
 		reset();
 	}
 
@@ -63,39 +65,39 @@ public:
 	}
 
 	void setExtraLength(uint16_t extraLen) {
-		*((uint16_t *) (buffer + 2)) = htole16(extraLen);
+		*(reinterpret_cast<uint16_t *>(&buffer[2])) = htole16(extraLen);
 	}
 
 	uint16_t getExtraLength() const {
-		return (le16toh(*((const uint16_t *) (buffer + 2))));
+		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[2]))));
 	}
 
 	void setNodeLength(uint16_t nodeLen) {
-		*((uint16_t *) (buffer + 4)) = htole16(nodeLen);
+		*(reinterpret_cast<uint16_t *>(&buffer[4])) = htole16(nodeLen);
 	}
 
 	uint16_t getNodeLength() const {
-		return (le16toh(*((const uint16_t *) (buffer + 4))));
+		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[4]))));
 	}
 
 	void setKeyLength(uint16_t keyLen) {
-		*((uint16_t *) (buffer + 6)) = htole16(keyLen);
+		*(reinterpret_cast<uint16_t *>(&buffer[6])) = htole16(keyLen);
 	}
 
 	uint16_t getKeyLength() const {
-		return (le16toh(*((const uint16_t *) (buffer + 6))));
+		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[6]))));
 	}
 
 	void setValueLength(uint16_t valueLen) {
-		*((uint16_t *) (buffer + 8)) = htole16(valueLen);
+		*(reinterpret_cast<uint16_t *>(&buffer[8])) = htole16(valueLen);
 	}
 
 	uint16_t getValueLength() const {
-		return (le16toh(*((const uint16_t *) (buffer + 8))));
+		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[8]))));
 	}
 
 	void setExtra(const std::string &extra) {
-		memcpy(buffer + CAER_CONFIG_SERVER_HEADER_SIZE, extra.c_str(), extra.length());
+		memcpy(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE], extra.c_str(), extra.length());
 		buffer[CAER_CONFIG_SERVER_HEADER_SIZE + extra.length()] = '\0';
 		setExtraLength(static_cast<uint16_t>(extra.length() + 1)); // +1 for NUL termination.
 	}
@@ -107,11 +109,11 @@ public:
 
 		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
 		return (
-			std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE), getExtraLength() - 1));
+			std::string(reinterpret_cast<const char *>(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE]), getExtraLength() - 1));
 	}
 
 	void setNode(const std::string &node) {
-		memcpy(buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength(), node.c_str(), node.length());
+		memcpy(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength()], node.c_str(), node.length());
 		buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + node.length()] = '\0';
 		setNodeLength(static_cast<uint16_t>(node.length() + 1)); // +1 for NUL termination.
 	}
@@ -122,12 +124,12 @@ public:
 		}
 
 		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
-		return (std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength()),
+		return (std::string(reinterpret_cast<const char *>(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength()]),
 			getNodeLength() - 1));
 	}
 
 	void setKey(const std::string &key) {
-		memcpy(buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength(), key.c_str(), key.length());
+		memcpy(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength()], key.c_str(), key.length());
 		buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength() + key.length()] = '\0';
 		setKeyLength(static_cast<uint16_t>(key.length() + 1)); // +1 for NUL termination.
 	}
@@ -139,12 +141,12 @@ public:
 
 		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
 		return (std::string(reinterpret_cast<const char *>(
-								buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength()),
+								&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength()]),
 			getKeyLength() - 1));
 	}
 
 	void setValue(const std::string &value) {
-		memcpy(buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength() + getKeyLength(),
+		memcpy(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength() + getKeyLength()],
 			value.c_str(), value.length());
 		buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength() + getKeyLength() + value.length()]
 			= '\0';
@@ -157,13 +159,14 @@ public:
 		}
 
 		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
-		return (std::string(reinterpret_cast<const char *>(buffer + CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength()
-														   + getNodeLength() + getKeyLength()),
+		return (std::string(
+			reinterpret_cast<const char *>(
+				&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength() + getKeyLength()]),
 			getValueLength() - 1));
 	}
 
 	void reset() {
-		memset(buffer, 0, CAER_CONFIG_SERVER_HEADER_SIZE);
+		buffer.fill(0);
 	}
 
 	uint8_t *getBuffer() {
@@ -179,11 +182,11 @@ public:
 	}
 
 	uint8_t *getHeaderBuffer() {
-		return (buffer);
+		return (&buffer[0]);
 	}
 
 	const uint8_t *getHeaderBuffer() const {
-		return (buffer);
+		return (&buffer[0]);
 	}
 
 	size_t headerSize() const {
@@ -191,11 +194,11 @@ public:
 	}
 
 	uint8_t *getDataBuffer() {
-		return (buffer + CAER_CONFIG_SERVER_HEADER_SIZE);
+		return (&buffer[CAER_CONFIG_SERVER_HEADER_SIZE]);
 	}
 
 	const uint8_t *getDataBuffer() const {
-		return (buffer + CAER_CONFIG_SERVER_HEADER_SIZE);
+		return (&buffer[CAER_CONFIG_SERVER_HEADER_SIZE]);
 	}
 
 	size_t dataSize() const {

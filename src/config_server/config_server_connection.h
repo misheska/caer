@@ -2,8 +2,9 @@
 #define SRC_CONFIG_SERVER_CONFIG_SERVER_CONNECTION_H_
 
 #include "asio.h"
-#include <memory>
 #include "caer_config_action_data.h"
+
+#include <memory>
 
 class ConfigServer;
 
@@ -14,7 +15,7 @@ private:
 	caerConfigActionData data;
 
 public:
-	ConfigServerConnection(asioTCP::socket s, bool sslEnabled, asioSSL::context &sslContext, ConfigServer *server);
+	ConfigServerConnection(asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext, ConfigServer *server);
 	~ConfigServerConnection();
 
 	void start();

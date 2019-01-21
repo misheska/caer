@@ -222,7 +222,7 @@ void ConfigServer::acceptStart() {
 		}
 		else {
 			auto client
-				= std::make_shared<ConfigServerConnection>(std::move(acceptorNewSocket), sslEnabled, sslContext, this);
+				= std::make_shared<ConfigServerConnection>(std::move(acceptorNewSocket), sslEnabled, &sslContext, this);
 
 			clients.push_back(client.get());
 
