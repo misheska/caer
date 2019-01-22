@@ -24,6 +24,9 @@ static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode node, voi
 	enum dvConfigAttributeEvents event, const char *changeKey, enum dvConfigAttributeType changeType,
 	union dvConfigAttributeValue changeValue);
 
+// 0 is default system ID.
+thread_local uint64_t ConfigServer::currentClientID{0};
+
 ConfigServer::ConfigServer() :
 	ioThreadRun(true),
 	ioThreadState(IOThreadState::STOPPED),
@@ -76,6 +79,10 @@ void ConfigServer::threadStop() {
 	ioThread.join();
 }
 
+void ConfigServer::setCurrentClientID(uint64_t clientID) {
+	currentClientID = clientID;
+}
+
 void ConfigServer::removeClient(ConfigServerConnection *client) {
 	removePushClient(client);
 
@@ -96,8 +103,15 @@ bool ConfigServer::pushClientsPresent() {
 	return (!ioService.stopped() && (numPushClients > 0));
 }
 
-void ConfigServer::pushMessageToClients(std::shared_ptr<const caerConfigActionData> message) {
+void ConfigServer::pushMessageToClients(std::shared_ptr<caerConfigActionData> message) {
 	if (!ioService.stopped()) {
+		// Set message ID to the ID of the client that originated this change.
+		// If we're running in any other thread it will be 0 (system), if the
+		// change we're pushing comes from a listener firing in response to
+		// changes brought by a client via the config-server, the current
+		// client ID will be the one from that remote client.
+		message->setID(currentClientID);
+
 		ioService.post([this, message]() {
 			for (auto client : pushClients) {
 				client->writePushMessage(message);

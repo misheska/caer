@@ -13,6 +13,8 @@ class ConfigServer {
 private:
 	enum class IOThreadState { STARTING, RUNNING, STOPPING, STOPPED };
 
+	static thread_local uint64_t currentClientID;
+
 	bool ioThreadRun;
 	IOThreadState ioThreadState;
 	std::thread ioThread;
@@ -34,11 +36,12 @@ public:
 	void serviceRestart();
 	void threadStop();
 
+	void setCurrentClientID(uint64_t clientID);
 	void removeClient(ConfigServerConnection *client);
 	void addPushClient(ConfigServerConnection *pushClient);
 	void removePushClient(ConfigServerConnection *pushClient);
 	bool pushClientsPresent();
-	void pushMessageToClients(std::shared_ptr<const caerConfigActionData> message);
+	void pushMessageToClients(std::shared_ptr<caerConfigActionData> message);
 
 private:
 	void serviceConfigure();

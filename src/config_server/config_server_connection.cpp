@@ -6,6 +6,9 @@
 
 namespace logger = libcaer::log;
 
+// Start at 1, 0 is reserved for system.
+std::atomic_uint64_t ConfigServerConnection::clientIDGenerator{1};
+
 ConfigServerConnection::ConfigServerConnection(
 	asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext, ConfigServer *server) :
 	parent(server),
@@ -115,6 +118,12 @@ void ConfigServerConnection::readData() {
 				handleError(error, "Failed to read data");
 			}
 			else {
+				// Any changes coming as a result of clients doing something
+				// must originate as a result of a call to this function.
+				// So we set the client ID for the current thread to the
+				// current client value, so that any listeners will see it too.
+				parent->setCurrentClientID(clientID);
+
 				caerConfigServerHandleRequest(self);
 			}
 		});
