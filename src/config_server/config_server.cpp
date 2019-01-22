@@ -362,7 +362,6 @@ static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode n, void *
 			const std::string descriptionStr = node.getAttributeDescription(changeKey, type);
 
 			std::string extraStr(1, (char) event);
-			extraStr.push_back('\0');
 			extraStr += flagsStr;
 			extraStr.push_back('\0');
 			extraStr += rangesStr;

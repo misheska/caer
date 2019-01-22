@@ -28,16 +28,17 @@ enum class caerConfigAction {
 	DUMP_TREE_ATTR     = 19,
 };
 
-// Control message format: 1 byte ACTION, 1 byte TYPE, 2 bytes EXTRA_LEN,
-// 2 bytes NODE_LEN, 2 bytes KEY_LEN, 2 bytes VALUE_LEN, then up to 4086
-// bytes split between EXTRA, NODE, KEY, VALUE (with 4 bytes for NUL).
-// Basically: (EXTRA_LEN + NODE_LEN + KEY_LEN + VALUE_LEN) <= 4086.
-// EXTRA, NODE, KEY, VALUE have to be NUL terminated, and their length
-// must include the NUL termination byte.
+// Control message format: 1 byte ACTION, 1 byte TYPE, 8 bytes ID,
+// 2 bytes EXTRA_LEN, 2 bytes NODE_LEN, 2 bytes KEY_LEN, 2 bytes
+// VALUE_LEN, then up to 4078 bytes split between EXTRA, NODE, KEY
+// and VALUE.
+// Basically: (EXTRA_LEN + NODE_LEN + KEY_LEN + VALUE_LEN) <= 4078.
+// EXTRA, NODE, KEY, VALUE shall not be NUL terminated, because
+// the length is known already.
 // This results in a maximum message size of 4096 bytes (4KB).
-// All two-byte integers (EXTRA_LEN etc.) are little-endian!
+// All integers (EXTRA_LEN etc.) are little-endian!
 #define CAER_CONFIG_SERVER_BUFFER_SIZE 4096
-#define CAER_CONFIG_SERVER_HEADER_SIZE 10
+#define CAER_CONFIG_SERVER_HEADER_SIZE 18
 
 class caerConfigActionData {
 private:
@@ -64,109 +65,111 @@ public:
 		return (static_cast<dv::Config::AttributeType>(buffer[1]));
 	}
 
+	void setID(uint64_t id) {
+		*(reinterpret_cast<uint64_t *>(&buffer[2])) = htole64(id);
+	}
+
+	uint64_t getID() const {
+		return (le64toh(*(reinterpret_cast<const uint64_t *>(&buffer[2]))));
+	}
+
 	void setExtraLength(uint16_t extraLen) {
-		*(reinterpret_cast<uint16_t *>(&buffer[2])) = htole16(extraLen);
+		*(reinterpret_cast<uint16_t *>(&buffer[10])) = htole16(extraLen);
 	}
 
 	uint16_t getExtraLength() const {
-		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[2]))));
+		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[10]))));
 	}
 
 	void setNodeLength(uint16_t nodeLen) {
-		*(reinterpret_cast<uint16_t *>(&buffer[4])) = htole16(nodeLen);
+		*(reinterpret_cast<uint16_t *>(&buffer[12])) = htole16(nodeLen);
 	}
 
 	uint16_t getNodeLength() const {
-		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[4]))));
+		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[12]))));
 	}
 
 	void setKeyLength(uint16_t keyLen) {
-		*(reinterpret_cast<uint16_t *>(&buffer[6])) = htole16(keyLen);
+		*(reinterpret_cast<uint16_t *>(&buffer[14])) = htole16(keyLen);
 	}
 
 	uint16_t getKeyLength() const {
-		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[6]))));
+		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[14]))));
 	}
 
 	void setValueLength(uint16_t valueLen) {
-		*(reinterpret_cast<uint16_t *>(&buffer[8])) = htole16(valueLen);
+		*(reinterpret_cast<uint16_t *>(&buffer[16])) = htole16(valueLen);
 	}
 
 	uint16_t getValueLength() const {
-		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[8]))));
+		return (le16toh(*(reinterpret_cast<const uint16_t *>(&buffer[16]))));
 	}
 
 	void setExtra(const std::string &extra) {
-		memcpy(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE], extra.c_str(), extra.length());
-		buffer[CAER_CONFIG_SERVER_HEADER_SIZE + extra.length()] = '\0';
-		setExtraLength(static_cast<uint16_t>(extra.length() + 1)); // +1 for NUL termination.
+		memcpy(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE], extra.data(), extra.size());
+		setExtraLength(static_cast<uint16_t>(extra.size()));
 	}
 
 	std::string getExtra() const {
-		if (getExtraLength() < 2) {
+		if (getExtraLength() == 0) {
 			return (std::string());
 		}
 
-		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
-		return (
-			std::string(reinterpret_cast<const char *>(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE]), getExtraLength() - 1));
+		// Construct with size to avoid useless strlen() pass, size is known.
+		return (std::string(reinterpret_cast<const char *>(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE]), getExtraLength()));
 	}
 
 	void setNode(const std::string &node) {
-		memcpy(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength()], node.c_str(), node.length());
-		buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + node.length()] = '\0';
-		setNodeLength(static_cast<uint16_t>(node.length() + 1)); // +1 for NUL termination.
+		memcpy(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength()], node.data(), node.size());
+		setNodeLength(static_cast<uint16_t>(node.size()));
 	}
 
 	std::string getNode() const {
-		if (getNodeLength() < 2) {
+		if (getNodeLength() == 0) {
 			return (std::string());
 		}
 
-		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
+		// Construct with size to avoid useless strlen() pass, size is known.
 		return (std::string(reinterpret_cast<const char *>(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength()]),
-			getNodeLength() - 1));
+			getNodeLength()));
 	}
 
 	void setKey(const std::string &key) {
-		memcpy(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength()], key.c_str(), key.length());
-		buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength() + key.length()] = '\0';
-		setKeyLength(static_cast<uint16_t>(key.length() + 1)); // +1 for NUL termination.
+		memcpy(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength()], key.data(), key.size());
+		setKeyLength(static_cast<uint16_t>(key.size()));
 	}
 
 	std::string getKey() const {
-		if (getKeyLength() < 2) {
+		if (getKeyLength() == 0) {
 			return (std::string());
 		}
 
-		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
+		// Construct with size to avoid useless strlen() pass, size is known.
 		return (std::string(reinterpret_cast<const char *>(
 								&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength()]),
-			getKeyLength() - 1));
+			getKeyLength()));
 	}
 
 	void setValue(const std::string &value) {
 		memcpy(&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength() + getKeyLength()],
-			value.c_str(), value.length());
-		buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength() + getKeyLength() + value.length()]
-			= '\0';
-		setValueLength(static_cast<uint16_t>(value.length() + 1)); // +1 for NUL termination.
+			value.data(), value.size());
+		setValueLength(static_cast<uint16_t>(value.size()));
 	}
 
 	std::string getValue() const {
-		if (getValueLength() < 2) {
+		if (getValueLength() == 0) {
 			return (std::string());
 		}
 
-		// Construct with size to avoid useless strlen() pass; -1 to drop terminating NUL char.
+		// Construct with size to avoid useless strlen() pass, size is known.
 		return (std::string(
 			reinterpret_cast<const char *>(
 				&buffer[CAER_CONFIG_SERVER_HEADER_SIZE + getExtraLength() + getNodeLength() + getKeyLength()]),
-			getValueLength() - 1));
+			getValueLength()));
 	}
 
 	void reset() {
-		buffer.fill(0);
+		std::fill_n(buffer.begin(), CAER_CONFIG_SERVER_HEADER_SIZE, 0);
 	}
 
 	uint8_t *getBuffer() {
@@ -207,9 +210,9 @@ public:
 
 	std::string toString() const {
 		return ("action=" + std::to_string(static_cast<uint8_t>(getAction())) + ", type="
-				+ std::to_string(static_cast<uint8_t>(getType())) + ", extraLength=" + std::to_string(getExtraLength())
-				+ ", nodeLength=" + std::to_string(getNodeLength()) + ", keyLength=" + std::to_string(getKeyLength())
-				+ ", valueLength=" + std::to_string(getValueLength()));
+				+ std::to_string(static_cast<uint8_t>(getType())) + ", id=" + std::to_string(getID()) + ", extraLength="
+				+ std::to_string(getExtraLength()) + ", nodeLength=" + std::to_string(getNodeLength()) + ", keyLength="
+				+ std::to_string(getKeyLength()) + ", valueLength=" + std::to_string(getValueLength()));
 	}
 };
 
