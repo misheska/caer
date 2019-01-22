@@ -10,14 +10,16 @@ ConfigServerConnection::ConfigServerConnection(
 	asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext, ConfigServer *server) :
 	parent(server),
 	socket(std::move(s), sslEnabled, sslContext) {
-	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "New connection from client %s:%d.",
+	clientID = clientIDGenerator.fetch_add(1);
+
+	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "New connection from client %lld (%s:%d).", clientID,
 		socket.remote_address().to_string().c_str(), socket.remote_port());
 }
 
 ConfigServerConnection::~ConfigServerConnection() {
 	parent->removeClient(this);
 
-	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Closing connection from client %s:%d.",
+	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Closing connection from client %lld (%s:%d).", clientID,
 		socket.remote_address().to_string().c_str(), socket.remote_port());
 }
 
@@ -38,6 +40,10 @@ void ConfigServerConnection::start() {
 
 void ConfigServerConnection::close() {
 	socket.close();
+}
+
+uint64_t ConfigServerConnection::getClientID() {
+	return (clientID);
 }
 
 void ConfigServerConnection::addPushClient() {
@@ -91,8 +97,7 @@ void ConfigServerConnection::readHeader() {
 				// Close connection by falling out of scope.
 				if (data.dataSize() > (CAER_CONFIG_SERVER_BUFFER_SIZE - CAER_CONFIG_SERVER_HEADER_SIZE)) {
 					logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME,
-						"Client %s:%d: read length error (%d bytes requested).",
-						socket.remote_address().to_string().c_str(), socket.remote_port(), data.dataSize());
+						"Client %lld: read length error (%d bytes requested).", clientID, data.dataSize());
 					return;
 				}
 
@@ -118,12 +123,10 @@ void ConfigServerConnection::readData() {
 void ConfigServerConnection::handleError(const boost::system::error_code &error, const char *message) {
 	if (error == asio::error::eof) {
 		// Handle EOF separately.
-		logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Client %s:%d: connection closed.",
-			socket.remote_address().to_string().c_str(), socket.remote_port());
+		logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Client %lld: connection closed.", clientID);
 	}
 	else {
-		logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME, "Client %s:%d: %s. Error: %s (%d).",
-			socket.remote_address().to_string().c_str(), socket.remote_port(), message, error.message().c_str(),
-			error.value());
+		logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME, "Client %lld: %s. Error: %s (%d).", clientID, message,
+			error.message().c_str(), error.value());
 	}
 }

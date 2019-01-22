@@ -10,9 +10,12 @@ class ConfigServer;
 
 class ConfigServerConnection : public std::enable_shared_from_this<ConfigServerConnection> {
 private:
+	static std::atomic_uint64_t clientIDGenerator;
+
 	ConfigServer *parent;
 	TCPTLSWriteOrderedSocket socket;
 	caerConfigActionData data;
+	uint64_t clientID;
 
 public:
 	ConfigServerConnection(asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext, ConfigServer *server);
@@ -20,6 +23,8 @@ public:
 
 	void start();
 	void close();
+
+	uint64_t getClientID();
 
 	void addPushClient();
 	void removePushClient();
