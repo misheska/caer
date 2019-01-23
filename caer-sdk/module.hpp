@@ -71,7 +71,7 @@ struct has_inputStreamDefinition<T,
 
 /**
  * Trait for output stream definition. Tests if the supplied class has a static
- * member for the input stream definition.
+ * member for the output stream definition.
  * @tparam T The class to be tested.
  */
 template<typename T, typename = void> struct has_outputStreamDefinition : std::false_type {};
@@ -156,7 +156,7 @@ public:
 
 	/**
 	 * Wrapper for the `init` caer function. Constructs the user defined `T` module
-	 * into the module state, calls the the config update function after construction
+	 * into the module state, calls the config update function after construction
 	 * and appends the SSHS listener.
 	 * @param moduleData The caer provided moduleData.
 	 * @return true if construction succeeded, false if it failed.
@@ -170,8 +170,8 @@ public:
 			sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 		}
 		catch (const std::exception &e) {
-			std::cerr << e.what();
-			std::cerr << "Could not initialize Module";
+		    caerModuleLog(moduleData, CAER_LOG_ERROR, "%s", e.what());
+			caerModuleLog(moduleData, CAER_LOG_ERROR, "%s", "Could not initialize Module");
 			return false;
 		}
 		return true;
