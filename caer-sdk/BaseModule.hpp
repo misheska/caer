@@ -1,11 +1,3 @@
-//
-// Created by najiji on 15.01.19.
-//
-
-//
-// Created by najiji on 11.01.19.
-//
-
 #ifndef CAER_MODULES_SDK_BASEMODULE_H
 #define CAER_MODULES_SDK_BASEMODULE_H
 
@@ -371,6 +363,11 @@ public:
 			auto key    = entry.first;
 			auto config = entry.second;
 			switch (config.getVariant()) {
+			    case _ConfigVariant::BOOLEAN: {
+			        auto config_ = config.getConfigObject<_ConfigVariant::BOOLEAN>();
+			        sshsNodeCreateBool(node, key.c_str(), config_.initValue, SSHS_FLAGS_NORMAL,
+			                config_.description.c_str());
+			    }
 				case _ConfigVariant::FRACTIONAL: {
 					auto config_ = config.getConfigObject<_ConfigVariant::FRACTIONAL>();
 					sshsNodeCreateDouble(node, key.c_str(), config_.initValue, config_.attributes.min,
@@ -401,6 +398,9 @@ public:
 					sshsNodeCreateAttributeFileChooser(
 						node, key.c_str(), fileChooserAttribute + ":" + config_.attributes.allowedExtensions);
 					break;
+				}
+				case _ConfigVariant::NONE: {
+				    break;
 				}
 			}
 		}

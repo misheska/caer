@@ -1,7 +1,3 @@
-//
-// Created by najiji on 16.10.18.
-//
-
 #ifndef CAER_MODULE_HPP
 #define CAER_MODULE_HPP
 
