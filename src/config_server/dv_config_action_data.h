@@ -11,18 +11,18 @@ namespace dv {
 struct ConfigActionData;
 struct ConfigActionDataT;
 
-enum class ConfigAction : uint8_t {
-  NODE_EXISTS = 0,
-  ATTR_EXISTS = 1,
-  GET = 2,
-  PUT = 3,
-  ERROR = 4,
-  GET_CHILDREN = 5,
-  GET_ATTRIBUTES = 6,
-  GET_TYPE = 7,
-  GET_RANGES = 8,
-  GET_FLAGS = 9,
-  GET_DESCRIPTION = 10,
+enum class ConfigAction : int8_t {
+  ERROR = 0,
+  NODE_EXISTS = 1,
+  ATTR_EXISTS = 2,
+  GET_CHILDREN = 3,
+  GET_ATTRIBUTES = 4,
+  GET_TYPE = 5,
+  GET_RANGES = 6,
+  GET_FLAGS = 7,
+  GET_DESCRIPTION = 8,
+  GET = 9,
+  PUT = 10,
   ADD_MODULE = 11,
   REMOVE_MODULE = 12,
   ADD_PUSH_CLIENT = 13,
@@ -32,23 +32,23 @@ enum class ConfigAction : uint8_t {
   DUMP_TREE = 17,
   DUMP_TREE_NODE = 18,
   DUMP_TREE_ATTR = 19,
-  MIN = NODE_EXISTS,
+  MIN = ERROR,
   MAX = DUMP_TREE_ATTR
 };
 
 inline const ConfigAction (&EnumValuesConfigAction())[20] {
   static const ConfigAction values[] = {
+    ConfigAction::ERROR,
     ConfigAction::NODE_EXISTS,
     ConfigAction::ATTR_EXISTS,
-    ConfigAction::GET,
-    ConfigAction::PUT,
-    ConfigAction::ERROR,
     ConfigAction::GET_CHILDREN,
     ConfigAction::GET_ATTRIBUTES,
     ConfigAction::GET_TYPE,
     ConfigAction::GET_RANGES,
     ConfigAction::GET_FLAGS,
     ConfigAction::GET_DESCRIPTION,
+    ConfigAction::GET,
+    ConfigAction::PUT,
     ConfigAction::ADD_MODULE,
     ConfigAction::REMOVE_MODULE,
     ConfigAction::ADD_PUSH_CLIENT,
@@ -64,17 +64,17 @@ inline const ConfigAction (&EnumValuesConfigAction())[20] {
 
 inline const char * const *EnumNamesConfigAction() {
   static const char * const names[] = {
+    "ERROR",
     "NODE_EXISTS",
     "ATTR_EXISTS",
-    "GET",
-    "PUT",
-    "ERROR",
     "GET_CHILDREN",
     "GET_ATTRIBUTES",
     "GET_TYPE",
     "GET_RANGES",
     "GET_FLAGS",
     "GET_DESCRIPTION",
+    "GET",
+    "PUT",
     "ADD_MODULE",
     "REMOVE_MODULE",
     "ADD_PUSH_CLIENT",
@@ -140,7 +140,7 @@ inline const char *EnumNameConfigType(ConfigType e) {
   return EnumNamesConfigType()[index];
 }
 
-enum class ConfigNodeEvents : uint8_t {
+enum class ConfigNodeEvents : int8_t {
   DVCFG_NODE_CHILD_ADDED = 0,
   DVCFG_NODE_CHILD_REMOVED = 1,
   MIN = DVCFG_NODE_CHILD_ADDED,
@@ -169,7 +169,7 @@ inline const char *EnumNameConfigNodeEvents(ConfigNodeEvents e) {
   return EnumNamesConfigNodeEvents()[index];
 }
 
-enum class ConfigAttributeEvents : uint8_t {
+enum class ConfigAttributeEvents : int8_t {
   DVCFG_ATTRIBUTE_ADDED = 0,
   DVCFG_ATTRIBUTE_MODIFIED = 1,
   DVCFG_ATTRIBUTE_REMOVED = 2,
@@ -215,11 +215,11 @@ struct ConfigActionDataT : public flatbuffers::NativeTable {
   int32_t flags;
   std::string description;
   ConfigActionDataT()
-      : action(ConfigAction::NODE_EXISTS),
+      : action(ConfigAction::ERROR),
         nodeEvents(ConfigNodeEvents::DVCFG_NODE_CHILD_ADDED),
         attrEvents(ConfigAttributeEvents::DVCFG_ATTRIBUTE_ADDED),
         id(0),
-        type(ConfigType::BOOL),
+        type(ConfigType::UNKNOWN),
         flags(0) {
   }
 };
@@ -240,13 +240,13 @@ struct ConfigActionData FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_DESCRIPTION = 24
   };
   ConfigAction action() const {
-    return static_cast<ConfigAction>(GetField<uint8_t>(VT_ACTION, 0));
+    return static_cast<ConfigAction>(GetField<int8_t>(VT_ACTION, 0));
   }
   ConfigNodeEvents nodeEvents() const {
-    return static_cast<ConfigNodeEvents>(GetField<uint8_t>(VT_NODEEVENTS, 0));
+    return static_cast<ConfigNodeEvents>(GetField<int8_t>(VT_NODEEVENTS, 0));
   }
   ConfigAttributeEvents attrEvents() const {
-    return static_cast<ConfigAttributeEvents>(GetField<uint8_t>(VT_ATTREVENTS, 0));
+    return static_cast<ConfigAttributeEvents>(GetField<int8_t>(VT_ATTREVENTS, 0));
   }
   uint64_t id() const {
     return GetField<uint64_t>(VT_ID, 0);
@@ -258,7 +258,7 @@ struct ConfigActionData FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     return GetPointer<const flatbuffers::String *>(VT_KEY);
   }
   ConfigType type() const {
-    return static_cast<ConfigType>(GetField<int8_t>(VT_TYPE, 0));
+    return static_cast<ConfigType>(GetField<int8_t>(VT_TYPE, -1));
   }
   const flatbuffers::String *value() const {
     return GetPointer<const flatbuffers::String *>(VT_VALUE);
@@ -274,9 +274,9 @@ struct ConfigActionData FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<uint8_t>(verifier, VT_ACTION) &&
-           VerifyField<uint8_t>(verifier, VT_NODEEVENTS) &&
-           VerifyField<uint8_t>(verifier, VT_ATTREVENTS) &&
+           VerifyField<int8_t>(verifier, VT_ACTION) &&
+           VerifyField<int8_t>(verifier, VT_NODEEVENTS) &&
+           VerifyField<int8_t>(verifier, VT_ATTREVENTS) &&
            VerifyField<uint64_t>(verifier, VT_ID) &&
            VerifyOffset(verifier, VT_NODE) &&
            verifier.VerifyString(node()) &&
@@ -301,13 +301,13 @@ struct ConfigActionDataBuilder {
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
   void add_action(ConfigAction action) {
-    fbb_.AddElement<uint8_t>(ConfigActionData::VT_ACTION, static_cast<uint8_t>(action), 0);
+    fbb_.AddElement<int8_t>(ConfigActionData::VT_ACTION, static_cast<int8_t>(action), 0);
   }
   void add_nodeEvents(ConfigNodeEvents nodeEvents) {
-    fbb_.AddElement<uint8_t>(ConfigActionData::VT_NODEEVENTS, static_cast<uint8_t>(nodeEvents), 0);
+    fbb_.AddElement<int8_t>(ConfigActionData::VT_NODEEVENTS, static_cast<int8_t>(nodeEvents), 0);
   }
   void add_attrEvents(ConfigAttributeEvents attrEvents) {
-    fbb_.AddElement<uint8_t>(ConfigActionData::VT_ATTREVENTS, static_cast<uint8_t>(attrEvents), 0);
+    fbb_.AddElement<int8_t>(ConfigActionData::VT_ATTREVENTS, static_cast<int8_t>(attrEvents), 0);
   }
   void add_id(uint64_t id) {
     fbb_.AddElement<uint64_t>(ConfigActionData::VT_ID, id, 0);
@@ -319,7 +319,7 @@ struct ConfigActionDataBuilder {
     fbb_.AddOffset(ConfigActionData::VT_KEY, key);
   }
   void add_type(ConfigType type) {
-    fbb_.AddElement<int8_t>(ConfigActionData::VT_TYPE, static_cast<int8_t>(type), 0);
+    fbb_.AddElement<int8_t>(ConfigActionData::VT_TYPE, static_cast<int8_t>(type), -1);
   }
   void add_value(flatbuffers::Offset<flatbuffers::String> value) {
     fbb_.AddOffset(ConfigActionData::VT_VALUE, value);
@@ -347,13 +347,13 @@ struct ConfigActionDataBuilder {
 
 inline flatbuffers::Offset<ConfigActionData> CreateConfigActionData(
     flatbuffers::FlatBufferBuilder &_fbb,
-    ConfigAction action = ConfigAction::NODE_EXISTS,
+    ConfigAction action = ConfigAction::ERROR,
     ConfigNodeEvents nodeEvents = ConfigNodeEvents::DVCFG_NODE_CHILD_ADDED,
     ConfigAttributeEvents attrEvents = ConfigAttributeEvents::DVCFG_ATTRIBUTE_ADDED,
     uint64_t id = 0,
     flatbuffers::Offset<flatbuffers::String> node = 0,
     flatbuffers::Offset<flatbuffers::String> key = 0,
-    ConfigType type = ConfigType::BOOL,
+    ConfigType type = ConfigType::UNKNOWN,
     flatbuffers::Offset<flatbuffers::String> value = 0,
     flatbuffers::Offset<flatbuffers::String> ranges = 0,
     int32_t flags = 0,
@@ -375,13 +375,13 @@ inline flatbuffers::Offset<ConfigActionData> CreateConfigActionData(
 
 inline flatbuffers::Offset<ConfigActionData> CreateConfigActionDataDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
-    ConfigAction action = ConfigAction::NODE_EXISTS,
+    ConfigAction action = ConfigAction::ERROR,
     ConfigNodeEvents nodeEvents = ConfigNodeEvents::DVCFG_NODE_CHILD_ADDED,
     ConfigAttributeEvents attrEvents = ConfigAttributeEvents::DVCFG_ATTRIBUTE_ADDED,
     uint64_t id = 0,
     const char *node = nullptr,
     const char *key = nullptr,
-    ConfigType type = ConfigType::BOOL,
+    ConfigType type = ConfigType::UNKNOWN,
     const char *value = nullptr,
     const char *ranges = nullptr,
     int32_t flags = 0,

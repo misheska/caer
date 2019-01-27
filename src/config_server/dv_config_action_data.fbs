@@ -1,17 +1,17 @@
 namespace dv;
 
-enum ConfigAction : uint8 {
-	NODE_EXISTS        = 0,
-	ATTR_EXISTS        = 1,
-	GET                = 2,
-	PUT                = 3,
-	ERROR              = 4,
-	GET_CHILDREN       = 5,
-	GET_ATTRIBUTES     = 6,
-	GET_TYPE           = 7,
-	GET_RANGES         = 8,
-	GET_FLAGS          = 9,
-	GET_DESCRIPTION    = 10,
+enum ConfigAction : int8 {
+	ERROR              = 0,
+	NODE_EXISTS        = 1,
+	ATTR_EXISTS        = 2,
+	GET_CHILDREN       = 3,
+	GET_ATTRIBUTES     = 4,
+	GET_TYPE           = 5,
+	GET_RANGES         = 6,
+	GET_FLAGS          = 7,
+	GET_DESCRIPTION    = 8,
+	GET                = 9,
+	PUT                = 10,
 	ADD_MODULE         = 11,
 	REMOVE_MODULE      = 12,
 	ADD_PUSH_CLIENT    = 13,
@@ -33,25 +33,25 @@ enum ConfigType : int8 {
 	STRING  = 7
 }
 
-enum ConfigNodeEvents : uint8 {
+enum ConfigNodeEvents : int8 {
 	DVCFG_NODE_CHILD_ADDED   = 0,
 	DVCFG_NODE_CHILD_REMOVED = 1
 }
 
-enum ConfigAttributeEvents : uint8 {
+enum ConfigAttributeEvents : int8 {
 	DVCFG_ATTRIBUTE_ADDED    = 0,
 	DVCFG_ATTRIBUTE_MODIFIED = 1,
 	DVCFG_ATTRIBUTE_REMOVED  = 2
 }
 
 table ConfigActionData {
-	action: ConfigAction;
+	action: ConfigAction = ERROR;
 	nodeEvents: ConfigNodeEvents; // Node related.
 	attrEvents: ConfigAttributeEvents; // Attribute related.
 	id: uint64;
 	node: string;
 	key: string;
-	type: ConfigType;
+	type: ConfigType = UNKNOWN;
 	value: string;
 	// On attribute creation only.
 	ranges: string;
