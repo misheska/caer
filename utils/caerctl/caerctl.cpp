@@ -3,7 +3,7 @@
 #include "caer-sdk/utils.h"
 
 #include "../../src/config_server/asio.h"
-#include "../../src/config_server/caer_config_action_data.h"
+#include "../../src/config_server/dv_config_action_data.h"
 #include "utils/ext/linenoise-ng/linenoise.h"
 
 #include <boost/algorithm/string/join.hpp>

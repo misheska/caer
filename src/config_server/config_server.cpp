@@ -83,6 +83,10 @@ void ConfigServer::setCurrentClientID(uint64_t clientID) {
 	currentClientID = clientID;
 }
 
+uint64_t ConfigServer::getCurrentClientID() {
+	return (currentClientID);
+}
+
 void ConfigServer::removeClient(ConfigServerConnection *client) {
 	removePushClient(client);
 
@@ -103,15 +107,8 @@ bool ConfigServer::pushClientsPresent() {
 	return (!ioService.stopped() && (numPushClients > 0));
 }
 
-void ConfigServer::pushMessageToClients(std::shared_ptr<caerConfigActionData> message) {
-	if (!ioService.stopped()) {
-		// Set message ID to the ID of the client that originated this change.
-		// If we're running in any other thread it will be 0 (system), if the
-		// change we're pushing comes from a listener firing in response to
-		// changes brought by a client via the config-server, the current
-		// client ID will be the one from that remote client.
-		message->setID(currentClientID);
-
+void ConfigServer::pushMessageToClients(std::shared_ptr<const flatbuffers::FlatBufferBuilder> message) {
+	if (pushClientsPresent()) {
 		ioService.post([this, message]() {
 			for (auto client : pushClients) {
 				client->writePushMessage(message);
@@ -338,18 +335,34 @@ static void caerConfigServerGlobalNodeChangeListener(
 	dvCfg::Node node(n);
 
 	if (globalConfigData.server.pushClientsPresent()) {
-		auto msg = std::make_shared<caerConfigActionData>();
+		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
-		msg->setAction(caerConfigAction::PUSH_MESSAGE_NODE);
+		dv::ConfigActionDataBuilder msg(*msgBuild);
 
-		msg->setExtra(std::string(1, (char) event));
+		// Set message ID to the ID of the client that originated this change.
+		// If we're running in any other thread it will be 0 (system), if the
+		// change we're pushing comes from a listener firing in response to
+		// changes brought by a client via the config-server, the current
+		// client ID will be the one from that remote client.
+		msg.add_id(globalConfigData.server.getCurrentClientID());
+
+		msg.add_action(dv::ConfigAction::PUSH_MESSAGE_NODE);
+
+		msg.add_nodeEvents(static_cast<dv::ConfigNodeEvents>(event));
 
 		std::string nodePath(node.getPath());
 		nodePath += changeNode;
 		nodePath.push_back('/');
-		msg->setNode(nodePath);
 
-		globalConfigData.server.pushMessageToClients(msg);
+		msg.add_node(msgBuild->CreateString(nodePath));
+
+		// Finish off message.
+		auto msgRoot = msg.Finish();
+
+		// Write root node and message size.
+		dv::FinishSizePrefixedConfigActionDataBuffer(*msgBuild, msgRoot);
+
+		globalConfigData.server.pushMessageToClients(msgBuild);
 	}
 }
 
@@ -361,40 +374,53 @@ static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode n, void *
 	dvCfg::AttributeType type = static_cast<dvCfg::AttributeType>(changeType);
 
 	if (globalConfigData.server.pushClientsPresent()) {
-		auto msg = std::make_shared<caerConfigActionData>();
+		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
-		msg->setAction(caerConfigAction::PUSH_MESSAGE_ATTR);
-		msg->setType(type);
+		dv::ConfigActionDataBuilder msg(*msgBuild);
+
+		// Set message ID to the ID of the client that originated this change.
+		// If we're running in any other thread it will be 0 (system), if the
+		// change we're pushing comes from a listener firing in response to
+		// changes brought by a client via the config-server, the current
+		// client ID will be the one from that remote client.
+		msg.add_id(globalConfigData.server.getCurrentClientID());
+
+		msg.add_action(dv::ConfigAction::PUSH_MESSAGE_ATTR);
+
+		msg.add_type(static_cast<dv::ConfigType>(type));
+
+		msg.add_attrEvents(static_cast<dv::ConfigAttributeEvents>(event));
 
 		if (event == DVCFG_ATTRIBUTE_ADDED) {
 			// Need to get extra info when adding: flags, range, description.
-			const std::string flagsStr = dvCfg::Helper::flagsToStringConverter(node.getAttributeFlags(changeKey, type));
+			int flags = node.getAttributeFlags(changeKey, type);
+
+			msg.add_flags(flags);
 
 			const std::string rangesStr
 				= dvCfg::Helper::rangesToStringConverter(type, node.getAttributeRanges(changeKey, type));
 
+			msg.add_ranges(msgBuild->CreateString(rangesStr));
+
 			const std::string descriptionStr = node.getAttributeDescription(changeKey, type);
 
-			std::string extraStr(1, (char) event);
-			extraStr += flagsStr;
-			extraStr.push_back('\0');
-			extraStr += rangesStr;
-			extraStr.push_back('\0');
-			extraStr += descriptionStr;
-
-			msg->setExtra(extraStr);
-		}
-		else {
-			msg->setExtra(std::string(1, (char) event));
+			msg.add_description(msgBuild->CreateString(descriptionStr));
 		}
 
-		msg->setNode(node.getPath());
-		msg->setKey(changeKey);
+		msg.add_node(msgBuild->CreateString(node.getPath()));
+
+		msg.add_key(msgBuild->CreateString(changeKey));
 
 		const std::string valueStr = dvCfg::Helper::valueToStringConverter(type, changeValue);
 
-		msg->setValue(valueStr);
+		msg.add_value(msgBuild->CreateString(valueStr));
 
-		globalConfigData.server.pushMessageToClients(msg);
+		// Finish off message.
+		auto msgRoot = msg.Finish();
+
+		// Write root node and message size.
+		dv::FinishSizePrefixedConfigActionDataBuffer(*msgBuild, msgRoot);
+
+		globalConfigData.server.pushMessageToClients(msgBuild);
 	}
 }

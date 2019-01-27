@@ -37,11 +37,12 @@ public:
 	void threadStop();
 
 	void setCurrentClientID(uint64_t clientID);
+	uint64_t getCurrentClientID();
 	void removeClient(ConfigServerConnection *client);
 	void addPushClient(ConfigServerConnection *pushClient);
 	void removePushClient(ConfigServerConnection *pushClient);
 	bool pushClientsPresent();
-	void pushMessageToClients(std::shared_ptr<caerConfigActionData> message);
+	void pushMessageToClients(std::shared_ptr<const flatbuffers::FlatBufferBuilder> message);
 
 private:
 	void serviceConfigure();
