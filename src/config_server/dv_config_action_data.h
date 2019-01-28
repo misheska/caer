@@ -100,11 +100,11 @@ inline const char *EnumNameConfigAction(ConfigAction e) {
 enum class ConfigType : int8_t {
   UNKNOWN = -1,
   BOOL = 0,
-  INT = 3,
-  LONG = 4,
-  FLOAT = 5,
-  DOUBLE = 6,
-  STRING = 7,
+  INT = 1,
+  LONG = 2,
+  FLOAT = 3,
+  DOUBLE = 4,
+  STRING = 5,
   MIN = UNKNOWN,
   MAX = STRING
 };
@@ -126,8 +126,6 @@ inline const char * const *EnumNamesConfigType() {
   static const char * const names[] = {
     "UNKNOWN",
     "BOOL",
-    "",
-    "",
     "INT",
     "LONG",
     "FLOAT",
@@ -176,15 +174,17 @@ enum class ConfigAttributeEvents : int8_t {
   ATTRIBUTE_ADDED = 0,
   ATTRIBUTE_MODIFIED = 1,
   ATTRIBUTE_REMOVED = 2,
+  ATTRIBUTE_MODIFIED_CREATE = 3,
   MIN = ATTRIBUTE_ADDED,
-  MAX = ATTRIBUTE_REMOVED
+  MAX = ATTRIBUTE_MODIFIED_CREATE
 };
 
-inline const ConfigAttributeEvents (&EnumValuesConfigAttributeEvents())[3] {
+inline const ConfigAttributeEvents (&EnumValuesConfigAttributeEvents())[4] {
   static const ConfigAttributeEvents values[] = {
     ConfigAttributeEvents::ATTRIBUTE_ADDED,
     ConfigAttributeEvents::ATTRIBUTE_MODIFIED,
-    ConfigAttributeEvents::ATTRIBUTE_REMOVED
+    ConfigAttributeEvents::ATTRIBUTE_REMOVED,
+    ConfigAttributeEvents::ATTRIBUTE_MODIFIED_CREATE
   };
   return values;
 }
@@ -194,6 +194,7 @@ inline const char * const *EnumNamesConfigAttributeEvents() {
     "ATTRIBUTE_ADDED",
     "ATTRIBUTE_MODIFIED",
     "ATTRIBUTE_REMOVED",
+    "ATTRIBUTE_MODIFIED_CREATE",
     nullptr
   };
   return names;

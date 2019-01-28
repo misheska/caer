@@ -25,25 +25,25 @@ enum ConfigAction : int8 {
 }
 
 enum ConfigType : int8 {
-	UNKNOWN = 0,
-	BOOL    = 1,
-	INT     = 2,
-	LONG    = 3,
-	FLOAT   = 4,
-	DOUBLE  = 5,
-	STRING  = 6
+	UNKNOWN = -1,
+	BOOL    = 0,
+	INT     = 1,
+	LONG    = 2,
+	FLOAT   = 3,
+	DOUBLE  = 4,
+	STRING  = 5
 }
 
 enum ConfigNodeEvents : int8 {
-	NODE_ADDED   = 1,
-	NODE_REMOVED = 2
+	NODE_ADDED   = 0,
+	NODE_REMOVED = 1
 }
 
 enum ConfigAttributeEvents : int8 {
-	ATTRIBUTE_ADDED           = 1,
-	ATTRIBUTE_MODIFIED        = 2,
-	ATTRIBUTE_REMOVED         = 4,
-	ATTRIBUTE_MODIFIED_CREATE = 8
+	ATTRIBUTE_ADDED           = 0,
+	ATTRIBUTE_MODIFIED        = 1,
+	ATTRIBUTE_REMOVED         = 2,
+	ATTRIBUTE_MODIFIED_CREATE = 3
 }
 
 table ConfigActionData {
@@ -55,7 +55,7 @@ table ConfigActionData {
 	key: string;
 	type: ConfigType = UNKNOWN;
 	value: string;
-	// On attribute creation only.
+	// On attribute create() only.
 	ranges: string;
 	flags: int32;
 	description: string;
