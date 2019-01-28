@@ -390,6 +390,10 @@ void caerConfigServerHandleRequest(
 
 			const std::string resultStr = dvCfg::Helper::valueToStringConverter(static_cast<dvCfgType>(type), result);
 
+			if (type == dv::ConfigType::STRING) {
+				free(result.string);
+			}
+
 			sendMessage(client, [resultStr](dv::ConfigActionDataBuilder &msg) {
 				msg.add_action(dv::ConfigAction::GET);
 				msg.add_value(msg.fbb_.CreateString(resultStr));
@@ -691,7 +695,13 @@ static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnec
 
 		msg.add_type(static_cast<dv::ConfigType>(type));
 
-		const std::string valueStr = dvCfg::Helper::valueToStringConverter(type, node.getAttribute(key, type));
+		union dvConfigAttributeValue value = node.getAttribute(key, type);
+
+		const std::string valueStr = dvCfg::Helper::valueToStringConverter(type, value);
+
+		if (type == dvCfgType::STRING) {
+			free(value.string);
+		}
 
 		msg.add_value(msgBuild->CreateString(valueStr));
 
