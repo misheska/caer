@@ -59,9 +59,9 @@ template<AttributeType T> struct AttributeRangeGenerator {
 	using rangeType = typename AttributeTypeGenerator<T>::type;
 };
 
-template<> struct AttributeRangeGenerator<AttributeType::BOOL> { using rangeType = size_t; };
+template<> struct AttributeRangeGenerator<AttributeType::BOOL> { using rangeType = int32_t; };
 
-template<> struct AttributeRangeGenerator<AttributeType::STRING> { using rangeType = size_t; };
+template<> struct AttributeRangeGenerator<AttributeType::STRING> { using rangeType = int32_t; };
 
 template<AttributeType T> struct AttributeValue {
 public:
@@ -175,28 +175,28 @@ public:
 	AttributeRanges(const dvConfigAttributeRanges ranges) {
 		switch (T) {
 			case AttributeType::INT:
-				min.range = static_cast<int32_t>(ranges.min.iintRange);
-				max.range = static_cast<int32_t>(ranges.max.iintRange);
+				min.range = static_cast<int32_t>(ranges.min.intRange);
+				max.range = static_cast<int32_t>(ranges.max.intRange);
 				break;
 
 			case AttributeType::LONG:
-				min.range = static_cast<int64_t>(ranges.min.ilongRange);
-				max.range = static_cast<int64_t>(ranges.max.ilongRange);
+				min.range = static_cast<int64_t>(ranges.min.longRange);
+				max.range = static_cast<int64_t>(ranges.max.longRange);
 				break;
 
 			case AttributeType::FLOAT:
-				min.range = static_cast<float>(ranges.min.ffloatRange);
-				max.range = static_cast<float>(ranges.max.ffloatRange);
+				min.range = static_cast<float>(ranges.min.floatRange);
+				max.range = static_cast<float>(ranges.max.floatRange);
 				break;
 
 			case AttributeType::DOUBLE:
-				min.range = static_cast<double>(ranges.min.ddoubleRange);
-				max.range = static_cast<double>(ranges.max.ddoubleRange);
+				min.range = static_cast<double>(ranges.min.doubleRange);
+				max.range = static_cast<double>(ranges.max.doubleRange);
 				break;
 
 			case AttributeType::STRING:
-				min.range = static_cast<size_t>(ranges.min.stringRange);
-				max.range = static_cast<size_t>(ranges.max.stringRange);
+				min.range = static_cast<int32_t>(ranges.min.stringRange);
+				max.range = static_cast<int32_t>(ranges.max.stringRange);
 				break;
 
 			default:
@@ -210,28 +210,28 @@ public:
 
 		switch (T) {
 			case AttributeType::INT:
-				cStruct.min.iintRange = static_cast<int32_t>(min.range);
-				cStruct.max.iintRange = static_cast<int32_t>(max.range);
+				cStruct.min.intRange = static_cast<int32_t>(min.range);
+				cStruct.max.intRange = static_cast<int32_t>(max.range);
 				break;
 
 			case AttributeType::LONG:
-				cStruct.min.ilongRange = static_cast<int64_t>(min.range);
-				cStruct.max.ilongRange = static_cast<int64_t>(max.range);
+				cStruct.min.longRange = static_cast<int64_t>(min.range);
+				cStruct.max.longRange = static_cast<int64_t>(max.range);
 				break;
 
 			case AttributeType::FLOAT:
-				cStruct.min.ffloatRange = static_cast<float>(min.range);
-				cStruct.max.ffloatRange = static_cast<float>(max.range);
+				cStruct.min.floatRange = static_cast<float>(min.range);
+				cStruct.max.floatRange = static_cast<float>(max.range);
 				break;
 
 			case AttributeType::DOUBLE:
-				cStruct.min.ddoubleRange = static_cast<double>(min.range);
-				cStruct.max.ddoubleRange = static_cast<double>(max.range);
+				cStruct.min.doubleRange = static_cast<double>(min.range);
+				cStruct.max.doubleRange = static_cast<double>(max.range);
 				break;
 
 			case AttributeType::STRING:
-				cStruct.min.stringRange = static_cast<size_t>(min.range);
-				cStruct.max.stringRange = static_cast<size_t>(max.range);
+				cStruct.min.stringRange = static_cast<int32_t>(min.range);
+				cStruct.max.stringRange = static_cast<int32_t>(max.range);
 				break;
 
 			default:
@@ -258,8 +258,8 @@ public:
 	dvConfigAttributeRanges getCStruct() const {
 		dvConfigAttributeRanges cStruct;
 
-		cStruct.min.stringRange = 0;
-		cStruct.max.stringRange = 0;
+		cStruct.min.intRange = 0;
+		cStruct.max.intRange = 0;
 
 		return (cStruct);
 	}
@@ -656,7 +656,8 @@ public:
 	}
 
 	static union dvConfigAttributeValue stringToValueConverter(AttributeType type, const std::string &valueString) {
-		return (dvConfigHelperStringToValueConverter(static_cast<enum dvConfigAttributeType>(type), valueString.c_str()));
+		return (
+			dvConfigHelperStringToValueConverter(static_cast<enum dvConfigAttributeType>(type), valueString.c_str()));
 	}
 
 	static std::string flagsToStringConverter(int flags) {
@@ -684,7 +685,8 @@ public:
 	}
 
 	static struct dvConfigAttributeRanges stringToRangesConverter(AttributeType type, const std::string &rangesString) {
-		return (dvConfigHelperStringToRangesConverter(static_cast<enum dvConfigAttributeType>(type), rangesString.c_str()));
+		return (
+			dvConfigHelperStringToRangesConverter(static_cast<enum dvConfigAttributeType>(type), rangesString.c_str()));
 	}
 };
 

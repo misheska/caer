@@ -47,11 +47,11 @@ union dvConfigAttributeValue {
 };
 
 union dvConfigAttributeRange {
-	int32_t iintRange;
-	int64_t ilongRange;
-	float ffloatRange;
-	double ddoubleRange;
-	size_t stringRange;
+	int32_t intRange;
+	int64_t longRange;
+	float floatRange;
+	double doubleRange;
+	int32_t stringRange;
 };
 
 struct dvConfigAttributeRanges {
