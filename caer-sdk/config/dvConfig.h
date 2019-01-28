@@ -28,13 +28,13 @@ extern "C" {
 typedef struct dv_config_node *dvConfigNode;
 
 enum dvConfigAttributeType {
-	DVCFG_TYPE_UNKNOWN = -1,
-	DVCFG_TYPE_BOOL    = 0,
-	DVCFG_TYPE_INT     = 3,
-	DVCFG_TYPE_LONG    = 4,
-	DVCFG_TYPE_FLOAT   = 5,
-	DVCFG_TYPE_DOUBLE  = 6,
-	DVCFG_TYPE_STRING  = 7,
+	DVCFG_TYPE_UNKNOWN = 0,
+	DVCFG_TYPE_BOOL    = 1,
+	DVCFG_TYPE_INT     = 2,
+	DVCFG_TYPE_LONG    = 3,
+	DVCFG_TYPE_FLOAT   = 4,
+	DVCFG_TYPE_DOUBLE  = 5,
+	DVCFG_TYPE_STRING  = 6,
 };
 
 union dvConfigAttributeValue {
@@ -67,14 +67,15 @@ enum dvConfigAttributeFlags {
 };
 
 enum dvConfigNodeEvents {
-	DVCFG_NODE_CHILD_ADDED   = 0,
-	DVCFG_NODE_CHILD_REMOVED = 1,
+	DVCFG_NODE_CHILD_ADDED   = 1,
+	DVCFG_NODE_CHILD_REMOVED = 2,
 };
 
 enum dvConfigAttributeEvents {
-	DVCFG_ATTRIBUTE_ADDED    = 0,
-	DVCFG_ATTRIBUTE_MODIFIED = 1,
-	DVCFG_ATTRIBUTE_REMOVED  = 2,
+	DVCFG_ATTRIBUTE_ADDED           = 1,
+	DVCFG_ATTRIBUTE_MODIFIED        = 2,
+	DVCFG_ATTRIBUTE_REMOVED         = 4,
+	DVCFG_ATTRIBUTE_MODIFIED_CREATE = 8,
 };
 
 typedef void (*dvConfigNodeChangeListener)(

@@ -25,24 +25,25 @@ enum ConfigAction : int8 {
 }
 
 enum ConfigType : int8 {
-	UNKNOWN = -1,
-	BOOL    = 0,
-	INT     = 3,
-	LONG    = 4,
-	FLOAT   = 5,
-	DOUBLE  = 6,
-	STRING  = 7
+	UNKNOWN = 0,
+	BOOL    = 1,
+	INT     = 2,
+	LONG    = 3,
+	FLOAT   = 4,
+	DOUBLE  = 5,
+	STRING  = 6
 }
 
 enum ConfigNodeEvents : int8 {
-	NODE_ADDED   = 0,
-	NODE_REMOVED = 1
+	NODE_ADDED   = 1,
+	NODE_REMOVED = 2
 }
 
 enum ConfigAttributeEvents : int8 {
-	ATTRIBUTE_ADDED    = 0,
-	ATTRIBUTE_MODIFIED = 1,
-	ATTRIBUTE_REMOVED  = 2
+	ATTRIBUTE_ADDED           = 1,
+	ATTRIBUTE_MODIFIED        = 2,
+	ATTRIBUTE_REMOVED         = 4,
+	ATTRIBUTE_MODIFIED_CREATE = 8
 }
 
 table ConfigActionData {
