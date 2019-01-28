@@ -17,14 +17,14 @@ using dvCfgFlags = dvCfg::AttributeFlags;
 
 static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnection *client);
 
-static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> client, const std::string &errorMsg) {
+template<typename MsgOps>
+static inline void sendMessage(std::shared_ptr<ConfigServerConnection> client, MsgOps msgFunc) {
+	// Send back flags directly.
 	auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 	dv::ConfigActionDataBuilder msg(*msgBuild);
 
-	msg.add_action(dv::ConfigAction::ERROR);
-	msg.add_type(dv::ConfigType::STRING);
-	msg.add_value(msgBuild->CreateString(errorMsg));
+	msgFunc(msg);
 
 	// Finish off message.
 	auto msgRoot = msg.Finish();
@@ -33,37 +33,16 @@ static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> c
 	dv::FinishSizePrefixedConfigActionDataBuffer(*msgBuild, msgRoot);
 
 	client->writeMessage(msgBuild);
+}
+
+static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> client, const std::string &errorMsg) {
+	sendMessage(client, [errorMsg](dv::ConfigActionDataBuilder &msg) {
+		msg.add_action(dv::ConfigAction::ERROR);
+		msg.add_value(msg.fbb_.CreateString(errorMsg));
+	});
 
 	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Sent error back to client %lld: %s.",
 		client->getClientID(), errorMsg.c_str());
-}
-
-static inline void caerConfigSendResponse(std::shared_ptr<ConfigServerConnection> client, dv::ConfigAction action,
-	dv::ConfigType type, const std::string &message) {
-	auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
-
-	dv::ConfigActionDataBuilder msg(*msgBuild);
-
-	msg.add_action(action);
-	msg.add_type(type);
-	msg.add_value(msgBuild->CreateString(message));
-
-	// Finish off message.
-	auto msgRoot = msg.Finish();
-
-	// Write root node and message size.
-	dv::FinishSizePrefixedConfigActionDataBuffer(*msgBuild, msgRoot);
-
-	client->writeMessage(msgBuild);
-
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Sent response back to client %lld: %s.",
-		client->getClientID(), message.c_str());
-}
-
-static inline void caerConfigSendBoolResponse(
-	std::shared_ptr<ConfigServerConnection> client, dv::ConfigAction action, bool result) {
-	// Send back result to client. Format is the same as incoming data.
-	caerConfigSendResponse(client, action, dv::ConfigType::BOOL, ((result) ? ("true") : ("false")));
 }
 
 static inline bool checkNodeExists(
@@ -109,7 +88,6 @@ void caerConfigServerHandleRequest(
 	auto message = dv::GetConfigActionData(messageBuffer.get());
 
 	dv::ConfigAction action = message->action();
-	dv::ConfigType type     = message->type();
 
 	// TODO: better debug message.
 	logger::log(
@@ -128,8 +106,11 @@ void caerConfigServerHandleRequest(
 			// We only need the node name here. Type is not used (ignored)!
 			bool result = configStore.existsNode(node);
 
-			// Send back result to client. Format is the same as incoming data.
-			caerConfigSendBoolResponse(client, dv::ConfigAction::NODE_EXISTS, result);
+			// Send back result to client.
+			sendMessage(client, [result](dv::ConfigActionDataBuilder &msg) {
+				msg.add_action(dv::ConfigAction::NODE_EXISTS);
+				msg.add_value(msg.fbb_.CreateString((result) ? ("true") : ("false")));
+			});
 
 			break;
 		}
@@ -138,6 +119,13 @@ void caerConfigServerHandleRequest(
 			const std::string node = getString(message->node(), client);
 			const std::string key  = getString(message->key(), client);
 			if (node.empty() || key.empty()) {
+				break;
+			}
+
+			dv::ConfigType type = message->type();
+			if (type == dv::ConfigType::UNKNOWN) {
+				// Send back error message to client.
+				caerConfigSendError(client, "Invalid type.");
 				break;
 			}
 
@@ -151,8 +139,11 @@ void caerConfigServerHandleRequest(
 			// Check if attribute exists.
 			bool result = wantedNode.existsAttribute(key, static_cast<dvCfgType>(type));
 
-			// Send back result to client. Format is the same as incoming data.
-			caerConfigSendBoolResponse(client, dv::ConfigAction::ATTR_EXISTS, result);
+			// Send back result to client.
+			sendMessage(client, [result](dv::ConfigActionDataBuilder &msg) {
+				msg.add_action(dv::ConfigAction::ATTR_EXISTS);
+				msg.add_value(msg.fbb_.CreateString((result) ? ("true") : ("false")));
+			});
 
 			break;
 		}
@@ -177,7 +168,6 @@ void caerConfigServerHandleRequest(
 			if (childNames.empty()) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Node has no children.");
-
 				break;
 			}
 
@@ -185,7 +175,10 @@ void caerConfigServerHandleRequest(
 			// separated by a | character.
 			const std::string namesString = boost::algorithm::join(childNames, "|");
 
-			caerConfigSendResponse(client, dv::ConfigAction::GET_CHILDREN, dv::ConfigType::STRING, namesString);
+			sendMessage(client, [namesString](dv::ConfigActionDataBuilder &msg) {
+				msg.add_action(dv::ConfigAction::GET_CHILDREN);
+				msg.add_value(msg.fbb_.CreateString(namesString));
+			});
 
 			break;
 		}
@@ -210,7 +203,6 @@ void caerConfigServerHandleRequest(
 			if (attrKeys.empty()) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Node has no attributes.");
-
 				break;
 			}
 
@@ -218,7 +210,10 @@ void caerConfigServerHandleRequest(
 			// separated by a | character.
 			const std::string attrKeysString = boost::algorithm::join(attrKeys, "|");
 
-			caerConfigSendResponse(client, dv::ConfigAction::GET_ATTRIBUTES, dv::ConfigType::STRING, attrKeysString);
+			sendMessage(client, [attrKeysString](dv::ConfigActionDataBuilder &msg) {
+				msg.add_action(dv::ConfigAction::GET_ATTRIBUTES);
+				msg.add_value(msg.fbb_.CreateString(attrKeysString));
+			});
 
 			break;
 		}
@@ -244,15 +239,14 @@ void caerConfigServerHandleRequest(
 			if (attrType == dvCfgType::UNKNOWN) {
 				// Send back error message to client.
 				caerConfigSendError(client, "Node has no attribute with specified key.");
-
 				break;
 			}
 
-			// We need to return a string with the attribute type,
-			// separated by a NUL character.
-			const std::string typeStr = dvCfg::Helper::typeToStringConverter(attrType);
-
-			caerConfigSendResponse(client, dv::ConfigAction::GET_TYPE, dv::ConfigType::STRING, typeStr);
+			// Send back type directly.
+			sendMessage(client, [attrType](dv::ConfigActionDataBuilder &msg) {
+				msg.add_action(dv::ConfigAction::GET_TYPE);
+				msg.add_type(static_cast<dv::ConfigType>(attrType));
+			});
 
 			break;
 		}
@@ -261,6 +255,13 @@ void caerConfigServerHandleRequest(
 			const std::string node = getString(message->node(), client);
 			const std::string key  = getString(message->key(), client);
 			if (node.empty() || key.empty()) {
+				break;
+			}
+
+			dv::ConfigType type = message->type();
+			if (type == dv::ConfigType::UNKNOWN) {
+				// Send back error message to client.
+				caerConfigSendError(client, "Invalid type.");
 				break;
 			}
 
@@ -279,7 +280,11 @@ void caerConfigServerHandleRequest(
 
 			const std::string rangesStr = dvCfg::Helper::rangesToStringConverter(static_cast<dvCfgType>(type), ranges);
 
-			caerConfigSendResponse(client, dv::ConfigAction::GET_RANGES, type, rangesStr);
+			// Send back ranges as strings.
+			sendMessage(client, [rangesStr](dv::ConfigActionDataBuilder &msg) {
+				msg.add_action(dv::ConfigAction::GET_RANGES);
+				msg.add_ranges(msg.fbb_.CreateString(rangesStr));
+			});
 
 			break;
 		}
@@ -288,6 +293,13 @@ void caerConfigServerHandleRequest(
 			const std::string node = getString(message->node(), client);
 			const std::string key  = getString(message->key(), client);
 			if (node.empty() || key.empty()) {
+				break;
+			}
+
+			dv::ConfigType type = message->type();
+			if (type == dv::ConfigType::UNKNOWN) {
+				// Send back error message to client.
+				caerConfigSendError(client, "Invalid type.");
 				break;
 			}
 
@@ -304,9 +316,11 @@ void caerConfigServerHandleRequest(
 
 			int flags = wantedNode.getAttributeFlags(key, static_cast<dvCfgType>(type));
 
-			const std::string flagsStr = dvCfg::Helper::flagsToStringConverter(flags);
-
-			caerConfigSendResponse(client, dv::ConfigAction::GET_FLAGS, dv::ConfigType::STRING, flagsStr);
+			// Send back flags directly.
+			sendMessage(client, [flags](dv::ConfigActionDataBuilder &msg) {
+				msg.add_action(dv::ConfigAction::GET_FLAGS);
+				msg.add_flags(flags);
+			});
 
 			break;
 		}
@@ -315,6 +329,13 @@ void caerConfigServerHandleRequest(
 			const std::string node = getString(message->node(), client);
 			const std::string key  = getString(message->key(), client);
 			if (node.empty() || key.empty()) {
+				break;
+			}
+
+			dv::ConfigType type = message->type();
+			if (type == dv::ConfigType::UNKNOWN) {
+				// Send back error message to client.
+				caerConfigSendError(client, "Invalid type.");
 				break;
 			}
 
@@ -331,7 +352,11 @@ void caerConfigServerHandleRequest(
 
 			const std::string description = wantedNode.getAttributeDescription(key, static_cast<dvCfgType>(type));
 
-			caerConfigSendResponse(client, dv::ConfigAction::GET_DESCRIPTION, dv::ConfigType::STRING, description);
+			// Send back flags directly.
+			sendMessage(client, [description](dv::ConfigActionDataBuilder &msg) {
+				msg.add_action(dv::ConfigAction::GET_DESCRIPTION);
+				msg.add_description(msg.fbb_.CreateString(description));
+			});
 
 			break;
 		}
@@ -340,6 +365,13 @@ void caerConfigServerHandleRequest(
 			const std::string node = getString(message->node(), client);
 			const std::string key  = getString(message->key(), client);
 			if (node.empty() || key.empty()) {
+				break;
+			}
+
+			dv::ConfigType type = message->type();
+			if (type == dv::ConfigType::UNKNOWN) {
+				// Send back error message to client.
+				caerConfigSendError(client, "Invalid type.");
 				break;
 			}
 
@@ -358,7 +390,11 @@ void caerConfigServerHandleRequest(
 
 			const std::string resultStr = dvCfg::Helper::valueToStringConverter(static_cast<dvCfgType>(type), result);
 
-			caerConfigSendResponse(client, dv::ConfigAction::GET, type, resultStr);
+			sendMessage(client, [resultStr](dv::ConfigActionDataBuilder &msg) {
+				msg.add_action(dv::ConfigAction::GET);
+				msg.add_value(msg.fbb_.CreateString(resultStr));
+			});
+
 			break;
 		}
 
@@ -367,6 +403,13 @@ void caerConfigServerHandleRequest(
 			const std::string key   = getString(message->key(), client);
 			const std::string value = getString(message->value(), client);
 			if (node.empty() || key.empty() || value.empty()) {
+				break;
+			}
+
+			dv::ConfigType type = message->type();
+			if (type == dv::ConfigType::UNKNOWN) {
+				// Send back error message to client.
+				caerConfigSendError(client, "Invalid type.");
 				break;
 			}
 
@@ -404,7 +447,7 @@ void caerConfigServerHandleRequest(
 			}
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, dv::ConfigAction::PUT, true);
+			sendMessage(client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::PUT); });
 
 			break;
 		}
@@ -518,7 +561,7 @@ void caerConfigServerHandleRequest(
 			caerModuleConfigInit(newModuleNode);
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, dv::ConfigAction::ADD_MODULE, true);
+			sendMessage(client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::ADD_MODULE); });
 
 			break;
 		}
@@ -555,7 +598,8 @@ void caerConfigServerHandleRequest(
 			configStore.getNode("/" + moduleName + "/").removeNode();
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, dv::ConfigAction::REMOVE_MODULE, true);
+			sendMessage(
+				client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::REMOVE_MODULE); });
 
 			break;
 		}
@@ -564,7 +608,8 @@ void caerConfigServerHandleRequest(
 			client->addPushClient();
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, dv::ConfigAction::ADD_PUSH_CLIENT, true);
+			sendMessage(
+				client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::ADD_PUSH_CLIENT); });
 
 			break;
 		}
@@ -573,7 +618,8 @@ void caerConfigServerHandleRequest(
 			client->removePushClient();
 
 			// Send back confirmation to the client.
-			caerConfigSendBoolResponse(client, dv::ConfigAction::REMOVE_PUSH_CLIENT, true);
+			sendMessage(
+				client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::REMOVE_PUSH_CLIENT); });
 
 			break;
 		}
@@ -583,7 +629,19 @@ void caerConfigServerHandleRequest(
 			dumpNodeToClientRecursive(configStore.getRootNode(), client.get());
 
 			// Send back confirmation of operation completed to the client.
-			caerConfigSendBoolResponse(client, dv::ConfigAction::DUMP_TREE, true);
+			sendMessage(client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::DUMP_TREE); });
+
+			break;
+		}
+
+		case dv::ConfigAction::GET_CLIENT_ID: {
+			uint64_t clientID = client->getClientID();
+
+			// Send back confirmation of operation completed to the client.
+			sendMessage(client, [clientID](dv::ConfigActionDataBuilder &msg) {
+				msg.add_action(dv::ConfigAction::GET_CLIENT_ID);
+				msg.add_id(clientID);
+			});
 
 			break;
 		}
