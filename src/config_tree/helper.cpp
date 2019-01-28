@@ -2,7 +2,7 @@
 
 #include <boost/tokenizer.hpp>
 
-static const std::string typeStrings[] = {"bool", "byte", "short", "int", "long", "float", "double", "string"};
+static const std::string typeStrings[] = {"bool", "int", "long", "float", "double", "string"};
 
 const std::string &dvConfigHelperCppTypeToStringConverter(enum dvConfigAttributeType type) {
 	// Convert the value and its type into a string for XML output.
@@ -26,12 +26,6 @@ enum dvConfigAttributeType dvConfigHelperCppStringToTypeConverter(const std::str
 	if (typeString == typeStrings[DVCFG_TYPE_BOOL]) {
 		return (DVCFG_TYPE_BOOL);
 	}
-	else if (typeString == typeStrings[1]) {
-		return (DVCFG_TYPE_INT);
-	}
-	else if (typeString == typeStrings[2]) {
-		return (DVCFG_TYPE_INT);
-	}
 	else if (typeString == typeStrings[DVCFG_TYPE_INT]) {
 		return (DVCFG_TYPE_INT);
 	}
@@ -51,27 +45,27 @@ enum dvConfigAttributeType dvConfigHelperCppStringToTypeConverter(const std::str
 	return (DVCFG_TYPE_UNKNOWN); // UNKNOWN TYPE.
 }
 
-std::string dvConfigHelperCppValueToStringConverter(const sshs_value &val) {
+const std::string dvConfigHelperCppValueToStringConverter(const dv_value &val) {
 	// Convert the value and its type into a string for XML output.
 	switch (val.getType()) {
 		case DVCFG_TYPE_BOOL:
 			// Manually generate true or false.
-			return ((val.getBool()) ? ("true") : ("false"));
+			return ((std::get<bool>(val)) ? ("true") : ("false"));
 
 		case DVCFG_TYPE_INT:
-			return (std::to_string(val.getInt()));
+			return (std::to_string(std::get<int32_t>(val)));
 
 		case DVCFG_TYPE_LONG:
-			return (std::to_string(val.getLong()));
+			return (std::to_string(std::get<int64_t>(val)));
 
 		case DVCFG_TYPE_FLOAT:
-			return (std::to_string(val.getFloat()));
+			return (std::to_string(std::get<float>(val)));
 
 		case DVCFG_TYPE_DOUBLE:
-			return (std::to_string(val.getDouble()));
+			return (std::to_string(std::get<double>(val)));
 
 		case DVCFG_TYPE_STRING:
-			return (val.getString());
+			return (std::get<std::string>(val));
 
 		case DVCFG_TYPE_UNKNOWN:
 		default:
@@ -82,33 +76,33 @@ std::string dvConfigHelperCppValueToStringConverter(const sshs_value &val) {
 // Return false on failure (unknown type / faulty conversion), the content of
 // value is undefined. For the STRING type, the returned value.string is a copy
 // of the input string. Remember to free() it after use!
-sshs_value dvConfigHelperCppStringToValueConverter(enum dvConfigAttributeType type, const std::string &valueString) {
-	sshs_value value;
+dv_value dvConfigHelperCppStringToValueConverter(enum dvConfigAttributeType type, const std::string &valueString) {
+	dv_value val;
 
 	switch (type) {
 		case DVCFG_TYPE_BOOL:
 			// Boolean uses custom true/false strings.
-			value.setBool(valueString == "true");
+			val.emplace<bool>(valueString == "true");
 			break;
 
 		case DVCFG_TYPE_INT:
-			value.setInt((int32_t) std::stol(valueString));
+			val.emplace<int32_t>(std::stol(valueString));
 			break;
 
 		case DVCFG_TYPE_LONG:
-			value.setLong((int64_t) std::stoll(valueString));
+			val.emplace<int64_t>(std::stoll(valueString));
 			break;
 
 		case DVCFG_TYPE_FLOAT:
-			value.setFloat(std::stof(valueString));
+			val.emplace<float>(std::stof(valueString));
 			break;
 
 		case DVCFG_TYPE_DOUBLE:
-			value.setDouble(std::stod(valueString));
+			val.emplace<double>(std::stod(valueString));
 			break;
 
 		case DVCFG_TYPE_STRING:
-			value.setString(valueString);
+			val.emplace<std::string>(valueString);
 			break;
 
 		case DVCFG_TYPE_UNKNOWN:
@@ -117,7 +111,7 @@ sshs_value dvConfigHelperCppStringToValueConverter(enum dvConfigAttributeType ty
 			break;
 	}
 
-	return (value);
+	return (val);
 }
 
 /**
@@ -135,7 +129,7 @@ enum dvConfigAttributeType dvConfigHelperStringToTypeConverter(const char *typeS
 
 // Remember to free the resulting string!
 char *dvConfigHelperValueToStringConverter(enum dvConfigAttributeType type, union dvConfigAttributeValue value) {
-	sshs_value val;
+	dv_value val;
 	val.fromCUnion(value, type);
 
 	const std::string typeString = dvConfigHelperCppValueToStringConverter(val);
@@ -146,7 +140,7 @@ char *dvConfigHelperValueToStringConverter(enum dvConfigAttributeType type, unio
 	return (resultString);
 }
 
-// Remember to free the resulting union's "string" member, if the type was SSHS_STRING!
+// Remember to free the resulting union's "string" member, if the type was DVCFG_TYPE_STRING!
 union dvConfigAttributeValue dvConfigHelperStringToValueConverter(
 	enum dvConfigAttributeType type, const char *valueString) {
 	if ((type == DVCFG_TYPE_STRING) && (valueString == nullptr)) {
@@ -214,23 +208,23 @@ char *dvConfigHelperRangesToStringConverter(enum dvConfigAttributeType type, str
 			break;
 
 		case DVCFG_TYPE_INT:
-			snprintf(buf, 256, "%" PRIi32 "|%" PRIi32, ranges.min.iintRange, ranges.max.iintRange);
+			snprintf(buf, 256, "%" PRIi32 "|%" PRIi32, ranges.min.intRange, ranges.max.intRange);
 			break;
 
 		case DVCFG_TYPE_LONG:
-			snprintf(buf, 256, "%" PRIi64 "|%" PRIi64, ranges.min.ilongRange, ranges.max.ilongRange);
+			snprintf(buf, 256, "%" PRIi64 "|%" PRIi64, ranges.min.longRange, ranges.max.longRange);
 			break;
 
 		case DVCFG_TYPE_FLOAT:
-			snprintf(buf, 256, "%g|%g", (double) ranges.min.ffloatRange, (double) ranges.max.ffloatRange);
+			snprintf(buf, 256, "%g|%g", (double) ranges.min.floatRange, (double) ranges.max.floatRange);
 			break;
 
 		case DVCFG_TYPE_DOUBLE:
-			snprintf(buf, 256, "%g|%g", ranges.min.ddoubleRange, ranges.max.ddoubleRange);
+			snprintf(buf, 256, "%g|%g", ranges.min.doubleRange, ranges.max.doubleRange);
 			break;
 
 		case DVCFG_TYPE_STRING:
-			snprintf(buf, 256, "%zu|%zu", ranges.min.stringRange, ranges.max.stringRange);
+			snprintf(buf, 256, "%" PRIi32 "|%" PRIi32, ranges.min.stringRange, ranges.max.stringRange);
 			break;
 	}
 
@@ -247,28 +241,28 @@ struct dvConfigAttributeRanges dvConfigHelperStringToRangesConverter(
 	switch (type) {
 		case DVCFG_TYPE_UNKNOWN:
 		case DVCFG_TYPE_BOOL:
-			ranges.min.ilongRange = 0;
-			ranges.max.ilongRange = 0;
+			ranges.min.intRange = 0;
+			ranges.max.intRange = 0;
 			break;
 
 		case DVCFG_TYPE_INT:
-			sscanf(rangesString, "%" SCNi32 "|%" SCNi32, &ranges.min.iintRange, &ranges.max.iintRange);
+			sscanf(rangesString, "%" SCNi32 "|%" SCNi32, &ranges.min.intRange, &ranges.max.intRange);
 			break;
 
 		case DVCFG_TYPE_LONG:
-			sscanf(rangesString, "%" SCNi64 "|%" SCNi64, &ranges.min.ilongRange, &ranges.max.ilongRange);
+			sscanf(rangesString, "%" SCNi64 "|%" SCNi64, &ranges.min.longRange, &ranges.max.longRange);
 			break;
 
 		case DVCFG_TYPE_FLOAT:
-			sscanf(rangesString, "%g|%g", &ranges.min.ffloatRange, &ranges.max.ffloatRange);
+			sscanf(rangesString, "%g|%g", &ranges.min.floatRange, &ranges.max.floatRange);
 			break;
 
 		case DVCFG_TYPE_DOUBLE:
-			sscanf(rangesString, "%lg|%lg", &ranges.min.ddoubleRange, &ranges.max.ddoubleRange);
+			sscanf(rangesString, "%lg|%lg", &ranges.min.doubleRange, &ranges.max.doubleRange);
 			break;
 
 		case DVCFG_TYPE_STRING:
-			sscanf(rangesString, "%zu|%zu", &ranges.min.stringRange, &ranges.max.stringRange);
+			sscanf(rangesString, "%" SCNi32 "|%" SCNi32, &ranges.min.stringRange, &ranges.max.stringRange);
 			break;
 	}
 

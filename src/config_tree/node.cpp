@@ -18,36 +18,31 @@
 
 class sshs_node_attr {
 private:
-	struct dvConfigAttributeRanges ranges;
+	dv_value value;
+	dv_ranges ranges;
 	int flags;
 	std::string description;
-	sshs_value value;
 
 public:
 	sshs_node_attr() : flags(DVCFG_FLAGS_NORMAL) {
 	}
 
-	sshs_node_attr(const sshs_value &_value, const struct dvConfigAttributeRanges &_ranges, int _flags,
-		const std::string &_description) :
+	sshs_node_attr(const dv_value &_value, const dv_ranges &_ranges, int _flags, const std::string &_description) :
+		value(_value),
 		ranges(_ranges),
 		flags(_flags),
-		description(_description),
-		value(_value) {
+		description(_description) {
 	}
 
-	const sshs_value getValue() const noexcept {
+	const dv_value &getValue() const noexcept {
 		return (value);
 	}
 
-	void setValue(const sshs_value &v) noexcept {
+	void setValue(const dv_value &v) noexcept {
 		value = v;
 	}
 
-	const std::string &getDescription() const noexcept {
-		return (description);
-	}
-
-	const struct dvConfigAttributeRanges &getRanges() const noexcept {
+	const dv_ranges &getRanges() const noexcept {
 		return (ranges);
 	}
 
@@ -57,6 +52,10 @@ public:
 
 	bool isFlagSet(int flag) const noexcept {
 		return ((flags & flag) == flag);
+	}
+
+	const std::string &getDescription() const noexcept {
+		return (description);
 	}
 };
 
@@ -131,7 +130,7 @@ public:
 	std::map<std::string, sshs_node_attr> attributes;
 	std::vector<sshs_node_listener> nodeListeners;
 	std::vector<sshs_attribute_listener> attrListeners;
-	std::shared_timed_mutex traversal_lock;
+	std::shared_mutex traversal_lock;
 	std::recursive_mutex node_lock;
 
 	dv_config_node(const std::string &_name, dvConfigNode _parent, dvConfigTree _global) :
@@ -148,8 +147,8 @@ public:
 		}
 	}
 
-	void createAttribute(const std::string &key, const sshs_value &defaultValue,
-		const struct dvConfigAttributeRanges &ranges, int flags, const std::string &description) {
+	void createAttribute(const std::string &key, const dv_value &defaultValue, const dv_ranges &ranges, int flags,
+		const std::string &description) {
 		// Check key name string against allowed characters via regexp.
 		if (!std::regex_match(key, sshsKeyRegexp)) {
 			boost::format errorMsg = boost::format("Invalid key name format: '%s'.") % key;
@@ -157,16 +156,19 @@ public:
 			dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(), errorMsg.str());
 		}
 
+		if (ranges.min > ranges.max) {
+			dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(),
+				"minimum range cannot be bigger than maximum range.");
+		}
+
+		// Strings cannot be shorter than 0 characters (empty string).
 		// Strings are special, their length range goes from 0 to SIZE_MAX, but we
 		// have to restrict that to from 0 to INT32_MAX for languages like Java
 		// that only support integer string lengths. It's also reasonable.
 		if (defaultValue.getType() == DVCFG_TYPE_STRING) {
-			if ((ranges.min.stringRange > INT32_MAX) || (ranges.max.stringRange > INT32_MAX)) {
-				boost::format errorMsg = boost::format("minimum/maximum string range value outside allowed limits. "
-													   "Please make sure the value is positive, between 0 and %d!")
-										 % INT32_MAX;
-
-				dvConfigNodeError("dvConfigNodeCreateAttribute", key, DVCFG_TYPE_STRING, errorMsg.str());
+			if (std::get<int32_t>(ranges.min) < 0) {
+				dvConfigNodeError(
+					"dvConfigNodeCreateAttribute", key, DVCFG_TYPE_STRING, "minimum string range must be positive.");
 			}
 		}
 
@@ -191,7 +193,7 @@ public:
 
 		// Restrict NOTIFY_ONLY flag to a default value of false only. This avoids
 		// strange inverted logic for buttons.
-		if ((flags & DVCFG_FLAGS_NOTIFY_ONLY) && defaultValue.getBool() != false) {
+		if ((flags & DVCFG_FLAGS_NOTIFY_ONLY) && std::get<bool>(defaultValue) != false) {
 			// Fail on wrong notify-only flag usage.
 			dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(),
 				"the NOTIFY_ONLY flag is set for this BOOL type attribute, only 'false' can be used as default value.");
@@ -235,14 +237,26 @@ public:
 			}
 
 			bool extraChanged = false;
-			if ((newAttr.getFlags() != oldAttr.getFlags()) || (newAttr.getRanges().max != oldAttr.getRanges().max)
+			if ((newAttr.getFlags() != oldAttr.getFlags()) || (newAttr.getRanges() != oldAttr.getRanges())
 				|| (newAttr.getDescription() != oldAttr.getDescription())) {
 				extraChanged = true;
 			}
 
 			// Always call listeners on modification in create. Flags, ranges, description
 			// might have changed and we want to ensure that is notified.
-			attrEvents = DVCFG_ATTRIBUTE_MODIFIED_CREATE;
+			if (!valueChanged && !extraChanged) {
+				// Nothing changed, same call. Do nothing.
+				return;
+			}
+			else if (valueChanged && !extraChanged) {
+				// Only the value changed, same as a put().
+				attrEvents = DVCFG_ATTRIBUTE_MODIFIED;
+			}
+			else {
+				// One of the extra parameters (flags, ranges, description) changed.
+				// Call listeners with special value.
+				attrEvents = DVCFG_ATTRIBUTE_MODIFIED_CREATE;
+			}
 
 			attributes[key] = newAttr;
 		}
@@ -321,7 +335,7 @@ public:
 		return (true);
 	}
 
-	const sshs_value getAttribute(const std::string &key, enum dvConfigAttributeType type) {
+	const dv_value getAttribute(const std::string &key, enum dvConfigAttributeType type) {
 		std::lock_guard<std::recursive_mutex> lockNode(node_lock);
 
 		if (!attributeExists(key, type)) {
@@ -332,7 +346,7 @@ public:
 		return (attributes[key].getValue());
 	}
 
-	bool putAttribute(const std::string &key, const sshs_value &value, bool forceReadOnlyUpdate = false) {
+	bool putAttribute(const std::string &key, const dv_value &value, bool forceReadOnlyUpdate = false) {
 		std::lock_guard<std::recursive_mutex> lockNode(node_lock);
 
 		if (!attributeExists(key, value.getType())) {
@@ -389,7 +403,7 @@ public:
 
 static void dvConfigNodeDestroy(dvConfigNode node);
 static void dvConfigNodeRemoveSubTree(dvConfigNode node);
-static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string childName);
+static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string &childName);
 static void dvConfigNodeRemoveAllChildren(dvConfigNode node);
 
 #define XML_INDENT_SPACES 4
@@ -428,7 +442,7 @@ dvConfigTree dvConfigNodeGetGlobal(dvConfigNode node) {
 }
 
 dvConfigNode dvConfigNodeAddChild(dvConfigNode node, const char *childName) {
-	std::unique_lock<std::shared_timed_mutex> lock(node->traversal_lock);
+	std::unique_lock<std::shared_mutex> lock(node->traversal_lock);
 
 	if (node->children.count(childName)) {
 		return (node->children[childName]);
@@ -458,7 +472,7 @@ dvConfigNode dvConfigNodeAddChild(dvConfigNode node, const char *childName) {
 }
 
 dvConfigNode dvConfigNodeGetChild(dvConfigNode node, const char *childName) {
-	std::shared_lock<std::shared_timed_mutex> lock(node->traversal_lock);
+	std::shared_lock<std::shared_mutex> lock(node->traversal_lock);
 
 	if (node->children.count(childName)) {
 		return (node->children[childName]);
@@ -469,7 +483,7 @@ dvConfigNode dvConfigNodeGetChild(dvConfigNode node, const char *childName) {
 }
 
 dvConfigNode *dvConfigNodeGetChildren(dvConfigNode node, size_t *numChildren) {
-	std::shared_lock<std::shared_timed_mutex> lock(node->traversal_lock);
+	std::shared_lock<std::shared_mutex> lock(node->traversal_lock);
 
 	size_t childrenCount = node->children.size();
 
@@ -604,8 +618,8 @@ static void dvConfigNodeRemoveSubTree(dvConfigNode node) {
 
 // children, attributes, and listeners for the child to be removed
 // must be cleaned up prior to this call.
-static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string childName) {
-	std::unique_lock<std::shared_timed_mutex> lock(node->traversal_lock);
+static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string &childName) {
+	std::unique_lock<std::shared_mutex> lock(node->traversal_lock);
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	if (!node->children.count(childName)) {
@@ -635,7 +649,7 @@ static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string childNa
 // children, attributes, and listeners for the children to be removed
 // must be cleaned up prior to this call.
 static void dvConfigNodeRemoveAllChildren(dvConfigNode node) {
-	std::unique_lock<std::shared_timed_mutex> lock(node->traversal_lock);
+	std::unique_lock<std::shared_mutex> lock(node->traversal_lock);
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	for (const auto &child : node->children) {
@@ -659,10 +673,13 @@ static void dvConfigNodeRemoveAllChildren(dvConfigNode node) {
 void dvConfigNodeCreateAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
 	union dvConfigAttributeValue defaultValue, const struct dvConfigAttributeRanges ranges, int flags,
 	const char *description) {
-	sshs_value val;
-	val.fromCUnion(defaultValue, type);
+	dv_value v;
+	v.fromCUnion(defaultValue, type);
 
-	node->createAttribute(key, val, ranges, flags, description);
+	dv_ranges r;
+	r.fromCStruct(ranges, type);
+
+	node->createAttribute(key, v, r, flags, description);
 }
 
 void dvConfigNodeRemoveAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
@@ -679,10 +696,10 @@ bool dvConfigNodeExistsAttribute(dvConfigNode node, const char *key, enum dvConf
 
 bool dvConfigNodePutAttribute(
 	dvConfigNode node, const char *key, enum dvConfigAttributeType type, union dvConfigAttributeValue value) {
-	sshs_value val;
-	val.fromCUnion(value, type);
+	dv_value v;
+	v.fromCUnion(value, type);
 
-	return (node->putAttribute(key, val));
+	return (node->putAttribute(key, v));
 }
 
 union dvConfigAttributeValue dvConfigNodeGetAttribute(
@@ -692,144 +709,142 @@ union dvConfigAttributeValue dvConfigNodeGetAttribute(
 
 bool dvConfigNodeUpdateReadOnlyAttribute(
 	dvConfigNode node, const char *key, enum dvConfigAttributeType type, union dvConfigAttributeValue value) {
-	sshs_value val;
-	val.fromCUnion(value, type);
+	dv_value v;
+	v.fromCUnion(value, type);
 
-	return (node->putAttribute(key, val, true));
+	return (node->putAttribute(key, v, true));
 }
 
 void dvConfigNodeCreateBool(dvConfigNode node, const char *key, bool defaultValue, int flags, const char *description) {
-	sshs_value uValue;
-	uValue.setBool(defaultValue);
+	dv_value v;
+	v.emplace<bool>(defaultValue);
 
 	// No range for booleans.
-	struct dvConfigAttributeRanges ranges;
-	ranges.min.ilongRange = 0;
-	ranges.max.ilongRange = 0;
+	dv_ranges r;
 
-	node->createAttribute(key, uValue, ranges, flags, description);
+	node->createAttribute(key, v, r, flags, description);
 }
 
 bool dvConfigNodePutBool(dvConfigNode node, const char *key, bool value) {
-	sshs_value uValue;
-	uValue.setBool(value);
+	dv_value v;
+	v.emplace<bool>(value);
 
-	return (node->putAttribute(key, uValue));
+	return (node->putAttribute(key, v));
 }
 
 bool dvConfigNodeGetBool(dvConfigNode node, const char *key) {
-	return (node->getAttribute(key, DVCFG_TYPE_BOOL).getBool());
+	return (std::get<bool>(node->getAttribute(key, DVCFG_TYPE_BOOL)));
 }
 
 void dvConfigNodeCreateInt(dvConfigNode node, const char *key, int32_t defaultValue, int32_t minValue, int32_t maxValue,
 	int flags, const char *description) {
-	sshs_value uValue;
-	uValue.setInt(defaultValue);
+	dv_value v;
+	v.emplace<int32_t>(defaultValue);
 
-	struct dvConfigAttributeRanges ranges;
-	ranges.min.iintRange = minValue;
-	ranges.max.iintRange = maxValue;
+	dv_ranges r;
+	r.min.emplace<int32_t>(minValue);
+	r.max.emplace<int32_t>(maxValue);
 
-	node->createAttribute(key, uValue, ranges, flags, description);
+	node->createAttribute(key, v, r, flags, description);
 }
 
 bool dvConfigNodePutInt(dvConfigNode node, const char *key, int32_t value) {
-	sshs_value uValue;
-	uValue.setInt(value);
+	dv_value v;
+	v.emplace<int32_t>(value);
 
-	return (node->putAttribute(key, uValue));
+	return (node->putAttribute(key, v));
 }
 
 int32_t dvConfigNodeGetInt(dvConfigNode node, const char *key) {
-	return (node->getAttribute(key, DVCFG_TYPE_INT).getInt());
+	return (std::get<int32_t>(node->getAttribute(key, DVCFG_TYPE_INT)));
 }
 
 void dvConfigNodeCreateLong(dvConfigNode node, const char *key, int64_t defaultValue, int64_t minValue,
 	int64_t maxValue, int flags, const char *description) {
-	sshs_value uValue;
-	uValue.setLong(defaultValue);
+	dv_value v;
+	v.emplace<int64_t>(defaultValue);
 
-	struct dvConfigAttributeRanges ranges;
-	ranges.min.ilongRange = minValue;
-	ranges.max.ilongRange = maxValue;
+	dv_ranges r;
+	r.min.emplace<int64_t>(minValue);
+	r.max.emplace<int64_t>(maxValue);
 
-	node->createAttribute(key, uValue, ranges, flags, description);
+	node->createAttribute(key, v, r, flags, description);
 }
 
 bool dvConfigNodePutLong(dvConfigNode node, const char *key, int64_t value) {
-	sshs_value uValue;
-	uValue.setLong(value);
+	dv_value v;
+	v.emplace<int64_t>(value);
 
-	return (node->putAttribute(key, uValue));
+	return (node->putAttribute(key, v));
 }
 
 int64_t dvConfigNodeGetLong(dvConfigNode node, const char *key) {
-	return (node->getAttribute(key, DVCFG_TYPE_LONG).getLong());
+	return (std::get<int64_t>(node->getAttribute(key, DVCFG_TYPE_LONG)));
 }
 
 void dvConfigNodeCreateFloat(dvConfigNode node, const char *key, float defaultValue, float minValue, float maxValue,
 	int flags, const char *description) {
-	sshs_value uValue;
-	uValue.setFloat(defaultValue);
+	dv_value v;
+	v.emplace<float>(defaultValue);
 
-	struct dvConfigAttributeRanges ranges;
-	ranges.min.ffloatRange = minValue;
-	ranges.max.ffloatRange = maxValue;
+	dv_ranges r;
+	r.min.emplace<float>(minValue);
+	r.max.emplace<float>(maxValue);
 
-	node->createAttribute(key, uValue, ranges, flags, description);
+	node->createAttribute(key, v, r, flags, description);
 }
 
 bool dvConfigNodePutFloat(dvConfigNode node, const char *key, float value) {
-	sshs_value uValue;
-	uValue.setFloat(value);
+	dv_value v;
+	v.emplace<float>(value);
 
-	return (node->putAttribute(key, uValue));
+	return (node->putAttribute(key, v));
 }
 
 float dvConfigNodeGetFloat(dvConfigNode node, const char *key) {
-	return (node->getAttribute(key, DVCFG_TYPE_FLOAT).getFloat());
+	return (std::get<float>(node->getAttribute(key, DVCFG_TYPE_FLOAT)));
 }
 
 void dvConfigNodeCreateDouble(dvConfigNode node, const char *key, double defaultValue, double minValue, double maxValue,
 	int flags, const char *description) {
-	sshs_value uValue;
-	uValue.setDouble(defaultValue);
+	dv_value v;
+	v.emplace<double>(defaultValue);
 
-	struct dvConfigAttributeRanges ranges;
-	ranges.min.ddoubleRange = minValue;
-	ranges.max.ddoubleRange = maxValue;
+	dv_ranges r;
+	r.min.emplace<double>(minValue);
+	r.max.emplace<double>(maxValue);
 
-	node->createAttribute(key, uValue, ranges, flags, description);
+	node->createAttribute(key, v, r, flags, description);
 }
 
 bool dvConfigNodePutDouble(dvConfigNode node, const char *key, double value) {
-	sshs_value uValue;
-	uValue.setDouble(value);
+	dv_value v;
+	v.emplace<double>(value);
 
-	return (node->putAttribute(key, uValue));
+	return (node->putAttribute(key, v));
 }
 
 double dvConfigNodeGetDouble(dvConfigNode node, const char *key) {
-	return (node->getAttribute(key, DVCFG_TYPE_DOUBLE).getDouble());
+	return (std::get<double>(node->getAttribute(key, DVCFG_TYPE_DOUBLE)));
 }
 
-void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, size_t minLength,
-	size_t maxLength, int flags, const char *description) {
-	sshs_value uValue;
-	uValue.setString(defaultValue);
+void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, int32_t minLength,
+	int32_t maxLength, int flags, const char *description) {
+	dv_value v;
+	v.emplace<std::string>(defaultValue);
 
-	struct dvConfigAttributeRanges ranges;
-	ranges.min.stringRange = minLength;
-	ranges.max.stringRange = maxLength;
+	dv_ranges r;
+	r.min.emplace<int32_t>(minLength);
+	r.max.emplace<int32_t>(maxLength);
 
-	node->createAttribute(key, uValue, ranges, flags, description);
+	node->createAttribute(key, v, r, flags, description);
 }
 
 bool dvConfigNodePutString(dvConfigNode node, const char *key, const char *value) {
-	sshs_value uValue;
-	uValue.setString(value);
+	dv_value v;
+	v.emplace<std::string>(value);
 
-	return (node->putAttribute(key, uValue));
+	return (node->putAttribute(key, v));
 }
 
 // This is a copy of the string on the heap, remember to free() when done!
@@ -890,7 +905,7 @@ static boost::property_tree::ptree dvConfigNodeGenerateXML(dvConfigNode node, bo
 
 	// First recurse down all the way to the leaf children, where attributes are kept.
 	if (recursive) {
-		std::shared_lock<std::shared_timed_mutex> lock(node->traversal_lock);
+		std::shared_lock<std::shared_mutex> lock(node->traversal_lock);
 
 		for (const auto &child : node->children) {
 			auto childContent = dvConfigNodeGenerateXML(child.second, recursive);
@@ -1089,7 +1104,7 @@ bool dvConfigNodeStringToAttributeConverter(
 		valueStr = "";
 	}
 
-	sshs_value value;
+	dv_value value;
 	try {
 		value = dvConfigHelperCppStringToValueConverter(type, valueStr);
 	}
@@ -1115,47 +1130,46 @@ bool dvConfigNodeStringToAttributeConverter(
 	else {
 		// Create never fails, it may exit the program, but not fail!
 		result = true;
-		struct dvConfigAttributeRanges ranges;
+		dv_ranges ranges;
 
 		switch (type) {
 			case DVCFG_TYPE_BOOL:
-				ranges.min.ilongRange = 0;
-				ranges.max.ilongRange = 0;
+				// No ranges for bool.
 				node->createAttribute(
 					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
 
 			case DVCFG_TYPE_INT:
-				ranges.min.iintRange = INT32_MIN;
-				ranges.max.iintRange = INT32_MAX;
+				ranges.min.emplace<int32_t>(INT32_MIN);
+				ranges.max.emplace<int32_t>(INT32_MAX);
 				node->createAttribute(
 					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
 
 			case DVCFG_TYPE_LONG:
-				ranges.min.ilongRange = INT64_MIN;
-				ranges.max.ilongRange = INT64_MAX;
+				ranges.min.emplace<int64_t>(INT64_MIN);
+				ranges.max.emplace<int64_t>(INT64_MAX);
 				node->createAttribute(
 					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
 
 			case DVCFG_TYPE_FLOAT:
-				ranges.min.ffloatRange = -FLT_MAX;
-				ranges.max.ffloatRange = FLT_MAX;
+				ranges.min.emplace<float>(-FLT_MAX);
+				ranges.max.emplace<float>(FLT_MAX);
 				node->createAttribute(
 					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
 
 			case DVCFG_TYPE_DOUBLE:
-				ranges.min.ddoubleRange = -DBL_MAX;
-				ranges.max.ddoubleRange = DBL_MAX;
+				ranges.min.emplace<double>(-DBL_MAX);
+				ranges.max.emplace<double>(DBL_MAX);
 				node->createAttribute(
 					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
 
 			case DVCFG_TYPE_STRING:
-				ranges.min.stringRange = 0;
-				ranges.max.stringRange = INT32_MAX;
+				ranges.min.emplace<int32_t>(0);
+				ranges.max.emplace<int32_t>(INT32_MAX);
 				node->createAttribute(
 					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
 				break;
@@ -1172,7 +1186,7 @@ bool dvConfigNodeStringToAttributeConverter(
 
 // Remember to free the resulting array.
 const char **dvConfigNodeGetChildNames(dvConfigNode node, size_t *numNames) {
-	std::shared_lock<std::shared_timed_mutex> lock(node->traversal_lock);
+	std::shared_lock<std::shared_mutex> lock(node->traversal_lock);
 
 	if (node->children.empty()) {
 		*numNames = 0;
@@ -1254,7 +1268,6 @@ const char **dvConfigNodeGetAttributeKeys(dvConfigNode node, size_t *numKeys) {
 	return (const_cast<const char **>(attributeKeys));
 }
 
-// Remember to free the resulting array.
 enum dvConfigAttributeType dvConfigNodeGetAttributeType(dvConfigNode node, const char *key) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
@@ -1275,7 +1288,7 @@ struct dvConfigAttributeRanges dvConfigNodeGetAttributeRanges(
 		dvConfigNodeErrorNoAttribute("dvConfigNodeGetAttributeRanges", key, type);
 	}
 
-	return (node->attributes[key].getRanges());
+	return (node->attributes[key].getRanges().toCStruct());
 }
 
 int dvConfigNodeGetAttributeFlags(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {

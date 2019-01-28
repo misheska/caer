@@ -148,8 +148,8 @@ void dvConfigNodeCreateDouble(dvConfigNode node, const char *key, double default
 	int flags, const char *description);
 bool dvConfigNodePutDouble(dvConfigNode node, const char *key, double value);
 double dvConfigNodeGetDouble(dvConfigNode node, const char *key);
-void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, size_t minLength,
-	size_t maxLength, int flags, const char *description);
+void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, int32_t minLength,
+	int32_t maxLength, int flags, const char *description);
 bool dvConfigNodePutString(dvConfigNode node, const char *key, const char *value);
 char *dvConfigNodeGetString(dvConfigNode node, const char *key);
 
