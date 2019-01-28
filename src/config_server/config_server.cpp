@@ -387,9 +387,17 @@ static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode n, void *
 
 		msg.add_action(dv::ConfigAction::PUSH_MESSAGE_ATTR);
 
+		msg.add_attrEvents(static_cast<dv::ConfigAttributeEvents>(event));
+
+		msg.add_node(msgBuild->CreateString(node.getPath()));
+
+		msg.add_key(msgBuild->CreateString(changeKey));
+
 		msg.add_type(static_cast<dv::ConfigType>(type));
 
-		msg.add_attrEvents(static_cast<dv::ConfigAttributeEvents>(event));
+		const std::string valueStr = dvCfg::Helper::valueToStringConverter(type, changeValue);
+
+		msg.add_value(msgBuild->CreateString(valueStr));
 
 		if (event == DVCFG_ATTRIBUTE_ADDED) {
 			// Need to get extra info when adding: flags, range, description.
@@ -406,14 +414,6 @@ static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode n, void *
 
 			msg.add_description(msgBuild->CreateString(descriptionStr));
 		}
-
-		msg.add_node(msgBuild->CreateString(node.getPath()));
-
-		msg.add_key(msgBuild->CreateString(changeKey));
-
-		const std::string valueStr = dvCfg::Helper::valueToStringConverter(type, changeValue);
-
-		msg.add_value(msgBuild->CreateString(valueStr));
 
 		// Finish off message.
 		auto msgRoot = msg.Finish();
