@@ -67,15 +67,15 @@ enum dvConfigAttributeFlags {
 };
 
 enum dvConfigNodeEvents {
-	DVCFG_NODE_CHILD_ADDED   = 1,
-	DVCFG_NODE_CHILD_REMOVED = 2,
+	DVCFG_NODE_CHILD_ADDED   = 0,
+	DVCFG_NODE_CHILD_REMOVED = 1,
 };
 
 enum dvConfigAttributeEvents {
-	DVCFG_ATTRIBUTE_ADDED           = 1,
-	DVCFG_ATTRIBUTE_MODIFIED        = 2,
-	DVCFG_ATTRIBUTE_REMOVED         = 4,
-	DVCFG_ATTRIBUTE_MODIFIED_CREATE = 8,
+	DVCFG_ATTRIBUTE_ADDED           = 0,
+	DVCFG_ATTRIBUTE_MODIFIED        = 1,
+	DVCFG_ATTRIBUTE_REMOVED         = 2,
+	DVCFG_ATTRIBUTE_MODIFIED_CREATE = 3,
 };
 
 typedef void (*dvConfigNodeChangeListener)(
