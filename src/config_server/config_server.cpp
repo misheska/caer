@@ -399,7 +399,7 @@ static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode n, void *
 
 		msg.add_value(msgBuild->CreateString(valueStr));
 
-		if (event == DVCFG_ATTRIBUTE_ADDED) {
+		if (event == DVCFG_ATTRIBUTE_ADDED || event == DVCFG_ATTRIBUTE_MODIFIED_CREATE) {
 			// Need to get extra info when adding: flags, range, description.
 			int flags = node.getAttributeFlags(changeKey, type);
 
