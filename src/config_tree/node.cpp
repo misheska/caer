@@ -202,62 +202,62 @@ public:
 		std::lock_guard<std::recursive_mutex> lock(node_lock);
 
 		// Add if not present. Else update value (below).
+		enum dvConfigAttributeEvents attrEvents;
+
 		if (!attributes.count(key)) {
 			attributes[key] = newAttr;
-
-			// Listener support. Call only on change, which is always the case here.
-			dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
-			if (globalListener != nullptr) {
-				// Global listener support.
-				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), DVCFG_ATTRIBUTE_ADDED,
-					key.c_str(), newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
-			}
-
-			for (const auto &l : attrListeners) {
-				(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_ADDED, key.c_str(),
-					newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
-			}
+			attrEvents      = DVCFG_ATTRIBUTE_ADDED;
 		}
 		else {
-			const sshs_node_attr &oldAttr  = attributes[key];
-			const sshs_value &oldAttrValue = oldAttr.getValue();
+			const sshs_node_attr &oldAttr = attributes[key];
 
-			// To simplify things, we don't support multiple types per key (though the API does).
-			if (oldAttrValue.getType() != newAttr.getValue().getType()) {
+			// To simplify things, we don't support multiple types per key.
+			if (oldAttr.getValue().getType() != newAttr.getValue().getType()) {
 				boost::format errorMsg
 					= boost::format("value with this key already exists and has a different type of '%s'")
-					  % dvConfigHelperCppTypeToStringConverter(oldAttrValue.getType());
+					  % dvConfigHelperCppTypeToStringConverter(oldAttr.getValue().getType());
 
 				dvConfigNodeError("dvConfigNodeCreateAttribute", key, newAttr.getValue().getType(), errorMsg.str());
 			}
 
 			// Check if the current value is still fine and within range; if it is
 			// we use it, else just use the new value.
-			if (oldAttrValue.inRange(ranges)) {
-				// Only update value, then use newAttr. No listeners called since this
-				// is by definition the old value and as such nothing can have changed.
-				newAttr.setValue(oldAttrValue);
-				attributes[key] = newAttr;
+			if (oldAttr.getValue().inRange(ranges)) {
+				// Only update value, then use newAttr. Listeners are called because
+				// description, flags or ranges might have changed.
+				newAttr.setValue(oldAttr.getValue());
 			}
-			else {
-				// If the old value is not in range anymore, the new value must be different,
-				// since it is guaranteed to be inside the new range. So we call the listeners.
-				attributes[key] = newAttr;
 
-				// Listener support. Call only on change, which is always the case here.
-				dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
-				if (globalListener != nullptr) {
-					// Global listener support.
-					(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global),
-						DVCFG_ATTRIBUTE_MODIFIED, key.c_str(), newAttr.getValue().getType(),
-						newAttr.getValue().toCUnion(true));
-				}
-
-				for (const auto &l : attrListeners) {
-					(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_MODIFIED, key.c_str(),
-						newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
-				}
+			// Determine what, if anything, changed.
+			bool valueChanged = false;
+			if (newAttr.getValue() != oldAttr.getValue()) {
+				valueChanged = true;
 			}
+
+			bool extraChanged = false;
+			if ((newAttr.getFlags() != oldAttr.getFlags()) || (newAttr.getRanges().max != oldAttr.getRanges().max)
+				|| (newAttr.getDescription() != oldAttr.getDescription())) {
+				extraChanged = true;
+			}
+
+			// Always call listeners on modification in create. Flags, ranges, description
+			// might have changed and we want to ensure that is notified.
+			attrEvents = DVCFG_ATTRIBUTE_MODIFIED_CREATE;
+
+			attributes[key] = newAttr;
+		}
+
+		// Listener support. Call only on change, which is always the case here.
+		dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+		if (globalListener != nullptr) {
+			// Global listener support.
+			(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), attrEvents, key.c_str(),
+				newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
+		}
+
+		for (const auto &l : attrListeners) {
+			(*l.getListener())(this, l.getUserData(), attrEvents, key.c_str(), newAttr.getValue().getType(),
+				newAttr.getValue().toCUnion(true));
 		}
 	}
 
@@ -378,8 +378,8 @@ public:
 			}
 
 			for (const auto &l : attrListeners) {
-				(*l.getListener())(
-					this, l.getUserData(), DVCFG_ATTRIBUTE_MODIFIED, key.c_str(), value.getType(), value.toCUnion(true));
+				(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_MODIFIED, key.c_str(), value.getType(),
+					value.toCUnion(true));
 			}
 		}
 
@@ -516,7 +516,8 @@ void dvConfigNodeRemoveAllNodeListeners(dvConfigNode node) {
 	node->nodeListeners.clear();
 }
 
-void dvConfigNodeAddAttributeListener(dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed) {
+void dvConfigNodeAddAttributeListener(
+	dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed) {
 	sshs_attribute_listener listener(attribute_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
@@ -526,7 +527,8 @@ void dvConfigNodeAddAttributeListener(dvConfigNode node, void *userData, dvConfi
 	}
 }
 
-void dvConfigNodeRemoveAttributeListener(dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed) {
+void dvConfigNodeRemoveAttributeListener(
+	dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed) {
 	sshs_attribute_listener listener(attribute_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
@@ -683,7 +685,8 @@ bool dvConfigNodePutAttribute(
 	return (node->putAttribute(key, val));
 }
 
-union dvConfigAttributeValue dvConfigNodeGetAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
+union dvConfigAttributeValue dvConfigNodeGetAttribute(
+	dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
 	return (node->getAttribute(key, type).toCUnion());
 }
 
@@ -741,8 +744,8 @@ int32_t dvConfigNodeGetInt(dvConfigNode node, const char *key) {
 	return (node->getAttribute(key, DVCFG_TYPE_INT).getInt());
 }
 
-void dvConfigNodeCreateLong(dvConfigNode node, const char *key, int64_t defaultValue, int64_t minValue, int64_t maxValue,
-	int flags, const char *description) {
+void dvConfigNodeCreateLong(dvConfigNode node, const char *key, int64_t defaultValue, int64_t minValue,
+	int64_t maxValue, int flags, const char *description) {
 	sshs_value uValue;
 	uValue.setLong(defaultValue);
 
@@ -764,8 +767,8 @@ int64_t dvConfigNodeGetLong(dvConfigNode node, const char *key) {
 	return (node->getAttribute(key, DVCFG_TYPE_LONG).getLong());
 }
 
-void dvConfigNodeCreateFloat(dvConfigNode node, const char *key, float defaultValue, float minValue, float maxValue, int flags,
-	const char *description) {
+void dvConfigNodeCreateFloat(dvConfigNode node, const char *key, float defaultValue, float minValue, float maxValue,
+	int flags, const char *description) {
 	sshs_value uValue;
 	uValue.setFloat(defaultValue);
 
@@ -810,8 +813,8 @@ double dvConfigNodeGetDouble(dvConfigNode node, const char *key) {
 	return (node->getAttribute(key, DVCFG_TYPE_DOUBLE).getDouble());
 }
 
-void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, size_t minLength, size_t maxLength,
-	int flags, const char *description) {
+void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, size_t minLength,
+	size_t maxLength, int flags, const char *description) {
 	sshs_value uValue;
 	uValue.setString(defaultValue);
 
@@ -1039,7 +1042,8 @@ static void dvConfigNodeConsumeXML(dvConfigNode node, const boost::property_tree
 			boost::format errorMsg
 				= boost::format("failed to convert attribute from XML, value string was '%s'") % value;
 
-			dvConfigNodeError("dvConfigNodeConsumeXML", key, dvConfigHelperCppStringToTypeConverter(type), errorMsg.str(), false);
+			dvConfigNodeError(
+				"dvConfigNodeConsumeXML", key, dvConfigHelperCppStringToTypeConverter(type), errorMsg.str(), false);
 		}
 	}
 
@@ -1069,7 +1073,8 @@ static void dvConfigNodeConsumeXML(dvConfigNode node, const boost::property_tree
 }
 
 // For more precise failure reason, look at errno.
-bool dvConfigNodeStringToAttributeConverter(dvConfigNode node, const char *key, const char *typeStr, const char *valueStr) {
+bool dvConfigNodeStringToAttributeConverter(
+	dvConfigNode node, const char *key, const char *typeStr, const char *valueStr) {
 	// Parse the values according to type and put them in the node.
 	enum dvConfigAttributeType type;
 	type = dvConfigHelperCppStringToTypeConverter(typeStr);

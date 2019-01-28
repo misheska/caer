@@ -8,6 +8,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <variant>
 
 // C linkage to guarantee no name mangling.
 extern "C" {
@@ -54,114 +55,122 @@ template<typename T> static inline void sshsMemoryCheck(T *ptr, const std::strin
 	}
 }
 
-class sshs_value {
-private:
-	enum dvConfigAttributeType type;
-	union {
-		bool boolean;
-		int32_t iint;
-		int64_t ilong;
-		float ffloat;
-		double ddouble;
-	} value;
-	std::string valueString; // Separate for easy memory management.
-
+class dv_ranges {
 public:
-	sshs_value() {
-		type        = DVCFG_TYPE_UNKNOWN;
-		value.ilong = 0;
+	std::variant<int32_t, int64_t, float, double> min;
+	std::variant<int32_t, int64_t, float, double> max;
+	enum dv
+
+		void
+		fromCStruct(struct dvConfigAttributeRanges vs, enum dvConfigAttributeType ts) {
+		switch (ts) {
+			case DVCFG_TYPE_BOOL:
+				// Nothing to set for bool.
+				break;
+
+			case DVCFG_TYPE_INT:
+				min.emplace<int32_t>(vs.min.iintRange);
+				max.emplace<int32_t>(vs.max.iintRange);
+				break;
+
+			case DVCFG_TYPE_LONG:
+				min.emplace<int64_t>(vs.min.ilongRange);
+				max.emplace<int64_t>(vs.max.ilongRange);
+				break;
+
+			case DVCFG_TYPE_FLOAT:
+				min.emplace<float>(vs.min.ffloatRange);
+				max.emplace<float>(vs.max.ffloatRange);
+				break;
+
+			case DVCFG_TYPE_DOUBLE:
+				min.emplace<double>(vs.min.ddoubleRange);
+				max.emplace<double>(vs.max.ddoubleRange);
+				break;
+
+			case DVCFG_TYPE_STRING:
+				// String size is restricted to int32 internally.
+				min.emplace<int32_t>(vs.min.stringRange);
+				max.emplace<int32_t>(vs.max.stringRange);
+				break;
+
+			case DVCFG_TYPE_UNKNOWN:
+			default:
+				throw std::runtime_error("SSHS: provided union value type does not match any valid type.");
+				break;
+		}
 	}
+
+	struct dvConfigAttributeRanges toCStruct() const {
+		struct dvConfigAttributeRanges vs;
+
+		switch (getType()) {
+			case DVCFG_TYPE_BOOL:
+				// Set biggest value to 0 for booleans.
+				vs.min.ilongRange = 0;
+				vs.max.ilongRange = 0;
+				break;
+
+			case DVCFG_TYPE_INT:
+				vs.min.iintRange = std::get<int32_t>(min);
+				vs.max.iintRange = std::get<int32_t>(max);
+				break;
+
+			case DVCFG_TYPE_LONG:
+				vs.min.ilongRange = std::get<int64_t>(min);
+				vs.max.ilongRange = std::get<int64_t>(max);
+				break;
+
+			case DVCFG_TYPE_FLOAT:
+				vs.min.ilongRange = 0;
+				vs.max.ilongRange = 0;
+				break;
+
+			case DVCFG_TYPE_DOUBLE:
+				vs.min.ilongRange = 0;
+				vs.max.ilongRange = 0;
+				break;
+
+			case DVCFG_TYPE_STRING:
+				vs.min.ilongRange = 0;
+				vs.max.ilongRange = 0;
+				break;
+
+			case DVCFG_TYPE_UNKNOWN:
+			default:
+				throw std::runtime_error("SSHS: internal value type does not match any valid type.");
+				break;
+		}
+
+		return (vs);
+	}
+
+	// Comparison operators.
+	bool operator==(const dv_ranges &rhs) const {
+		return (value == rhs.value);
+	}
+
+	bool operator!=(const dv_ranges &rhs) const {
+		return (!this->operator==(rhs));
+	}
+};
+
+class dv_value {
+public:
+	std::variant<bool, int32_t, int64_t, float, double, std::string> value;
 
 	enum dvConfigAttributeType getType() const noexcept {
-		return (type);
+		return (static_cast<dvConfigAttributeType>(value.index()));
 	}
 
-	bool getBool() const {
-		if (type != DVCFG_TYPE_BOOL) {
-			throw std::runtime_error("SSHS: value type does not match requested type.");
-		}
-
-		return (value.boolean);
-	}
-
-	void setBool(bool v) noexcept {
-		type          = DVCFG_TYPE_BOOL;
-		value.boolean = v;
-	}
-
-	int32_t getInt() const {
-		if (type != DVCFG_TYPE_INT) {
-			throw std::runtime_error("SSHS: value type does not match requested type.");
-		}
-
-		return (value.iint);
-	}
-
-	void setInt(int32_t v) noexcept {
-		type       = DVCFG_TYPE_INT;
-		value.iint = v;
-	}
-
-	int64_t getLong() const {
-		if (type != DVCFG_TYPE_LONG) {
-			throw std::runtime_error("SSHS: value type does not match requested type.");
-		}
-
-		return (value.ilong);
-	}
-
-	void setLong(int64_t v) noexcept {
-		type        = DVCFG_TYPE_LONG;
-		value.ilong = v;
-	}
-
-	float getFloat() const {
-		if (type != DVCFG_TYPE_FLOAT) {
-			throw std::runtime_error("SSHS: value type does not match requested type.");
-		}
-
-		return (value.ffloat);
-	}
-
-	void setFloat(float v) noexcept {
-		type         = DVCFG_TYPE_FLOAT;
-		value.ffloat = v;
-	}
-
-	double getDouble() const {
-		if (type != DVCFG_TYPE_DOUBLE) {
-			throw std::runtime_error("SSHS: value type does not match requested type.");
-		}
-
-		return (value.ddouble);
-	}
-
-	void setDouble(double v) noexcept {
-		type          = DVCFG_TYPE_DOUBLE;
-		value.ddouble = v;
-	}
-
-	const std::string &getString() const {
-		if (type != DVCFG_TYPE_STRING) {
-			throw std::runtime_error("SSHS: value type does not match requested type.");
-		}
-
-		return (valueString);
-	}
-
-	void setString(const std::string &v) noexcept {
-		type        = DVCFG_TYPE_STRING;
-		valueString = v;
-	}
-
-	bool inRange(const struct dvConfigAttributeRanges &ranges) const {
-		switch (type) {
+	bool inRange(const struct dvConfigAttributeRanges &ranges) const noexcept {
+		switch (getType()) {
 			case DVCFG_TYPE_BOOL:
 				// No check for bool, because no range exists.
 				return (true);
 
 			case DVCFG_TYPE_INT:
-				return (value.iint >= ranges.min.iintRange && value.iint <= ranges.max.iintRange);
+				return (getInt() >= ranges.min.iintRange && value.iint <= ranges.max.iintRange);
 
 			case DVCFG_TYPE_LONG:
 				return (value.ilong >= ranges.min.ilongRange && value.ilong <= ranges.max.ilongRange);
@@ -185,27 +194,27 @@ public:
 	void fromCUnion(union dvConfigAttributeValue vu, enum dvConfigAttributeType tu) {
 		switch (tu) {
 			case DVCFG_TYPE_BOOL:
-				setBool(vu.boolean);
+				value.emplace<bool>(vu.boolean);
 				break;
 
 			case DVCFG_TYPE_INT:
-				setInt(vu.iint);
+				value.emplace<int32_t>(vu.iint);
 				break;
 
 			case DVCFG_TYPE_LONG:
-				setLong(vu.ilong);
+				value.emplace<int64_t>(vu.ilong);
 				break;
 
 			case DVCFG_TYPE_FLOAT:
-				setFloat(vu.ffloat);
+				value.emplace<float>(vu.ffloat);
 				break;
 
 			case DVCFG_TYPE_DOUBLE:
-				setDouble(vu.ddouble);
+				value.emplace<double>(vu.ddouble);
 				break;
 
 			case DVCFG_TYPE_STRING:
-				setString(vu.string);
+				value.emplace<std::string>(vu.string);
 				break;
 
 			case DVCFG_TYPE_UNKNOWN:
@@ -218,36 +227,38 @@ public:
 	union dvConfigAttributeValue toCUnion(bool readOnlyString = false) const {
 		union dvConfigAttributeValue vu;
 
-		switch (type) {
+		switch (getType()) {
 			case DVCFG_TYPE_BOOL:
-				vu.boolean = getBool();
+				vu.boolean = std::get<bool>(value);
 				break;
 
 			case DVCFG_TYPE_INT:
-				vu.iint = getInt();
+				vu.iint = std::get<int32_t>(value);
 				break;
 
 			case DVCFG_TYPE_LONG:
-				vu.ilong = getLong();
+				vu.ilong = std::get<int64_t>(value);
 				break;
 
 			case DVCFG_TYPE_FLOAT:
-				vu.ffloat = getFloat();
+				vu.ffloat = std::get<float>(value);
 				break;
 
 			case DVCFG_TYPE_DOUBLE:
-				vu.ddouble = getDouble();
+				vu.ddouble = std::get<double>(value);
 				break;
 
-			case DVCFG_TYPE_STRING:
+			case DVCFG_TYPE_STRING: {
+				const std::string &str = std::get<std::string>(value);
 				if (readOnlyString) {
-					vu.string = const_cast<char *>(getString().c_str());
+					vu.string = const_cast<char *>(str.c_str());
 				}
 				else {
-					vu.string = strdup(getString().c_str());
+					vu.string = strdup(str.c_str());
 					sshsMemoryCheck(vu.string, "sshs_value.toCUnion");
 				}
 				break;
+			}
 
 			case DVCFG_TYPE_UNKNOWN:
 			default:
@@ -259,33 +270,11 @@ public:
 	}
 
 	// Comparison operators.
-	bool operator==(const sshs_value &rhs) const {
-		switch (type) {
-			case DVCFG_TYPE_BOOL:
-				return (getBool() == rhs.getBool());
-
-			case DVCFG_TYPE_INT:
-				return (getInt() == rhs.getInt());
-
-			case DVCFG_TYPE_LONG:
-				return (getLong() == rhs.getLong());
-
-			case DVCFG_TYPE_FLOAT:
-				return (getFloat() == rhs.getFloat());
-
-			case DVCFG_TYPE_DOUBLE:
-				return (getDouble() == rhs.getDouble());
-
-			case DVCFG_TYPE_STRING:
-				return (getString() == rhs.getString());
-
-			case DVCFG_TYPE_UNKNOWN:
-			default:
-				return (false);
-		}
+	bool operator==(const dv_value &rhs) const {
+		return (value == rhs.value);
 	}
 
-	bool operator!=(const sshs_value &rhs) const {
+	bool operator!=(const dv_value &rhs) const {
 		return (!this->operator==(rhs));
 	}
 };

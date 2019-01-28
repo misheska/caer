@@ -28,13 +28,13 @@ extern "C" {
 typedef struct dv_config_node *dvConfigNode;
 
 enum dvConfigAttributeType {
-	DVCFG_TYPE_UNKNOWN = 0,
-	DVCFG_TYPE_BOOL    = 1,
-	DVCFG_TYPE_INT     = 2,
-	DVCFG_TYPE_LONG    = 3,
-	DVCFG_TYPE_FLOAT   = 4,
-	DVCFG_TYPE_DOUBLE  = 5,
-	DVCFG_TYPE_STRING  = 6,
+	DVCFG_TYPE_UNKNOWN = -1,
+	DVCFG_TYPE_BOOL    = 0,
+	DVCFG_TYPE_INT     = 1,
+	DVCFG_TYPE_LONG    = 2,
+	DVCFG_TYPE_FLOAT   = 3,
+	DVCFG_TYPE_DOUBLE  = 4,
+	DVCFG_TYPE_STRING  = 5,
 };
 
 union dvConfigAttributeValue {
