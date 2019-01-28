@@ -20,7 +20,8 @@ enum ConfigAction : int8 {
 	PUSH_MESSAGE_ATTR  = 16,
 	DUMP_TREE          = 17,
 	DUMP_TREE_NODE     = 18,
-	DUMP_TREE_ATTR     = 19
+	DUMP_TREE_ATTR     = 19,
+	GET_CLIENT_ID      = 20
 }
 
 enum ConfigType : int8 {
@@ -34,14 +35,14 @@ enum ConfigType : int8 {
 }
 
 enum ConfigNodeEvents : int8 {
-	DVCFG_NODE_CHILD_ADDED   = 0,
-	DVCFG_NODE_CHILD_REMOVED = 1
+	NODE_ADDED   = 0,
+	NODE_REMOVED = 1
 }
 
 enum ConfigAttributeEvents : int8 {
-	DVCFG_ATTRIBUTE_ADDED    = 0,
-	DVCFG_ATTRIBUTE_MODIFIED = 1,
-	DVCFG_ATTRIBUTE_REMOVED  = 2
+	ATTRIBUTE_ADDED    = 0,
+	ATTRIBUTE_MODIFIED = 1,
+	ATTRIBUTE_REMOVED  = 2
 }
 
 table ConfigActionData {

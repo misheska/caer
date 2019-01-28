@@ -32,11 +32,12 @@ enum class ConfigAction : int8_t {
   DUMP_TREE = 17,
   DUMP_TREE_NODE = 18,
   DUMP_TREE_ATTR = 19,
+  GET_CLIENT_ID = 20,
   MIN = ERROR,
-  MAX = DUMP_TREE_ATTR
+  MAX = GET_CLIENT_ID
 };
 
-inline const ConfigAction (&EnumValuesConfigAction())[20] {
+inline const ConfigAction (&EnumValuesConfigAction())[21] {
   static const ConfigAction values[] = {
     ConfigAction::ERROR,
     ConfigAction::NODE_EXISTS,
@@ -57,7 +58,8 @@ inline const ConfigAction (&EnumValuesConfigAction())[20] {
     ConfigAction::PUSH_MESSAGE_ATTR,
     ConfigAction::DUMP_TREE,
     ConfigAction::DUMP_TREE_NODE,
-    ConfigAction::DUMP_TREE_ATTR
+    ConfigAction::DUMP_TREE_ATTR,
+    ConfigAction::GET_CLIENT_ID
   };
   return values;
 }
@@ -84,6 +86,7 @@ inline const char * const *EnumNamesConfigAction() {
     "DUMP_TREE",
     "DUMP_TREE_NODE",
     "DUMP_TREE_ATTR",
+    "GET_CLIENT_ID",
     nullptr
   };
   return names;
@@ -141,24 +144,24 @@ inline const char *EnumNameConfigType(ConfigType e) {
 }
 
 enum class ConfigNodeEvents : int8_t {
-  DVCFG_NODE_CHILD_ADDED = 0,
-  DVCFG_NODE_CHILD_REMOVED = 1,
-  MIN = DVCFG_NODE_CHILD_ADDED,
-  MAX = DVCFG_NODE_CHILD_REMOVED
+  NODE_ADDED = 0,
+  NODE_REMOVED = 1,
+  MIN = NODE_ADDED,
+  MAX = NODE_REMOVED
 };
 
 inline const ConfigNodeEvents (&EnumValuesConfigNodeEvents())[2] {
   static const ConfigNodeEvents values[] = {
-    ConfigNodeEvents::DVCFG_NODE_CHILD_ADDED,
-    ConfigNodeEvents::DVCFG_NODE_CHILD_REMOVED
+    ConfigNodeEvents::NODE_ADDED,
+    ConfigNodeEvents::NODE_REMOVED
   };
   return values;
 }
 
 inline const char * const *EnumNamesConfigNodeEvents() {
   static const char * const names[] = {
-    "DVCFG_NODE_CHILD_ADDED",
-    "DVCFG_NODE_CHILD_REMOVED",
+    "NODE_ADDED",
+    "NODE_REMOVED",
     nullptr
   };
   return names;
@@ -170,27 +173,27 @@ inline const char *EnumNameConfigNodeEvents(ConfigNodeEvents e) {
 }
 
 enum class ConfigAttributeEvents : int8_t {
-  DVCFG_ATTRIBUTE_ADDED = 0,
-  DVCFG_ATTRIBUTE_MODIFIED = 1,
-  DVCFG_ATTRIBUTE_REMOVED = 2,
-  MIN = DVCFG_ATTRIBUTE_ADDED,
-  MAX = DVCFG_ATTRIBUTE_REMOVED
+  ATTRIBUTE_ADDED = 0,
+  ATTRIBUTE_MODIFIED = 1,
+  ATTRIBUTE_REMOVED = 2,
+  MIN = ATTRIBUTE_ADDED,
+  MAX = ATTRIBUTE_REMOVED
 };
 
 inline const ConfigAttributeEvents (&EnumValuesConfigAttributeEvents())[3] {
   static const ConfigAttributeEvents values[] = {
-    ConfigAttributeEvents::DVCFG_ATTRIBUTE_ADDED,
-    ConfigAttributeEvents::DVCFG_ATTRIBUTE_MODIFIED,
-    ConfigAttributeEvents::DVCFG_ATTRIBUTE_REMOVED
+    ConfigAttributeEvents::ATTRIBUTE_ADDED,
+    ConfigAttributeEvents::ATTRIBUTE_MODIFIED,
+    ConfigAttributeEvents::ATTRIBUTE_REMOVED
   };
   return values;
 }
 
 inline const char * const *EnumNamesConfigAttributeEvents() {
   static const char * const names[] = {
-    "DVCFG_ATTRIBUTE_ADDED",
-    "DVCFG_ATTRIBUTE_MODIFIED",
-    "DVCFG_ATTRIBUTE_REMOVED",
+    "ATTRIBUTE_ADDED",
+    "ATTRIBUTE_MODIFIED",
+    "ATTRIBUTE_REMOVED",
     nullptr
   };
   return names;
@@ -216,8 +219,8 @@ struct ConfigActionDataT : public flatbuffers::NativeTable {
   std::string description;
   ConfigActionDataT()
       : action(ConfigAction::ERROR),
-        nodeEvents(ConfigNodeEvents::DVCFG_NODE_CHILD_ADDED),
-        attrEvents(ConfigAttributeEvents::DVCFG_ATTRIBUTE_ADDED),
+        nodeEvents(ConfigNodeEvents::NODE_ADDED),
+        attrEvents(ConfigAttributeEvents::ATTRIBUTE_ADDED),
         id(0),
         type(ConfigType::UNKNOWN),
         flags(0) {
@@ -348,8 +351,8 @@ struct ConfigActionDataBuilder {
 inline flatbuffers::Offset<ConfigActionData> CreateConfigActionData(
     flatbuffers::FlatBufferBuilder &_fbb,
     ConfigAction action = ConfigAction::ERROR,
-    ConfigNodeEvents nodeEvents = ConfigNodeEvents::DVCFG_NODE_CHILD_ADDED,
-    ConfigAttributeEvents attrEvents = ConfigAttributeEvents::DVCFG_ATTRIBUTE_ADDED,
+    ConfigNodeEvents nodeEvents = ConfigNodeEvents::NODE_ADDED,
+    ConfigAttributeEvents attrEvents = ConfigAttributeEvents::ATTRIBUTE_ADDED,
     uint64_t id = 0,
     flatbuffers::Offset<flatbuffers::String> node = 0,
     flatbuffers::Offset<flatbuffers::String> key = 0,
@@ -376,8 +379,8 @@ inline flatbuffers::Offset<ConfigActionData> CreateConfigActionData(
 inline flatbuffers::Offset<ConfigActionData> CreateConfigActionDataDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
     ConfigAction action = ConfigAction::ERROR,
-    ConfigNodeEvents nodeEvents = ConfigNodeEvents::DVCFG_NODE_CHILD_ADDED,
-    ConfigAttributeEvents attrEvents = ConfigAttributeEvents::DVCFG_ATTRIBUTE_ADDED,
+    ConfigNodeEvents nodeEvents = ConfigNodeEvents::NODE_ADDED,
+    ConfigAttributeEvents attrEvents = ConfigAttributeEvents::ATTRIBUTE_ADDED,
     uint64_t id = 0,
     const char *node = nullptr,
     const char *key = nullptr,
