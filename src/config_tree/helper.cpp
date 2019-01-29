@@ -157,9 +157,6 @@ char *dvConfigHelperFlagsToStringConverter(int flags) {
 	if (flags & DVCFG_FLAGS_READ_ONLY) {
 		flagsStr = "READ_ONLY";
 	}
-	else if (flags & DVCFG_FLAGS_NOTIFY_ONLY) {
-		flagsStr = "NOTIFY_ONLY";
-	}
 	else {
 		flagsStr = "NORMAL";
 	}
@@ -183,10 +180,7 @@ int dvConfigHelperStringToFlagsConverter(const char *flagsString) {
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : flagsTokens) {
 		if (tok == "READ_ONLY") {
-			flags = DVCFG_FLAGS_READ_ONLY;
-		}
-		else if (tok == "NOTIFY_ONLY") {
-			flags = DVCFG_FLAGS_NOTIFY_ONLY;
+			flags |= DVCFG_FLAGS_READ_ONLY;
 		}
 		else if (tok == "NO_EXPORT") {
 			flags |= DVCFG_FLAGS_NO_EXPORT;

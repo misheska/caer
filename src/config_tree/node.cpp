@@ -182,23 +182,6 @@ public:
 			dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(), errorMsg.str());
 		}
 
-		// Restrict NOTIFY_ONLY flag to booleans only, for button-like behavior.
-		if ((flags & DVCFG_FLAGS_NOTIFY_ONLY) && defaultValue.getType() != DVCFG_TYPE_BOOL) {
-			// Fail on wrong notify-only flag usage.
-			dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(),
-				"the NOTIFY_ONLY flag is set, but "
-				"attribute is not of type BOOL. Only "
-				"booleans can have this flag set!");
-		}
-
-		// Restrict NOTIFY_ONLY flag to a default value of false only. This avoids
-		// strange inverted logic for buttons.
-		if ((flags & DVCFG_FLAGS_NOTIFY_ONLY) && std::get<bool>(defaultValue) != false) {
-			// Fail on wrong notify-only flag usage.
-			dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(),
-				"the NOTIFY_ONLY flag is set for this BOOL type attribute, only 'false' can be used as default value.");
-		}
-
 		sshs_node_attr newAttr(defaultValue, ranges, flags, description);
 
 		std::lock_guard<std::recursive_mutex> lock(node_lock);
@@ -374,26 +357,20 @@ public:
 		// nothing to do, no listeners to call, and it doesn't make sense to
 		// set the value twice to the same content.
 		if (attr.getValue() != value) {
-			if (!attr.isFlagSet(DVCFG_FLAGS_NOTIFY_ONLY)) {
-				// Only update stored value if NOTIFY_ONLY is not set.
-				attr.setValue(value);
-			}
+			attr.setValue(value);
 
 			// Call the appropriate listeners, on change only, which is always
-			// true at this point. We use the new value directly, to support
-			// the case where NOTIFY_ONLY prevented the updated of the stored
-			// attribute, but the call to the listeners has to happen with the
-			// new value (call-listeners-only behavior).
+			// true at this point.
 			dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
 			if (globalListener != nullptr) {
 				// Global listener support.
 				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), DVCFG_ATTRIBUTE_MODIFIED,
-					key.c_str(), value.getType(), value.toCUnion(true));
+					key.c_str(), attr.getValue().getType(), attr.getValue().toCUnion(true));
 			}
 
 			for (const auto &l : attrListeners) {
-				(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_MODIFIED, key.c_str(), value.getType(),
-					value.toCUnion(true));
+				(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_MODIFIED, key.c_str(),
+					attr.getValue().getType(), attr.getValue().toCUnion(true));
 			}
 		}
 

@@ -266,10 +266,9 @@ public:
 };
 
 enum class AttributeFlags {
-	NORMAL      = DVCFG_FLAGS_NORMAL,
-	READ_ONLY   = DVCFG_FLAGS_READ_ONLY,
-	NOTIFY_ONLY = DVCFG_FLAGS_NOTIFY_ONLY,
-	NO_EXPORT   = DVCFG_FLAGS_NO_EXPORT,
+	NORMAL    = DVCFG_FLAGS_NORMAL,
+	READ_ONLY = DVCFG_FLAGS_READ_ONLY,
+	NO_EXPORT = DVCFG_FLAGS_NO_EXPORT,
 };
 
 inline AttributeFlags operator|(AttributeFlags lhs, AttributeFlags rhs) {

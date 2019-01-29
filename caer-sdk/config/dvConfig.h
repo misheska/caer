@@ -60,10 +60,9 @@ struct dvConfigAttributeRanges {
 };
 
 enum dvConfigAttributeFlags {
-	DVCFG_FLAGS_NORMAL      = 0,
-	DVCFG_FLAGS_READ_ONLY   = 1,
-	DVCFG_FLAGS_NOTIFY_ONLY = 2,
-	DVCFG_FLAGS_NO_EXPORT   = 4,
+	DVCFG_FLAGS_NORMAL    = 0,
+	DVCFG_FLAGS_READ_ONLY = 1,
+	DVCFG_FLAGS_NO_EXPORT = 2,
 };
 
 enum dvConfigNodeEvents {
