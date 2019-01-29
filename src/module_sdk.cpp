@@ -4,9 +4,9 @@
 
 bool caerModuleSetSubSystemString(caerModuleData moduleData, const char *subSystemString) {
 	// Allocate new memory for new string.
-	size_t subSystemStringLenght = strlen(subSystemString);
+	size_t subSystemStringLength = strlen(subSystemString);
 
-	char *newSubSystemString = (char *) malloc(subSystemStringLenght + 1);
+	char *newSubSystemString = (char *) malloc(subSystemStringLength + 1);
 	if (newSubSystemString == nullptr) {
 		// Failed to allocate memory. Log this and don't use the new string.
 		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate new sub-system string for module.");
@@ -14,8 +14,8 @@ bool caerModuleSetSubSystemString(caerModuleData moduleData, const char *subSyst
 	}
 
 	// Copy new string into allocated memory.
-	strncpy(newSubSystemString, subSystemString, subSystemStringLenght);
-	newSubSystemString[subSystemStringLenght] = '\0';
+	memcpy(newSubSystemString, subSystemString, subSystemStringLength);
+	newSubSystemString[subSystemStringLength] = '\0';
 
 	// Switch new string with old string and free old memory.
 	free(moduleData->moduleSubSystemString);

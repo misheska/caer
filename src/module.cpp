@@ -252,7 +252,7 @@ caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv
 		return (nullptr);
 	}
 
-	strncpy(moduleData->moduleSubSystemString, moduleName, nameLength);
+	memcpy(moduleData->moduleSubSystemString, moduleName, nameLength);
 	moduleData->moduleSubSystemString[nameLength] = '\0';
 
 	// Ensure static configuration is created on each module initialization.
