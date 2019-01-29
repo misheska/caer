@@ -66,7 +66,7 @@ static void caerCameraCalibrationConfigInit(dvConfigNode moduleNode) {
 		"Maximum total average error allowed (in pixels).");
 	dvConfigNodeCreateString(
 		moduleNode, "calibrationPattern", "chessboard", 10, 21, DVCFG_FLAGS_NORMAL, "Pattern to run calibration with.");
-	dvConfigNodeCreateAttributeListOptions(
+	dvConfigNodeAttributeModifierListOptions(
 		moduleNode, "calibrationPattern", "chessboard,circlesGrid,asymmetricCirclesGrid", false);
 	dvConfigNodeCreateInt(moduleNode, "boardWidth", 9, 1, 64, DVCFG_FLAGS_NORMAL, "The size of the board (width).");
 	dvConfigNodeCreateInt(moduleNode, "boardHeigth", 5, 1, 64, DVCFG_FLAGS_NORMAL, "The size of the board (heigth).");

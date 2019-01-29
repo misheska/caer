@@ -91,7 +91,8 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
 	// DVS settings.
 	dvConfigNode dvsNode = dvConfigNodeGetRelativeNode(moduleNode, "dvs/");
 	dvConfigNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Run DVS to get polarity events.");
-	dvConfigNodeCreateBool(dvsNode, "TimestampReset", false, DVCFG_FLAGS_NOTIFY_ONLY, "Reset timestamps to zero.");
+	dvConfigNodeCreateBool(dvsNode, "TimestampReset", false, DVCFG_FLAGS_NORMAL, "Reset timestamps to zero.");
+    dvConfigNodeAttributeModifierButton(dvsNode, "TimestampReset", "EXECUTE");
 
 	// Serial communication buffer settings.
 	dvConfigNode serialNode = dvConfigNodeGetRelativeNode(moduleNode, "serial/");

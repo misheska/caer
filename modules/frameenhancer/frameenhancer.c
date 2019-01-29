@@ -56,22 +56,22 @@ static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode) {
 #if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
 	dvConfigNodeCreateString(moduleNode, "demosaicType", "opencv_edge_aware", 7, 17, DVCFG_FLAGS_NORMAL,
 		"Demoisaicing (color interpolation) algorithm to apply.");
-	dvConfigNodeCreateAttributeListOptions(
+	dvConfigNodeAttributeModifierListOptions(
 		moduleNode, "demosaicType", "opencv_edge_aware,opencv_to_gray,opencv_standard,to_gray,standard", false);
 
 	dvConfigNodeCreateString(moduleNode, "contrastType", "opencv_normalization", 8, 29, DVCFG_FLAGS_NORMAL,
 		"Contrast enhancement algorithm to apply.");
-	dvConfigNodeCreateAttributeListOptions(
+	dvConfigNodeAttributeModifierListOptions(
 		moduleNode, "contrastType", "opencv_normalization,opencv_histogram_equalization,opencv_clahe,standard", false);
 #else
     dvConfigNodeCreateString(moduleNode, "demosaicType", "standard", 7, 8, DVCFG_FLAGS_NORMAL,
 		"Demoisaicing (color interpolation) algorithm to apply.");
-	dvConfigNodeCreateAttributeListOptions(
+	dvConfigNodeAttributeModifierListOptions(
 		moduleNode, "demosaicType", "to_gray,standard", false);
 
 	dvConfigNodeCreateString(moduleNode, "contrastType", "standard", 8, 8, DVCFG_FLAGS_NORMAL,
 		"Contrast enhancement algorithm to apply.");
-	dvConfigNodeCreateAttributeListOptions(
+	dvConfigNodeAttributeModifierListOptions(
 		moduleNode, "contrastType", "standard", false);
 #endif
 }

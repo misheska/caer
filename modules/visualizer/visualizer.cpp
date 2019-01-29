@@ -120,10 +120,10 @@ static void caerVisualizerConfigInit(dvConfigNode mn) {
 
 	moduleNode.create<dvCfgType::STRING>(
 		"renderer", "", {0, 500}, dvCfgFlags::NORMAL, "Renderer to use to generate content.");
-	moduleNode.createAttributeListOptions("renderer", caerVisualizerRendererListOptionsString, true);
+	moduleNode.attributeModifierListOptions("renderer", caerVisualizerRendererListOptionsString, true);
 	moduleNode.create<dvCfgType::STRING>(
 		"eventHandler", "", {0, 500}, dvCfgFlags::NORMAL, "Event handler to handle mouse and keyboard events.");
-	moduleNode.createAttributeListOptions("eventHandler", caerVisualizerEventHandlerListOptionsString, true);
+	moduleNode.attributeModifierListOptions("eventHandler", caerVisualizerEventHandlerListOptionsString, true);
 
 	moduleNode.create<dvCfgType::INT>("subsampleRendering", 1, {1, 100000}, dvCfgFlags::NORMAL,
 		"Speed-up rendering by only taking every Nth EventPacketContainer to render.");

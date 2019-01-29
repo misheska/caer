@@ -441,7 +441,8 @@ static void createDefaultLogicConfiguration(
 
 	dvConfigNodeCreateBool(muxNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable multiplexer state machine.");
 	dvConfigNodeCreateBool(muxNode, "TimestampRun", true, DVCFG_FLAGS_NORMAL, "Enable µs-timestamp generation.");
-	dvConfigNodeCreateBool(muxNode, "TimestampReset", false, DVCFG_FLAGS_NOTIFY_ONLY, "Reset timestamps to zero.");
+	dvConfigNodeCreateBool(muxNode, "TimestampReset", false, DVCFG_FLAGS_NORMAL, "Reset timestamps to zero.");
+	dvConfigNodeAttributeModifierButton(muxNode, "TimestampReset", "EXECUTE");
 	dvConfigNodeCreateBool(muxNode, "RunChip", true, DVCFG_FLAGS_NORMAL, "Enable the chip's bias generator.");
 	dvConfigNodeCreateBool(muxNode, "DropExtInputOnTransferStall", true, DVCFG_FLAGS_NORMAL,
 		"Drop ExternalInput events when USB FIFO is full.");
@@ -490,8 +491,9 @@ static void createDefaultLogicConfiguration(
 			"Row/Y address of pixel 7 to filter out.");
 		dvConfigNodeCreateInt(dvsNode, "FilterPixel7Column", devInfo->dvsSizeX, 0, devInfo->dvsSizeX,
 			DVCFG_FLAGS_NORMAL, "Column/X address of pixel 7 to filter out.");
-		dvConfigNodeCreateBool(dvsNode, "FilterPixelAutoTrain", false, DVCFG_FLAGS_NOTIFY_ONLY,
+		dvConfigNodeCreateBool(dvsNode, "FilterPixelAutoTrain", false, DVCFG_FLAGS_NORMAL,
 			"Set hardware pixel filter up automatically using software hot-pixel detection.");
+		dvConfigNodeAttributeModifierButton(dvsNode, "FilterPixelAutoTrain", "EXECUTE");
 	}
 
 	if (devInfo->dvsHasBackgroundActivityFilter) {
@@ -563,13 +565,14 @@ static void createDefaultLogicConfiguration(
 	dvConfigNodeCreateInt(
 		apsNode, "FrameInterval", 40000, 0, (0x01 << 23) - 1, DVCFG_FLAGS_NORMAL, "Set time between frames (in µs).");
 
-	dvConfigNodeCreateBool(apsNode, "TakeSnapShot", false, DVCFG_FLAGS_NOTIFY_ONLY, "Take a single frame capture.");
+	dvConfigNodeCreateBool(apsNode, "TakeSnapShot", false, DVCFG_FLAGS_NORMAL, "Take a single frame capture.");
+	dvConfigNodeAttributeModifierButton(apsNode, "TakeSnapShot", "EXECUTE");
 	dvConfigNodeCreateBool(apsNode, "AutoExposure", true, DVCFG_FLAGS_NORMAL,
 		"Enable automatic exposure control, to react to changes in lighting conditions.");
 
 	dvConfigNodeCreateString(apsNode, "FrameMode", "Default", 7, 9, DVCFG_FLAGS_NORMAL,
 		"Enable automatic exposure control, to react to changes in lighting conditions.");
-	dvConfigNodeCreateAttributeListOptions(apsNode, "FrameMode", "Default,Grayscale,Original", false);
+	dvConfigNodeAttributeModifierListOptions(apsNode, "FrameMode", "Default,Grayscale,Original", false);
 
 	// DAVIS RGB has additional timing counters.
 	if (IS_DAVIS640H(devInfo->chipID)) {
@@ -2212,11 +2215,11 @@ static void createCoarseFineBiasSetting(dvConfigNode biasNode, const char *biasN
 		"Fine current value (small adjustments).");
 	dvConfigNodeCreateBool(biasConfigNode, "enabled", enabled, DVCFG_FLAGS_NORMAL, "Bias enabled.");
 	dvConfigNodeCreateString(biasConfigNode, "sex", sex, 1, 1, DVCFG_FLAGS_NORMAL, "Bias sex.");
-	dvConfigNodeCreateAttributeListOptions(biasConfigNode, "sex", "N,P", false);
+	dvConfigNodeAttributeModifierListOptions(biasConfigNode, "sex", "N,P", false);
 	dvConfigNodeCreateString(biasConfigNode, "type", type, 6, 7, DVCFG_FLAGS_NORMAL, "Bias type.");
-	dvConfigNodeCreateAttributeListOptions(biasConfigNode, "type", "Normal,Cascode", false);
+	dvConfigNodeAttributeModifierListOptions(biasConfigNode, "type", "Normal,Cascode", false);
 	dvConfigNodeCreateString(biasConfigNode, "currentLevel", "Normal", 3, 6, DVCFG_FLAGS_NORMAL, "Bias current level.");
-	dvConfigNodeCreateAttributeListOptions(biasConfigNode, "currentLevel", "Normal,Low", false);
+	dvConfigNodeAttributeModifierListOptions(biasConfigNode, "currentLevel", "Normal,Low", false);
 }
 
 static uint16_t generateCoarseFineBiasParent(dvConfigNode biasNode, const char *biasName) {
@@ -2275,10 +2278,11 @@ static void createShiftedSourceBiasSetting(dvConfigNode biasNode, const char *bi
 		"Shifted-source bias current for buffer amplifier.");
 	dvConfigNodeCreateString(
 		biasConfigNode, "operatingMode", operatingMode, 3, 13, DVCFG_FLAGS_NORMAL, "Shifted-source operating mode.");
-	dvConfigNodeCreateAttributeListOptions(biasConfigNode, "operatingMode", "ShiftedSource,HiZ,TiedToRail", false);
+	dvConfigNodeAttributeModifierListOptions(biasConfigNode, "operatingMode", "ShiftedSource,HiZ,TiedToRail", false);
 	dvConfigNodeCreateString(
 		biasConfigNode, "voltageLevel", voltageLevel, 9, 11, DVCFG_FLAGS_NORMAL, "Shifted-source voltage level.");
-	dvConfigNodeCreateAttributeListOptions(biasConfigNode, "voltageLevel", "SplitGate,SingleDiode,DoubleDiode", false);
+	dvConfigNodeAttributeModifierListOptions(
+		biasConfigNode, "voltageLevel", "SplitGate,SingleDiode,DoubleDiode", false);
 }
 
 static uint16_t generateShiftedSourceBiasParent(dvConfigNode biasNode, const char *biasName) {

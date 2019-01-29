@@ -91,8 +91,10 @@ static void caerInputDVS128ConfigInit(dvConfigNode moduleNode) {
 	// DVS settings.
 	dvConfigNode dvsNode = dvConfigNodeGetRelativeNode(moduleNode, "dvs/");
 	dvConfigNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Run DVS to get polarity events.");
-	dvConfigNodeCreateBool(dvsNode, "TimestampReset", false, DVCFG_FLAGS_NOTIFY_ONLY, "Reset timestamps to zero.");
-	dvConfigNodeCreateBool(dvsNode, "ArrayReset", false, DVCFG_FLAGS_NOTIFY_ONLY, "Reset DVS pixel array.");
+	dvConfigNodeCreateBool(dvsNode, "TimestampReset", false, DVCFG_FLAGS_NORMAL, "Reset timestamps to zero.");
+    dvConfigNodeAttributeModifierButton(dvsNode, "TimestampReset", "EXECUTE");
+	dvConfigNodeCreateBool(dvsNode, "ArrayReset", false, DVCFG_FLAGS_NORMAL, "Reset DVS pixel array.");
+    dvConfigNodeAttributeModifierButton(dvsNode, "ArrayReset", "EXECUTE");
 
 	// USB buffer settings.
 	dvConfigNode usbNode = dvConfigNodeGetRelativeNode(moduleNode, "usb/");

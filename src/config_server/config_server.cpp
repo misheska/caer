@@ -254,8 +254,10 @@ void caerConfigServerStart(void) {
 	auto serverNode = dvCfg::GLOBAL.getNode("/caer/server/");
 
 	// Support restarting the config server.
-	serverNode.create<dvCfgType::BOOL>("restart", false, {}, dvCfgFlags::NOTIFY_ONLY | dvCfgFlags::NO_EXPORT,
+	serverNode.create<dvCfgType::BOOL>("restart", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT,
 		"Restart configuration server, disconnects all clients and reloads itself.");
+	serverNode.attributeModifierButton("restart", "ONOFF");
+	serverNode.addAttributeListener(nullptr, &caerConfigServerRestartListener);
 
 	// Ensure default values are present for IP/Port.
 	serverNode.create<dvCfgType::STRING>("ipAddress", "127.0.0.1", {2, 39}, dvCfgFlags::NORMAL,
@@ -287,9 +289,6 @@ void caerConfigServerStart(void) {
 		logger::log(logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to create threads. Error: %s.", ex.what());
 		exit(EXIT_FAILURE);
 	}
-
-	// Listen for restart commands.
-	serverNode.addAttributeListener(nullptr, &caerConfigServerRestartListener);
 
 	// Successfully started threads.
 	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads created successfully.");

@@ -371,7 +371,8 @@ static void createDefaultLogicConfiguration(caerModuleData moduleData, const str
 
 	dvConfigNodeCreateBool(muxNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable multiplexer state machine.");
 	dvConfigNodeCreateBool(muxNode, "TimestampRun", true, DVCFG_FLAGS_NORMAL, "Enable µs-timestamp generation.");
-	dvConfigNodeCreateBool(muxNode, "TimestampReset", false, DVCFG_FLAGS_NOTIFY_ONLY, "Reset timestamps to zero.");
+	dvConfigNodeCreateBool(muxNode, "TimestampReset", false, DVCFG_FLAGS_NORMAL, "Reset timestamps to zero.");
+    dvConfigNodeAttributeModifierButton(muxNode, "TimestampReset", "EXECUTE");
 	dvConfigNodeCreateBool(muxNode, "RunChip", true, DVCFG_FLAGS_NORMAL, "Enable the chip's bias generator.");
 	dvConfigNodeCreateBool(
 		muxNode, "DropDVSOnTransferStall", false, DVCFG_FLAGS_NORMAL, "Drop Polarity events when USB FIFO is full.");

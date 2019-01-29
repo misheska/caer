@@ -106,7 +106,7 @@ static bool caerOutputFileInit(caerModuleData moduleData) {
 	free(userHomeDir);
 
 	// Support file-chooser in GUI, select any directory.
-	dvConfigNodeCreateAttributeFileChooser(moduleData->moduleNode, "directory", "DIRECTORY");
+	dvConfigNodeAttributeModifierFileChooser(moduleData->moduleNode, "directory", "DIRECTORY");
 
 	dvConfigNodeCreateString(moduleData->moduleNode, "prefix", DEFAULT_PREFIX, 1, MAX_PREFIX_LENGTH, DVCFG_FLAGS_NORMAL,
 		"Output data files name prefix.");

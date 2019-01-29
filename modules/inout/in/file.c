@@ -35,7 +35,7 @@ caerModuleInfo caerModuleGetInfo(void) {
 static bool caerInputFileInit(caerModuleData moduleData) {
 	dvConfigNodeCreateString(
 		moduleData->moduleNode, "filePath", "", 0, PATH_MAX, DVCFG_FLAGS_NORMAL, "File path for reading input data.");
-	dvConfigNodeCreateAttributeFileChooser(moduleData->moduleNode, "filePath", "LOAD:aedat");
+	dvConfigNodeAttributeModifierFileChooser(moduleData->moduleNode, "filePath", "LOAD:aedat");
 
 	char *filePath = dvConfigNodeGetString(moduleData->moduleNode, "filePath");
 

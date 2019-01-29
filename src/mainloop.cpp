@@ -164,7 +164,8 @@ void caerMainloopRun(void) {
 		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "List of loadable modules.");
 
 	modulesNode.create<dvCfgType::BOOL>("updateModulesInformation", false, {},
-		dvCfgFlags::NOTIFY_ONLY | dvCfgFlags::NO_EXPORT, "Update modules information.");
+		dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Update modules information.");
+	modulesNode.attributeModifierButton("updateModulesInformation", "EXECUTE");
 	modulesNode.addAttributeListener(nullptr, &caerUpdateModulesInformationListener);
 
 	// No data at start-up.
@@ -175,8 +176,9 @@ void caerMainloopRun(void) {
 
 	auto systemNode = dvCfg::GLOBAL.getNode("/caer/");
 
-	systemNode.create<dvCfgType::BOOL>("writeConfiguration", false, {}, dvCfgFlags::NOTIFY_ONLY | dvCfgFlags::NO_EXPORT,
+	systemNode.create<dvCfgType::BOOL>("writeConfiguration", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT,
 		"Write current configuration to XML config file.");
+	systemNode.attributeModifierButton("writeConfiguration", "EXECUTE");
 	systemNode.addAttributeListener(nullptr, &caerWriteConfigurationListener);
 
 	systemNode.create<dvCfgType::BOOL>(
@@ -1930,8 +1932,8 @@ static void caerWriteConfigurationListener(dvConfigNode node, void *userData, en
 	UNUSED_ARGUMENT(userData);
 	UNUSED_ARGUMENT(changeValue);
 
-	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "writeConfiguration")
-		&& changeValue.boolean) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
+		&& caerStrEquals(changeKey, "writeConfiguration") && changeValue.boolean) {
 		caerConfigWriteBack();
 	}
 }
