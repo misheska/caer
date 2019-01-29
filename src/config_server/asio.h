@@ -52,7 +52,9 @@ public:
 		// protects against a truncation attack, and it is not a problem
 		// for our protocol, we can safely ignore it.
 		if (!socketClosed) {
-			baseSocket().shutdown(asioTCP::socket::shutdown_both);
+			boost::system::error_code ec;
+			baseSocket().shutdown(asioTCP::socket::shutdown_both, ec);
+
 			baseSocket().close();
 
 			socketClosed = true;
