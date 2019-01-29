@@ -13,6 +13,7 @@
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 #include <boost/tokenizer.hpp>
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -52,7 +53,7 @@ static const struct {
 	{"remove_module", dv::ConfigAction::REMOVE_MODULE},
 };
 
-static uint8_t dataBuffer[8192];
+#define CAER_CONFIG_CLIENT_MAX_INCOMING_SIZE 8192
 
 static asio::io_service ioService;
 static asioSSL::context sslContext(asioSSL::context::tlsv12_client);
@@ -63,10 +64,34 @@ static bool sslConnection = false;
 	exit(EXIT_FAILURE);
 }
 
+template<typename MsgOps>
+static inline void sendMessage(std::shared_ptr<TCPTLSWriteOrderedSocket> sock, MsgOps msgFunc) {
+	// Send back flags directly.
+	auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_CLIENT_MAX_INCOMING_SIZE);
+
+	dv::ConfigActionDataBuilder msg(*msgBuild);
+
+	msgFunc(msg);
+
+	// Finish off message.
+	auto msgRoot = msg.Finish();
+
+	// Write root node and message size.
+	dv::FinishSizePrefixedConfigActionDataBuffer(*msgBuild, msgRoot);
+
+	sock->write(asio::buffer(msgBuild->GetBufferPointer(), msgBuild->GetSize()),
+		[sock, msgBuild](const boost::system::error_code &error, size_t /*length*/) {
+			if (error) {
+				std::cout << "Failed to write message" << std::endl;
+			}
+		});
+}
+
 class ConfigIOHandler {
 private:
 	std::shared_ptr<TCPTLSWriteOrderedSocket> sock;
 	std::thread ioThread;
+	uint64_t clientId;
 
 public:
 	explicit ConfigIOHandler(std::shared_ptr<TCPTLSWriteOrderedSocket> s) : sock(std::move(s)) {
@@ -103,6 +128,23 @@ public:
 	}
 
 	void startPushClient() {
+		// Get client ID from remote.
+		sendMessage(sock, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::GET_CLIENT_ID); });
+		receiveMessage();
+	}
+
+	void receiveMessage() {
+		auto response = std::shared_ptr<uint8_t[]>(new uint8_t[CAER_CONFIG_CLIENT_MAX_INCOMING_SIZE]);
+
+		sock->read(asio::buffer(response.get(), 4), [this, response](const boost::system::error_code &, size_t) {
+			uint32_t size = le32toh(*reinterpret_cast<uint32_t *>(response.get()));
+			std::cout << "SIZE IS " << size << std::endl;
+
+			sock->read(asio::buffer(response.get(), size), [this, response](const boost::system::error_code &, size_t) {
+				auto configData = dv::GetConfigActionData(response.get());
+				std::cout << "ID IS " << configData->id() << std::endl;
+			});
+		});
 	}
 };
 
@@ -259,718 +301,11 @@ int main(int argc, char *argv[]) {
 		return (EXIT_FAILURE);
 	}
 
-	// Load command history file.
-	linenoiseHistoryLoad(commandHistoryFilePath.string().c_str());
+	ConfigIOHandler ioThread(netSocket);
 
-	if (scriptMode) {
-		std::vector<std::string> commandComponents = cliVarMap["script"].as<std::vector<std::string>>();
+	ioThread.threadStart();
 
-		std::string inputString = boost::algorithm::join(commandComponents, " ");
-		const char *inputLine   = inputString.c_str();
+	std::this_thread::sleep_for(std::chrono::seconds(2));
 
-		// Add input to command history.
-		linenoiseHistoryAdd(inputLine);
-
-		// Try to generate a request, if there's any content.
-		size_t inputLineLength = strlen(inputLine);
-
-		if (inputLineLength > 0) {
-			handleInputLine(inputLine, inputLineLength);
-		}
-	}
-	else {
-		// Start thread to handle updates between local and remote config tree.
-		ConfigIOHandler ioHandler(netSocket);
-		ioHandler.threadStart();
-
-		// Create a shell prompt with the IP:Port displayed.
-		boost::format shellPrompt = boost::format("cAER @ %s:%s >> ") % ipAddress % portNumber;
-
-		// Set our own command completion function.
-		linenoiseSetCompletionCallback(&handleCommandCompletion);
-
-		while (true) {
-			// Display prompt and read input (NOTE: remember to free input after use!).
-			char *inputLine = linenoise(shellPrompt.str().c_str());
-
-			// Check for EOF first.
-			if (inputLine == nullptr) {
-				// Exit loop.
-				break;
-			}
-
-			// Add input to command history.
-			linenoiseHistoryAdd(inputLine);
-
-			// Then, after having added to history, check for termination commands.
-			if (strncmp(inputLine, "quit", 4) == 0 || strncmp(inputLine, "exit", 4) == 0) {
-				// Exit loop, free memory.
-				free(inputLine);
-				break;
-			}
-
-			// Try to generate a request, if there's any content.
-			size_t inputLineLength = strlen(inputLine);
-
-			if (inputLineLength > 0) {
-				handleInputLine(inputLine, inputLineLength);
-			}
-
-			// Free input after use.
-			free(inputLine);
-		}
-
-		ioHandler.threadStop();
-	}
-
-	// Save command history file.
-	linenoiseHistorySave(commandHistoryFilePath.string().c_str());
-
-	return (EXIT_SUCCESS);
-}
-
-static inline void asioSocketWrite(const asio::const_buffer &buf) {
-	const asio::const_buffers_1 buf2(buf);
-}
-
-static inline void asioSocketRead(const asio::mutable_buffer &buf) {
-	const asio::mutable_buffers_1 buf2(buf);
-}
-
-#define MAX_CMD_PARTS 5
-
-#define CMD_PART_ACTION 0
-#define CMD_PART_NODE 1
-#define CMD_PART_KEY 2
-#define CMD_PART_TYPE 3
-#define CMD_PART_VALUE 4
-
-static void handleInputLine(const char *buf, size_t bufLength) {
-	// First let's split up the command into its constituents.
-	char *commandParts[MAX_CMD_PARTS + 1] = {nullptr};
-
-	// Create a copy of buf, so that strtok_r() can modify it.
-	char bufCopy[bufLength + 1];
-	strcpy(bufCopy, buf);
-
-	// Split string into usable parts.
-	size_t idx         = 0;
-	char *tokenSavePtr = nullptr, *nextCmdPart = nullptr, *currCmdPart = bufCopy;
-	while ((nextCmdPart = strtok_r(currCmdPart, " ", &tokenSavePtr)) != nullptr) {
-		if (idx < MAX_CMD_PARTS) {
-			commandParts[idx] = nextCmdPart;
-		}
-		else {
-			// Abort, too many parts.
-			std::cerr << "Error: command is made up of too many parts." << std::endl;
-			return;
-		}
-
-		idx++;
-		currCmdPart = nullptr;
-	}
-
-	// Check that we got something.
-	if (commandParts[CMD_PART_ACTION] == nullptr) {
-		std::cerr << "Error: empty command." << std::endl;
-		return;
-	}
-
-	// Let's get the action code first thing.
-	dv::ConfigAction action = dv::ConfigAction::ERROR;
-
-	for (const auto &act : actions) {
-		if (act.name == commandParts[CMD_PART_ACTION]) {
-			action = act.code;
-		}
-	}
-
-	// Initialize buffer.
-	dataBuffer.reset();
-	dataBuffer.setAction(action);
-
-	// Now that we know what we want to do, let's decode the command line.
-	switch (action) {
-		case dv::ConfigAction::NODE_EXISTS: {
-			// Check parameters needed for operation.
-			if (commandParts[CMD_PART_NODE] == nullptr) {
-				std::cerr << "Error: missing node parameter." << std::endl;
-				return;
-			}
-			if (commandParts[CMD_PART_NODE + 1] != nullptr) {
-				std::cerr << "Error: too many parameters for command." << std::endl;
-				return;
-			}
-
-			dataBuffer.setNode(commandParts[CMD_PART_NODE]);
-
-			break;
-		}
-
-		case dv::ConfigAction::ATTR_EXISTS:
-		case dv::ConfigAction::GET:
-		case dv::ConfigAction::GET_DESCRIPTION: {
-			// Check parameters needed for operation.
-			if (commandParts[CMD_PART_NODE] == nullptr) {
-				std::cerr << "Error: missing node parameter." << std::endl;
-				return;
-			}
-			if (commandParts[CMD_PART_KEY] == nullptr) {
-				std::cerr << "Error: missing key parameter." << std::endl;
-				return;
-			}
-			if (commandParts[CMD_PART_TYPE] == nullptr) {
-				std::cerr << "Error: missing type parameter." << std::endl;
-				return;
-			}
-			if (commandParts[CMD_PART_TYPE + 1] != nullptr) {
-				std::cerr << "Error: too many parameters for command." << std::endl;
-				return;
-			}
-
-			auto type = dv::Config::Helper::stringToTypeConverter(commandParts[CMD_PART_TYPE]);
-			if (type == dv::Config::AttributeType::UNKNOWN) {
-				std::cerr << "Error: invalid type parameter." << std::endl;
-				return;
-			}
-
-			dataBuffer.setType(type);
-			dataBuffer.setNode(commandParts[CMD_PART_NODE]);
-			dataBuffer.setKey(commandParts[CMD_PART_KEY]);
-
-			break;
-		}
-
-		case dv::ConfigAction::PUT: {
-			// Check parameters needed for operation.
-			if (commandParts[CMD_PART_NODE] == nullptr) {
-				std::cerr << "Error: missing node parameter." << std::endl;
-				return;
-			}
-			if (commandParts[CMD_PART_KEY] == nullptr) {
-				std::cerr << "Error: missing key parameter." << std::endl;
-				return;
-			}
-			if (commandParts[CMD_PART_TYPE] == nullptr) {
-				std::cerr << "Error: missing type parameter." << std::endl;
-				return;
-			}
-			if (commandParts[CMD_PART_VALUE] == nullptr) {
-				std::cerr << "Error: missing value parameter." << std::endl;
-				return;
-			}
-			if (commandParts[CMD_PART_VALUE + 1] != nullptr) {
-				std::cerr << "Error: too many parameters for command." << std::endl;
-				return;
-			}
-
-			auto type = dv::Config::Helper::stringToTypeConverter(commandParts[CMD_PART_TYPE]);
-			if (type == dv::Config::AttributeType::UNKNOWN) {
-				std::cerr << "Error: invalid type parameter." << std::endl;
-				return;
-			}
-
-			dataBuffer.setType(type);
-			dataBuffer.setNode(commandParts[CMD_PART_NODE]);
-			dataBuffer.setKey(commandParts[CMD_PART_KEY]);
-			dataBuffer.setValue(commandParts[CMD_PART_VALUE]);
-
-			break;
-		}
-
-		case dv::ConfigAction::ADD_MODULE: {
-			// Check parameters needed for operation. Reuse node parameters.
-			if (commandParts[CMD_PART_NODE] == nullptr) {
-				std::cerr << "Error: missing module name." << std::endl;
-				return;
-			}
-			if (commandParts[CMD_PART_KEY] == nullptr) {
-				std::cerr << "Error: missing library name." << std::endl;
-				return;
-			}
-			if (commandParts[CMD_PART_KEY + 1] != nullptr) {
-				std::cerr << "Error: too many parameters for command." << std::endl;
-				return;
-			}
-
-			dataBuffer.setNode(commandParts[CMD_PART_NODE]);
-			dataBuffer.setKey(commandParts[CMD_PART_KEY]);
-
-			break;
-		}
-
-		case dv::ConfigAction::REMOVE_MODULE: {
-			// Check parameters needed for operation. Reuse node parameters.
-			if (commandParts[CMD_PART_NODE] == nullptr) {
-				std::cerr << "Error: missing module name." << std::endl;
-				return;
-			}
-			if (commandParts[CMD_PART_NODE + 1] != nullptr) {
-				std::cerr << "Error: too many parameters for command." << std::endl;
-				return;
-			}
-
-			dataBuffer.setNode(commandParts[CMD_PART_NODE]);
-
-			break;
-		}
-
-		default:
-			std::cerr << "Error: unknown command." << std::endl;
-			return;
-	}
-
-	// Send formatted command to configuration server.
-	try {
-		asioSocketWrite(asio::buffer(dataBuffer.getBuffer(), dataBuffer.size()));
-	}
-	catch (const boost::system::system_error &ex) {
-		boost::format exMsg
-			= boost::format("Unable to send data to config server, error message is:\n\t%s.") % ex.what();
-		std::cerr << exMsg.str() << std::endl;
-		return;
-	}
-
-	dataBuffer.reset();
-
-	try {
-		asioSocketRead(asio::buffer(dataBuffer.getHeaderBuffer(), dataBuffer.headerSize()));
-	}
-	catch (const boost::system::system_error &ex) {
-		boost::format exMsg
-			= boost::format("Unable to receive data from config server, error message is:\n\t%s.") % ex.what();
-		std::cerr << exMsg.str() << std::endl;
-		return;
-	}
-
-	// Total length to get for response.
-	try {
-		asioSocketRead(asio::buffer(dataBuffer.getDataBuffer(), dataBuffer.dataSize()));
-	}
-	catch (const boost::system::system_error &ex) {
-		boost::format exMsg
-			= boost::format("Unable to receive data from config server, error message is:\n\t%s.") % ex.what();
-		std::cerr << exMsg.str() << std::endl;
-		return;
-	}
-
-	// Convert action back to a string.
-	std::string actionString;
-
-	// Detect error response.
-	if (dataBuffer.getAction() == dv::ConfigAction::ERROR) {
-		actionString = "error";
-	}
-	else {
-		for (const auto &act : actions) {
-			if (act.code == dataBuffer.getAction()) {
-				actionString = act.name;
-			}
-		}
-	}
-
-	// Display results.
-	boost::format resultMsg = boost::format("Result: action=%s, type=%s, msgLength=%" PRIu16 ", msg='%s'.")
-							  % actionString % dv::Config::Helper::typeToStringConverter(dataBuffer.getType())
-							  % dataBuffer.getNodeLength() % dataBuffer.getNode();
-
-	std::cout << resultMsg.str() << std::endl;
-}
-
-static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoComplete) {
-	const std::string commandStr(buf);
-
-	// First let's split up the command into its constituents.
-	std::string commandParts[MAX_CMD_PARTS + 1];
-
-	// Split string into usable parts.
-	boost::tokenizer<boost::char_separator<char>> cmdTokens(commandStr, boost::char_separator<char>(" "));
-
-	size_t idx = 0;
-	for (const auto &cmdTok : cmdTokens) {
-		if (idx < MAX_CMD_PARTS) {
-			commandParts[idx] = cmdTok;
-		}
-		else {
-			// Abort, too many parts.
-			return;
-		}
-
-		idx++;
-	}
-
-	// Also calculate number of commands already present in line (word-depth).
-	// This is actually much more useful to understand where we are and what to do.
-	size_t commandDepth = idx;
-
-	if (commandDepth > 0 && !commandStr.empty() && commandStr.back() != ' ') {
-		// If commands are present, ensure they have been "confirmed" by at least
-		// one terminating spacing character. Else don't calculate the last command.
-		commandDepth--;
-	}
-
-	// Check that we got something.
-	if (commandDepth == 0) {
-		// Always start off with a command/action.
-		actionCompletion(commandStr, autoComplete, commandParts[CMD_PART_ACTION]);
-
-		return;
-	}
-
-	// Let's get the action code first thing.
-	dv::ConfigAction action = dv::ConfigAction::ERROR;
-
-	for (const auto &act : actions) {
-		if (act.name == commandParts[CMD_PART_ACTION]) {
-			action = act.code;
-		}
-	}
-
-	switch (action) {
-		case dv::ConfigAction::NODE_EXISTS:
-			if (commandDepth == 1) {
-				nodeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE]);
-			}
-
-			break;
-
-		case dv::ConfigAction::ATTR_EXISTS:
-		case dv::ConfigAction::GET:
-		case dv::ConfigAction::GET_DESCRIPTION:
-			if (commandDepth == 1) {
-				nodeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE]);
-			}
-			if (commandDepth == 2) {
-				keyCompletion(
-					commandStr, autoComplete, action, commandParts[CMD_PART_NODE], commandParts[CMD_PART_KEY]);
-			}
-			if (commandDepth == 3) {
-				typeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE],
-					commandParts[CMD_PART_KEY], commandParts[CMD_PART_TYPE]);
-			}
-
-			break;
-
-		case dv::ConfigAction::PUT:
-			if (commandDepth == 1) {
-				nodeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE]);
-			}
-			if (commandDepth == 2) {
-				keyCompletion(
-					commandStr, autoComplete, action, commandParts[CMD_PART_NODE], commandParts[CMD_PART_KEY]);
-			}
-			if (commandDepth == 3) {
-				typeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE],
-					commandParts[CMD_PART_KEY], commandParts[CMD_PART_TYPE]);
-			}
-			if (commandDepth == 4) {
-				valueCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE],
-					commandParts[CMD_PART_KEY], commandParts[CMD_PART_TYPE], commandParts[CMD_PART_VALUE]);
-			}
-
-			break;
-	}
-}
-
-static void actionCompletion(
-	const std::string &buf, linenoiseCompletions *autoComplete, const std::string &partialActionString) {
-	UNUSED_ARGUMENT(buf);
-
-	// Always start off with a command.
-	for (const auto &act : actions) {
-		if (partialActionString == act.name.substr(0, partialActionString.length())) {
-			addCompletionSuffix(autoComplete, "", 0, act.name.c_str(), true, false);
-		}
-	}
-
-	// Add quit and exit too.
-	if (partialActionString == std::string("exit").substr(0, partialActionString.length())) {
-		addCompletionSuffix(autoComplete, "", 0, "exit", true, false);
-	}
-	if (partialActionString == std::string("quit").substr(0, partialActionString.length())) {
-		addCompletionSuffix(autoComplete, "", 0, "quit", true, false);
-	}
-}
-
-static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
-	const std::string &partialNodeString) {
-	UNUSED_ARGUMENT(action);
-
-	// If partialNodeString is still empty, the first thing is to complete the root.
-	if (partialNodeString.empty()) {
-		addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), "/", false, false);
-		return;
-	}
-
-	// Get all the children of the last fully defined node (/ or /../../).
-	std::string::size_type lastSlash = partialNodeString.rfind('/');
-	if (lastSlash == std::string::npos) {
-		// No / found, invalid, cannot auto-complete.
-		return;
-	}
-
-	// Include slash character in size.
-	lastSlash++;
-
-	// Send request for all children names.
-	dataBuffer.reset();
-	dataBuffer.setAction(dv::ConfigAction::GET_CHILDREN);
-	dataBuffer.setNode(partialNodeString.substr(0, lastSlash));
-
-	try {
-		asioSocketWrite(asio::buffer(dataBuffer.getBuffer(), dataBuffer.size()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	dataBuffer.reset();
-
-	try {
-		asioSocketRead(asio::buffer(dataBuffer.getHeaderBuffer(), dataBuffer.headerSize()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	// Total length to get for response.
-	try {
-		asioSocketRead(asio::buffer(dataBuffer.getDataBuffer(), dataBuffer.dataSize()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	if (dataBuffer.getAction() == dv::ConfigAction::ERROR
-		|| dataBuffer.getType() != dv::Config::AttributeType::STRING) {
-		// Invalid request made, no auto-completion.
-		return;
-	}
-
-	// At this point we made a valid request and got back a full response.
-	const std::string childrenStr(dataBuffer.getNode());
-	boost::tokenizer<boost::char_separator<char>> children(childrenStr, boost::char_separator<char>("|"));
-
-	size_t lengthOfIncompletePart = (partialNodeString.length() - lastSlash);
-
-	for (const auto &child : children) {
-		if (partialNodeString.substr(lastSlash, lengthOfIncompletePart) == child.substr(0, lengthOfIncompletePart)) {
-			addCompletionSuffix(
-				autoComplete, buf.c_str(), buf.length() - lengthOfIncompletePart, child.c_str(), false, true);
-		}
-	}
-}
-
-static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
-	const std::string &nodeString, const std::string &partialKeyString) {
-	UNUSED_ARGUMENT(action);
-
-	// Send request for all attribute names for this node.
-	dataBuffer.reset();
-	dataBuffer.setAction(dv::ConfigAction::GET_ATTRIBUTES);
-	dataBuffer.setNode(nodeString);
-
-	try {
-		asioSocketWrite(asio::buffer(dataBuffer.getBuffer(), dataBuffer.size()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	dataBuffer.reset();
-
-	try {
-		asioSocketRead(asio::buffer(dataBuffer.getHeaderBuffer(), dataBuffer.headerSize()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	// Total length to get for response.
-	try {
-		asioSocketRead(asio::buffer(dataBuffer.getDataBuffer(), dataBuffer.dataSize()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	if (dataBuffer.getAction() == dv::ConfigAction::ERROR
-		|| dataBuffer.getType() != dv::Config::AttributeType::STRING) {
-		// Invalid request made, no auto-completion.
-		return;
-	}
-
-	// At this point we made a valid request and got back a full response.
-	const std::string attributesStr(dataBuffer.getNode());
-	boost::tokenizer<boost::char_separator<char>> attributes(attributesStr, boost::char_separator<char>("|"));
-
-	for (const auto &attr : attributes) {
-		if (partialKeyString == attr.substr(0, partialKeyString.length())) {
-			addCompletionSuffix(
-				autoComplete, buf.c_str(), buf.length() - partialKeyString.length(), attr.c_str(), true, false);
-		}
-	}
-}
-
-static void typeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
-	const std::string &nodeString, const std::string &keyString, const std::string &partialTypeString) {
-	UNUSED_ARGUMENT(action);
-
-	// Send request for the type name for this key on this node.
-	dataBuffer.reset();
-	dataBuffer.setAction(dv::ConfigAction::GET_TYPE);
-	dataBuffer.setNode(nodeString);
-	dataBuffer.setKey(keyString);
-
-	try {
-		asioSocketWrite(asio::buffer(dataBuffer.getBuffer(), dataBuffer.size()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	dataBuffer.reset();
-
-	try {
-		asioSocketRead(asio::buffer(dataBuffer.getHeaderBuffer(), dataBuffer.headerSize()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	// Total length to get for response.
-	try {
-		asioSocketRead(asio::buffer(dataBuffer.getDataBuffer(), dataBuffer.dataSize()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	if (dataBuffer.getAction() == dv::ConfigAction::ERROR
-		|| dataBuffer.getType() != dv::Config::AttributeType::STRING) {
-		// Invalid request made, no auto-completion.
-		return;
-	}
-
-	// At this point we made a valid request and got back a full response.
-	if (partialTypeString == dataBuffer.getNode().substr(0, partialTypeString.length())) {
-		addCompletionSuffix(autoComplete, buf.c_str(), buf.length() - partialTypeString.length(),
-			dataBuffer.getNode().c_str(), true, false);
-	}
-}
-
-static void valueCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
-	const std::string &nodeString, const std::string &keyString, const std::string &typeString,
-	const std::string &partialValueString) {
-	UNUSED_ARGUMENT(action);
-
-	auto type = dv::Config::Helper::stringToTypeConverter(typeString);
-	if (type == dv::Config::AttributeType::UNKNOWN) {
-		// Invalid type, no auto-completion.
-		return;
-	}
-
-	if (!partialValueString.empty()) {
-		// If there already is content, we can't do any auto-completion here, as
-		// we have no idea about what a valid value would be to complete ...
-		// Unless this is a boolean, then we can propose true/false strings.
-		if (type == dv::Config::AttributeType::BOOL) {
-			if (partialValueString == std::string("true").substr(0, partialValueString.length())) {
-				addCompletionSuffix(
-					autoComplete, buf.c_str(), buf.length() - partialValueString.length(), "true", false, false);
-			}
-			if (partialValueString == std::string("false").substr(0, partialValueString.length())) {
-				addCompletionSuffix(
-					autoComplete, buf.c_str(), buf.length() - partialValueString.length(), "false", false, false);
-			}
-		}
-
-		return;
-	}
-
-	// Send request for the current value, so we can auto-complete with it as default.
-	dataBuffer.reset();
-	dataBuffer.setAction(dv::ConfigAction::GET);
-	dataBuffer.setType(type);
-	dataBuffer.setNode(nodeString);
-	dataBuffer.setKey(keyString);
-
-	try {
-		asioSocketWrite(asio::buffer(dataBuffer.getBuffer(), dataBuffer.size()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	dataBuffer.reset();
-
-	try {
-		asioSocketRead(asio::buffer(dataBuffer.getHeaderBuffer(), dataBuffer.headerSize()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	// Total length to get for response.
-	try {
-		asioSocketRead(asio::buffer(dataBuffer.getDataBuffer(), dataBuffer.dataSize()));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	if (dataBuffer.getAction() == dv::ConfigAction::ERROR) {
-		// Invalid request made, no auto-completion.
-		return;
-	}
-
-	// At this point we made a valid request and got back a full response.
-	// We can just use it directly and paste it in as completion.
-	addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), dataBuffer.getNode().c_str(), false, false);
-
-	// If this is a boolean value, we can also add the inverse as a second completion.
-	if (type == dv::Config::AttributeType::BOOL) {
-		if (dataBuffer.getNode() == "true") {
-			addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), "false", false, false);
-		}
-		else {
-			addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), "true", false, false);
-		}
-	}
-}
-
-static void addCompletionSuffix(linenoiseCompletions *autoComplete, const char *buf, size_t completionPoint,
-	const char *suffix, bool endSpace, bool endSlash) {
-	char concat[2048];
-
-	if (endSpace) {
-		if (endSlash) {
-			snprintf(concat, 2048, "%.*s%s/ ", (int) completionPoint, buf, suffix);
-		}
-		else {
-			snprintf(concat, 2048, "%.*s%s ", (int) completionPoint, buf, suffix);
-		}
-	}
-	else {
-		if (endSlash) {
-			snprintf(concat, 2048, "%.*s%s/", (int) completionPoint, buf, suffix);
-		}
-		else {
-			snprintf(concat, 2048, "%.*s%s", (int) completionPoint, buf, suffix);
-		}
-	}
-
-	linenoiseAddCompletion(autoComplete, concat);
+	ioThread.threadStop();
 }
