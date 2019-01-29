@@ -1292,12 +1292,26 @@ char *dvConfigNodeGetAttributeDescription(dvConfigNode node, const char *key, en
 	return (descriptionCopy);
 }
 
-void dvConfigNodeCreateAttributeListOptions(
+void dvConfigNodeAttributeModifierButton(dvConfigNode node, const char *key, const char *type) {
+	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+
+	if (!node->attributeExists(key, DVCFG_TYPE_BOOL)) {
+		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierButton", key, DVCFG_TYPE_BOOL);
+	}
+
+	std::string fullKey(key);
+	fullKey += "Button";
+
+	dvConfigNodeCreateString(node, fullKey.c_str(), type, 0, INT32_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
+		"Type of button to display (PLAY,PAUSE, ...; can be empty).");
+}
+
+void dvConfigNodeAttributeModifierListOptions(
 	dvConfigNode node, const char *key, const char *listOptions, bool allowMultipleSelections) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, DVCFG_TYPE_STRING)) {
-		dvConfigNodeErrorNoAttribute("dvConfigNodeCreateAttributeListOptions", key, DVCFG_TYPE_STRING);
+		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierListOptions", key, DVCFG_TYPE_STRING);
 	}
 
 	std::string fullKey(key);
@@ -1311,11 +1325,11 @@ void dvConfigNodeCreateAttributeListOptions(
 		"Comma separated list of possible associated attribute values.");
 }
 
-void dvConfigNodeCreateAttributeFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions) {
+void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, DVCFG_TYPE_STRING)) {
-		dvConfigNodeErrorNoAttribute("dvConfigNodeCreateAttributeFileChooser", key, DVCFG_TYPE_STRING);
+		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierFileChooser", key, DVCFG_TYPE_STRING);
 	}
 
 	std::string fullKey(key);

@@ -166,9 +166,10 @@ struct dvConfigAttributeRanges dvConfigNodeGetAttributeRanges(
 int dvConfigNodeGetAttributeFlags(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
 char *dvConfigNodeGetAttributeDescription(dvConfigNode node, const char *key, enum dvConfigAttributeType type);
 
-void dvConfigNodeCreateAttributeListOptions(
+void dvConfigNodeAttributeModifierButton(dvConfigNode node, const char *key, const char *type);
+void dvConfigNodeAttributeModifierListOptions(
 	dvConfigNode node, const char *key, const char *listOptions, bool allowMultipleSelections);
-void dvConfigNodeCreateAttributeFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions);
+void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions);
 
 bool dvConfigNodeExistsRelativeNode(dvConfigNode node, const char *nodePath);
 /**

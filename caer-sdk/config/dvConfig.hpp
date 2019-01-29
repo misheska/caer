@@ -588,13 +588,17 @@ public:
 		return (retVal);
 	}
 
-	void createAttributeListOptions(
-		const std::string &key, const std::string &listOptions, bool allowMultipleSelections) {
-		dvConfigNodeCreateAttributeListOptions(node, key.c_str(), listOptions.c_str(), allowMultipleSelections);
+	void attributeModifierButton(const std::string &key, const std::string &type) {
+		dvConfigNodeAttributeModifierButton(node, key.c_str(), type.c_str());
 	}
 
-	void createAttributeFileChooser(const std::string &key, const std::string &allowedExtensions) {
-		dvConfigNodeCreateAttributeFileChooser(node, key.c_str(), allowedExtensions.c_str());
+	void attributeModifierListOptions(
+		const std::string &key, const std::string &listOptions, bool allowMultipleSelections) {
+		dvConfigNodeAttributeModifierListOptions(node, key.c_str(), listOptions.c_str(), allowMultipleSelections);
+	}
+
+	void attributeModifierFileChooser(const std::string &key, const std::string &allowedExtensions) {
+		dvConfigNodeAttributeModifierFileChooser(node, key.c_str(), allowedExtensions.c_str());
 	}
 
 	bool existsRelativeNode(const std::string &nodePath) const {
