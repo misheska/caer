@@ -5,6 +5,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace dv {
@@ -51,7 +52,6 @@ template<> struct AttributeTypeGenerator<AttributeType::DOUBLE> {
 
 template<> struct AttributeTypeGenerator<AttributeType::STRING> {
 	using type                                             = std::string;
-	using const_type                                       = const std::string;
 	static const enum dvConfigAttributeType underlyingType = DVCFG_TYPE_STRING;
 };
 
@@ -135,10 +135,7 @@ template<> struct AttributeValue<AttributeType::STRING> {
 public:
 	typename AttributeTypeGenerator<AttributeType::STRING>::type value;
 
-	AttributeValue(typename AttributeTypeGenerator<AttributeType::STRING>::const_type &v) : value(v) {
-	}
-
-	AttributeValue(const char *v) : value(v) {
+	AttributeValue(const std::string_view v) : value(v) {
 	}
 
 	AttributeValue(const dvConfigAttributeValue v) : value(v.string) {
