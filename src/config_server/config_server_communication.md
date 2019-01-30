@@ -77,7 +77,7 @@ ConfigAction | Client to Server Message | Server to Client Response
 -------------|--------------------------|--------------------------
 ERROR | N/A (only from server due to errors). | Sent whenever an error occours. Error message is contained in member 'value'.
 NODE_EXISTS | Check if a given 'node' exists. | Member 'value' either "true" or "false".
-ATTR_EXISTS | Check if a given 'key' exists for the given 'node'. | Member 'value' either "true" or "false".
+ATTR_EXISTS | Check if a given 'key' with 'type' exists for the given 'node'. | Member 'value' either "true" or "false".
 GET_CHILDREN | Get the names of all children of a 'node'. | Member 'value' contains all child node names, separated by '\|'.
 GET_ATTRIBUTES | Get the names of all attribute keys of a 'node'. | Member 'value' contains all attribute key names, separated by '\|'.
 GET_TYPE | Get the type of the 'key' of 'node'. | Member 'type' contains key type.
