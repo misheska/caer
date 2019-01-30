@@ -33,7 +33,8 @@ ConfigServer::ConfigServer() :
 	acceptor(ioService),
 	acceptorNewSocket(ioService),
 	sslContext(asioSSL::context::tlsv12_server),
-	sslEnabled(false) {
+	sslEnabled(false),
+	numPushClients(0) {
 }
 
 void ConfigServer::threadStart() {
@@ -99,8 +100,9 @@ void ConfigServer::addPushClient(ConfigServerConnection *pushClient) {
 }
 
 void ConfigServer::removePushClient(ConfigServerConnection *pushClient) {
-	pushClients.erase(std::remove(pushClients.begin(), pushClients.end(), pushClient), pushClients.end());
-	numPushClients--;
+	if (pushClients.end() != pushClients.erase(std::remove(pushClients.begin(), pushClients.end(), pushClient), pushClients.end())) {
+		numPushClients--;
+	}
 }
 
 bool ConfigServer::pushClientsPresent() {
