@@ -629,29 +629,31 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	switch (resp->action()) {
 		case dv::ConfigAction::ERROR:
 			// Return error in 'value'.
+			std::cerr << "ERROR on " << dv::EnumNameConfigAction(action) << ": " << resp->value()->string_view()
+					  << std::endl;
 			break;
 
 		case dv::ConfigAction::NODE_EXISTS:
 		case dv::ConfigAction::ATTR_EXISTS:
-			// Return true/false in 'value'.
+		case dv::ConfigAction::GET:
+			// 'value' contains results in string format, use directly.
+			std::cout << dv::EnumNameConfigAction(action) << ": " << resp->value()->string_view() << std::endl;
 			break;
 
 		case dv::ConfigAction::GET_DESCRIPTION:
 			// Return help text in 'description'.
-			break;
-
-		case dv::ConfigAction::GET:
-			// 'value' contains current value as string.
+			std::cout << dv::EnumNameConfigAction(action) << ": " << resp->description()->string_view() << std::endl;
 			break;
 
 		case dv::ConfigAction::GET_CLIENT_ID:
 			// Return 64bit client ID in 'id'.
+			std::cout << dv::EnumNameConfigAction(action) << ": " << resp->id() << std::endl;
 			break;
 
 		default:
 			// No return value, just action as confirmation.
-			std::cerr << "Error: unknown command." << std::endl;
-			return;
+			std::cout << dv::EnumNameConfigAction(action) << ": done" << std::endl;
+			break;
 	}
 }
 
