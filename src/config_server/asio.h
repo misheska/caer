@@ -54,8 +54,7 @@ public:
 		if (!socketClosed) {
 			boost::system::error_code ec;
 			baseSocket().shutdown(asioTCP::socket::shutdown_both, ec);
-
-			baseSocket().close();
+			baseSocket().close(ec);
 
 			socketClosed = true;
 		}
