@@ -52,6 +52,8 @@ static const struct {
 	{"help", dv::ConfigAction::GET_DESCRIPTION},
 	{"add_module", dv::ConfigAction::ADD_MODULE},
 	{"remove_module", dv::ConfigAction::REMOVE_MODULE},
+	{"get_client_id", dv::ConfigAction::GET_CLIENT_ID},
+	{"dump_tree", dv::ConfigAction::DUMP_TREE},
 };
 
 static flatbuffers::FlatBufferBuilder dataBufferSend{CAERCTL_CLIENT_BUFFER_MAX_SIZE};
@@ -424,6 +426,16 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 
 	// Now that we know what we want to do, let's decode the command line.
 	switch (action) {
+		case dv::ConfigAction::GET_CLIENT_ID:
+		case dv::ConfigAction::DUMP_TREE:
+			// No parameters needed.
+			if (commandParts[CMD_PART_NODE] != nullptr) {
+				std::cerr << "Error: too many parameters for command." << std::endl;
+				return;
+			}
+
+			break;
+
 		case dv::ConfigAction::NODE_EXISTS: {
 			// Check parameters needed for operation.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
@@ -576,24 +588,71 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 		return;
 	}
 
-	// Convert action back to a string.
-	std::string actionString;
+	if (action == dv::ConfigAction::DUMP_TREE) {
+		while (true) {
+			// Continue getting messages till finished.
+			// End marked by confirmation message with same action.
+			if (resp->action() == dv::ConfigAction::DUMP_TREE_NODE) {
+				std::cout << "NODE: " << resp->node()->string_view() << std::endl;
+			}
+			else if (resp->action() == dv::ConfigAction::DUMP_TREE_ATTR) {
+				std::cout << "ATTR: " << resp->node()->string_view() << " | " << resp->key()->string_view() << ", "
+						  << dv::Config::Helper::typeToStringConverter(
+								 static_cast<dv::Config::AttributeType>(resp->type()))
+						  << " | " << resp->value()->string_view() << std::endl;
+			}
+			else if (resp->action() == dv::ConfigAction::DUMP_TREE) {
+				// Done, confirmation received.
+				break;
+			}
+			else {
+				// Unexpected action.
+				boost::format exMsg
+					= boost::format("Unknown action '%s' during DUMP_TREE.") % dv::EnumNameConfigAction(resp->action());
+				std::cerr << exMsg.str() << std::endl;
+				return;
+			}
 
-	// Detect error response.
-	if (resp->action() == dv::ConfigAction::ERROR) {
-		actionString = "error";
-	}
-	else {
-		for (const auto &act : actions) {
-			if (act.code == resp->action()) {
-				actionString = act.name;
+			try {
+				resp = receiveMessage();
+			}
+			catch (const boost::system::system_error &ex) {
+				boost::format exMsg
+					= boost::format("Unable to receive data from config server, error message is:\n\t%s.") % ex.what();
+				std::cerr << exMsg.str() << std::endl;
+				return;
 			}
 		}
 	}
 
 	// Display results.
-	// TODO: THIS NEEDS TO BE DONE:
-	std::cout << "Output" << std::endl;
+	switch (resp->action()) {
+		case dv::ConfigAction::ERROR:
+			// Return error in 'value'.
+			break;
+
+		case dv::ConfigAction::NODE_EXISTS:
+		case dv::ConfigAction::ATTR_EXISTS:
+			// Return true/false in 'value'.
+			break;
+
+		case dv::ConfigAction::GET_DESCRIPTION:
+			// Return help text in 'description'.
+			break;
+
+		case dv::ConfigAction::GET:
+			// 'value' contains current value as string.
+			break;
+
+		case dv::ConfigAction::GET_CLIENT_ID:
+			// Return 64bit client ID in 'id'.
+			break;
+
+		default:
+			// No return value, just action as confirmation.
+			std::cerr << "Error: unknown command." << std::endl;
+			return;
+	}
 }
 
 static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoComplete) {
