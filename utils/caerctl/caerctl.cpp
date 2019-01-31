@@ -91,9 +91,9 @@ static inline void asioSocketRead(const asio::mutable_buffer &buf) {
 	}
 }
 
-static inline void sendMessage(dv::ConfigActionDataBuilder &msg) {
+static inline void sendMessage(std::unique_ptr<dv::ConfigActionDataBuilder> msg) {
 	// Finish off message.
-	auto msgRoot = msg.Finish();
+	auto msgRoot = msg->Finish();
 
 	// Write root node and message size.
 	dv::FinishSizePrefixedConfigActionDataBuffer(dataBufferSend, msgRoot);
@@ -420,9 +420,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	}
 
 	// Initialize buffer.
-	dv::ConfigActionDataBuilder msg(dataBufferSend);
-
-	msg.add_action(action);
+	std::unique_ptr<dv::ConfigActionDataBuilder> msg{nullptr};
 
 	// Now that we know what we want to do, let's decode the command line.
 	switch (action) {
@@ -433,6 +431,9 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				std::cerr << "Error: too many parameters for command." << std::endl;
 				return;
 			}
+
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
 
 			break;
 
@@ -447,7 +448,11 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			msg.add_node(msg.fbb_.CreateString(commandParts[CMD_PART_NODE]));
+			auto nodeOffset = dataBufferSend.CreateString(commandParts[CMD_PART_NODE]);
+
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
+			msg->add_node(nodeOffset);
 
 			break;
 		}
@@ -479,9 +484,14 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			msg.add_node(msg.fbb_.CreateString(commandParts[CMD_PART_NODE]));
-			msg.add_key(msg.fbb_.CreateString(commandParts[CMD_PART_KEY]));
-			msg.add_type(static_cast<dv::ConfigType>(type));
+			auto nodeOffset = dataBufferSend.CreateString(commandParts[CMD_PART_NODE]);
+			auto keyOffset  = dataBufferSend.CreateString(commandParts[CMD_PART_KEY]);
+
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
+			msg->add_node(nodeOffset);
+			msg->add_key(keyOffset);
+			msg->add_type(static_cast<dv::ConfigType>(type));
 
 			break;
 		}
@@ -515,10 +525,16 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			msg.add_node(msg.fbb_.CreateString(commandParts[CMD_PART_NODE]));
-			msg.add_key(msg.fbb_.CreateString(commandParts[CMD_PART_KEY]));
-			msg.add_type(static_cast<dv::ConfigType>(type));
-			msg.add_value(msg.fbb_.CreateString(commandParts[CMD_PART_VALUE]));
+			auto nodeOffset  = dataBufferSend.CreateString(commandParts[CMD_PART_NODE]);
+			auto keyOffset   = dataBufferSend.CreateString(commandParts[CMD_PART_KEY]);
+			auto valueOffset = dataBufferSend.CreateString(commandParts[CMD_PART_VALUE]);
+
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
+			msg->add_node(nodeOffset);
+			msg->add_key(keyOffset);
+			msg->add_type(static_cast<dv::ConfigType>(type));
+			msg->add_value(valueOffset);
 
 			break;
 		}
@@ -538,8 +554,13 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			msg.add_node(msg.fbb_.CreateString(commandParts[CMD_PART_NODE]));
-			msg.add_key(msg.fbb_.CreateString(commandParts[CMD_PART_KEY]));
+			auto nodeOffset = dataBufferSend.CreateString(commandParts[CMD_PART_NODE]);
+			auto keyOffset  = dataBufferSend.CreateString(commandParts[CMD_PART_KEY]);
+
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
+			msg->add_node(nodeOffset);
+			msg->add_key(keyOffset);
 
 			break;
 		}
@@ -555,7 +576,11 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			msg.add_node(msg.fbb_.CreateString(commandParts[CMD_PART_NODE]));
+			auto nodeOffset = dataBufferSend.CreateString(commandParts[CMD_PART_NODE]);
+
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
+			msg->add_node(nodeOffset);
 
 			break;
 		}
@@ -567,7 +592,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 
 	// Send formatted command to configuration server.
 	try {
-		sendMessage(msg);
+		sendMessage(std::move(msg));
 	}
 	catch (const boost::system::system_error &ex) {
 		boost::format exMsg
@@ -793,13 +818,15 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 	lastSlash++;
 
 	// Send request for all children names.
-	dv::ConfigActionDataBuilder msg(dataBufferSend);
+	auto nodeOffset = dataBufferSend.CreateString(partialNodeString.substr(0, lastSlash));
 
-	msg.add_action(dv::ConfigAction::GET_CHILDREN);
-	msg.add_node(msg.fbb_.CreateString(partialNodeString.substr(0, lastSlash)));
+	auto msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+
+	msg->add_action(dv::ConfigAction::GET_CHILDREN);
+	msg->add_node(nodeOffset);
 
 	try {
-		sendMessage(msg);
+		sendMessage(std::move(msg));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -840,13 +867,15 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 	UNUSED_ARGUMENT(action);
 
 	// Send request for all attribute names for this node.
-	dv::ConfigActionDataBuilder msg(dataBufferSend);
+	auto nodeOffset = dataBufferSend.CreateString(nodeString);
 
-	msg.add_action(dv::ConfigAction::GET_ATTRIBUTES);
-	msg.add_node(msg.fbb_.CreateString(nodeString));
+	auto msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+
+	msg->add_action(dv::ConfigAction::GET_ATTRIBUTES);
+	msg->add_node(nodeOffset);
 
 	try {
-		sendMessage(msg);
+		sendMessage(std::move(msg));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -885,14 +914,17 @@ static void typeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 	UNUSED_ARGUMENT(action);
 
 	// Send request for the type name for this key on this node.
-	dv::ConfigActionDataBuilder msg(dataBufferSend);
+	auto nodeOffset = dataBufferSend.CreateString(nodeString);
+	auto keyOffset  = dataBufferSend.CreateString(keyString);
 
-	msg.add_action(dv::ConfigAction::GET_TYPE);
-	msg.add_node(msg.fbb_.CreateString(nodeString));
-	msg.add_key(msg.fbb_.CreateString(keyString));
+	auto msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+
+	msg->add_action(dv::ConfigAction::GET_TYPE);
+	msg->add_node(nodeOffset);
+	msg->add_key(keyOffset);
 
 	try {
-		sendMessage(msg);
+		sendMessage(std::move(msg));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
@@ -953,15 +985,18 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 	}
 
 	// Send request for the current value, so we can auto-complete with it as default.
-	dv::ConfigActionDataBuilder msg(dataBufferSend);
+	auto nodeOffset = dataBufferSend.CreateString(nodeString);
+	auto keyOffset  = dataBufferSend.CreateString(keyString);
 
-	msg.add_action(dv::ConfigAction::GET);
-	msg.add_node(msg.fbb_.CreateString(nodeString));
-	msg.add_key(msg.fbb_.CreateString(keyString));
-	msg.add_type(static_cast<dv::ConfigType>(type));
+	auto msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+
+	msg->add_action(dv::ConfigAction::GET);
+	msg->add_node(nodeOffset);
+	msg->add_key(keyOffset);
+	msg->add_type(static_cast<dv::ConfigType>(type));
 
 	try {
-		sendMessage(msg);
+		sendMessage(std::move(msg));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
