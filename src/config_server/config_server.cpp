@@ -100,7 +100,8 @@ void ConfigServer::addPushClient(ConfigServerConnection *pushClient) {
 }
 
 void ConfigServer::removePushClient(ConfigServerConnection *pushClient) {
-	if (pushClients.end() != pushClients.erase(std::remove(pushClients.begin(), pushClients.end(), pushClient), pushClients.end())) {
+	if (pushClients.end()
+		!= pushClients.erase(std::remove(pushClients.begin(), pushClients.end(), pushClient), pushClients.end())) {
 		numPushClients--;
 	}
 }
@@ -338,6 +339,12 @@ static void caerConfigServerGlobalNodeChangeListener(
 	if (globalConfigData.server.pushClientsPresent()) {
 		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
+		std::string nodePath(node.getPath());
+		nodePath += changeNode;
+		nodePath.push_back('/');
+
+		auto nodeStr = msgBuild->CreateString(nodePath);
+
 		dv::ConfigActionDataBuilder msg(*msgBuild);
 
 		// Set message ID to the ID of the client that originated this change.
@@ -348,14 +355,8 @@ static void caerConfigServerGlobalNodeChangeListener(
 		msg.add_id(globalConfigData.server.getCurrentClientID());
 
 		msg.add_action(dv::ConfigAction::PUSH_MESSAGE_NODE);
-
 		msg.add_nodeEvents(static_cast<dv::ConfigNodeEvents>(event));
-
-		std::string nodePath(node.getPath());
-		nodePath += changeNode;
-		nodePath.push_back('/');
-
-		msg.add_node(msgBuild->CreateString(nodePath));
+		msg.add_node(nodeStr);
 
 		// Finish off message.
 		auto msgRoot = msg.Finish();
@@ -372,10 +373,25 @@ static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode n, void *
 	union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(userData);
 	dvCfg::Node node(n);
-	dvCfg::AttributeType type = static_cast<dvCfg::AttributeType>(changeType);
 
 	if (globalConfigData.server.pushClientsPresent()) {
 		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
+
+		auto type  = static_cast<dvCfg::AttributeType>(changeType);
+		auto flags = node.getAttributeFlags(changeKey, type);
+
+		const std::string valueStr = dvCfg::Helper::valueToStringConverter(type, changeValue);
+
+		auto nodeStr = msgBuild->CreateString(node.getPath());
+		auto keyStr  = msgBuild->CreateString(changeKey);
+		auto valStr  = msgBuild->CreateString(valueStr);
+
+		const std::string rangesStr
+			= dvCfg::Helper::rangesToStringConverter(type, node.getAttributeRanges(changeKey, type));
+		auto ranStr = msgBuild->CreateString(rangesStr);
+
+		const std::string descriptionStr = node.getAttributeDescription(changeKey, type);
+		auto descStr                     = msgBuild->CreateString(descriptionStr);
 
 		dv::ConfigActionDataBuilder msg(*msgBuild);
 
@@ -385,35 +401,18 @@ static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode n, void *
 		// changes brought by a client via the config-server, the current
 		// client ID will be the one from that remote client.
 		msg.add_id(globalConfigData.server.getCurrentClientID());
-
 		msg.add_action(dv::ConfigAction::PUSH_MESSAGE_ATTR);
-
 		msg.add_attrEvents(static_cast<dv::ConfigAttributeEvents>(event));
-
-		msg.add_node(msgBuild->CreateString(node.getPath()));
-
-		msg.add_key(msgBuild->CreateString(changeKey));
-
+		msg.add_node(nodeStr);
+		msg.add_key(keyStr);
 		msg.add_type(static_cast<dv::ConfigType>(type));
-
-		const std::string valueStr = dvCfg::Helper::valueToStringConverter(type, changeValue);
-
-		msg.add_value(msgBuild->CreateString(valueStr));
+		msg.add_value(valStr);
 
 		if ((event == DVCFG_ATTRIBUTE_ADDED) || (event == DVCFG_ATTRIBUTE_MODIFIED_CREATE)) {
 			// Need to get extra info when adding: flags, range, description.
-			int flags = node.getAttributeFlags(changeKey, type);
-
 			msg.add_flags(flags);
-
-			const std::string rangesStr
-				= dvCfg::Helper::rangesToStringConverter(type, node.getAttributeRanges(changeKey, type));
-
-			msg.add_ranges(msgBuild->CreateString(rangesStr));
-
-			const std::string descriptionStr = node.getAttributeDescription(changeKey, type);
-
-			msg.add_description(msgBuild->CreateString(descriptionStr));
+			msg.add_ranges(ranStr);
+			msg.add_description(descStr);
 		}
 
 		// Finish off message.

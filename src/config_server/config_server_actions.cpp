@@ -22,12 +22,8 @@ static inline void sendMessage(std::shared_ptr<ConfigServerConnection> client, M
 	// Send back flags directly.
 	auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
-	dv::ConfigActionDataBuilder msg(*msgBuild);
-
-	msgFunc(msg);
-
-	// Finish off message.
-	auto msgRoot = msg.Finish();
+	// Build and then finish off message.
+	auto msgRoot = msgFunc(msgBuild.get());
 
 	// Write root node and message size.
 	dv::FinishSizePrefixedConfigActionDataBuffer(*msgBuild, msgRoot);
@@ -36,9 +32,15 @@ static inline void sendMessage(std::shared_ptr<ConfigServerConnection> client, M
 }
 
 static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> client, const std::string &errorMsg) {
-	sendMessage(client, [errorMsg](dv::ConfigActionDataBuilder &msg) {
+	sendMessage(client, [errorMsg](flatbuffers::FlatBufferBuilder *msgBuild) {
+		auto valStr = msgBuild->CreateString(errorMsg);
+
+		dv::ConfigActionDataBuilder msg(*msgBuild);
+
 		msg.add_action(dv::ConfigAction::ERROR);
-		msg.add_value(msg.fbb_.CreateString(errorMsg));
+		msg.add_value(valStr);
+
+		return (msg.Finish());
 	});
 
 	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Sent error back to client %lld: %s.",
@@ -107,9 +109,15 @@ void caerConfigServerHandleRequest(
 			bool result = configStore.existsNode(node);
 
 			// Send back result to client.
-			sendMessage(client, [result](dv::ConfigActionDataBuilder &msg) {
+			sendMessage(client, [result](flatbuffers::FlatBufferBuilder *msgBuild) {
+				auto valStr = msgBuild->CreateString((result) ? ("true") : ("false"));
+
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
 				msg.add_action(dv::ConfigAction::NODE_EXISTS);
-				msg.add_value(msg.fbb_.CreateString((result) ? ("true") : ("false")));
+				msg.add_value(valStr);
+
+				return (msg.Finish());
 			});
 
 			break;
@@ -140,9 +148,15 @@ void caerConfigServerHandleRequest(
 			bool result = wantedNode.existsAttribute(key, static_cast<dvCfgType>(type));
 
 			// Send back result to client.
-			sendMessage(client, [result](dv::ConfigActionDataBuilder &msg) {
+			sendMessage(client, [result](flatbuffers::FlatBufferBuilder *msgBuild) {
+				auto valStr = msgBuild->CreateString((result) ? ("true") : ("false"));
+
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
 				msg.add_action(dv::ConfigAction::ATTR_EXISTS);
-				msg.add_value(msg.fbb_.CreateString((result) ? ("true") : ("false")));
+				msg.add_value(valStr);
+
+				return (msg.Finish());
 			});
 
 			break;
@@ -175,9 +189,15 @@ void caerConfigServerHandleRequest(
 			// separated by a | character.
 			const std::string namesString = boost::algorithm::join(childNames, "|");
 
-			sendMessage(client, [namesString](dv::ConfigActionDataBuilder &msg) {
+			sendMessage(client, [namesString](flatbuffers::FlatBufferBuilder *msgBuild) {
+				auto valStr = msgBuild->CreateString(namesString);
+
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
 				msg.add_action(dv::ConfigAction::GET_CHILDREN);
-				msg.add_value(msg.fbb_.CreateString(namesString));
+				msg.add_value(valStr);
+
+				return (msg.Finish());
 			});
 
 			break;
@@ -210,9 +230,15 @@ void caerConfigServerHandleRequest(
 			// separated by a | character.
 			const std::string attrKeysString = boost::algorithm::join(attrKeys, "|");
 
-			sendMessage(client, [attrKeysString](dv::ConfigActionDataBuilder &msg) {
+			sendMessage(client, [attrKeysString](flatbuffers::FlatBufferBuilder *msgBuild) {
+				auto valStr = msgBuild->CreateString(attrKeysString);
+
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
 				msg.add_action(dv::ConfigAction::GET_ATTRIBUTES);
-				msg.add_value(msg.fbb_.CreateString(attrKeysString));
+				msg.add_value(valStr);
+
+				return (msg.Finish());
 			});
 
 			break;
@@ -243,9 +269,13 @@ void caerConfigServerHandleRequest(
 			}
 
 			// Send back type directly.
-			sendMessage(client, [attrType](dv::ConfigActionDataBuilder &msg) {
+			sendMessage(client, [attrType](flatbuffers::FlatBufferBuilder *msgBuild) {
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
 				msg.add_action(dv::ConfigAction::GET_TYPE);
 				msg.add_type(static_cast<dv::ConfigType>(attrType));
+
+				return (msg.Finish());
 			});
 
 			break;
@@ -281,9 +311,15 @@ void caerConfigServerHandleRequest(
 			const std::string rangesStr = dvCfg::Helper::rangesToStringConverter(static_cast<dvCfgType>(type), ranges);
 
 			// Send back ranges as strings.
-			sendMessage(client, [rangesStr](dv::ConfigActionDataBuilder &msg) {
+			sendMessage(client, [rangesStr](flatbuffers::FlatBufferBuilder *msgBuild) {
+				auto valStr = msgBuild->CreateString(rangesStr);
+
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
 				msg.add_action(dv::ConfigAction::GET_RANGES);
-				msg.add_ranges(msg.fbb_.CreateString(rangesStr));
+				msg.add_ranges(valStr);
+
+				return (msg.Finish());
 			});
 
 			break;
@@ -317,9 +353,13 @@ void caerConfigServerHandleRequest(
 			int flags = wantedNode.getAttributeFlags(key, static_cast<dvCfgType>(type));
 
 			// Send back flags directly.
-			sendMessage(client, [flags](dv::ConfigActionDataBuilder &msg) {
+			sendMessage(client, [flags](flatbuffers::FlatBufferBuilder *msgBuild) {
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
 				msg.add_action(dv::ConfigAction::GET_FLAGS);
 				msg.add_flags(flags);
+
+				return (msg.Finish());
 			});
 
 			break;
@@ -353,9 +393,15 @@ void caerConfigServerHandleRequest(
 			const std::string description = wantedNode.getAttributeDescription(key, static_cast<dvCfgType>(type));
 
 			// Send back flags directly.
-			sendMessage(client, [description](dv::ConfigActionDataBuilder &msg) {
+			sendMessage(client, [description](flatbuffers::FlatBufferBuilder *msgBuild) {
+				auto valStr = msgBuild->CreateString(description);
+
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
 				msg.add_action(dv::ConfigAction::GET_DESCRIPTION);
-				msg.add_description(msg.fbb_.CreateString(description));
+				msg.add_description(valStr);
+
+				return (msg.Finish());
 			});
 
 			break;
@@ -394,9 +440,15 @@ void caerConfigServerHandleRequest(
 				free(result.string);
 			}
 
-			sendMessage(client, [resultStr](dv::ConfigActionDataBuilder &msg) {
+			sendMessage(client, [resultStr](flatbuffers::FlatBufferBuilder *msgBuild) {
+				auto valStr = msgBuild->CreateString(resultStr);
+
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
 				msg.add_action(dv::ConfigAction::GET);
-				msg.add_value(msg.fbb_.CreateString(resultStr));
+				msg.add_value(valStr);
+
+				return (msg.Finish());
 			});
 
 			break;
@@ -451,7 +503,13 @@ void caerConfigServerHandleRequest(
 			}
 
 			// Send back confirmation to the client.
-			sendMessage(client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::PUT); });
+			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
+				msg.add_action(dv::ConfigAction::PUT);
+
+				return (msg.Finish());
+			});
 
 			break;
 		}
@@ -565,7 +623,13 @@ void caerConfigServerHandleRequest(
 			caerModuleConfigInit(newModuleNode);
 
 			// Send back confirmation to the client.
-			sendMessage(client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::ADD_MODULE); });
+			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
+				msg.add_action(dv::ConfigAction::ADD_MODULE);
+
+				return (msg.Finish());
+			});
 
 			break;
 		}
@@ -602,8 +666,13 @@ void caerConfigServerHandleRequest(
 			configStore.getNode("/" + moduleName + "/").removeNode();
 
 			// Send back confirmation to the client.
-			sendMessage(
-				client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::REMOVE_MODULE); });
+			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
+				msg.add_action(dv::ConfigAction::REMOVE_MODULE);
+
+				return (msg.Finish());
+			});
 
 			break;
 		}
@@ -612,8 +681,13 @@ void caerConfigServerHandleRequest(
 			client->addPushClient();
 
 			// Send back confirmation to the client.
-			sendMessage(
-				client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::ADD_PUSH_CLIENT); });
+			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
+				msg.add_action(dv::ConfigAction::ADD_PUSH_CLIENT);
+
+				return (msg.Finish());
+			});
 
 			break;
 		}
@@ -622,8 +696,13 @@ void caerConfigServerHandleRequest(
 			client->removePushClient();
 
 			// Send back confirmation to the client.
-			sendMessage(
-				client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::REMOVE_PUSH_CLIENT); });
+			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
+				msg.add_action(dv::ConfigAction::REMOVE_PUSH_CLIENT);
+
+				return (msg.Finish());
+			});
 
 			break;
 		}
@@ -633,7 +712,13 @@ void caerConfigServerHandleRequest(
 			dumpNodeToClientRecursive(configStore.getRootNode(), client.get());
 
 			// Send back confirmation of operation completed to the client.
-			sendMessage(client, [](dv::ConfigActionDataBuilder &msg) { msg.add_action(dv::ConfigAction::DUMP_TREE); });
+			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
+				msg.add_action(dv::ConfigAction::DUMP_TREE);
+
+				return (msg.Finish());
+			});
 
 			break;
 		}
@@ -642,9 +727,13 @@ void caerConfigServerHandleRequest(
 			uint64_t clientID = client->getClientID();
 
 			// Send back confirmation of operation completed to the client.
-			sendMessage(client, [clientID](dv::ConfigActionDataBuilder &msg) {
+			sendMessage(client, [clientID](flatbuffers::FlatBufferBuilder *msgBuild) {
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
 				msg.add_action(dv::ConfigAction::GET_CLIENT_ID);
 				msg.add_id(clientID);
+
+				return (msg.Finish());
 			});
 
 			break;
@@ -664,11 +753,12 @@ static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnec
 	{
 		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
+		auto nodeStr = msgBuild->CreateString(node.getPath());
+
 		dv::ConfigActionDataBuilder msg(*msgBuild);
 
 		msg.add_action(dv::ConfigAction::DUMP_TREE_NODE);
-
-		msg.add_node(msgBuild->CreateString(node.getPath()));
+		msg.add_node(nodeStr);
 
 		// Finish off message.
 		auto msgRoot = msg.Finish();
@@ -683,40 +773,37 @@ static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnec
 	for (const auto &key : node.getAttributeKeys()) {
 		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
-		dv::ConfigActionDataBuilder msg(*msgBuild);
-
-		msg.add_action(dv::ConfigAction::DUMP_TREE_ATTR);
-
-		msg.add_node(msgBuild->CreateString(node.getPath()));
-
-		msg.add_key(msgBuild->CreateString(key));
-
-		auto type = node.getAttributeType(key);
-
-		msg.add_type(static_cast<dv::ConfigType>(type));
+		auto type  = node.getAttributeType(key);
+		auto flags = node.getAttributeFlags(key, type);
 
 		union dvConfigAttributeValue value = node.getAttribute(key, type);
-
-		const std::string valueStr = dvCfg::Helper::valueToStringConverter(type, value);
-
+		const std::string valueStr         = dvCfg::Helper::valueToStringConverter(type, value);
 		if (type == dvCfgType::STRING) {
 			free(value.string);
 		}
 
-		msg.add_value(msgBuild->CreateString(valueStr));
-
-		// Need to get extra info when adding: flags, range, description.
-		const int flags = node.getAttributeFlags(key, type);
-
-		msg.add_flags(flags);
+		auto nodeStr = msgBuild->CreateString(node.getPath());
+		auto keyStr  = msgBuild->CreateString(key);
+		auto valStr  = msgBuild->CreateString(valueStr);
 
 		const std::string rangesStr = dvCfg::Helper::rangesToStringConverter(type, node.getAttributeRanges(key, type));
-
-		msg.add_ranges(msgBuild->CreateString(rangesStr));
+		auto ranStr                 = msgBuild->CreateString(rangesStr);
 
 		const std::string descriptionStr = node.getAttributeDescription(key, type);
+		auto descStr                     = msgBuild->CreateString(descriptionStr);
 
-		msg.add_description(msgBuild->CreateString(descriptionStr));
+		dv::ConfigActionDataBuilder msg(*msgBuild);
+
+		msg.add_action(dv::ConfigAction::DUMP_TREE_ATTR);
+		msg.add_node(nodeStr);
+		msg.add_key(keyStr);
+		msg.add_type(static_cast<dv::ConfigType>(type));
+		msg.add_value(valStr);
+
+		// Need to get extra info when adding: flags, range, description.
+		msg.add_flags(flags);
+		msg.add_ranges(ranStr);
+		msg.add_description(descStr);
 
 		// Finish off message.
 		auto msgRoot = msg.Finish();
