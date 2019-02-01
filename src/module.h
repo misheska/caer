@@ -9,10 +9,10 @@ extern "C" {
 #endif
 
 // Functions for mainloop:
-void caerModuleConfigInit(sshsNode moduleNode);
+void caerModuleConfigInit(dv::Config::Node moduleNode);
 void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData, size_t memSize,
 	caerEventPacketContainer in, caerEventPacketContainer *out);
-caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, sshsNode moduleNode);
+caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv::Config::Node moduleNode);
 void caerModuleDestroy(caerModuleData moduleData);
 
 #ifdef __cplusplus
@@ -20,23 +20,23 @@ void caerModuleDestroy(caerModuleData moduleData);
 
 // If Boost version recent enough, use their portable DLL loading support.
 // Else use dlopen() on POSIX systems.
-#include <boost/version.hpp>
-#if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 61
-#define BOOST_HAS_DLL_LOAD 1
-#else
-#define BOOST_HAS_DLL_LOAD 0
-#endif
+#	include <boost/version.hpp>
+#	if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 61
+#		define BOOST_HAS_DLL_LOAD 1
+#	else
+#		define BOOST_HAS_DLL_LOAD 0
+#	endif
 
-#if BOOST_HAS_DLL_LOAD
-#include <boost/dll.hpp>
+#	if BOOST_HAS_DLL_LOAD
+#		include <boost/dll.hpp>
 using ModuleLibrary = boost::dll::shared_library;
-#else
-#include <dlfcn.h>
+#	else
+#		include <dlfcn.h>
 using ModuleLibrary = void *;
-#endif
+#	endif
 
-#include <string>
-#include <utility>
+#	include <string>
+#	include <utility>
 
 std::pair<ModuleLibrary, caerModuleInfo> caerLoadModuleLibrary(const std::string &moduleName);
 void caerUnloadModuleLibrary(ModuleLibrary &moduleLibrary);

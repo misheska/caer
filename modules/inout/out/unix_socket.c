@@ -32,7 +32,7 @@ caerModuleInfo caerModuleGetInfo(void) {
 static bool caerOutputUnixSocketInit(caerModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
-	sshsNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
 		"Unix Socket path for writing output data (client mode, connect to existing socket).");
 
 	// Allocate memory.
@@ -70,7 +70,7 @@ static bool caerOutputUnixSocketInit(caerModuleData moduleData) {
 	streams->server        = NULL;
 
 	// Remember address.
-	streams->address = sshsNodeGetString(moduleData->moduleNode, "socketPath");
+	streams->address = dvConfigNodeGetString(moduleData->moduleNode, "socketPath");
 
 	pipe->data = streams;
 

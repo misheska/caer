@@ -18,7 +18,7 @@ struct CameraCalibrationState_struct {
 
 typedef struct CameraCalibrationState_struct *CameraCalibrationState;
 
-static void caerCameraCalibrationConfigInit(sshsNode moduleNode);
+static void caerCameraCalibrationConfigInit(dvConfigNode moduleNode);
 static bool caerCameraCalibrationInit(caerModuleData moduleData);
 static void caerCameraCalibrationRun(
 	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
@@ -54,37 +54,37 @@ caerModuleInfo caerModuleGetInfo(void) {
 	return (&CameraCalibrationInfo);
 }
 
-static void caerCameraCalibrationConfigInit(sshsNode moduleNode) {
-	sshsNodeCreateBool(moduleNode, "doCalibration", false, SSHS_FLAGS_NORMAL, "Do calibration using live images.");
-	sshsNodeCreateString(moduleNode, "saveFileName", "camera_calib.xml", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+static void caerCameraCalibrationConfigInit(dvConfigNode moduleNode) {
+	dvConfigNodeCreateBool(moduleNode, "doCalibration", false, DVCFG_FLAGS_NORMAL, "Do calibration using live images.");
+	dvConfigNodeCreateString(moduleNode, "saveFileName", "camera_calib.xml", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
 		"The name of the file where to write the calculated calibration settings.");
-	sshsNodeCreateInt(moduleNode, "captureDelay", 500000, 0, 60000000, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleNode, "captureDelay", 500000, 0, 60000000, DVCFG_FLAGS_NORMAL,
 		"Only use a frame for calibration if at least this much time has passed.");
-	sshsNodeCreateInt(moduleNode, "minNumberOfPoints", 20, 3, 100, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleNode, "minNumberOfPoints", 20, 3, 100, DVCFG_FLAGS_NORMAL,
 		"Minimum number of points to start calibration with.");
-	sshsNodeCreateFloat(moduleNode, "maxTotalError", 0.30f, 0.0f, 1.0f, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateFloat(moduleNode, "maxTotalError", 0.30f, 0.0f, 1.0f, DVCFG_FLAGS_NORMAL,
 		"Maximum total average error allowed (in pixels).");
-	sshsNodeCreateString(
-		moduleNode, "calibrationPattern", "chessboard", 10, 21, SSHS_FLAGS_NORMAL, "Pattern to run calibration with.");
-	sshsNodeCreateAttributeListOptions(
+	dvConfigNodeCreateString(
+		moduleNode, "calibrationPattern", "chessboard", 10, 21, DVCFG_FLAGS_NORMAL, "Pattern to run calibration with.");
+	dvConfigNodeAttributeModifierListOptions(
 		moduleNode, "calibrationPattern", "chessboard,circlesGrid,asymmetricCirclesGrid", false);
-	sshsNodeCreateInt(moduleNode, "boardWidth", 9, 1, 64, SSHS_FLAGS_NORMAL, "The size of the board (width).");
-	sshsNodeCreateInt(moduleNode, "boardHeigth", 5, 1, 64, SSHS_FLAGS_NORMAL, "The size of the board (heigth).");
-	sshsNodeCreateFloat(moduleNode, "boardSquareSize", 1.0f, 0.0f, 1000.0f, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleNode, "boardWidth", 9, 1, 64, DVCFG_FLAGS_NORMAL, "The size of the board (width).");
+	dvConfigNodeCreateInt(moduleNode, "boardHeigth", 5, 1, 64, DVCFG_FLAGS_NORMAL, "The size of the board (heigth).");
+	dvConfigNodeCreateFloat(moduleNode, "boardSquareSize", 1.0f, 0.0f, 1000.0f, DVCFG_FLAGS_NORMAL,
 		"The size of a square in your defined unit (point, millimeter, etc.).");
-	sshsNodeCreateFloat(moduleNode, "aspectRatio", 0.0f, 0.0f, 1.0f, SSHS_FLAGS_NORMAL, "The aspect ratio.");
-	sshsNodeCreateBool(
-		moduleNode, "assumeZeroTangentialDistortion", false, SSHS_FLAGS_NORMAL, "Assume zero tangential distortion.");
-	sshsNodeCreateBool(
-		moduleNode, "fixPrincipalPointAtCenter", false, SSHS_FLAGS_NORMAL, "Fix the principal point at the center.");
-	sshsNodeCreateBool(
-		moduleNode, "useFisheyeModel", false, SSHS_FLAGS_NORMAL, "Use fisheye camera model for calibration.");
+	dvConfigNodeCreateFloat(moduleNode, "aspectRatio", 0.0f, 0.0f, 1.0f, DVCFG_FLAGS_NORMAL, "The aspect ratio.");
+	dvConfigNodeCreateBool(
+		moduleNode, "assumeZeroTangentialDistortion", false, DVCFG_FLAGS_NORMAL, "Assume zero tangential distortion.");
+	dvConfigNodeCreateBool(
+		moduleNode, "fixPrincipalPointAtCenter", false, DVCFG_FLAGS_NORMAL, "Fix the principal point at the center.");
+	dvConfigNodeCreateBool(
+		moduleNode, "useFisheyeModel", false, DVCFG_FLAGS_NORMAL, "Use fisheye camera model for calibration.");
 
-	sshsNodeCreateBool(moduleNode, "doUndistortion", false, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateBool(moduleNode, "doUndistortion", false, DVCFG_FLAGS_NORMAL,
 		"Do undistortion of incoming images using calibration loaded from file.");
-	sshsNodeCreateString(moduleNode, "loadFileName", "camera_calib.xml", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleNode, "loadFileName", "camera_calib.xml", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
 		"The name of the file from which to load the calibration settings for undistortion.");
-	sshsNodeCreateBool(moduleNode, "fitAllPixels", false, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateBool(moduleNode, "fitAllPixels", false, DVCFG_FLAGS_NORMAL,
 		"Whether to fit all the input pixels "
 		"(black borders) or maximize the image, "
 		"at the cost of loosing some pixels.");
@@ -104,7 +104,7 @@ static bool caerCameraCalibrationInit(caerModuleData moduleData) {
 
 	// Wait for input to be ready. All inputs, once they are up and running, will
 	// have a valid sourceInfo node to query, especially if dealing with data.
-	sshsNode sourceInfo = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
+	dvConfigNode sourceInfo = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
 	if (sourceInfo == NULL) {
 		return (false);
 	}
@@ -112,8 +112,8 @@ static bool caerCameraCalibrationInit(caerModuleData moduleData) {
 	// Update all settings.
 	CameraCalibrationState state = moduleData->moduleState;
 
-	state->settings.imageWidth  = U32T(sshsNodeGetInt(sourceInfo, "frameSizeX"));
-	state->settings.imageHeigth = U32T(sshsNodeGetInt(sourceInfo, "frameSizeY"));
+	state->settings.imageWidth  = U32T(dvConfigNodeGetInt(sourceInfo, "frameSizeX"));
+	state->settings.imageHeigth = U32T(dvConfigNodeGetInt(sourceInfo, "frameSizeY"));
 
 	updateSettings(moduleData);
 
@@ -124,7 +124,7 @@ static bool caerCameraCalibrationInit(caerModuleData moduleData) {
 	}
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 
 	return (true);
 }
@@ -133,23 +133,23 @@ static void updateSettings(caerModuleData moduleData) {
 	CameraCalibrationState state = moduleData->moduleState;
 
 	// Get current config settings.
-	state->settings.doCalibration     = sshsNodeGetBool(moduleData->moduleNode, "doCalibration");
-	state->settings.captureDelay      = U32T(sshsNodeGetInt(moduleData->moduleNode, "captureDelay"));
-	state->settings.minNumberOfPoints = U32T(sshsNodeGetInt(moduleData->moduleNode, "minNumberOfPoints"));
-	state->settings.maxTotalError     = sshsNodeGetFloat(moduleData->moduleNode, "maxTotalError");
-	state->settings.boardWidth        = U32T(sshsNodeGetInt(moduleData->moduleNode, "boardWidth"));
-	state->settings.boardHeigth       = U32T(sshsNodeGetInt(moduleData->moduleNode, "boardHeigth"));
-	state->settings.boardSquareSize   = sshsNodeGetFloat(moduleData->moduleNode, "boardSquareSize");
-	state->settings.aspectRatio       = sshsNodeGetFloat(moduleData->moduleNode, "aspectRatio");
+	state->settings.doCalibration     = dvConfigNodeGetBool(moduleData->moduleNode, "doCalibration");
+	state->settings.captureDelay      = U32T(dvConfigNodeGetInt(moduleData->moduleNode, "captureDelay"));
+	state->settings.minNumberOfPoints = U32T(dvConfigNodeGetInt(moduleData->moduleNode, "minNumberOfPoints"));
+	state->settings.maxTotalError     = dvConfigNodeGetFloat(moduleData->moduleNode, "maxTotalError");
+	state->settings.boardWidth        = U32T(dvConfigNodeGetInt(moduleData->moduleNode, "boardWidth"));
+	state->settings.boardHeigth       = U32T(dvConfigNodeGetInt(moduleData->moduleNode, "boardHeigth"));
+	state->settings.boardSquareSize   = dvConfigNodeGetFloat(moduleData->moduleNode, "boardSquareSize");
+	state->settings.aspectRatio       = dvConfigNodeGetFloat(moduleData->moduleNode, "aspectRatio");
 	state->settings.assumeZeroTangentialDistortion
-		= sshsNodeGetBool(moduleData->moduleNode, "assumeZeroTangentialDistortion");
-	state->settings.fixPrincipalPointAtCenter = sshsNodeGetBool(moduleData->moduleNode, "fixPrincipalPointAtCenter");
-	state->settings.useFisheyeModel           = sshsNodeGetBool(moduleData->moduleNode, "useFisheyeModel");
-	state->settings.doUndistortion            = sshsNodeGetBool(moduleData->moduleNode, "doUndistortion");
-	state->settings.fitAllPixels              = sshsNodeGetBool(moduleData->moduleNode, "fitAllPixels");
+		= dvConfigNodeGetBool(moduleData->moduleNode, "assumeZeroTangentialDistortion");
+	state->settings.fixPrincipalPointAtCenter = dvConfigNodeGetBool(moduleData->moduleNode, "fixPrincipalPointAtCenter");
+	state->settings.useFisheyeModel           = dvConfigNodeGetBool(moduleData->moduleNode, "useFisheyeModel");
+	state->settings.doUndistortion            = dvConfigNodeGetBool(moduleData->moduleNode, "doUndistortion");
+	state->settings.fitAllPixels              = dvConfigNodeGetBool(moduleData->moduleNode, "fitAllPixels");
 
 	// Parse calibration pattern string.
-	char *calibPattern = sshsNodeGetString(moduleData->moduleNode, "calibrationPattern");
+	char *calibPattern = dvConfigNodeGetString(moduleData->moduleNode, "calibrationPattern");
 
 	if (caerStrEquals(calibPattern, "chessboard")) {
 		state->settings.calibrationPattern = CAMCALIB_CHESSBOARD;
@@ -172,8 +172,8 @@ static void updateSettings(caerModuleData moduleData) {
 	free(calibPattern);
 
 	// Get file strings.
-	state->settings.saveFileName = sshsNodeGetString(moduleData->moduleNode, "saveFileName");
-	state->settings.loadFileName = sshsNodeGetString(moduleData->moduleNode, "loadFileName");
+	state->settings.saveFileName = dvConfigNodeGetString(moduleData->moduleNode, "saveFileName");
+	state->settings.loadFileName = dvConfigNodeGetString(moduleData->moduleNode, "loadFileName");
 }
 
 static void caerCameraCalibrationConfig(caerModuleData moduleData) {
@@ -198,7 +198,7 @@ static void caerCameraCalibrationConfig(caerModuleData moduleData) {
 
 static void caerCameraCalibrationExit(caerModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 
 	CameraCalibrationState state = moduleData->moduleState;
 

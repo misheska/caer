@@ -3,11 +3,11 @@
 
 #ifdef __cplusplus
 
-#include <cstdlib>
+#	include <cstdlib>
 
 #else
 
-#include <stdlib.h>
+#	include <stdlib.h>
 
 #endif
 
@@ -18,16 +18,20 @@ extern "C" {
 /*
  * Make PATH_MAX available by including the right headers.
  * This makes it easier to work cross-platform, especially
- * on MacOS X where this is in a different file.
+ * on MacOS X or Linux where this is in a different file.
  */
 #include <limits.h>
 
+#if defined(__linux__)
+#	include <linux/limits.h>
+#endif
+
 #if defined(__APPLE__)
-#include <sys/syslimits.h>
+#	include <sys/syslimits.h>
 #endif
 
 #ifndef PATH_MAX
-#error "No PATH_MAX defined."
+#	error "No PATH_MAX defined."
 #endif
 
 /**

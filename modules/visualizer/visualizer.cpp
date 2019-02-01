@@ -19,6 +19,10 @@
 #	include <X11/Xlib.h>
 #endif
 
+namespace dvCfg  = dv::Config;
+using dvCfgType  = dvCfg::AttributeType;
+using dvCfgFlags = dvCfg::AttributeFlags;
+
 #define VISUALIZER_REFRESH_RATE 60
 #define VISUALIZER_ZOOM_DEF 2.0f
 #define VISUALIZER_ZOOM_INC 0.25f
@@ -45,8 +49,8 @@ static uint32_t STATISTICS_HEIGHT = 0;
 static std::once_flag visualizerSystemIsInitialized;
 
 struct caer_visualizer_state {
-	sshsNode eventSourceConfigNode;
-	sshsNode visualizerConfigNode;
+	dvCfg::Node eventSourceConfigNode;
+	dvCfg::Node visualizerConfigNode;
 	uint32_t renderSizeX;
 	uint32_t renderSizeY;
 	std::atomic<float> renderZoomFactor;
@@ -68,13 +72,13 @@ struct caer_visualizer_state {
 
 typedef struct caer_visualizer_state *caerVisualizerState;
 
-static void caerVisualizerConfigInit(sshsNode moduleNode);
+static void caerVisualizerConfigInit(dvConfigNode moduleNode);
 static bool caerVisualizerInit(caerModuleData moduleData);
 static void caerVisualizerExit(caerModuleData moduleData);
 static void caerVisualizerRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 static void caerVisualizerReset(caerModuleData moduleData, int16_t resetCallSourceID);
-static void caerVisualizerConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+static void caerVisualizerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 static void initSystemOnce(caerModuleData moduleData);
 static bool initRenderSize(caerModuleData moduleData);
 static void initRenderersHandlers(caerModuleData moduleData);
@@ -111,22 +115,25 @@ caerModuleInfo caerModuleGetInfo(void) {
 	return (&VisualizerInfo);
 }
 
-static void caerVisualizerConfigInit(sshsNode moduleNode) {
-	sshsNodeCreate(moduleNode, "renderer", "", 0, 500, SSHS_FLAGS_NORMAL, "Renderer to use to generate content.");
-	sshsNodeCreateAttributeListOptions(moduleNode, "renderer", caerVisualizerRendererListOptionsString, true);
-	sshsNodeCreate(moduleNode, "eventHandler", "", 0, 500, SSHS_FLAGS_NORMAL,
-		"Event handler to handle mouse and keyboard events.");
-	sshsNodeCreateAttributeListOptions(moduleNode, "eventHandler", caerVisualizerEventHandlerListOptionsString, true);
+static void caerVisualizerConfigInit(dvConfigNode mn) {
+	dvCfg::Node moduleNode(mn);
 
-	sshsNodeCreateInt(moduleNode, "subsampleRendering", 1, 1, 100000, SSHS_FLAGS_NORMAL,
+	moduleNode.create<dvCfgType::STRING>(
+		"renderer", "", {0, 500}, dvCfgFlags::NORMAL, "Renderer to use to generate content.");
+	moduleNode.attributeModifierListOptions("renderer", caerVisualizerRendererListOptionsString, true);
+	moduleNode.create<dvCfgType::STRING>(
+		"eventHandler", "", {0, 500}, dvCfgFlags::NORMAL, "Event handler to handle mouse and keyboard events.");
+	moduleNode.attributeModifierListOptions("eventHandler", caerVisualizerEventHandlerListOptionsString, true);
+
+	moduleNode.create<dvCfgType::INT>("subsampleRendering", 1, {1, 100000}, dvCfgFlags::NORMAL,
 		"Speed-up rendering by only taking every Nth EventPacketContainer to render.");
-	sshsNodeCreateBool(moduleNode, "showStatistics", true, SSHS_FLAGS_NORMAL,
-		"Show useful statistics below content (bottom of window).");
-	sshsNodeCreateFloat(moduleNode, "zoomFactor", VISUALIZER_ZOOM_DEF, VISUALIZER_ZOOM_MIN, VISUALIZER_ZOOM_MAX,
-		SSHS_FLAGS_NORMAL, "Content zoom factor.");
-	sshsNodeCreateInt(moduleNode, "windowPositionX", VISUALIZER_POSITION_X_DEF, 0, UINT16_MAX, SSHS_FLAGS_NORMAL,
+	moduleNode.create<dvCfgType::BOOL>(
+		"showStatistics", true, {}, dvCfgFlags::NORMAL, "Show useful statistics below content (bottom of window).");
+	moduleNode.create<dvCfgType::FLOAT>("zoomFactor", VISUALIZER_ZOOM_DEF, {VISUALIZER_ZOOM_MIN, VISUALIZER_ZOOM_MAX},
+		dvCfgFlags::NORMAL, "Content zoom factor.");
+	moduleNode.create<dvCfgType::INT>("windowPositionX", VISUALIZER_POSITION_X_DEF, {0, UINT16_MAX}, dvCfgFlags::NORMAL,
 		"Position of window on screen (X coordinate).");
-	sshsNodeCreateInt(moduleNode, "windowPositionY", VISUALIZER_POSITION_Y_DEF, 0, UINT16_MAX, SSHS_FLAGS_NORMAL,
+	moduleNode.create<dvCfgType::INT>("windowPositionY", VISUALIZER_POSITION_Y_DEF, {0, UINT16_MAX}, dvCfgFlags::NORMAL,
 		"Position of window on screen (Y coordinate).");
 }
 
@@ -135,6 +142,9 @@ static bool caerVisualizerInit(caerModuleData moduleData) {
 
 	// Initialize visualizer framework (global font sizes). Do only once per startup!
 	std::call_once(visualizerSystemIsInitialized, &initSystemOnce, moduleData);
+
+	state->visualizerConfigNode  = moduleData->moduleNode;
+	state->eventSourceConfigNode = caerMainloopModuleGetSourceNodeForInput(moduleData->moduleID, 0);
 
 	// Initialize visualizer. Needs size information from the source.
 	if (!initRenderSize(moduleData)) {
@@ -145,10 +155,7 @@ static bool caerVisualizerInit(caerModuleData moduleData) {
 
 	initRenderersHandlers(moduleData);
 
-	state->visualizerConfigNode  = moduleData->moduleNode;
-	state->eventSourceConfigNode = caerMainloopModuleGetSourceNodeForInput(moduleData->moduleID, 0);
-
-	state->packetSubsampleRendering.store(U32T(sshsNodeGetInt(moduleData->moduleNode, "subsampleRendering")));
+	state->packetSubsampleRendering.store(U32T(state->visualizerConfigNode.get<dvCfgType::INT>("subsampleRendering")));
 
 	// Enable packet statistics.
 	if (!caerStatisticsStringInit(&state->packetStatistics)) {
@@ -201,7 +208,7 @@ static bool caerVisualizerInit(caerModuleData moduleData) {
 	}
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	sshsNodeAddAttributeListener(moduleData->moduleNode, state, &caerVisualizerConfigListener);
+	state->visualizerConfigNode.addAttributeListener(state, &caerVisualizerConfigListener);
 
 	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Initialized successfully.");
 
@@ -212,7 +219,7 @@ static void caerVisualizerExit(caerModuleData moduleData) {
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
 
 	// Remove listener, which can reference invalid memory in userData.
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, state, &caerVisualizerConfigListener);
+	state->visualizerConfigNode.removeAttributeListener(state, &caerVisualizerConfigListener);
 
 	// Shut down rendering thread and wait on it to finish.
 	state->running.store(false);
@@ -306,30 +313,30 @@ static void caerVisualizerReset(caerModuleData moduleData, int16_t resetCallSour
 	state->packetSubsampleCount = 0;
 }
 
-static void caerVisualizerConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerVisualizerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
 	caerVisualizerState state = (caerVisualizerState) userData;
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED) {
-		if (changeType == SSHS_FLOAT && caerStrEquals(changeKey, "zoomFactor")) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
+		if (changeType == DVCFG_TYPE_FLOAT && caerStrEquals(changeKey, "zoomFactor")) {
 			// Set resize flag.
 			state->windowResize.store(true);
 		}
-		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "showStatistics")) {
+		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "showStatistics")) {
 			// Set resize flag. This will then also update the showStatistics flag, ensuring
 			// statistics are never shown without the screen having been properly resized first.
 			state->windowResize.store(true);
 		}
-		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "subsampleRendering")) {
+		else if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "subsampleRendering")) {
 			state->packetSubsampleRendering.store(U32T(changeValue.iint));
 		}
-		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "windowPositionX")) {
+		else if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "windowPositionX")) {
 			// Set move flag.
 			state->windowMove.store(true);
 		}
-		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "windowPositionY")) {
+		else if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "windowPositionY")) {
 			// Set move flag.
 			state->windowMove.store(true);
 		}
@@ -373,11 +380,11 @@ static bool initRenderSize(caerModuleData moduleData) {
 	uint32_t sizeY = 32;
 
 	// Search for biggest sizes amongst all event inputs.
-	size_t inputsSize = caerMainloopModuleGetInputDeps(moduleData->moduleID, NULL);
+	size_t inputsSize = caerMainloopModuleGetInputDeps(moduleData->moduleID, nullptr);
 
 	for (size_t i = 0; i < inputsSize; i++) {
 		// Get size information from source.
-		sshsNode sourceInfoNode = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, i);
+		dvConfigNode sourceInfoNode = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, i);
 		if (sourceInfoNode == nullptr) {
 			return (false);
 		}
@@ -388,13 +395,13 @@ static bool initRenderSize(caerModuleData moduleData) {
 
 		// Get sizes from sourceInfo node. visualizer prefix takes precedence,
 		// then generic data visualization size.
-		if (sshsNodeAttributeExists(sourceInfoNode, "visualizerSizeX", SSHS_INT)) {
-			packetSizeX = U32T(sshsNodeGetInt(sourceInfoNode, "visualizerSizeX"));
-			packetSizeY = U32T(sshsNodeGetInt(sourceInfoNode, "visualizerSizeY"));
+		if (dvConfigNodeExistsAttribute(sourceInfoNode, "visualizerSizeX", DVCFG_TYPE_INT)) {
+			packetSizeX = U32T(dvConfigNodeGetInt(sourceInfoNode, "visualizerSizeX"));
+			packetSizeY = U32T(dvConfigNodeGetInt(sourceInfoNode, "visualizerSizeY"));
 		}
-		else if (sshsNodeAttributeExists(sourceInfoNode, "dataSizeX", SSHS_INT)) {
-			packetSizeX = U32T(sshsNodeGetInt(sourceInfoNode, "dataSizeX"));
-			packetSizeY = U32T(sshsNodeGetInt(sourceInfoNode, "dataSizeY"));
+		else if (dvConfigNodeExistsAttribute(sourceInfoNode, "dataSizeX", DVCFG_TYPE_INT)) {
+			packetSizeX = U32T(dvConfigNodeGetInt(sourceInfoNode, "dataSizeX"));
+			packetSizeY = U32T(dvConfigNodeGetInt(sourceInfoNode, "dataSizeY"));
 		}
 
 		if (packetSizeX > sizeX) {
@@ -420,7 +427,7 @@ static void initRenderersHandlers(caerModuleData moduleData) {
 	state->renderer = &caerVisualizerRendererList[0];
 
 	// Search for renderer in list.
-	const std::string rendererChoice = sshsNodeGetStdString(moduleData->moduleNode, "renderer");
+	const std::string rendererChoice = state->visualizerConfigNode.get<dvCfgType::STRING>("renderer");
 
 	for (size_t i = 0; i < caerVisualizerRendererListLength; i++) {
 		if (rendererChoice == caerVisualizerRendererList[i].name) {
@@ -433,7 +440,7 @@ static void initRenderersHandlers(caerModuleData moduleData) {
 	state->eventHandler = &caerVisualizerEventHandlerList[0];
 
 	// Search for event handler in list.
-	const std::string eventHandlerChoice = sshsNodeGetStdString(moduleData->moduleNode, "eventHandler");
+	const std::string eventHandlerChoice = state->visualizerConfigNode.get<dvCfgType::STRING>("eventHandler");
 
 	for (size_t i = 0; i < caerVisualizerEventHandlerListLength; i++) {
 		if (eventHandlerChoice == caerVisualizerEventHandlerList[i].name) {
@@ -521,8 +528,8 @@ static void exitGraphics(caerModuleData moduleData) {
 }
 
 static void updateDisplaySize(caerVisualizerState state) {
-	state->showStatistics = sshsNodeGetBool(state->visualizerConfigNode, "showStatistics");
-	float zoomFactor      = sshsNodeGetFloat(state->visualizerConfigNode, "zoomFactor");
+	state->showStatistics = state->visualizerConfigNode.get<dvCfgType::BOOL>("showStatistics");
+	float zoomFactor      = state->visualizerConfigNode.get<dvCfgType::FLOAT>("zoomFactor");
 
 	sf::Vector2u newRenderWindowSize(state->renderSizeX, state->renderSizeY);
 
@@ -556,8 +563,8 @@ static void updateDisplaySize(caerVisualizerState state) {
 
 static void updateDisplayLocation(caerVisualizerState state) {
 	// Set current position to what is in configuration storage.
-	const sf::Vector2i newPos(sshsNodeGetInt(state->visualizerConfigNode, "windowPositionX"),
-		sshsNodeGetInt(state->visualizerConfigNode, "windowPositionY"));
+	const sf::Vector2i newPos(state->visualizerConfigNode.get<dvCfgType::INT>("windowPositionX"),
+		state->visualizerConfigNode.get<dvCfgType::INT>("windowPositionY"));
 
 	state->renderWindow->setPosition(newPos);
 }
@@ -566,8 +573,8 @@ static void saveDisplayLocation(caerVisualizerState state) {
 	const sf::Vector2i currPos = state->renderWindow->getPosition();
 
 	// Update current position in configuration storage.
-	sshsNodePutInt(state->visualizerConfigNode, "windowPositionX", currPos.x);
-	sshsNodePutInt(state->visualizerConfigNode, "windowPositionY", currPos.y);
+	state->visualizerConfigNode.put<dvCfgType::INT>("windowPositionX", currPos.x);
+	state->visualizerConfigNode.put<dvCfgType::INT>("windowPositionY", currPos.y);
 }
 
 static void handleEvents(caerModuleData moduleData) {
@@ -578,7 +585,7 @@ static void handleEvents(caerModuleData moduleData) {
 	while (state->renderWindow->pollEvent(event)) {
 		if (event.type == sf::Event::Closed) {
 			// Stop visualizer module on window close.
-			sshsNodePutBool(moduleData->moduleNode, "running", false);
+			dvConfigNodePutBool(moduleData->moduleNode, "running", false);
 		}
 		else if (event.type == sf::Event::Resized) {
 			// Handle resize events, the window is non-resizeable, so in theory all
@@ -594,7 +601,7 @@ static void handleEvents(caerModuleData moduleData) {
 				 || event.type == sf::Event::TextEntered) {
 			// React to key presses, but only if they came from the corresponding display.
 			if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::PageUp) {
-				float currentZoomFactor = sshsNodeGetFloat(moduleData->moduleNode, "zoomFactor");
+				float currentZoomFactor = dvConfigNodeGetFloat(moduleData->moduleNode, "zoomFactor");
 
 				currentZoomFactor += VISUALIZER_ZOOM_INC;
 
@@ -603,10 +610,10 @@ static void handleEvents(caerModuleData moduleData) {
 					currentZoomFactor = VISUALIZER_ZOOM_MAX;
 				}
 
-				sshsNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
+				dvConfigNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::PageDown) {
-				float currentZoomFactor = sshsNodeGetFloat(moduleData->moduleNode, "zoomFactor");
+				float currentZoomFactor = dvConfigNodeGetFloat(moduleData->moduleNode, "zoomFactor");
 
 				currentZoomFactor -= VISUALIZER_ZOOM_INC;
 
@@ -615,14 +622,14 @@ static void handleEvents(caerModuleData moduleData) {
 					currentZoomFactor = VISUALIZER_ZOOM_MIN;
 				}
 
-				sshsNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
+				dvConfigNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::Home) {
 				// Reset zoom factor to default value.
-				sshsNodePutFloat(moduleData->moduleNode, "zoomFactor", VISUALIZER_ZOOM_DEF);
+				dvConfigNodePutFloat(moduleData->moduleNode, "zoomFactor", VISUALIZER_ZOOM_DEF);
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::W) {
-				int32_t currentSubsampling = sshsNodeGetInt(moduleData->moduleNode, "subsampleRendering");
+				int32_t currentSubsampling = dvConfigNodeGetInt(moduleData->moduleNode, "subsampleRendering");
 
 				currentSubsampling--;
 
@@ -631,10 +638,10 @@ static void handleEvents(caerModuleData moduleData) {
 					currentSubsampling = 1;
 				}
 
-				sshsNodePutInt(moduleData->moduleNode, "subsampleRendering", currentSubsampling);
+				dvConfigNodePutInt(moduleData->moduleNode, "subsampleRendering", currentSubsampling);
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::E) {
-				int32_t currentSubsampling = sshsNodeGetInt(moduleData->moduleNode, "subsampleRendering");
+				int32_t currentSubsampling = dvConfigNodeGetInt(moduleData->moduleNode, "subsampleRendering");
 
 				currentSubsampling++;
 
@@ -643,12 +650,12 @@ static void handleEvents(caerModuleData moduleData) {
 					currentSubsampling = 100000;
 				}
 
-				sshsNodePutInt(moduleData->moduleNode, "subsampleRendering", currentSubsampling);
+				dvConfigNodePutInt(moduleData->moduleNode, "subsampleRendering", currentSubsampling);
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Key::Q) {
-				bool currentShowStatistics = sshsNodeGetBool(moduleData->moduleNode, "showStatistics");
+				bool currentShowStatistics = dvConfigNodeGetBool(moduleData->moduleNode, "showStatistics");
 
-				sshsNodePutBool(moduleData->moduleNode, "showStatistics", !currentShowStatistics);
+				dvConfigNodePutBool(moduleData->moduleNode, "showStatistics", !currentShowStatistics);
 			}
 			else {
 				// Forward event to user-defined event handler.
@@ -661,7 +668,7 @@ static void handleEvents(caerModuleData moduleData) {
 				 || event.type == sf::Event::MouseWheelScrolled || event.type == sf::Event::MouseEntered
 				 || event.type == sf::Event::MouseLeft || event.type == sf::Event::MouseMoved) {
 			if (event.type == sf::Event::MouseWheelScrolled && event.mouseWheelScroll.delta > 0) {
-				float currentZoomFactor = sshsNodeGetFloat(moduleData->moduleNode, "zoomFactor");
+				float currentZoomFactor = dvConfigNodeGetFloat(moduleData->moduleNode, "zoomFactor");
 
 				currentZoomFactor += (VISUALIZER_ZOOM_INC * (float) event.mouseWheelScroll.delta);
 
@@ -670,10 +677,10 @@ static void handleEvents(caerModuleData moduleData) {
 					currentZoomFactor = VISUALIZER_ZOOM_MAX;
 				}
 
-				sshsNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
+				dvConfigNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
 			}
 			else if (event.type == sf::Event::MouseWheelScrolled && event.mouseWheelScroll.delta < 0) {
-				float currentZoomFactor = sshsNodeGetFloat(moduleData->moduleNode, "zoomFactor");
+				float currentZoomFactor = dvConfigNodeGetFloat(moduleData->moduleNode, "zoomFactor");
 
 				// Add because delta is negative for scroll-down.
 				currentZoomFactor += (VISUALIZER_ZOOM_INC * (float) event.mouseWheelScroll.delta);
@@ -683,7 +690,7 @@ static void handleEvents(caerModuleData moduleData) {
 					currentZoomFactor = VISUALIZER_ZOOM_MIN;
 				}
 
-				sshsNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
+				dvConfigNodePutFloat(moduleData->moduleNode, "zoomFactor", currentZoomFactor);
 			}
 			else {
 				// Forward event to user-defined event handler.

@@ -3,9 +3,9 @@ SET(LIBCAERSDK_SRC_FILES
 	module_sdk.cpp
 	mainloop_sdk.cpp
 	portability_sdk.cpp
-	sshs/sshs.cpp
-	sshs/sshs_helper.cpp
-	sshs/sshs_node.cpp)
+	config_tree/tree.cpp
+	config_tree/helper.cpp
+	config_tree/node.cpp)
 
 # Set full RPATH
 SET(CMAKE_INSTALL_RPATH ${CAER_LOCAL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
@@ -31,10 +31,13 @@ ENDIF()
 SET(CAER_SRC_FILES
 	log.cpp
 	config.cpp
-	config_server.cpp
+	config_server/config_server_actions.cpp
+	config_server/config_server_connection.cpp
+	config_server/config_server.cpp
 	module.cpp
 	mainloop.cpp
-	main.cpp ../caer-sdk/log.hpp)
+	service.cpp
+	main.cpp)
 
 # Set full RPATH
 SET(CMAKE_INSTALL_RPATH ${CAER_LOCAL_PREFIX}/${CMAKE_INSTALL_BINDIR})

@@ -13,7 +13,7 @@ struct FrameEnhancer_state {
 
 typedef struct FrameEnhancer_state *FrameEnhancerState;
 
-static void caerFrameEnhancerConfigInit(sshsNode moduleNode);
+static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode);
 static bool caerFrameEnhancerInit(caerModuleData moduleData);
 static void caerFrameEnhancerRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 static void caerFrameEnhancerConfig(caerModuleData moduleData);
@@ -48,58 +48,60 @@ caerModuleInfo caerModuleGetInfo(void) {
 	return (&FrameEnhancerInfo);
 }
 
-static void caerFrameEnhancerConfigInit(sshsNode moduleNode) {
-	sshsNodeCreateBool(
-		moduleNode, "doDemosaic", false, SSHS_FLAGS_NORMAL, "Do demosaicing (color interpolation) on frame.");
-	sshsNodeCreateBool(moduleNode, "doContrast", false, SSHS_FLAGS_NORMAL, "Do contrast enhancement on frame.");
+static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode) {
+	dvConfigNodeCreateBool(
+		moduleNode, "doDemosaic", false, DVCFG_FLAGS_NORMAL, "Do demosaicing (color interpolation) on frame.");
+	dvConfigNodeCreateBool(moduleNode, "doContrast", false, DVCFG_FLAGS_NORMAL, "Do contrast enhancement on frame.");
 
 #if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
-	sshsNodeCreateString(moduleNode, "demosaicType", "opencv_edge_aware", 7, 17, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleNode, "demosaicType", "opencv_edge_aware", 7, 17, DVCFG_FLAGS_NORMAL,
 		"Demoisaicing (color interpolation) algorithm to apply.");
-	sshsNodeCreateAttributeListOptions(
+	dvConfigNodeAttributeModifierListOptions(
 		moduleNode, "demosaicType", "opencv_edge_aware,opencv_to_gray,opencv_standard,to_gray,standard", false);
 
-	sshsNodeCreateString(moduleNode, "contrastType", "opencv_normalization", 8, 29, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleNode, "contrastType", "opencv_normalization", 8, 29, DVCFG_FLAGS_NORMAL,
 		"Contrast enhancement algorithm to apply.");
-	sshsNodeCreateAttributeListOptions(
+	dvConfigNodeAttributeModifierListOptions(
 		moduleNode, "contrastType", "opencv_normalization,opencv_histogram_equalization,opencv_clahe,standard", false);
 #else
-	sshsNodeCreateString(moduleNode, "demosaicType", "standard", 7, 8, SSHS_FLAGS_NORMAL,
+    dvConfigNodeCreateString(moduleNode, "demosaicType", "standard", 7, 8, DVCFG_FLAGS_NORMAL,
 		"Demoisaicing (color interpolation) algorithm to apply.");
-	sshsNodeCreateAttributeListOptions(moduleNode, "demosaicType", "to_gray,standard", false);
+	dvConfigNodeAttributeModifierListOptions(
+		moduleNode, "demosaicType", "to_gray,standard", false);
 
-	sshsNodeCreateString(
-		moduleNode, "contrastType", "standard", 8, 8, SSHS_FLAGS_NORMAL, "Contrast enhancement algorithm to apply.");
-	sshsNodeCreateAttributeListOptions(moduleNode, "contrastType", "standard", false);
+	dvConfigNodeCreateString(moduleNode, "contrastType", "standard", 8, 8, DVCFG_FLAGS_NORMAL,
+		"Contrast enhancement algorithm to apply.");
+	dvConfigNodeAttributeModifierListOptions(
+		moduleNode, "contrastType", "standard", false);
 #endif
 }
 
 static bool caerFrameEnhancerInit(caerModuleData moduleData) {
 	// Wait for input to be ready. All inputs, once they are up and running, will
 	// have a valid sourceInfo node to query, especially if dealing with data.
-	sshsNode sourceInfoSource = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
+	dvConfigNode sourceInfoSource = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
 	if (sourceInfoSource == NULL) {
 		return (false);
 	}
 
-	int16_t sizeX = sshsNodeGetInt(sourceInfoSource, "dataSizeX");
-	int16_t sizeY = sshsNodeGetInt(sourceInfoSource, "dataSizeY");
+	int16_t sizeX = dvConfigNodeGetInt(sourceInfoSource, "dataSizeX");
+	int16_t sizeY = dvConfigNodeGetInt(sourceInfoSource, "dataSizeY");
 
-	sshsNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
-	sshsNodeCreateInt(sourceInfoNode, "frameSizeX", sizeX, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNodeCreateInt(sourceInfoNode, "frameSizeX", sizeX, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Output frame width.");
-	sshsNodeCreateInt(sourceInfoNode, "frameSizeY", sizeY, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+	dvConfigNodeCreateInt(sourceInfoNode, "frameSizeY", sizeY, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Output frame height.");
-	sshsNodeCreateInt(
-		sourceInfoNode, "dataSizeX", sizeX, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Output data width.");
-	sshsNodeCreateInt(sourceInfoNode, "dataSizeY", sizeY, 1, 1024, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
+	dvConfigNodeCreateInt(
+		sourceInfoNode, "dataSizeX", sizeX, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Output data width.");
+	dvConfigNodeCreateInt(sourceInfoNode, "dataSizeY", sizeY, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Output data height.");
 
 	// Initialize configuration.
 	caerFrameEnhancerConfig(moduleData);
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 
 	// Nothing that can fail here.
 	return (true);
@@ -183,11 +185,11 @@ static void caerFrameEnhancerRun(
 static void caerFrameEnhancerConfig(caerModuleData moduleData) {
 	FrameEnhancerState state = moduleData->moduleState;
 
-	state->doDemosaic = sshsNodeGetBool(moduleData->moduleNode, "doDemosaic");
+	state->doDemosaic = dvConfigNodeGetBool(moduleData->moduleNode, "doDemosaic");
 
-	state->doContrast = sshsNodeGetBool(moduleData->moduleNode, "doContrast");
+	state->doContrast = dvConfigNodeGetBool(moduleData->moduleNode, "doContrast");
 
-	char *demosaicType = sshsNodeGetString(moduleData->moduleNode, "demosaicType");
+	char *demosaicType = dvConfigNodeGetString(moduleData->moduleNode, "demosaicType");
 
 #if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
 	if (caerStrEquals(demosaicType, "opencv_edge_aware")) {
@@ -211,7 +213,7 @@ static void caerFrameEnhancerConfig(caerModuleData moduleData) {
 
 	free(demosaicType);
 
-	char *contrastType = sshsNodeGetString(moduleData->moduleNode, "contrastType");
+	char *contrastType = dvConfigNodeGetString(moduleData->moduleNode, "contrastType");
 
 #if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
 	if (caerStrEquals(contrastType, "opencv_normalization")) {
@@ -235,8 +237,8 @@ static void caerFrameEnhancerConfig(caerModuleData moduleData) {
 
 static void caerFrameEnhancerExit(caerModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 
-	sshsNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
-	sshsNodeClearSubTree(sourceInfoNode, true);
+	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNodeClearSubTree(sourceInfoNode, true);
 }

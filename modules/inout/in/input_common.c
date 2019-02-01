@@ -54,13 +54,13 @@ static bool handleTSReset(inputCommonState state);
 static void getPacketInfo(caerEventPacketHeader packet, packetData packetInfoData);
 static int inputAssemblerThread(void *stateArg);
 
-static void caerInputCommonConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+static void caerInputCommonConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 static int packetsFirstTypeThenSizeCmp(const void *a, const void *b);
 
 static bool newInputBuffer(inputCommonState state) {
 	// First check if the size really changed.
-	size_t newBufferSize = (size_t) sshsNodeGetInt(state->parentModule->moduleNode, "bufferSize");
+	size_t newBufferSize = (size_t) dvConfigNodeGetInt(state->parentModule->moduleNode, "bufferSize");
 
 	if (state->dataBuffer != NULL && state->dataBuffer->bufferSize == newBufferSize) {
 		// Yeah, we're already where we want to be!
@@ -135,22 +135,22 @@ static bool parseNetworkHeader(inputCommonState state) {
 	// TODO: Network: get sourceInfo node info via config-server side-channel.
 	state->header.sourceID = networkHeader.sourceID;
 
-	sshsNodeCreateInt(state->sourceInfoNode, "polaritySizeX", 240, 1, INT16_MAX,
-		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Polarity events width.");
-	sshsNodeCreateInt(state->sourceInfoNode, "polaritySizeY", 180, 1, INT16_MAX,
-		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Polarity events height.");
-	sshsNodeCreateInt(state->sourceInfoNode, "frameSizeX", 240, 1, INT16_MAX,
-		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Frame events width.");
-	sshsNodeCreateInt(state->sourceInfoNode, "frameSizeY", 180, 1, INT16_MAX,
-		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Frame events height.");
-	sshsNodeCreateInt(state->sourceInfoNode, "dataSizeX", 240, 1, INT16_MAX,
-		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Data width.");
-	sshsNodeCreateInt(state->sourceInfoNode, "dataSizeY", 180, 1, INT16_MAX,
-		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Data height.");
-	sshsNodeCreateInt(state->sourceInfoNode, "visualizerSizeX", 240, 1, INT16_MAX,
-		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Visualization width.");
-	sshsNodeCreateInt(state->sourceInfoNode, "visualizerSizeY", 180, 1, INT16_MAX,
-		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Visualization height.");
+	dvConfigNodeCreateInt(state->sourceInfoNode, "polaritySizeX", 240, 1, INT16_MAX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Polarity events width.");
+	dvConfigNodeCreateInt(state->sourceInfoNode, "polaritySizeY", 180, 1, INT16_MAX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Polarity events height.");
+	dvConfigNodeCreateInt(state->sourceInfoNode, "frameSizeX", 240, 1, INT16_MAX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Frame events width.");
+	dvConfigNodeCreateInt(state->sourceInfoNode, "frameSizeY", 180, 1, INT16_MAX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Frame events height.");
+	dvConfigNodeCreateInt(state->sourceInfoNode, "dataSizeX", 240, 1, INT16_MAX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Data width.");
+	dvConfigNodeCreateInt(state->sourceInfoNode, "dataSizeY", 180, 1, INT16_MAX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Data height.");
+	dvConfigNodeCreateInt(state->sourceInfoNode, "visualizerSizeX", 240, 1, INT16_MAX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Visualization width.");
+	dvConfigNodeCreateInt(state->sourceInfoNode, "visualizerSizeY", 180, 1, INT16_MAX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Visualization height.");
 
 	// TODO: Network: add sourceString.
 
@@ -278,17 +278,17 @@ static void parseSourceString(char *sourceString, inputCommonState state) {
 
 	// Put size information inside sourceInfo node.
 	if (dvsSizeX != 0 && dvsSizeY != 0) {
-		sshsNodeCreateInt(state->sourceInfoNode, "polaritySizeX", dvsSizeX, 1, INT16_MAX,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Polarity events width.");
-		sshsNodeCreateInt(state->sourceInfoNode, "polaritySizeY", dvsSizeY, 1, INT16_MAX,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Polarity events height.");
+		dvConfigNodeCreateInt(state->sourceInfoNode, "polaritySizeX", dvsSizeX, 1, INT16_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Polarity events width.");
+		dvConfigNodeCreateInt(state->sourceInfoNode, "polaritySizeY", dvsSizeY, 1, INT16_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Polarity events height.");
 	}
 
 	if (apsSizeX != 0 && apsSizeY != 0) {
-		sshsNodeCreateInt(state->sourceInfoNode, "frameSizeX", apsSizeX, 1, INT16_MAX,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Frame events width.");
-		sshsNodeCreateInt(state->sourceInfoNode, "frameSizeY", apsSizeY, 1, INT16_MAX,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Frame events height.");
+		dvConfigNodeCreateInt(state->sourceInfoNode, "frameSizeX", apsSizeX, 1, INT16_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Frame events width.");
+		dvConfigNodeCreateInt(state->sourceInfoNode, "frameSizeY", apsSizeY, 1, INT16_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Frame events height.");
 	}
 
 	if (dataSizeX == 0 && dataSizeY == 0) {
@@ -299,17 +299,17 @@ static void parseSourceString(char *sourceString, inputCommonState state) {
 	}
 
 	if (dataSizeX != 0 && dataSizeY != 0) {
-		sshsNodeCreateInt(state->sourceInfoNode, "dataSizeX", dataSizeX, 1, INT16_MAX,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Data width.");
-		sshsNodeCreateInt(state->sourceInfoNode, "dataSizeY", dataSizeY, 1, INT16_MAX,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Data height.");
+		dvConfigNodeCreateInt(state->sourceInfoNode, "dataSizeX", dataSizeX, 1, INT16_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Data width.");
+		dvConfigNodeCreateInt(state->sourceInfoNode, "dataSizeY", dataSizeY, 1, INT16_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Data height.");
 	}
 
 	if (visualizerSizeX != 0 && visualizerSizeY != 0) {
-		sshsNodeCreateInt(state->sourceInfoNode, "visualizerSizeX", visualizerSizeX, 1, INT16_MAX,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Visualization width.");
-		sshsNodeCreateInt(state->sourceInfoNode, "visualizerSizeY", visualizerSizeY, 1, INT16_MAX,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Visualization height.");
+		dvConfigNodeCreateInt(state->sourceInfoNode, "visualizerSizeX", visualizerSizeX, 1, INT16_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Visualization width.");
+		dvConfigNodeCreateInt(state->sourceInfoNode, "visualizerSizeY", visualizerSizeY, 1, INT16_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Visualization height.");
 	}
 
 	// Generate source string for output modules.
@@ -331,8 +331,8 @@ static void parseSourceString(char *sourceString, inputCommonState state) {
 		visualizerSizeY, state->header.sourceID, sourceString);
 	sourceStringFile[sourceStringFileLength] = '\0';
 
-	sshsNodeCreateString(state->sourceInfoNode, "sourceString", sourceStringFile, 1, 2048,
-		SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Device source information.");
+	dvConfigNodeCreateString(state->sourceInfoNode, "sourceString", sourceStringFile, 1, 2048,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device source information.");
 }
 
 static bool parseFileHeader(inputCommonState state) {
@@ -501,7 +501,7 @@ static bool parseFileHeader(inputCommonState state) {
 				else if (caerStrEqualsUpTo(headerLine, "#-Source ", 9)) {
 					// Detect negative source strings (#-Source) and add them to sourceInfo.
 					// Previous sources are simply appended to the sourceString string in order.
-					char *currSourceString        = sshsNodeGetString(state->sourceInfoNode, "sourceString");
+					char *currSourceString        = dvConfigNodeGetString(state->sourceInfoNode, "sourceString");
 					size_t currSourceStringLength = strlen(currSourceString);
 
 					size_t addSourceStringLength = strlen(headerLine);
@@ -517,8 +517,8 @@ static bool parseFileHeader(inputCommonState state) {
 						memcpy(newSourceString + currSourceStringLength, headerLine, addSourceStringLength);
 						newSourceString[currSourceStringLength + addSourceStringLength] = '\0';
 
-						sshsNodeUpdateReadOnlyAttribute(state->sourceInfoNode, "sourceString", SSHS_STRING,
-							(union sshs_node_attr_value){.string = newSourceString});
+						dvConfigNodeUpdateReadOnlyAttribute(state->sourceInfoNode, "sourceString", DVCFG_TYPE_STRING,
+							(union dvConfigAttributeValue){.string = newSourceString});
 
 						free(newSourceString);
 					}
@@ -854,7 +854,7 @@ static int aedat3GetPacket(inputCommonState state, bool isAEDAT30) {
 static void aedat30ChangeOrigin(inputCommonState state, caerEventPacketHeader packet) {
 	if (caerEventPacketHeaderGetEventType(packet) == POLARITY_EVENT) {
 		// We need to know the DVS resolution to invert the polarity Y address.
-		int16_t dvsSizeY = I16T(sshsNodeGetInt(state->sourceInfoNode, "dvsSizeY") - 1);
+		int16_t dvsSizeY = I16T(dvConfigNodeGetInt(state->sourceInfoNode, "dvsSizeY") - 1);
 
 		CAER_POLARITY_ITERATOR_ALL_START((caerPolarityEventPacket) packet)
 		uint16_t newYAddress = U16T(dvsSizeY - caerPolarityEventGetY(caerPolarityIteratorElement));
@@ -1857,7 +1857,7 @@ static int inputAssemblerThread(void *stateArg) {
 		}
 
 		// Ensure parent also shuts down, for example on read failures or EOF.
-		sshsNodePutBool(state->parentModule->moduleNode, "running", false);
+		dvConfigNodePutBool(state->parentModule->moduleNode, "running", false);
 	}
 
 	return (thrd_success);
@@ -1869,7 +1869,7 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 	inputCommonState state = moduleData->moduleState;
 
 	state->parentModule   = moduleData;
-	state->sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	state->sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 
 	// Check for invalid file descriptors.
 	if (readFd < -1) {
@@ -1884,36 +1884,36 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 	state->isNetworkMessageBased = isNetworkMessageBased;
 
 	// Add auto-restart setting.
-	sshsNodeCreateBool(
-		moduleData->moduleNode, "autoRestart", true, SSHS_FLAGS_NORMAL, "Automatically restart module after shutdown.");
+	dvConfigNodeCreateBool(
+		moduleData->moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL, "Automatically restart module after shutdown.");
 
 	// Handle configuration.
-	sshsNodeCreateBool(moduleData->moduleNode, "validOnly", false, SSHS_FLAGS_NORMAL, "Only read valid events.");
-	sshsNodeCreateBool(moduleData->moduleNode, "keepPackets", false, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateBool(moduleData->moduleNode, "validOnly", false, DVCFG_FLAGS_NORMAL, "Only read valid events.");
+	dvConfigNodeCreateBool(moduleData->moduleNode, "keepPackets", false, DVCFG_FLAGS_NORMAL,
 		"Ensure all packets are kept (stall input if transfer-buffer full).");
-	sshsNodeCreateBool(moduleData->moduleNode, "pause", false, SSHS_FLAGS_NORMAL, "Pause the event stream.");
-	sshsNodeCreateInt(moduleData->moduleNode, "bufferSize", 65536, 512, 512 * 1024, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateBool(moduleData->moduleNode, "pause", false, DVCFG_FLAGS_NORMAL, "Pause the event stream.");
+	dvConfigNodeCreateInt(moduleData->moduleNode, "bufferSize", 65536, 512, 512 * 1024, DVCFG_FLAGS_NORMAL,
 		"Size of read data buffer in bytes.");
-	sshsNodeCreateInt(moduleData->moduleNode, "ringBufferSize", 128, 8, 1024, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleData->moduleNode, "ringBufferSize", 128, 8, 1024, DVCFG_FLAGS_NORMAL,
 		"Size of EventPacketContainer and EventPacket queues, used for transfers between input threads and mainloop.");
 
-	sshsNodeCreateInt(moduleData->moduleNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024, DVCFG_FLAGS_NORMAL,
 		"Maximum packet size in events, when any packet reaches this size, the EventPacketContainer is sent for "
 		"processing.");
-	sshsNodeCreateInt(moduleData->moduleNode, "PacketContainerInterval", 10000, 1, 120 * 1000 * 1000, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerInterval", 10000, 1, 120 * 1000 * 1000, DVCFG_FLAGS_NORMAL,
 		"Time interval in µs, each sent EventPacketContainer will span this interval.");
-	sshsNodeCreateInt(moduleData->moduleNode, "PacketContainerDelay", 10000, 1, 120 * 1000 * 1000, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerDelay", 10000, 1, 120 * 1000 * 1000, DVCFG_FLAGS_NORMAL,
 		"Time delay in µs between consecutive EventPacketContainers sent for processing.");
 
-	atomic_store(&state->validOnly, sshsNodeGetBool(moduleData->moduleNode, "validOnly"));
-	atomic_store(&state->keepPackets, sshsNodeGetBool(moduleData->moduleNode, "keepPackets"));
-	atomic_store(&state->pause, sshsNodeGetBool(moduleData->moduleNode, "pause"));
-	int ringSize = sshsNodeGetInt(moduleData->moduleNode, "ringBufferSize");
+	atomic_store(&state->validOnly, dvConfigNodeGetBool(moduleData->moduleNode, "validOnly"));
+	atomic_store(&state->keepPackets, dvConfigNodeGetBool(moduleData->moduleNode, "keepPackets"));
+	atomic_store(&state->pause, dvConfigNodeGetBool(moduleData->moduleNode, "pause"));
+	int ringSize = dvConfigNodeGetInt(moduleData->moduleNode, "ringBufferSize");
 
 	atomic_store(
-		&state->packetContainer.sizeSlice, sshsNodeGetInt(moduleData->moduleNode, "PacketContainerMaxPacketSize"));
-	atomic_store(&state->packetContainer.timeSlice, sshsNodeGetInt(moduleData->moduleNode, "PacketContainerInterval"));
-	atomic_store(&state->packetContainer.timeDelay, sshsNodeGetInt(moduleData->moduleNode, "PacketContainerDelay"));
+		&state->packetContainer.sizeSlice, dvConfigNodeGetInt(moduleData->moduleNode, "PacketContainerMaxPacketSize"));
+	atomic_store(&state->packetContainer.timeSlice, dvConfigNodeGetInt(moduleData->moduleNode, "PacketContainerInterval"));
+	atomic_store(&state->packetContainer.timeDelay, dvConfigNodeGetInt(moduleData->moduleNode, "PacketContainerDelay"));
 
 	// Initialize transfer ring-buffers. ringBufferSize only changes here at init time!
 	state->transferRingPackets = caerRingBufferInit((size_t) ringSize);
@@ -2004,14 +2004,14 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 	}
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerInputCommonConfigListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerInputCommonConfigListener);
 
 	return (true);
 }
 
 void caerInputCommonExit(caerModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerInputCommonConfigListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerInputCommonConfigListener);
 
 	inputCommonState state = moduleData->moduleState;
 
@@ -2085,12 +2085,12 @@ void caerInputCommonExit(caerModuleData moduleData) {
 	free(state->packets.currPacket);
 
 	// Clear sourceInfo node.
-	sshsNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
-	sshsNodeRemoveAllAttributes(sourceInfoNode);
+	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNodeRemoveAllAttributes(sourceInfoNode);
 
-	if (sshsNodeGetBool(moduleData->moduleNode, "autoRestart")) {
+	if (dvConfigNodeGetBool(moduleData->moduleNode, "autoRestart")) {
 		// Prime input module again so that it will try to restart automatically.
-		sshsNodePutBool(moduleData->moduleNode, "running", true);
+		dvConfigNodePutBool(moduleData->moduleNode, "running", true);
 	}
 }
 
@@ -2117,37 +2117,37 @@ void caerInputCommonRun(caerModuleData moduleData, caerEventPacketContainer in, 
 	}
 }
 
-static void caerInputCommonConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerInputCommonConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
 	caerModuleData moduleData = userData;
 	inputCommonState state    = moduleData->moduleState;
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED) {
-		if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "validOnly")) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
+		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "validOnly")) {
 			// Set valid only flag to given value.
 			atomic_store(&state->validOnly, changeValue.boolean);
 		}
-		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "keepPackets")) {
+		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "keepPackets")) {
 			// Set keep packets flag to given value.
 			atomic_store(&state->keepPackets, changeValue.boolean);
 		}
-		else if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "pause")) {
+		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "pause")) {
 			// Set pause flag to given value.
 			atomic_store(&state->pause, changeValue.boolean);
 		}
-		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "bufferSize")) {
+		else if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "bufferSize")) {
 			// Set buffer update flag.
 			atomic_store(&state->bufferUpdate, true);
 		}
-		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "PacketContainerMaxPacketSize")) {
+		else if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "PacketContainerMaxPacketSize")) {
 			atomic_store(&state->packetContainer.sizeSlice, changeValue.iint);
 		}
-		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "PacketContainerInterval")) {
+		else if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "PacketContainerInterval")) {
 			atomic_store(&state->packetContainer.timeSlice, changeValue.iint);
 		}
-		else if (changeType == SSHS_INT && caerStrEquals(changeKey, "PacketContainerDelay")) {
+		else if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "PacketContainerDelay")) {
 			atomic_store(&state->packetContainer.timeDelay, changeValue.iint);
 		}
 	}

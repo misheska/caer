@@ -1,111 +1,147 @@
+#include "caer-sdk/cross/portable_io.h"
 #include "caer-sdk/utils.h"
 
-#include "src/config_server.h"
+#include "../../src/config_server/dv_config_action_data.h"
 #include "utils/ext/linenoise-ng/linenoise.h"
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
+#include <boost/tokenizer.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
 
-namespace asio   = boost::asio;
-namespace asioIP = boost::asio::ip;
-using asioTCP    = boost::asio::ip::tcp;
-namespace po     = boost::program_options;
-
-#if defined(OS_UNIX) && OS_UNIX == 1
-#	include <pwd.h>
-#	include <sys/types.h>
-#endif
+namespace asio    = boost::asio;
+namespace asioSSL = boost::asio::ssl;
+namespace asioIP  = boost::asio::ip;
+using asioTCP     = boost::asio::ip::tcp;
+namespace po      = boost::program_options;
 
 #define CAERCTL_HISTORY_FILE_NAME ".caer-ctl.history"
-
-static inline boost::filesystem::path getHomeDirectory() {
-	// First query main environment variables: HOME on Unix, USERPROFILE on Windows.
-	const char *homeDir = getenv("HOME");
-
-	if (homeDir || (homeDir = getenv("USERPROFILE"))) {
-		return (boost::filesystem::path(std::string(homeDir)));
-	}
-
-// Unix: try to get it from the user data storage.
-#if defined(OS_UNIX) && OS_UNIX == 1
-	struct passwd userPasswd;
-	struct passwd *userPasswdPtr;
-	char userPasswdBuf[2048];
-
-	if (getpwuid_r(getuid(), &userPasswd, userPasswdBuf, sizeof(userPasswdBuf), &userPasswdPtr) == 0) {
-		return (boost::filesystem::path(std::string(userPasswd.pw_dir)));
-	}
-#endif
-
-#if defined(OS_WINDOWS) && OS_WINDOWS == 1
-	// Windows: try to get HOMEDRIVE and HOMEPATH from environment and concatenate them.
-	const char *homeDrive = getenv("HOMEDRIVE");
-	const char *homePath  = getenv("HOMEPATH");
-
-	if (homeDrive && homePath) {
-		std::string winHome(homeDrive);
-		winHome += homePath;
-		return (boost::filesystem::path(winHome));
-	}
-#endif
-
-	// No clue about home directory.
-	throw boost::filesystem::filesystem_error("Unable to get home directory.",
-		boost::system::errc::make_error_code(boost::system::errc::no_such_file_or_directory));
-}
+#define CAERCTL_CLIENT_BUFFER_MAX_SIZE 8192
 
 static void handleInputLine(const char *buf, size_t bufLength);
 static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoComplete);
 
-static void actionCompletion(const char *buf, size_t bufLength, linenoiseCompletions *autoComplete,
-	const char *partialActionString, size_t partialActionStringLength);
-static void nodeCompletion(const char *buf, size_t bufLength, linenoiseCompletions *autoComplete, uint8_t actionCode,
-	const char *partialNodeString, size_t partialNodeStringLength);
-static void keyCompletion(const char *buf, size_t bufLength, linenoiseCompletions *autoComplete, uint8_t actionCode,
-	const char *nodeString, size_t nodeStringLength, const char *partialKeyString, size_t partialKeyStringLength);
-static void typeCompletion(const char *buf, size_t bufLength, linenoiseCompletions *autoComplete, uint8_t actionCode,
-	const char *nodeString, size_t nodeStringLength, const char *keyString, size_t keyStringLength,
-	const char *partialTypeString, size_t partialTypeStringLength);
-static void valueCompletion(const char *buf, size_t bufLength, linenoiseCompletions *autoComplete, uint8_t actionCode,
-	const char *nodeString, size_t nodeStringLength, const char *keyString, size_t keyStringLength,
-	const char *typeString, size_t typeStringLength, const char *partialValueString, size_t partialValueStringLength);
-static void addCompletionSuffix(linenoiseCompletions *lc, const char *buf, size_t completionPoint, const char *suffix,
-	bool endSpace, bool endSlash);
+static void actionCompletion(
+	const std::string &buf, linenoiseCompletions *autoComplete, const std::string &partialActionString);
+static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
+	const std::string &partialNodeString);
+static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
+	const std::string &nodeString, const std::string &partialKeyString);
+static void typeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
+	const std::string &nodeString, const std::string &keyString, const std::string &partialTypeString);
+static void valueCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
+	const std::string &nodeString, const std::string &keyString, const std::string &typeString,
+	const std::string &partialValueString);
+static void addCompletionSuffix(linenoiseCompletions *autocomplete, const char *buf, size_t completionPoint,
+	const char *suffix, bool endSpace, bool endSlash);
 
 static const struct {
-	const char *name;
-	size_t nameLen;
-	uint8_t code;
+	const std::string name;
+	const dv::ConfigAction code;
 } actions[] = {
-	{"node_exists", 11, CAER_CONFIG_NODE_EXISTS},
-	{"attr_exists", 11, CAER_CONFIG_ATTR_EXISTS},
-	{"get", 3, CAER_CONFIG_GET},
-	{"put", 3, CAER_CONFIG_PUT},
-	{"help", 4, CAER_CONFIG_GET_DESCRIPTION},
-	{"add_module", 10, CAER_CONFIG_ADD_MODULE},
-	{"remove_module", 13, CAER_CONFIG_REMOVE_MODULE},
+	{"node_exists", dv::ConfigAction::NODE_EXISTS},
+	{"attr_exists", dv::ConfigAction::ATTR_EXISTS},
+	{"get", dv::ConfigAction::GET},
+	{"put", dv::ConfigAction::PUT},
+	{"help", dv::ConfigAction::GET_DESCRIPTION},
+	{"add_module", dv::ConfigAction::ADD_MODULE},
+	{"remove_module", dv::ConfigAction::REMOVE_MODULE},
+	{"get_client_id", dv::ConfigAction::GET_CLIENT_ID},
+	{"dump_tree", dv::ConfigAction::DUMP_TREE},
 };
-static const size_t actionsLength = sizeof(actions) / sizeof(actions[0]);
+
+static flatbuffers::FlatBufferBuilder dataBufferSend{CAERCTL_CLIENT_BUFFER_MAX_SIZE};
+static uint8_t dataBufferReceive[CAERCTL_CLIENT_BUFFER_MAX_SIZE];
 
 static asio::io_service ioService;
-static asioTCP::socket netSocket(ioService);
+static asioSSL::context sslContext{asioSSL::context::tlsv12_client};
+static asioSSL::stream<asioTCP::socket> sslSocket{ioService, sslContext};
+static bool sslConnection{false};
 
-[[noreturn]] static inline void printHelpAndExit(po::options_description &desc) {
+[[noreturn]] static inline void printHelpAndExit(const po::options_description &desc) {
 	std::cout << std::endl << desc << std::endl;
 	exit(EXIT_FAILURE);
+}
+
+static inline void asioSocketWrite(const asio::const_buffer &buf) {
+	const asio::const_buffers_1 buf2(buf);
+
+	if (sslConnection) {
+		asio::write(sslSocket, buf2);
+	}
+	else {
+		asio::write(sslSocket.next_layer(), buf2);
+	}
+}
+
+static inline void asioSocketRead(const asio::mutable_buffer &buf) {
+	const asio::mutable_buffers_1 buf2(buf);
+
+	if (sslConnection) {
+		asio::read(sslSocket, buf2);
+	}
+	else {
+		asio::read(sslSocket.next_layer(), buf2);
+	}
+}
+
+static inline void sendMessage(std::unique_ptr<dv::ConfigActionDataBuilder> msg) {
+	// Finish off message.
+	auto msgRoot = msg->Finish();
+
+	// Write root node and message size.
+	dv::FinishSizePrefixedConfigActionDataBuffer(dataBufferSend, msgRoot);
+
+	// Send data out over the network.
+	asioSocketWrite(asio::buffer(dataBufferSend.GetBufferPointer(), dataBufferSend.GetSize()));
+
+	// Clear flatbuffer for next usage.
+	dataBufferSend.Clear();
+}
+
+static inline const dv::ConfigActionData *receiveMessage() {
+	flatbuffers::uoffset_t incomingMessageSize;
+
+	// Get message size.
+	asioSocketRead(asio::buffer(&incomingMessageSize, sizeof(incomingMessageSize)));
+
+	// Check for wrong (excessive) message length.
+	if (incomingMessageSize > CAERCTL_CLIENT_BUFFER_MAX_SIZE) {
+		throw std::runtime_error("Message length error (%d bytes).");
+	}
+
+	// Get actual data.
+	asioSocketRead(asio::buffer(dataBufferReceive, incomingMessageSize));
+
+	// Now we have the flatbuffer message and can verify it.
+	flatbuffers::Verifier verifyMessage(dataBufferReceive, incomingMessageSize);
+
+	if (!dv::VerifyConfigActionDataBuffer(verifyMessage)) {
+		// Failed verification.
+		throw std::runtime_error("Message verification error.");
+	}
+
+	auto message = dv::GetConfigActionData(dataBufferReceive);
+
+	return (message);
 }
 
 int main(int argc, char *argv[]) {
 	// Allowed command-line options for caer-ctl.
 	po::options_description cliDescription("Command-line options");
 	cliDescription.add_options()("help,h", "print help text")("ipaddress,i", po::value<std::string>(),
-		"IP-address or hostname to connect to")("port,p", po::value<std::string>(), "port to connect to")("script,s",
+		"IP-address or hostname to connect to")("port,p", po::value<std::string>(), "port to connect to")("ssl",
+		po::value<std::string>()->implicit_value(""),
+		"enable SSL for connection (no argument uses default CA for verification, or pass a path to a specific CA file "
+		"in the PEM format)")(
+		"sslcert", po::value<std::string>(), "SSL certificate file for client authentication (PEM format)")(
+		"sslkey", po::value<std::string>(), "SSL key file for client authentication (PEM format)")("script,s",
 		po::value<std::vector<std::string>>()->multitoken(),
 		"script mode, sends the given command directly to the server as if typed in and exits.\n"
 		"Format: <action> <node> [<attribute> <type> [<value>]]\nExample: set /caer/logger/ logLevel byte 7");
@@ -133,6 +169,66 @@ int main(int argc, char *argv[]) {
 	std::string portNumber("4040");
 	if (cliVarMap.count("port")) {
 		portNumber = cliVarMap["port"].as<std::string>();
+	}
+
+	if (cliVarMap.count("ssl")) {
+		sslConnection = true;
+
+		// Client-side SSL authentication support.
+		if (cliVarMap.count("sslcert")) {
+			std::string sslCertFile = cliVarMap["sslcert"].as<std::string>();
+
+			try {
+				sslContext.use_certificate_chain_file(sslCertFile);
+			}
+			catch (const boost::system::system_error &ex) {
+				boost::format exMsg
+					= boost::format("Failed to load SSL client certificate file '%s', error message is:\n\t%s.")
+					  % sslCertFile % ex.what();
+				std::cerr << exMsg.str() << std::endl;
+				return (EXIT_FAILURE);
+			}
+		}
+
+		if (cliVarMap.count("sslkey")) {
+			std::string sslKeyFile = cliVarMap["sslkey"].as<std::string>();
+
+			try {
+				sslContext.use_private_key_file(sslKeyFile, boost::asio::ssl::context::pem);
+			}
+			catch (const boost::system::system_error &ex) {
+				boost::format exMsg = boost::format("Failed to load SSL client key file '%s', error message is:\n\t%s.")
+									  % sslKeyFile % ex.what();
+				std::cerr << exMsg.str() << std::endl;
+				return (EXIT_FAILURE);
+			}
+		}
+
+		sslContext.set_options(
+			boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use);
+
+		std::string sslVerifyFile = cliVarMap["ssl"].as<std::string>();
+
+		if (sslVerifyFile.empty()) {
+			sslContext.set_default_verify_paths();
+		}
+		else {
+			try {
+				sslContext.load_verify_file(sslVerifyFile);
+			}
+			catch (const boost::system::system_error &ex) {
+				boost::format exMsg
+					= boost::format("Failed to load SSL CA verification file '%s', error message is:\n\t%s.")
+					  % sslVerifyFile % ex.what();
+				std::cerr << exMsg.str() << std::endl;
+				return (EXIT_FAILURE);
+			}
+		}
+
+		sslContext.set_verify_mode(asioSSL::context::verify_peer);
+
+		// Rebuild SSL socket, so it picks up changes to SSL context above.
+		new (&sslSocket) asioSSL::stream<asioTCP::socket>(ioService, sslContext);
 	}
 
 	bool scriptMode = false;
@@ -163,7 +259,9 @@ int main(int argc, char *argv[]) {
 	boost::filesystem::path commandHistoryFilePath;
 
 	try {
-		commandHistoryFilePath = getHomeDirectory();
+		char *userHome         = portable_get_user_home_directory();
+		commandHistoryFilePath = userHome;
+		free(userHome);
 	}
 	catch (const boost::filesystem::filesystem_error &) {
 		std::cerr << "Failed to get home directory for history file, using current working directory." << std::endl;
@@ -175,13 +273,25 @@ int main(int argc, char *argv[]) {
 	// Connect to the remote cAER config server.
 	try {
 		asioTCP::resolver resolver(ioService);
-		asio::connect(netSocket, resolver.resolve({ipAddress, portNumber}));
+		asio::connect(sslSocket.next_layer(), resolver.resolve({ipAddress, portNumber}));
 	}
 	catch (const boost::system::system_error &ex) {
 		boost::format exMsg = boost::format("Failed to connect to %s:%s, error message is:\n\t%s.") % ipAddress
 							  % portNumber % ex.what();
 		std::cerr << exMsg.str() << std::endl;
 		return (EXIT_FAILURE);
+	}
+
+	// SSL connection support.
+	if (sslConnection) {
+		try {
+			sslSocket.handshake(asioSSL::stream_base::client);
+		}
+		catch (const boost::system::system_error &ex) {
+			boost::format exMsg = boost::format("Failed SSL handshake, error message is:\n\t%s.") % ex.what();
+			std::cerr << exMsg.str() << std::endl;
+			return (EXIT_FAILURE);
+		}
 	}
 
 	// Load command history file.
@@ -245,23 +355,20 @@ int main(int argc, char *argv[]) {
 	// Save command history file.
 	linenoiseHistorySave(commandHistoryFilePath.string().c_str());
 
+	// Close SSL connection properly.
+	if (sslConnection) {
+		boost::system::error_code error;
+		sslSocket.shutdown(error);
+
+		// EOF is expected for good SSL shutdown. See:
+		// https://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
+		if (error != asio::error::eof) {
+			boost::format errMsg = boost::format("Failed SSL shutdown, error message is:\n\t%s.") % error.message();
+			std::cerr << errMsg.str() << std::endl;
+		}
+	}
+
 	return (EXIT_SUCCESS);
-}
-
-static inline void setExtraLen(uint8_t *buf, uint16_t extraLen) {
-	*((uint16_t *) (buf + 2)) = htole16(extraLen);
-}
-
-static inline void setNodeLen(uint8_t *buf, uint16_t nodeLen) {
-	*((uint16_t *) (buf + 4)) = htole16(nodeLen);
-}
-
-static inline void setKeyLen(uint8_t *buf, uint16_t keyLen) {
-	*((uint16_t *) (buf + 6)) = htole16(keyLen);
-}
-
-static inline void setValueLen(uint8_t *buf, uint16_t valueLen) {
-	*((uint16_t *) (buf + 8)) = htole16(valueLen);
 }
 
 #define MAX_CMD_PARTS 5
@@ -304,27 +411,33 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	}
 
 	// Let's get the action code first thing.
-	uint8_t actionCode = UINT8_MAX;
+	dv::ConfigAction action = dv::ConfigAction::ERROR;
 
-	for (size_t i = 0; i < actionsLength; i++) {
-		if (strcmp(commandParts[CMD_PART_ACTION], actions[i].name) == 0) {
-			actionCode = actions[i].code;
+	for (const auto &act : actions) {
+		if (act.name == commandParts[CMD_PART_ACTION]) {
+			action = act.code;
 		}
 	}
 
-	// Control message format: 1 byte ACTION, 1 byte TYPE, 2 bytes EXTRA_LEN,
-	// 2 bytes NODE_LEN, 2 bytes KEY_LEN, 2 bytes VALUE_LEN, then up to 4086
-	// bytes split between EXTRA, NODE, KEY, VALUE (with 4 bytes for NUL).
-	// Basically: (EXTRA_LEN + NODE_LEN + KEY_LEN + VALUE_LEN) <= 4086.
-	// EXTRA, NODE, KEY, VALUE have to be NUL terminated, and their length
-	// must include the NUL termination byte.
-	// This results in a maximum message size of 4096 bytes (4KB).
-	uint8_t dataBuffer[CAER_CONFIG_SERVER_BUFFER_SIZE];
-	size_t dataBufferLength = 0;
+	// Initialize buffer.
+	std::unique_ptr<dv::ConfigActionDataBuilder> msg{nullptr};
 
 	// Now that we know what we want to do, let's decode the command line.
-	switch (actionCode) {
-		case CAER_CONFIG_NODE_EXISTS: {
+	switch (action) {
+		case dv::ConfigAction::GET_CLIENT_ID:
+		case dv::ConfigAction::DUMP_TREE:
+			// No parameters needed.
+			if (commandParts[CMD_PART_NODE] != nullptr) {
+				std::cerr << "Error: too many parameters for command." << std::endl;
+				return;
+			}
+
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
+
+			break;
+
+		case dv::ConfigAction::NODE_EXISTS: {
 			// Check parameters needed for operation.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing node parameter." << std::endl;
@@ -335,25 +448,18 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			size_t nodeLength = strlen(commandParts[CMD_PART_NODE]) + 1; // +1 for terminating NUL byte.
+			auto nodeOffset = dataBufferSend.CreateString(commandParts[CMD_PART_NODE]);
 
-			dataBuffer[0] = actionCode;
-			dataBuffer[1] = 0;          // UNUSED.
-			setExtraLen(dataBuffer, 0); // UNUSED.
-			setNodeLen(dataBuffer, (uint16_t) nodeLength);
-			setKeyLen(dataBuffer, 0);   // UNUSED.
-			setValueLen(dataBuffer, 0); // UNUSED.
-
-			memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE, commandParts[CMD_PART_NODE], nodeLength);
-
-			dataBufferLength = CAER_CONFIG_SERVER_HEADER_SIZE + nodeLength;
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
+			msg->add_node(nodeOffset);
 
 			break;
 		}
 
-		case CAER_CONFIG_ATTR_EXISTS:
-		case CAER_CONFIG_GET:
-		case CAER_CONFIG_GET_DESCRIPTION: {
+		case dv::ConfigAction::ATTR_EXISTS:
+		case dv::ConfigAction::GET:
+		case dv::ConfigAction::GET_DESCRIPTION: {
 			// Check parameters needed for operation.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing node parameter." << std::endl;
@@ -372,31 +478,25 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			size_t nodeLength = strlen(commandParts[CMD_PART_NODE]) + 1; // +1 for terminating NUL byte.
-			size_t keyLength  = strlen(commandParts[CMD_PART_KEY]) + 1;  // +1 for terminating NUL byte.
-
-			enum sshs_node_attr_value_type type = sshsHelperStringToTypeConverter(commandParts[CMD_PART_TYPE]);
-			if (type == SSHS_UNKNOWN) {
+			auto type = dv::Config::Helper::stringToTypeConverter(commandParts[CMD_PART_TYPE]);
+			if (type == dv::Config::AttributeType::UNKNOWN) {
 				std::cerr << "Error: invalid type parameter." << std::endl;
 				return;
 			}
 
-			dataBuffer[0] = actionCode;
-			dataBuffer[1] = (uint8_t) type;
-			setExtraLen(dataBuffer, 0); // UNUSED.
-			setNodeLen(dataBuffer, (uint16_t) nodeLength);
-			setKeyLen(dataBuffer, (uint16_t) keyLength);
-			setValueLen(dataBuffer, 0); // UNUSED.
+			auto nodeOffset = dataBufferSend.CreateString(commandParts[CMD_PART_NODE]);
+			auto keyOffset  = dataBufferSend.CreateString(commandParts[CMD_PART_KEY]);
 
-			memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE, commandParts[CMD_PART_NODE], nodeLength);
-			memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE + nodeLength, commandParts[CMD_PART_KEY], keyLength);
-
-			dataBufferLength = CAER_CONFIG_SERVER_HEADER_SIZE + nodeLength + keyLength;
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
+			msg->add_node(nodeOffset);
+			msg->add_key(keyOffset);
+			msg->add_type(static_cast<dv::ConfigType>(type));
 
 			break;
 		}
 
-		case CAER_CONFIG_PUT: {
+		case dv::ConfigAction::PUT: {
 			// Check parameters needed for operation.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing node parameter." << std::endl;
@@ -419,34 +519,27 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			size_t nodeLength  = strlen(commandParts[CMD_PART_NODE]) + 1;  // +1 for terminating NUL byte.
-			size_t keyLength   = strlen(commandParts[CMD_PART_KEY]) + 1;   // +1 for terminating NUL byte.
-			size_t valueLength = strlen(commandParts[CMD_PART_VALUE]) + 1; // +1 for terminating NUL byte.
-
-			enum sshs_node_attr_value_type type = sshsHelperStringToTypeConverter(commandParts[CMD_PART_TYPE]);
-			if (type == SSHS_UNKNOWN) {
+			auto type = dv::Config::Helper::stringToTypeConverter(commandParts[CMD_PART_TYPE]);
+			if (type == dv::Config::AttributeType::UNKNOWN) {
 				std::cerr << "Error: invalid type parameter." << std::endl;
 				return;
 			}
 
-			dataBuffer[0] = actionCode;
-			dataBuffer[1] = (uint8_t) type;
-			setExtraLen(dataBuffer, 0); // UNUSED.
-			setNodeLen(dataBuffer, (uint16_t) nodeLength);
-			setKeyLen(dataBuffer, (uint16_t) keyLength);
-			setValueLen(dataBuffer, (uint16_t) valueLength);
+			auto nodeOffset  = dataBufferSend.CreateString(commandParts[CMD_PART_NODE]);
+			auto keyOffset   = dataBufferSend.CreateString(commandParts[CMD_PART_KEY]);
+			auto valueOffset = dataBufferSend.CreateString(commandParts[CMD_PART_VALUE]);
 
-			memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE, commandParts[CMD_PART_NODE], nodeLength);
-			memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE + nodeLength, commandParts[CMD_PART_KEY], keyLength);
-			memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE + nodeLength + keyLength, commandParts[CMD_PART_VALUE],
-				valueLength);
-
-			dataBufferLength = CAER_CONFIG_SERVER_HEADER_SIZE + nodeLength + keyLength + valueLength;
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
+			msg->add_node(nodeOffset);
+			msg->add_key(keyOffset);
+			msg->add_type(static_cast<dv::ConfigType>(type));
+			msg->add_value(valueOffset);
 
 			break;
 		}
 
-		case CAER_CONFIG_ADD_MODULE: {
+		case dv::ConfigAction::ADD_MODULE: {
 			// Check parameters needed for operation. Reuse node parameters.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing module name." << std::endl;
@@ -461,25 +554,18 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			size_t nodeLength = strlen(commandParts[CMD_PART_NODE]) + 1; // +1 for terminating NUL byte.
-			size_t keyLength  = strlen(commandParts[CMD_PART_KEY]) + 1;  // +1 for terminating NUL byte.
+			auto nodeOffset = dataBufferSend.CreateString(commandParts[CMD_PART_NODE]);
+			auto keyOffset  = dataBufferSend.CreateString(commandParts[CMD_PART_KEY]);
 
-			dataBuffer[0] = actionCode;
-			dataBuffer[1] = 0;          // UNUSED.
-			setExtraLen(dataBuffer, 0); // UNUSED.
-			setNodeLen(dataBuffer, (uint16_t) nodeLength);
-			setKeyLen(dataBuffer, (uint16_t) keyLength);
-			setValueLen(dataBuffer, 0); // UNUSED.
-
-			memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE, commandParts[CMD_PART_NODE], nodeLength);
-			memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE + nodeLength, commandParts[CMD_PART_KEY], keyLength);
-
-			dataBufferLength = CAER_CONFIG_SERVER_HEADER_SIZE + nodeLength + keyLength;
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
+			msg->add_node(nodeOffset);
+			msg->add_key(keyOffset);
 
 			break;
 		}
 
-		case CAER_CONFIG_REMOVE_MODULE: {
+		case dv::ConfigAction::REMOVE_MODULE: {
 			// Check parameters needed for operation. Reuse node parameters.
 			if (commandParts[CMD_PART_NODE] == nullptr) {
 				std::cerr << "Error: missing module name." << std::endl;
@@ -490,18 +576,11 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
-			size_t nodeLength = strlen(commandParts[CMD_PART_NODE]) + 1; // +1 for terminating NUL byte.
+			auto nodeOffset = dataBufferSend.CreateString(commandParts[CMD_PART_NODE]);
 
-			dataBuffer[0] = actionCode;
-			dataBuffer[1] = 0;          // UNUSED.
-			setExtraLen(dataBuffer, 0); // UNUSED.
-			setNodeLen(dataBuffer, (uint16_t) nodeLength);
-			setKeyLen(dataBuffer, 0);   // UNUSED.
-			setValueLen(dataBuffer, 0); // UNUSED.
-
-			memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE, commandParts[CMD_PART_NODE], nodeLength);
-
-			dataBufferLength = CAER_CONFIG_SERVER_HEADER_SIZE + nodeLength;
+			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+			msg->add_action(action);
+			msg->add_node(nodeOffset);
 
 			break;
 		}
@@ -513,7 +592,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 
 	// Send formatted command to configuration server.
 	try {
-		asio::write(netSocket, asio::buffer(dataBuffer, dataBufferLength));
+		sendMessage(std::move(msg));
 	}
 	catch (const boost::system::system_error &ex) {
 		boost::format exMsg
@@ -522,12 +601,10 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 		return;
 	}
 
-	// The response from the server follows a simplified version of the request
-	// protocol. A byte for ACTION, a byte for TYPE, 2 bytes for MSG_LEN and then
-	// up to 4092 bytes of MSG, for a maximum total of 4096 bytes again.
-	// MSG must be NUL terminated, and the NUL byte shall be part of the length.
+	const dv::ConfigActionData *resp = nullptr;
+
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer, 4));
+		resp = receiveMessage();
 	}
 	catch (const boost::system::system_error &ex) {
 		boost::format exMsg
@@ -536,61 +613,88 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 		return;
 	}
 
-	// Decode response header fields (all in little-endian).
-	uint8_t action     = dataBuffer[0];
-	uint8_t type       = dataBuffer[1];
-	uint16_t msgLength = le16toh(*(uint16_t *) (dataBuffer + 2));
+	if (action == dv::ConfigAction::DUMP_TREE) {
+		while (true) {
+			// Continue getting messages till finished.
+			// End marked by confirmation message with same action.
+			if (resp->action() == dv::ConfigAction::DUMP_TREE_NODE) {
+				std::cout << "NODE: " << resp->node()->string_view() << std::endl;
+			}
+			else if (resp->action() == dv::ConfigAction::DUMP_TREE_ATTR) {
+				std::cout << "ATTR: " << resp->node()->string_view() << " | " << resp->key()->string_view() << ", "
+						  << dv::Config::Helper::typeToStringConverter(
+								 static_cast<dv::Config::AttributeType>(resp->type()))
+						  << " | " << resp->value()->string_view() << std::endl;
+			}
+			else if (resp->action() == dv::ConfigAction::DUMP_TREE) {
+				// Done, confirmation received.
+				break;
+			}
+			else {
+				// Unexpected action.
+				boost::format exMsg
+					= boost::format("Unknown action '%s' during DUMP_TREE.") % dv::EnumNameConfigAction(resp->action());
+				std::cerr << exMsg.str() << std::endl;
+				return;
+			}
 
-	// Total length to get for response.
-	try {
-		asio::read(netSocket, asio::buffer(dataBuffer + 4, msgLength));
-	}
-	catch (const boost::system::system_error &ex) {
-		boost::format exMsg
-			= boost::format("Unable to receive data from config server, error message is:\n\t%s.") % ex.what();
-		std::cerr << exMsg.str() << std::endl;
-		return;
-	}
-
-	// Convert action back to a string.
-	const char *actionString = nullptr;
-
-	// Detect error response.
-	if (action == CAER_CONFIG_ERROR) {
-		actionString = "error";
-	}
-	else {
-		for (size_t i = 0; i < actionsLength; i++) {
-			if (actions[i].code == action) {
-				actionString = actions[i].name;
+			try {
+				resp = receiveMessage();
+			}
+			catch (const boost::system::system_error &ex) {
+				boost::format exMsg
+					= boost::format("Unable to receive data from config server, error message is:\n\t%s.") % ex.what();
+				std::cerr << exMsg.str() << std::endl;
+				return;
 			}
 		}
 	}
 
 	// Display results.
-	boost::format resultMsg = boost::format("Result: action=%s, type=%s, msgLength=%" PRIu16 ", msg='%s'.")
-							  % actionString % sshsHelperTypeToStringConverter((enum sshs_node_attr_value_type) type)
-							  % msgLength % (dataBuffer + 4);
+	switch (resp->action()) {
+		case dv::ConfigAction::ERROR:
+			// Return error in 'value'.
+			std::cerr << "ERROR on " << dv::EnumNameConfigAction(action) << ": " << resp->value()->string_view()
+					  << std::endl;
+			break;
 
-	std::cout << resultMsg.str() << std::endl;
+		case dv::ConfigAction::NODE_EXISTS:
+		case dv::ConfigAction::ATTR_EXISTS:
+		case dv::ConfigAction::GET:
+			// 'value' contains results in string format, use directly.
+			std::cout << dv::EnumNameConfigAction(action) << ": " << resp->value()->string_view() << std::endl;
+			break;
+
+		case dv::ConfigAction::GET_DESCRIPTION:
+			// Return help text in 'description'.
+			std::cout << dv::EnumNameConfigAction(action) << ": " << resp->description()->string_view() << std::endl;
+			break;
+
+		case dv::ConfigAction::GET_CLIENT_ID:
+			// Return 64bit client ID in 'id'.
+			std::cout << dv::EnumNameConfigAction(action) << ": " << resp->id() << std::endl;
+			break;
+
+		default:
+			// No return value, just action as confirmation.
+			std::cout << dv::EnumNameConfigAction(action) << ": done" << std::endl;
+			break;
+	}
 }
 
 static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoComplete) {
-	size_t bufLength = strlen(buf);
+	const std::string commandStr(buf);
 
 	// First let's split up the command into its constituents.
-	char *commandParts[MAX_CMD_PARTS + 1] = {nullptr};
-
-	// Create a copy of buf, so that strtok_r() can modify it.
-	char bufCopy[bufLength + 1];
-	strcpy(bufCopy, buf);
+	std::string commandParts[MAX_CMD_PARTS + 1];
 
 	// Split string into usable parts.
-	size_t idx         = 0;
-	char *tokenSavePtr = nullptr, *nextCmdPart = nullptr, *currCmdPart = bufCopy;
-	while ((nextCmdPart = strtok_r(currCmdPart, " ", &tokenSavePtr)) != nullptr) {
+	boost::tokenizer<boost::char_separator<char>> cmdTokens(commandStr, boost::char_separator<char>(" "));
+
+	size_t idx = 0;
+	for (const auto &cmdTok : cmdTokens) {
 		if (idx < MAX_CMD_PARTS) {
-			commandParts[idx] = nextCmdPart;
+			commandParts[idx] = cmdTok;
 		}
 		else {
 			// Abort, too many parts.
@@ -598,14 +702,13 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 		}
 
 		idx++;
-		currCmdPart = nullptr;
 	}
 
 	// Also calculate number of commands already present in line (word-depth).
 	// This is actually much more useful to understand where we are and what to do.
 	size_t commandDepth = idx;
 
-	if (commandDepth > 0 && bufLength > 0 && buf[bufLength - 1] != ' ') {
+	if (commandDepth > 0 && !commandStr.empty() && commandStr.back() != ' ') {
 		// If commands are present, ensure they have been "confirmed" by at least
 		// one terminating spacing character. Else don't calculate the last command.
 		commandDepth--;
@@ -614,433 +717,318 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 	// Check that we got something.
 	if (commandDepth == 0) {
 		// Always start off with a command/action.
-		size_t cmdActionLength = 0;
-		if (commandParts[CMD_PART_ACTION] != nullptr) {
-			cmdActionLength = strlen(commandParts[CMD_PART_ACTION]);
-		}
-
-		actionCompletion(buf, bufLength, autoComplete, commandParts[CMD_PART_ACTION], cmdActionLength);
+		actionCompletion(commandStr, autoComplete, commandParts[CMD_PART_ACTION]);
 
 		return;
 	}
 
 	// Let's get the action code first thing.
-	uint8_t actionCode = UINT8_MAX;
+	dv::ConfigAction action = dv::ConfigAction::ERROR;
 
-	for (size_t i = 0; i < actionsLength; i++) {
-		if (strcmp(commandParts[CMD_PART_ACTION], actions[i].name) == 0) {
-			actionCode = actions[i].code;
+	for (const auto &act : actions) {
+		if (act.name == commandParts[CMD_PART_ACTION]) {
+			action = act.code;
 		}
 	}
 
-	switch (actionCode) {
-		case CAER_CONFIG_NODE_EXISTS:
+	switch (action) {
+		case dv::ConfigAction::NODE_EXISTS:
 			if (commandDepth == 1) {
-				size_t cmdNodeLength = 0;
-				if (commandParts[CMD_PART_NODE] != nullptr) {
-					cmdNodeLength = strlen(commandParts[CMD_PART_NODE]);
-				}
-
-				nodeCompletion(buf, bufLength, autoComplete, actionCode, commandParts[CMD_PART_NODE], cmdNodeLength);
+				nodeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE]);
 			}
 
 			break;
 
-		case CAER_CONFIG_ATTR_EXISTS:
-		case CAER_CONFIG_GET:
-		case CAER_CONFIG_GET_DESCRIPTION:
+		case dv::ConfigAction::ATTR_EXISTS:
+		case dv::ConfigAction::GET:
+		case dv::ConfigAction::GET_DESCRIPTION:
 			if (commandDepth == 1) {
-				size_t cmdNodeLength = 0;
-				if (commandParts[CMD_PART_NODE] != nullptr) {
-					cmdNodeLength = strlen(commandParts[CMD_PART_NODE]);
-				}
-
-				nodeCompletion(buf, bufLength, autoComplete, actionCode, commandParts[CMD_PART_NODE], cmdNodeLength);
+				nodeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE]);
 			}
 			if (commandDepth == 2) {
-				size_t cmdKeyLength = 0;
-				if (commandParts[CMD_PART_KEY] != nullptr) {
-					cmdKeyLength = strlen(commandParts[CMD_PART_KEY]);
-				}
-
-				keyCompletion(buf, bufLength, autoComplete, actionCode, commandParts[CMD_PART_NODE],
-					strlen(commandParts[CMD_PART_NODE]), commandParts[CMD_PART_KEY], cmdKeyLength);
+				keyCompletion(
+					commandStr, autoComplete, action, commandParts[CMD_PART_NODE], commandParts[CMD_PART_KEY]);
 			}
 			if (commandDepth == 3) {
-				size_t cmdTypeLength = 0;
-				if (commandParts[CMD_PART_TYPE] != nullptr) {
-					cmdTypeLength = strlen(commandParts[CMD_PART_TYPE]);
-				}
-
-				typeCompletion(buf, bufLength, autoComplete, actionCode, commandParts[CMD_PART_NODE],
-					strlen(commandParts[CMD_PART_NODE]), commandParts[CMD_PART_KEY], strlen(commandParts[CMD_PART_KEY]),
-					commandParts[CMD_PART_TYPE], cmdTypeLength);
+				typeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE],
+					commandParts[CMD_PART_KEY], commandParts[CMD_PART_TYPE]);
 			}
 
 			break;
 
-		case CAER_CONFIG_PUT:
+		case dv::ConfigAction::PUT:
 			if (commandDepth == 1) {
-				size_t cmdNodeLength = 0;
-				if (commandParts[CMD_PART_NODE] != nullptr) {
-					cmdNodeLength = strlen(commandParts[CMD_PART_NODE]);
-				}
-
-				nodeCompletion(buf, bufLength, autoComplete, actionCode, commandParts[CMD_PART_NODE], cmdNodeLength);
+				nodeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE]);
 			}
 			if (commandDepth == 2) {
-				size_t cmdKeyLength = 0;
-				if (commandParts[CMD_PART_KEY] != nullptr) {
-					cmdKeyLength = strlen(commandParts[CMD_PART_KEY]);
-				}
-
-				keyCompletion(buf, bufLength, autoComplete, actionCode, commandParts[CMD_PART_NODE],
-					strlen(commandParts[CMD_PART_NODE]), commandParts[CMD_PART_KEY], cmdKeyLength);
+				keyCompletion(
+					commandStr, autoComplete, action, commandParts[CMD_PART_NODE], commandParts[CMD_PART_KEY]);
 			}
 			if (commandDepth == 3) {
-				size_t cmdTypeLength = 0;
-				if (commandParts[CMD_PART_TYPE] != nullptr) {
-					cmdTypeLength = strlen(commandParts[CMD_PART_TYPE]);
-				}
-
-				typeCompletion(buf, bufLength, autoComplete, actionCode, commandParts[CMD_PART_NODE],
-					strlen(commandParts[CMD_PART_NODE]), commandParts[CMD_PART_KEY], strlen(commandParts[CMD_PART_KEY]),
-					commandParts[CMD_PART_TYPE], cmdTypeLength);
+				typeCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE],
+					commandParts[CMD_PART_KEY], commandParts[CMD_PART_TYPE]);
 			}
 			if (commandDepth == 4) {
-				size_t cmdValueLength = 0;
-				if (commandParts[CMD_PART_VALUE] != nullptr) {
-					cmdValueLength = strlen(commandParts[CMD_PART_VALUE]);
-				}
-
-				valueCompletion(buf, bufLength, autoComplete, actionCode, commandParts[CMD_PART_NODE],
-					strlen(commandParts[CMD_PART_NODE]), commandParts[CMD_PART_KEY], strlen(commandParts[CMD_PART_KEY]),
-					commandParts[CMD_PART_TYPE], strlen(commandParts[CMD_PART_TYPE]), commandParts[CMD_PART_VALUE],
-					cmdValueLength);
+				valueCompletion(commandStr, autoComplete, action, commandParts[CMD_PART_NODE],
+					commandParts[CMD_PART_KEY], commandParts[CMD_PART_TYPE], commandParts[CMD_PART_VALUE]);
 			}
 
 			break;
 	}
 }
 
-static void actionCompletion(const char *buf, size_t bufLength, linenoiseCompletions *autoComplete,
-	const char *partialActionString, size_t partialActionStringLength) {
+static void actionCompletion(
+	const std::string &buf, linenoiseCompletions *autoComplete, const std::string &partialActionString) {
 	UNUSED_ARGUMENT(buf);
-	UNUSED_ARGUMENT(bufLength);
 
 	// Always start off with a command.
-	for (size_t i = 0; i < actionsLength; i++) {
-		if (strncmp(actions[i].name, partialActionString, partialActionStringLength) == 0) {
-			addCompletionSuffix(autoComplete, "", 0, actions[i].name, true, false);
+	for (const auto &act : actions) {
+		if (partialActionString == act.name.substr(0, partialActionString.length())) {
+			addCompletionSuffix(autoComplete, "", 0, act.name.c_str(), true, false);
 		}
 	}
 
 	// Add quit and exit too.
-	if (strncmp("exit", partialActionString, partialActionStringLength) == 0) {
+	if (partialActionString == std::string("exit").substr(0, partialActionString.length())) {
 		addCompletionSuffix(autoComplete, "", 0, "exit", true, false);
 	}
-	if (strncmp("quit", partialActionString, partialActionStringLength) == 0) {
+	if (partialActionString == std::string("quit").substr(0, partialActionString.length())) {
 		addCompletionSuffix(autoComplete, "", 0, "quit", true, false);
 	}
 }
 
-static void nodeCompletion(const char *buf, size_t bufLength, linenoiseCompletions *autoComplete, uint8_t actionCode,
-	const char *partialNodeString, size_t partialNodeStringLength) {
-	UNUSED_ARGUMENT(actionCode);
+static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
+	const std::string &partialNodeString) {
+	UNUSED_ARGUMENT(action);
 
 	// If partialNodeString is still empty, the first thing is to complete the root.
-	if (partialNodeStringLength == 0) {
-		addCompletionSuffix(autoComplete, buf, bufLength, "/", false, false);
+	if (partialNodeString.empty()) {
+		addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), "/", false, false);
 		return;
 	}
 
 	// Get all the children of the last fully defined node (/ or /../../).
-	const char *lastNode = strrchr(partialNodeString, '/');
-	if (lastNode == nullptr) {
+	std::string::size_type lastSlash = partialNodeString.rfind('/');
+	if (lastSlash == std::string::npos) {
 		// No / found, invalid, cannot auto-complete.
 		return;
 	}
 
-	size_t lastNodeLength = (size_t)(lastNode - partialNodeString) + 1;
-
-	uint8_t dataBuffer[CAER_CONFIG_SERVER_BUFFER_SIZE];
+	// Include slash character in size.
+	lastSlash++;
 
 	// Send request for all children names.
-	dataBuffer[0] = CAER_CONFIG_GET_CHILDREN;
-	dataBuffer[1] = 0;                                      // UNUSED.
-	setExtraLen(dataBuffer, 0);                             // UNUSED.
-	setNodeLen(dataBuffer, (uint16_t)(lastNodeLength + 1)); // +1 for terminating NUL byte.
-	setKeyLen(dataBuffer, 0);                               // UNUSED.
-	setValueLen(dataBuffer, 0);                             // UNUSED.
+	auto nodeOffset = dataBufferSend.CreateString(partialNodeString.substr(0, lastSlash));
 
-	memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE, partialNodeString, lastNodeLength);
-	dataBuffer[CAER_CONFIG_SERVER_HEADER_SIZE + lastNodeLength] = '\0';
+	auto msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+
+	msg->add_action(dv::ConfigAction::GET_CHILDREN);
+	msg->add_node(nodeOffset);
 
 	try {
-		asio::write(netSocket, asio::buffer(dataBuffer, CAER_CONFIG_SERVER_HEADER_SIZE + lastNodeLength + 1));
+		sendMessage(std::move(msg));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
 		return;
 	}
 
+	const dv::ConfigActionData *resp = nullptr;
+
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer, 4));
+		resp = receiveMessage();
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
 		return;
 	}
 
-	// Decode response header fields (all in little-endian).
-	uint8_t action     = dataBuffer[0];
-	uint8_t type       = dataBuffer[1];
-	uint16_t msgLength = le16toh(*(uint16_t *) (dataBuffer + 2));
-
-	// Total length to get for response.
-	try {
-		asio::read(netSocket, asio::buffer(dataBuffer + 4, msgLength));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	if (action == CAER_CONFIG_ERROR || type != SSHS_STRING) {
+	if (resp->action() == dv::ConfigAction::ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
 
 	// At this point we made a valid request and got back a full response.
-	for (size_t i = 0; i < msgLength; i++) {
-		if (strncasecmp((const char *) dataBuffer + 4 + i, lastNode + 1, strlen(lastNode + 1)) == 0) {
-			addCompletionSuffix(
-				autoComplete, buf, bufLength - strlen(lastNode + 1), (const char *) dataBuffer + 4 + i, false, true);
-		}
+	boost::tokenizer<boost::char_separator<char>> children(
+		resp->value()->string_view(), boost::char_separator<char>("|"));
 
-		// Jump to the NUL character after this string.
-		i += strlen((const char *) dataBuffer + 4 + i);
+	size_t lengthOfIncompletePart = (partialNodeString.length() - lastSlash);
+
+	for (const auto &child : children) {
+		if (partialNodeString.substr(lastSlash, lengthOfIncompletePart) == child.substr(0, lengthOfIncompletePart)) {
+			addCompletionSuffix(
+				autoComplete, buf.c_str(), buf.length() - lengthOfIncompletePart, child.c_str(), false, true);
+		}
 	}
 }
 
-static void keyCompletion(const char *buf, size_t bufLength, linenoiseCompletions *autoComplete, uint8_t actionCode,
-	const char *nodeString, size_t nodeStringLength, const char *partialKeyString, size_t partialKeyStringLength) {
-	UNUSED_ARGUMENT(actionCode);
-
-	uint8_t dataBuffer[CAER_CONFIG_SERVER_BUFFER_SIZE];
+static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
+	const std::string &nodeString, const std::string &partialKeyString) {
+	UNUSED_ARGUMENT(action);
 
 	// Send request for all attribute names for this node.
-	dataBuffer[0] = CAER_CONFIG_GET_ATTRIBUTES;
-	dataBuffer[1] = 0;                                        // UNUSED.
-	setExtraLen(dataBuffer, 0);                               // UNUSED.
-	setNodeLen(dataBuffer, (uint16_t)(nodeStringLength + 1)); // +1 for terminating NUL byte.
-	setKeyLen(dataBuffer, 0);                                 // UNUSED.
-	setValueLen(dataBuffer, 0);                               // UNUSED.
+	auto nodeOffset = dataBufferSend.CreateString(nodeString);
 
-	memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE, nodeString, nodeStringLength);
-	dataBuffer[CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength] = '\0';
+	auto msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
+
+	msg->add_action(dv::ConfigAction::GET_ATTRIBUTES);
+	msg->add_node(nodeOffset);
 
 	try {
-		asio::write(netSocket, asio::buffer(dataBuffer, CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1));
+		sendMessage(std::move(msg));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
 		return;
 	}
 
+	const dv::ConfigActionData *resp = nullptr;
+
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer, 4));
+		resp = receiveMessage();
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
 		return;
 	}
 
-	// Decode response header fields (all in little-endian).
-	uint8_t action     = dataBuffer[0];
-	uint8_t type       = dataBuffer[1];
-	uint16_t msgLength = le16toh(*(uint16_t *) (dataBuffer + 2));
-
-	// Total length to get for response.
-	try {
-		asio::read(netSocket, asio::buffer(dataBuffer + 4, msgLength));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	if (action == CAER_CONFIG_ERROR || type != SSHS_STRING) {
+	if (resp->action() == dv::ConfigAction::ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
 
 	// At this point we made a valid request and got back a full response.
-	for (size_t i = 0; i < msgLength; i++) {
-		if (strncasecmp((const char *) dataBuffer + 4 + i, partialKeyString, partialKeyStringLength) == 0) {
-			addCompletionSuffix(
-				autoComplete, buf, bufLength - partialKeyStringLength, (const char *) dataBuffer + 4 + i, true, false);
-		}
+	boost::tokenizer<boost::char_separator<char>> attributes(
+		resp->value()->string_view(), boost::char_separator<char>("|"));
 
-		// Jump to the NUL character after this string.
-		i += strlen((const char *) dataBuffer + 4 + i);
+	for (const auto &attr : attributes) {
+		if (partialKeyString == attr.substr(0, partialKeyString.length())) {
+			addCompletionSuffix(
+				autoComplete, buf.c_str(), buf.length() - partialKeyString.length(), attr.c_str(), true, false);
+		}
 	}
 }
 
-static void typeCompletion(const char *buf, size_t bufLength, linenoiseCompletions *autoComplete, uint8_t actionCode,
-	const char *nodeString, size_t nodeStringLength, const char *keyString, size_t keyStringLength,
-	const char *partialTypeString, size_t partialTypeStringLength) {
-	UNUSED_ARGUMENT(actionCode);
-
-	uint8_t dataBuffer[CAER_CONFIG_SERVER_BUFFER_SIZE];
+static void typeCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
+	const std::string &nodeString, const std::string &keyString, const std::string &partialTypeString) {
+	UNUSED_ARGUMENT(action);
 
 	// Send request for the type name for this key on this node.
-	dataBuffer[0] = CAER_CONFIG_GET_TYPE;
-	dataBuffer[1] = 0;                                        // UNUSED.
-	setExtraLen(dataBuffer, 0);                               // UNUSED.
-	setNodeLen(dataBuffer, (uint16_t)(nodeStringLength + 1)); // +1 for terminating NUL byte.
-	setKeyLen(dataBuffer, (uint16_t)(keyStringLength + 1));   // +1 for terminating NUL byte.
-	setValueLen(dataBuffer, 0);                               // UNUSED.
+	auto nodeOffset = dataBufferSend.CreateString(nodeString);
+	auto keyOffset  = dataBufferSend.CreateString(keyString);
 
-	memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE, nodeString, nodeStringLength);
-	dataBuffer[CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength] = '\0';
+	auto msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
 
-	memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1, keyString, keyStringLength);
-	dataBuffer[CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1 + keyStringLength] = '\0';
+	msg->add_action(dv::ConfigAction::GET_TYPE);
+	msg->add_node(nodeOffset);
+	msg->add_key(keyOffset);
 
 	try {
-		asio::write(netSocket,
-			asio::buffer(dataBuffer, CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1 + keyStringLength + 1));
+		sendMessage(std::move(msg));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
 		return;
 	}
 
+	const dv::ConfigActionData *resp = nullptr;
+
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer, 4));
+		resp = receiveMessage();
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
 		return;
 	}
 
-	// Decode response header fields (all in little-endian).
-	uint8_t action     = dataBuffer[0];
-	uint8_t type       = dataBuffer[1];
-	uint16_t msgLength = le16toh(*(uint16_t *) (dataBuffer + 2));
-
-	// Total length to get for response.
-	try {
-		asio::read(netSocket, asio::buffer(dataBuffer + 4, msgLength));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	if (action == CAER_CONFIG_ERROR || type != SSHS_STRING) {
+	if (resp->action() == dv::ConfigAction::ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
 
 	// At this point we made a valid request and got back a full response.
-	if (strncasecmp((const char *) dataBuffer + 4, partialTypeString, partialTypeStringLength) == 0) {
+	const std::string &typeStr
+		= dv::Config::Helper::typeToStringConverter(static_cast<dv::Config::AttributeType>(resp->type()));
+	if (partialTypeString == typeStr.substr(0, partialTypeString.length())) {
 		addCompletionSuffix(
-			autoComplete, buf, bufLength - partialTypeStringLength, (const char *) dataBuffer + 4, true, false);
+			autoComplete, buf.c_str(), buf.length() - partialTypeString.length(), typeStr.c_str(), true, false);
 	}
 }
 
-static void valueCompletion(const char *buf, size_t bufLength, linenoiseCompletions *autoComplete, uint8_t actionCode,
-	const char *nodeString, size_t nodeStringLength, const char *keyString, size_t keyStringLength,
-	const char *typeString, size_t typeStringLength, const char *partialValueString, size_t partialValueStringLength) {
-	UNUSED_ARGUMENT(actionCode);
-	UNUSED_ARGUMENT(typeStringLength);
+static void valueCompletion(const std::string &buf, linenoiseCompletions *autoComplete, dv::ConfigAction action,
+	const std::string &nodeString, const std::string &keyString, const std::string &typeString,
+	const std::string &partialValueString) {
+	UNUSED_ARGUMENT(action);
 
-	enum sshs_node_attr_value_type type = sshsHelperStringToTypeConverter(typeString);
-	if (type == SSHS_UNKNOWN) {
+	auto type = dv::Config::Helper::stringToTypeConverter(typeString);
+	if (type == dv::Config::AttributeType::UNKNOWN) {
 		// Invalid type, no auto-completion.
 		return;
 	}
 
-	if (partialValueStringLength != 0) {
+	if (!partialValueString.empty()) {
 		// If there already is content, we can't do any auto-completion here, as
 		// we have no idea about what a valid value would be to complete ...
 		// Unless this is a boolean, then we can propose true/false strings.
-		if (type == SSHS_BOOL) {
-			if (strncmp("true", partialValueString, partialValueStringLength) == 0) {
-				addCompletionSuffix(autoComplete, buf, bufLength - partialValueStringLength, "true", false, false);
+		if (type == dv::Config::AttributeType::BOOL) {
+			if (partialValueString == std::string("true").substr(0, partialValueString.length())) {
+				addCompletionSuffix(
+					autoComplete, buf.c_str(), buf.length() - partialValueString.length(), "true", false, false);
 			}
-			if (strncmp("false", partialValueString, partialValueStringLength) == 0) {
-				addCompletionSuffix(autoComplete, buf, bufLength - partialValueStringLength, "false", false, false);
+			if (partialValueString == std::string("false").substr(0, partialValueString.length())) {
+				addCompletionSuffix(
+					autoComplete, buf.c_str(), buf.length() - partialValueString.length(), "false", false, false);
 			}
 		}
 
 		return;
 	}
 
-	uint8_t dataBuffer[CAER_CONFIG_SERVER_BUFFER_SIZE];
-
 	// Send request for the current value, so we can auto-complete with it as default.
-	dataBuffer[0] = CAER_CONFIG_GET;
-	dataBuffer[1] = (uint8_t) type;
-	setExtraLen(dataBuffer, 0);                               // UNUSED.
-	setNodeLen(dataBuffer, (uint16_t)(nodeStringLength + 1)); // +1 for terminating NUL byte.
-	setKeyLen(dataBuffer, (uint16_t)(keyStringLength + 1));   // +1 for terminating NUL byte.
-	setValueLen(dataBuffer, 0);                               // UNUSED.
+	auto nodeOffset = dataBufferSend.CreateString(nodeString);
+	auto keyOffset  = dataBufferSend.CreateString(keyString);
 
-	memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE, nodeString, nodeStringLength);
-	dataBuffer[CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength] = '\0';
+	auto msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
 
-	memcpy(dataBuffer + CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1, keyString, keyStringLength);
-	dataBuffer[CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1 + keyStringLength] = '\0';
+	msg->add_action(dv::ConfigAction::GET);
+	msg->add_node(nodeOffset);
+	msg->add_key(keyOffset);
+	msg->add_type(static_cast<dv::ConfigType>(type));
 
 	try {
-		asio::write(netSocket,
-			asio::buffer(dataBuffer, CAER_CONFIG_SERVER_HEADER_SIZE + nodeStringLength + 1 + keyStringLength + 1));
+		sendMessage(std::move(msg));
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
 		return;
 	}
 
+	const dv::ConfigActionData *resp = nullptr;
+
 	try {
-		asio::read(netSocket, asio::buffer(dataBuffer, 4));
+		resp = receiveMessage();
 	}
 	catch (const boost::system::system_error &) {
 		// Failed to contact remote host, no auto-completion!
 		return;
 	}
 
-	// Decode response header fields (all in little-endian).
-	uint8_t action     = dataBuffer[0];
-	uint16_t msgLength = le16toh(*(uint16_t *) (dataBuffer + 2));
-
-	// Total length to get for response.
-	try {
-		asio::read(netSocket, asio::buffer(dataBuffer + 4, msgLength));
-	}
-	catch (const boost::system::system_error &) {
-		// Failed to contact remote host, no auto-completion!
-		return;
-	}
-
-	if (action == CAER_CONFIG_ERROR) {
+	if (resp->action() == dv::ConfigAction::ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
 
 	// At this point we made a valid request and got back a full response.
 	// We can just use it directly and paste it in as completion.
-	addCompletionSuffix(autoComplete, buf, bufLength, (const char *) dataBuffer + 4, false, false);
+	addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), resp->value()->c_str(), false, false);
 
 	// If this is a boolean value, we can also add the inverse as a second completion.
-	if (type == SSHS_BOOL) {
-		if (strcmp((const char *) dataBuffer + 4, "true") == 0) {
-			addCompletionSuffix(autoComplete, buf, bufLength, "false", false, false);
+	if (type == dv::Config::AttributeType::BOOL) {
+		if (resp->value()->string_view() == "true") {
+			addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), "false", false, false);
 		}
 		else {
-			addCompletionSuffix(autoComplete, buf, bufLength, "true", false, false);
+			addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), "true", false, false);
 		}
 	}
 }

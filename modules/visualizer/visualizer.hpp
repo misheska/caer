@@ -1,17 +1,18 @@
 #ifndef VISUALIZER_H_
 #define VISUALIZER_H_
 
+#include <libcaer/events/packetContainer.h>
+
 #include "caer-sdk/utils.h"
 
-#include <libcaer/events/packetContainer.h>
 #include <GL/glew.h>
 #include <SFML/Graphics.hpp>
 #include <atomic>
 #include <climits>
 
 struct caer_visualizer_public_state {
-	sshsNode eventSourceConfigNode;
-	sshsNode visualizerConfigNode;
+	dv::Config::Node eventSourceConfigNode;
+	dv::Config::Node visualizerConfigNode;
 	uint32_t renderSizeX;
 	uint32_t renderSizeY;
 	std::atomic<float> renderZoomFactor;
@@ -20,7 +21,7 @@ struct caer_visualizer_public_state {
 	sf::Font *font;
 };
 
-typedef const struct caer_visualizer_public_state *caerVisualizerPublicState;
+typedef struct caer_visualizer_public_state *caerVisualizerPublicState;
 
 // This function is intended to be called by Renderer State Init functions only!
 void caerVisualizerResetRenderSize(caerVisualizerPublicState pubState, uint32_t newX, uint32_t newY);
