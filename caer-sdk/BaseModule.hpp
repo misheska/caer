@@ -352,7 +352,7 @@ public:
 	 * @tparam T The subclass of T for which the config nodes should be generated.
 	 * @param node The sshs node for which the config should be generated
 	 */
-	template<class T> static void configInit(sshsNode node) {
+	template<class T> static void configInit(dvConfigNode node) {
 		static_assert(std::is_base_of<BaseModule, T>::value, "The provided type does not inherit from BaseModule");
 
 		// read config options from static user provided function
@@ -365,38 +365,38 @@ public:
 			switch (config.getVariant()) {
 			    case _ConfigVariant::BOOLEAN: {
 			        auto config_ = config.getConfigObject<_ConfigVariant::BOOLEAN>();
-			        sshsNodeCreateBool(node, key.c_str(), config_.initValue, SSHS_FLAGS_NORMAL,
+			        dvConfigNodeCreateBool(node, key.c_str(), config_.initValue, DVCFG_FLAGS_NORMAL,
 			                config_.description.c_str());
 			    }
 				case _ConfigVariant::FRACTIONAL: {
 					auto config_ = config.getConfigObject<_ConfigVariant::FRACTIONAL>();
-					sshsNodeCreateDouble(node, key.c_str(), config_.initValue, config_.attributes.min,
-						config_.attributes.max, SSHS_FLAGS_NORMAL, config_.description.c_str());
+					dvConfigNodeCreateDouble(node, key.c_str(), config_.initValue, config_.attributes.min,
+						config_.attributes.max, DVCFG_FLAGS_NORMAL, config_.description.c_str());
 					break;
 				}
 				case _ConfigVariant::INTEGER: {
 					auto config_ = config.getConfigObject<_ConfigVariant::INTEGER>();
-					sshsNodeCreateLong(node, key.c_str(), config_.initValue, config_.attributes.min,
-						config_.attributes.max, SSHS_FLAGS_NORMAL, config_.description.c_str());
+					dvConfigNodeCreateLong(node, key.c_str(), config_.initValue, config_.attributes.min,
+						config_.attributes.max, DVCFG_FLAGS_NORMAL, config_.description.c_str());
 					break;
 				}
 				case _ConfigVariant::STRING: {
 					auto config_ = config.getConfigObject<_ConfigVariant::STRING>();
-					sshsNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, UINT32_MAX, SSHS_FLAGS_NORMAL,
+					dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, UINT32_MAX, DVCFG_FLAGS_NORMAL,
 						config_.description.c_str());
 					break;
 				}
 				case _ConfigVariant::FILE: {
 					auto config_ = config.getConfigObject<_ConfigVariant::FILE>();
-					sshsNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, PATH_MAX, SSHS_FLAGS_NORMAL,
+					dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, PATH_MAX, DVCFG_FLAGS_NORMAL,
 						config_.description.c_str());
 
 					std::string fileChooserAttribute
 						= (config_.attributes.mode == _FileDialogMode::OPEN)
 							  ? "LOAD"
 							  : ((config_.attributes.mode == _FileDialogMode::SAVE) ? "SAVE" : "DIRECTORY");
-					sshsNodeCreateAttributeFileChooser(
-						node, key.c_str(), fileChooserAttribute + ":" + config_.attributes.allowedExtensions);
+					dvConfigNodeAttributeModifierFileChooser(
+						node, key.c_str(), (fileChooserAttribute + ":" + config_.attributes.allowedExtensions).c_str());
 					break;
 				}
 				case _ConfigVariant::NONE: {
@@ -453,33 +453,33 @@ public:
 	 * change.
 	 * @param node the sshs node to read the config from.
 	 */
-	void configUpdate(sshsNode node) {
+	void configUpdate(dvConfigNode node) {
 		size_t nKeys;
-		auto keys = sshsNodeGetAttributeKeys(node, &nKeys);
+		auto keys = dvConfigNodeGetAttributeKeys(node, &nKeys);
 		for (size_t i = 0; i < nKeys; i++) {
-			switch (sshsNodeGetAttributeType(node, keys[i])) {
-				case SSHS_BOOL: {
-					config[keys[i]] = sshsNodeGetBool(node, keys[i]);
+			switch (dvConfigNodeGetAttributeType(node, keys[i])) {
+				case DVCFG_TYPE_BOOL: {
+					config[keys[i]] = dvConfigNodeGetBool(node, keys[i]);
 					break;
 				}
-				case SSHS_INT: {
-					config[keys[i]] = sshsNodeGetInt(node, keys[i]);
+				case DVCFG_TYPE_INT: {
+					config[keys[i]] = dvConfigNodeGetInt(node, keys[i]);
 					break;
 				}
-				case SSHS_LONG: {
-					config[keys[i]] = sshsNodeGetLong(node, keys[i]);
+				case DVCFG_TYPE_LONG: {
+					config[keys[i]] = dvConfigNodeGetLong(node, keys[i]);
 					break;
 				}
-				case SSHS_FLOAT: {
-					config[keys[i]] = sshsNodeGetFloat(node, keys[i]);
+				case DVCFG_TYPE_FLOAT: {
+					config[keys[i]] = dvConfigNodeGetFloat(node, keys[i]);
 					break;
 				}
-				case SSHS_DOUBLE: {
-					config[keys[i]] = sshsNodeGetDouble(node, keys[i]);
+				case DVCFG_TYPE_DOUBLE: {
+					config[keys[i]] = dvConfigNodeGetDouble(node, keys[i]);
 					break;
 				}
-				case SSHS_STRING: {
-					config[keys[i]] = sshsNodeGetStdString(node, keys[i]);
+				case DVCFG_TYPE_STRING: {
+					config[keys[i]] = dvConfigNodeGetString(node, keys[i]);
 					break;
 				}
 				default: {}

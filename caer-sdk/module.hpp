@@ -1,7 +1,7 @@
 #ifndef CAER_MODULE_HPP
 #define CAER_MODULE_HPP
 
-#include "caer-sdk/sshs/sshs.hpp"
+#include <caer-sdk/config/dvConfig.hpp>
 #include <caer-sdk/mainloop.h>
 #include <caer-sdk/module.h>
 
@@ -136,11 +136,11 @@ public:
 	/**
 	 * Wrapper for the `configInit` caer function. Performs a static call to the
 	 * `configInit<T>` function of `BaseModule`, which in turn gets the config from
-	 * the user defined module `T`. The config then gets parsed and injected as SSHS
+	 * the user defined module `T`. The config then gets parsed and injected as DvConfig
 	 * nodes.
-	 * @param node The caer provided SSHS node.
+	 * @param node The caer provided DvConfig node.
 	 */
-	static void configInit(sshsNode node) {
+	static void configInit(dvConfigNode node) {
 		BaseModule::configInit<T>(node);
 	}
 
@@ -148,7 +148,7 @@ public:
 	/**
 	 * Wrapper for the `init` caer function. Constructs the user defined `T` module
 	 * into the module state, calls the config update function after construction
-	 * and appends the SSHS listener.
+	 * and appends the DvConfig listener.
 	 * @param moduleData The caer provided moduleData.
 	 * @return true if construction succeeded, false if it failed.
 	 */
@@ -157,7 +157,7 @@ public:
             // set the moduleData pointer thread local static prior to construction.
         	BaseModule::__setStaticModuleData(moduleData);
 			new (moduleData->moduleState) T();
-			sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+			dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 		}
 		catch (const std::exception &e) {
 		    caerModuleLog(moduleData, CAER_LOG_ERROR, "%s", e.what());
@@ -181,19 +181,19 @@ public:
 
 	/**
 	 * Deconstructs the user defined `T` module in the state by calling
-	 * its deconstructor. Removes the SSHS attribute listener.
+	 * its deconstructor. Removes the DvConfig attribute listener.
 	 * @param moduleData The caer provided moduleData.
 	 */
 	static void exit(caerModuleData moduleData) {
 		((T *) moduleData->moduleState)->~T();
-		sshsNodeRemoveAllAttributeListeners(moduleData->moduleNode);
+		dvConfigNodeRemoveAllAttributeListeners(moduleData->moduleNode);
 	}
 
 	/**
 	 * Wrapper for the caer config function. Relays the call to the stateful
 	 * `configUpdate` function of the `T` module. If not overloaded by a the user,
 	 * the `configUpdate` function of `BaseModule` is called which reads out all
-	 * config from the SSHS node and updates a runtime dict of configs.
+	 * config from the DvConfig node and updates a runtime dict of configs.
 	 * @param moduleData The moduleData provided by caer.
 	 */
 	static void config(caerModuleData moduleData) {
