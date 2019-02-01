@@ -1303,7 +1303,7 @@ void dvConfigNodeAttributeModifierButton(dvConfigNode node, const char *key, con
 	fullKey += "Button";
 
 	dvConfigNodeCreateString(node, fullKey.c_str(), type, 0, INT32_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-		"Type of button to display (PLAY,PAUSE, ...; can be empty).");
+		"Type of button to display (PLAY, EXECUTE, ...; can be empty).");
 }
 
 void dvConfigNodeAttributeModifierListOptions(
@@ -1322,7 +1322,7 @@ void dvConfigNodeAttributeModifierListOptions(
 	}
 
 	dvConfigNodeCreateString(node, fullKey.c_str(), listOptions, 1, INT32_MAX, DVCFG_FLAGS_READ_ONLY,
-		"Comma separated list of possible associated attribute values.");
+		"Comma separated list of possible choices for attribute value.");
 }
 
 void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions) {
@@ -1337,5 +1337,20 @@ void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key
 
 	dvConfigNodeCreateString(node, fullKey.c_str(), allowedExtensions, 1, INT32_MAX,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-		"Comma separated list of allowed extensions for the file chooser dialog.");
+		"Type of file chooser dialog plus comma separated list of allowed extensions.");
+}
+
+void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const char *unitInformation) {
+	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+
+	if (!node->attributeExists(key, DVCFG_TYPE_INT) && !node->attributeExists(key, DVCFG_TYPE_LONG)
+		&& !node->attributeExists(key, DVCFG_TYPE_FLOAT) && !node->attributeExists(key, DVCFG_TYPE_DOUBLE)) {
+		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierUnit", key, DVCFG_TYPE_INT);
+	}
+
+	std::string fullKey(key);
+	fullKey += "Unit";
+
+	dvConfigNodeCreateString(node, fullKey.c_str(), unitInformation, 1, INT32_MAX, DVCFG_FLAGS_READ_ONLY,
+		"Information about the units that apply to a numeric attribute (ms, Km, m, Kg, mg, ...).");
 }

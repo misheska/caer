@@ -598,6 +598,10 @@ public:
 		dvConfigNodeAttributeModifierFileChooser(node, key.c_str(), allowedExtensions.c_str());
 	}
 
+	void attributeModifierUnit(const std::string &key, const std::string &unitInformation) {
+		dvConfigNodeAttributeModifierUnit(node, key.c_str(), unitInformation.c_str());
+	}
+
 	bool existsRelativeNode(const std::string &nodePath) const {
 		return (dvConfigNodeExistsRelativeNode(node, nodePath.c_str()));
 	}

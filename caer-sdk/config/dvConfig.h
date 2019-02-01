@@ -170,6 +170,7 @@ void dvConfigNodeAttributeModifierButton(dvConfigNode node, const char *key, con
 void dvConfigNodeAttributeModifierListOptions(
 	dvConfigNode node, const char *key, const char *listOptions, bool allowMultipleSelections);
 void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions);
+void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const char *unitInformation);
 
 bool dvConfigNodeExistsRelativeNode(dvConfigNode node, const char *nodePath);
 /**
