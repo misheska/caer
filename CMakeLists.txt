@@ -6,6 +6,10 @@ IF (NOT CMAKE_BUILD_TYPE)
 	SET(CMAKE_BUILD_TYPE "Release" CACHE STRING "Possible build types: None Debug Release RelWithDebInfo MinSizeRel")
 ENDIF()
 
+IF (NOT CMAKE_INSTALL_PREFIX AND UNIX AND NOT APPLE)
+	SET(CMAKE_INSTALL_PREFIX "/usr" CACHE STRING "CMake default install prefix, set to /usr on Unix/Linux")
+ENDIF()
+
 # Project name and version
 PROJECT(cAER C CXX)
 SET(PROJECT_VERSION_MAJOR 1)
@@ -25,8 +29,9 @@ INCLUDE(GNUInstallDirs)
 
 # Custom CMake base module
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-  ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATAROOTDIR}/caer /usr/${CMAKE_INSTALL_DATAROOTDIR}/caer /usr/local/${CMAKE_INSTALL_DATAROOTDIR}/caer
-  ${CMAKE_INSTALL_PREFIX}/share/caer /usr/share/caer /usr/local/share/caer)
+  ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATAROOTDIR}/caer /usr/${CMAKE_INSTALL_DATAROOTDIR}/caer
+  ${CMAKE_INSTALL_PREFIX}/share/caer /usr/share/caer
+  /usr/local/${CMAKE_INSTALL_DATAROOTDIR}/caer /usr/local/share/caer)
 
 # Basic setup for cAER
 INCLUDE(caer-base)
