@@ -27,7 +27,7 @@ public:
 	sshs_node_attr() : flags(DVCFG_FLAGS_NORMAL) {
 	}
 
-	sshs_node_attr(const dv_value &_value, const dv_ranges &_ranges, int _flags, const std::string &_description) :
+	sshs_node_attr(const dv_value &_value, const dv_ranges &_ranges, int _flags, const std::string_view _description) :
 		value(_value),
 		ranges(_ranges),
 		flags(_flags),
@@ -36,10 +36,6 @@ public:
 
 	const dv_value &getValue() const noexcept {
 		return (value);
-	}
-
-	void setValue(const dv_value &v) noexcept {
-		value = v;
 	}
 
 	const dv_ranges &getRanges() const noexcept {
@@ -182,79 +178,76 @@ public:
 			dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(), errorMsg.str());
 		}
 
-		sshs_node_attr newAttr(defaultValue, ranges, flags, description);
+		enum dvConfigAttributeEvents attrEvents;
 
 		std::lock_guard<std::recursive_mutex> lock(node_lock);
 
-		// Add if not present. Else update value (below).
-		enum dvConfigAttributeEvents attrEvents;
-
+		// Add if not present, else replace.
 		if (!attributes.count(key)) {
-			attributes[key] = newAttr;
+			// Insert newAttr. Execute Listener support.
+			attributes[key] = sshs_node_attr(defaultValue, ranges, flags, description);
 			attrEvents      = DVCFG_ATTRIBUTE_ADDED;
 		}
 		else {
-			const sshs_node_attr &oldAttr = attributes[key];
+			const auto &oldAttr = attributes[key];
 
 			// To simplify things, we don't support multiple types per key.
-			if (oldAttr.getValue().getType() != newAttr.getValue().getType()) {
-				boost::format errorMsg
-					= boost::format("value with this key already exists and has a different type of '%s'")
-					  % dvConfigHelperCppTypeToStringConverter(oldAttr.getValue().getType());
+			if (oldAttr.getValue().getType() != defaultValue.getType()) {
+				boost::format errorMsg = boost::format("attribute already exists and has a different type of '%s'")
+										 % dvConfigHelperCppTypeToStringConverter(oldAttr.getValue().getType());
 
-				dvConfigNodeError("dvConfigNodeCreateAttribute", key, newAttr.getValue().getType(), errorMsg.str());
+				dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(), errorMsg.str());
 			}
 
-			// Check if the current value is still fine and within range; if it is
-			// we use it, else just use the new value.
-			if (oldAttr.getValue().inRange(ranges)) {
-				// Only update value, then use newAttr. Listeners are called because
-				// description, flags or ranges might have changed.
-				newAttr.setValue(oldAttr.getValue());
-			}
-
-			// Determine what, if anything, changed.
+			// If old value is out of range, replace with new default value, which must be in
+			// range and thus different. Else keep old value.
 			bool valueChanged = false;
-			if (newAttr.getValue() != oldAttr.getValue()) {
+			if (!oldAttr.getValue().inRange(ranges)) {
 				valueChanged = true;
 			}
 
 			bool extraChanged = false;
-			if ((newAttr.getFlags() != oldAttr.getFlags()) || (newAttr.getRanges() != oldAttr.getRanges())
-				|| (newAttr.getDescription() != oldAttr.getDescription())) {
+			if ((oldAttr.getFlags() != flags) || (oldAttr.getRanges() != ranges)
+				|| (oldAttr.getDescription() != description)) {
 				extraChanged = true;
 			}
 
 			// Always call listeners on modification in create. Flags, ranges, description
 			// might have changed and we want to ensure that is notified.
 			if (!valueChanged && !extraChanged) {
-				// Nothing changed, same call. Do nothing.
+				// Nothing changed, maybe same call. Do nothing.
 				return;
 			}
+			else if (!valueChanged && extraChanged) {
+				// Only the extra bits changed, value was still fine.
+				attributes[key] = sshs_node_attr(oldAttr.getValue(), ranges, flags, description);
+				attrEvents      = DVCFG_ATTRIBUTE_MODIFIED_CREATE;
+			}
 			else if (valueChanged && !extraChanged) {
-				// Only the value changed, same as a put().
-				attrEvents = DVCFG_ATTRIBUTE_MODIFIED;
+				// Only the value changed, same as a put(). Use new value.
+				attributes[key] = sshs_node_attr(defaultValue, ranges, flags, description);
+				attrEvents      = DVCFG_ATTRIBUTE_MODIFIED;
 			}
-			else {
-				// One of the extra parameters (flags, ranges, description) changed.
-				// Call listeners with special value.
-				attrEvents = DVCFG_ATTRIBUTE_MODIFIED_CREATE;
+			else { // valueChanged && extraChanged
+				   // Everything changed. Use new value.
+				attributes[key] = sshs_node_attr(defaultValue, ranges, flags, description);
+				attrEvents      = DVCFG_ATTRIBUTE_MODIFIED_CREATE;
 			}
-
-			attributes[key] = newAttr;
 		}
 
-		// Listener support. Call only on change, which is always the case here.
-		dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+		// Listener support.
+		const auto &listenerAttr = attributes[key];
+
+		auto globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
 		if (globalListener != nullptr) {
 			// Global listener support.
 			(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), attrEvents, key.c_str(),
-				newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
+				listenerAttr.getValue().getType(), listenerAttr.getValue().toCUnion(true));
 		}
 
 		for (const auto &l : attrListeners) {
-			(*l.getListener())(this, l.getUserData(), attrEvents, key.c_str(), newAttr.getValue().getType(),
-				newAttr.getValue().toCUnion(true));
+			(*l.getListener())(this, l.getUserData(), attrEvents, key.c_str(), listenerAttr.getValue().getType(),
+				listenerAttr.getValue().toCUnion(true));
 		}
 	}
 
@@ -267,7 +260,7 @@ public:
 			return;
 		}
 
-		sshs_node_attr &attr = attributes[key];
+		const auto &attr = attributes[key];
 
 		// Listener support.
 		dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
@@ -336,7 +329,7 @@ public:
 			dvConfigNodeErrorNoAttribute("dvConfigNodePutAttribute", key, value.getType());
 		}
 
-		sshs_node_attr &attr = attributes[key];
+		const auto &attr = attributes[key];
 
 		// Value must be present, so update old one, after checking range and flags.
 		if ((!forceReadOnlyUpdate && attr.isFlagSet(DVCFG_FLAGS_READ_ONLY))
@@ -357,7 +350,7 @@ public:
 		// nothing to do, no listeners to call, and it doesn't make sense to
 		// set the value twice to the same content.
 		if (attr.getValue() != value) {
-			attr.setValue(value);
+			attributes[key] = sshs_node_attr(value, attr.getRanges(), attr.getFlags(), attr.getDescription());
 
 			// Call the appropriate listeners, on change only, which is always
 			// true at this point.
@@ -365,12 +358,12 @@ public:
 			if (globalListener != nullptr) {
 				// Global listener support.
 				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), DVCFG_ATTRIBUTE_MODIFIED,
-					key.c_str(), attr.getValue().getType(), attr.getValue().toCUnion(true));
+					key.c_str(), value.getType(), value.toCUnion(true));
 			}
 
 			for (const auto &l : attrListeners) {
-				(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_MODIFIED, key.c_str(),
-					attr.getValue().getType(), attr.getValue().toCUnion(true));
+				(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_MODIFIED, key.c_str(), value.getType(),
+					value.toCUnion(true));
 			}
 		}
 
