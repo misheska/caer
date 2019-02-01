@@ -25,15 +25,15 @@ dvConfigNode dvConfigNodeAddChild(dvConfigNode node, const char *childName);
  */
 dvConfigNode dvConfigNodeGetChild(dvConfigNode node, const char *childName);
 /**
- * Get link to global SSHS tree.
+ * Get link to global configuration tree.
  */
 dvConfigTree dvConfigNodeGetGlobal(dvConfigNode node);
 
 // Internal global functions.
-dvConfigNodeChangeListener sshsGlobalNodeListenerGetFunction(dvConfigTree tree);
-void *sshsGlobalNodeListenerGetUserData(dvConfigTree tree);
-dvConfigAttributeChangeListener sshsGlobalAttributeListenerGetFunction(dvConfigTree tree);
-void *sshsGlobalAttributeListenerGetUserData(dvConfigTree tree);
+dvConfigNodeChangeListener dvConfigGlobalNodeListenerGetFunction(dvConfigTree tree);
+void *dvConfigGlobalNodeListenerGetUserData(dvConfigTree tree);
+dvConfigAttributeChangeListener dvConfigGlobalAttributeListenerGetFunction(dvConfigTree tree);
+void *dvConfigGlobalAttributeListenerGetUserData(dvConfigTree tree);
 }
 
 template<typename InIter, typename Elem> static inline bool findBool(InIter begin, InIter end, const Elem &val) {
@@ -47,7 +47,7 @@ template<typename InIter, typename Elem> static inline bool findBool(InIter begi
 }
 
 // Terminate process on failed memory allocation.
-template<typename T> static inline void sshsMemoryCheck(T *ptr, const std::string &funcName) {
+template<typename T> static inline void dvConfigMemoryCheck(T *ptr, const std::string &funcName) {
 	if (ptr == nullptr) {
 		boost::format errorMsg = boost::format("%s(): unable to allocate memory.") % funcName;
 
@@ -98,7 +98,7 @@ public:
 
 			case DVCFG_TYPE_UNKNOWN:
 			default:
-				throw std::runtime_error("SSHS: provided union value type does not match any valid type.");
+				throw std::runtime_error("dvConfig: provided union value type does not match any valid type.");
 				break;
 		}
 	}
@@ -207,7 +207,7 @@ public:
 
 			case DVCFG_TYPE_UNKNOWN:
 			default:
-				throw std::runtime_error("SSHS: provided union value type does not match any valid type.");
+				throw std::runtime_error("dvConfig: provided union value type does not match any valid type.");
 				break;
 		}
 	}
@@ -243,14 +243,14 @@ public:
 				}
 				else {
 					vu.string = strdup(str.c_str());
-					sshsMemoryCheck(vu.string, "sshs_value.toCUnion");
+					dvConfigMemoryCheck(vu.string, "dv_value.toCUnion");
 				}
 				break;
 			}
 
 			case DVCFG_TYPE_UNKNOWN:
 			default:
-				throw std::runtime_error("SSHS: internal value type does not match any valid type.");
+				throw std::runtime_error("dvConfig: internal value type does not match any valid type.");
 				break;
 		}
 

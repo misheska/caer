@@ -135,7 +135,7 @@ char *dvConfigHelperValueToStringConverter(enum dvConfigAttributeType type, unio
 	const std::string typeString = dvConfigHelperCppValueToStringConverter(val);
 
 	char *resultString = strdup(typeString.c_str());
-	sshsMemoryCheck(resultString, __func__);
+	dvConfigMemoryCheck(resultString, __func__);
 
 	return (resultString);
 }
@@ -166,7 +166,7 @@ char *dvConfigHelperFlagsToStringConverter(int flags) {
 	}
 
 	char *resultString = strdup(flagsStr.c_str());
-	sshsMemoryCheck(resultString, __func__);
+	dvConfigMemoryCheck(resultString, __func__);
 
 	return (resultString);
 }
@@ -223,7 +223,7 @@ char *dvConfigHelperRangesToStringConverter(enum dvConfigAttributeType type, str
 	}
 
 	char *resultString = strdup(buf);
-	sshsMemoryCheck(resultString, __func__);
+	dvConfigMemoryCheck(resultString, __func__);
 
 	return (resultString);
 }
