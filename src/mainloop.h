@@ -3,6 +3,7 @@
 
 #include "caer-sdk/mainloop.h"
 #include "caer-sdk/module.h"
+
 #include "module.h"
 
 #include <functional>
@@ -50,8 +51,8 @@ struct ModuleInfo {
 	// Module identification.
 	int16_t id;
 	const std::string name;
-	// SSHS configuration node.
-	sshsNode configNode;
+	// Configuration node.
+	dv::Config::Node configNode;
 	// Parsed moduleInput configuration.
 	std::unordered_map<int16_t, std::vector<OrderedInput>> inputDefinition;
 	// Connectivity graph (I/O).
@@ -64,12 +65,24 @@ struct ModuleInfo {
 	// Module runtime data.
 	caerModuleData runtimeData;
 
-	ModuleInfo()
-		: id(-1), name(), configNode(nullptr), library(), libraryHandle(), libraryInfo(nullptr), runtimeData(nullptr) {
+	ModuleInfo() :
+		id(-1),
+		name(),
+		configNode(nullptr),
+		library(),
+		libraryHandle(),
+		libraryInfo(nullptr),
+		runtimeData(nullptr) {
 	}
 
-	ModuleInfo(int16_t i, const std::string &n, sshsNode c, const std::string &l)
-		: id(i), name(n), configNode(c), library(l), libraryHandle(), libraryInfo(nullptr), runtimeData(nullptr) {
+	ModuleInfo(int16_t i, const std::string &n, dv::Config::Node c, const std::string &l) :
+		id(i),
+		name(n),
+		configNode(c),
+		library(l),
+		libraryHandle(),
+		libraryInfo(nullptr),
+		runtimeData(nullptr) {
 	}
 };
 
@@ -155,7 +168,7 @@ struct ActiveStreams {
 };
 
 struct MainloopData {
-	sshsNode configNode;
+	dv::Config::Node configNode;
 	atomic_bool systemRunning;
 	atomic_bool running;
 	atomic_uint_fast32_t dataAvailable;
@@ -164,6 +177,9 @@ struct MainloopData {
 	std::vector<ActiveStreams> streams;
 	std::vector<std::reference_wrapper<ModuleInfo>> globalExecution;
 	std::vector<caerEventPacketHeader> eventPackets;
+
+	MainloopData() : configNode(nullptr) {
+	}
 };
 
 #ifdef __cplusplus

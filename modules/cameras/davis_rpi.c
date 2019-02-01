@@ -1,6 +1,6 @@
 #include "davis_utils.h"
 
-static void caerInputDAVISRPiConfigInit(sshsNode moduleNode);
+static void caerInputDAVISRPiConfigInit(dvConfigNode moduleNode);
 static bool caerInputDAVISRPiInit(caerModuleData moduleData);
 static void caerInputDAVISRPiExit(caerModuleData moduleData);
 
@@ -34,11 +34,11 @@ caerModuleInfo caerModuleGetInfo(void) {
 static void createDefaultAERConfiguration(caerModuleData moduleData, const char *nodePrefix);
 static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davis_info *devInfo);
 
-static void aerConfigSend(sshsNode node, caerModuleData moduleData);
-static void aerConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+static void aerConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void aerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-static void caerInputDAVISRPiConfigInit(sshsNode moduleNode) {
+static void caerInputDAVISRPiConfigInit(dvConfigNode moduleNode) {
 	caerInputDAVISCommonSystemConfigInit(moduleNode);
 }
 
@@ -76,48 +76,48 @@ static bool caerInputDAVISRPiInit(caerModuleData moduleData) {
 	}
 
 	// Device related configuration has its own sub-node.
-	sshsNode deviceConfigNode = sshsGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
+	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	sshsNode chipNode = sshsGetRelativeNode(deviceConfigNode, "chip/");
-	sshsNodeAddAttributeListener(chipNode, moduleData, &chipConfigListener);
+	dvConfigNode chipNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "chip/");
+	dvConfigNodeAddAttributeListener(chipNode, moduleData, &chipConfigListener);
 
-	sshsNode muxNode = sshsGetRelativeNode(deviceConfigNode, "multiplexer/");
-	sshsNodeAddAttributeListener(muxNode, moduleData, &muxConfigListener);
+	dvConfigNode muxNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "multiplexer/");
+	dvConfigNodeAddAttributeListener(muxNode, moduleData, &muxConfigListener);
 
-	sshsNode dvsNode = sshsGetRelativeNode(deviceConfigNode, "dvs/");
-	sshsNodeAddAttributeListener(dvsNode, moduleData, &dvsConfigListener);
+	dvConfigNode dvsNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "dvs/");
+	dvConfigNodeAddAttributeListener(dvsNode, moduleData, &dvsConfigListener);
 
-	sshsNode apsNode = sshsGetRelativeNode(deviceConfigNode, "aps/");
-	sshsNodeAddAttributeListener(apsNode, moduleData, &apsConfigListener);
+	dvConfigNode apsNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "aps/");
+	dvConfigNodeAddAttributeListener(apsNode, moduleData, &apsConfigListener);
 
-	sshsNode imuNode = sshsGetRelativeNode(deviceConfigNode, "imu/");
-	sshsNodeAddAttributeListener(imuNode, moduleData, &imuConfigListener);
+	dvConfigNode imuNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "imu/");
+	dvConfigNodeAddAttributeListener(imuNode, moduleData, &imuConfigListener);
 
-	sshsNode extNode = sshsGetRelativeNode(deviceConfigNode, "externalInput/");
-	sshsNodeAddAttributeListener(extNode, moduleData, &extInputConfigListener);
+	dvConfigNode extNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "externalInput/");
+	dvConfigNodeAddAttributeListener(extNode, moduleData, &extInputConfigListener);
 
-	sshsNode aerNode = sshsGetRelativeNode(deviceConfigNode, "aer/");
-	sshsNodeAddAttributeListener(aerNode, moduleData, &aerConfigListener);
+	dvConfigNode aerNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "aer/");
+	dvConfigNodeAddAttributeListener(aerNode, moduleData, &aerConfigListener);
 
-	sshsNode sysNode = sshsGetRelativeNode(moduleData->moduleNode, "system/");
-	sshsNodeAddAttributeListener(sysNode, moduleData, &systemConfigListener);
+	dvConfigNode sysNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "system/");
+	dvConfigNodeAddAttributeListener(sysNode, moduleData, &systemConfigListener);
 
-	sshsNode biasNode = sshsGetRelativeNode(deviceConfigNode, "bias/");
+	dvConfigNode biasNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "bias/");
 
 	size_t biasNodesLength = 0;
-	sshsNode *biasNodes    = sshsNodeGetChildren(biasNode, &biasNodesLength);
+	dvConfigNode *biasNodes    = dvConfigNodeGetChildren(biasNode, &biasNodesLength);
 
 	if (biasNodes != NULL) {
 		for (size_t i = 0; i < biasNodesLength; i++) {
 			// Add listener for this particular bias.
-			sshsNodeAddAttributeListener(biasNodes[i], moduleData, &biasConfigListener);
+			dvConfigNodeAddAttributeListener(biasNodes[i], moduleData, &biasConfigListener);
 		}
 
 		free(biasNodes);
 	}
 
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
 
 	return (true);
 }
@@ -125,106 +125,106 @@ static bool caerInputDAVISRPiInit(caerModuleData moduleData) {
 static void caerInputDAVISRPiExit(caerModuleData moduleData) {
 	// Device related configuration has its own sub-node.
 	struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
-	sshsNode deviceConfigNode      = sshsGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
+	dvConfigNode deviceConfigNode      = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
 
 	// Remove listener, which can reference invalid memory in userData.
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
 
-	sshsNode chipNode = sshsGetRelativeNode(deviceConfigNode, "chip/");
-	sshsNodeRemoveAttributeListener(chipNode, moduleData, &chipConfigListener);
+	dvConfigNode chipNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "chip/");
+	dvConfigNodeRemoveAttributeListener(chipNode, moduleData, &chipConfigListener);
 
-	sshsNode muxNode = sshsGetRelativeNode(deviceConfigNode, "multiplexer/");
-	sshsNodeRemoveAttributeListener(muxNode, moduleData, &muxConfigListener);
+	dvConfigNode muxNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "multiplexer/");
+	dvConfigNodeRemoveAttributeListener(muxNode, moduleData, &muxConfigListener);
 
-	sshsNode dvsNode = sshsGetRelativeNode(deviceConfigNode, "dvs/");
-	sshsNodeRemoveAttributeListener(dvsNode, moduleData, &dvsConfigListener);
+	dvConfigNode dvsNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "dvs/");
+	dvConfigNodeRemoveAttributeListener(dvsNode, moduleData, &dvsConfigListener);
 
-	sshsNode apsNode = sshsGetRelativeNode(deviceConfigNode, "aps/");
-	sshsNodeRemoveAttributeListener(apsNode, moduleData, &apsConfigListener);
+	dvConfigNode apsNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "aps/");
+	dvConfigNodeRemoveAttributeListener(apsNode, moduleData, &apsConfigListener);
 
-	sshsNode imuNode = sshsGetRelativeNode(deviceConfigNode, "imu/");
-	sshsNodeRemoveAttributeListener(imuNode, moduleData, &imuConfigListener);
+	dvConfigNode imuNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "imu/");
+	dvConfigNodeRemoveAttributeListener(imuNode, moduleData, &imuConfigListener);
 
-	sshsNode extNode = sshsGetRelativeNode(deviceConfigNode, "externalInput/");
-	sshsNodeRemoveAttributeListener(extNode, moduleData, &extInputConfigListener);
+	dvConfigNode extNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "externalInput/");
+	dvConfigNodeRemoveAttributeListener(extNode, moduleData, &extInputConfigListener);
 
-	sshsNode aerNode = sshsGetRelativeNode(deviceConfigNode, "aer/");
-	sshsNodeRemoveAttributeListener(aerNode, moduleData, &aerConfigListener);
+	dvConfigNode aerNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "aer/");
+	dvConfigNodeRemoveAttributeListener(aerNode, moduleData, &aerConfigListener);
 
-	sshsNode sysNode = sshsGetRelativeNode(moduleData->moduleNode, "system/");
-	sshsNodeRemoveAttributeListener(sysNode, moduleData, &systemConfigListener);
+	dvConfigNode sysNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "system/");
+	dvConfigNodeRemoveAttributeListener(sysNode, moduleData, &systemConfigListener);
 
-	sshsNode biasNode = sshsGetRelativeNode(deviceConfigNode, "bias/");
+	dvConfigNode biasNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "bias/");
 
 	size_t biasNodesLength = 0;
-	sshsNode *biasNodes    = sshsNodeGetChildren(biasNode, &biasNodesLength);
+	dvConfigNode *biasNodes    = dvConfigNodeGetChildren(biasNode, &biasNodesLength);
 
 	if (biasNodes != NULL) {
 		for (size_t i = 0; i < biasNodesLength; i++) {
 			// Remove listener for this particular bias.
-			sshsNodeRemoveAttributeListener(biasNodes[i], moduleData, &biasConfigListener);
+			dvConfigNodeRemoveAttributeListener(biasNodes[i], moduleData, &biasConfigListener);
 		}
 
 		free(biasNodes);
 	}
 
 	// Ensure Exposure value is coherent with libcaer.
-	sshsAttributeUpdaterRemoveAllForNode(apsNode);
-	sshsNodePutAttribute(
-		apsNode, "Exposure", SSHS_INT, apsExposureUpdater(moduleData->moduleState, "Exposure", SSHS_INT));
+	dvConfigNodeAttributeUpdaterRemoveAll(apsNode);
+	dvConfigNodePutAttribute(
+		apsNode, "Exposure", DVCFG_TYPE_INT, apsExposureUpdater(moduleData->moduleState, "Exposure", DVCFG_TYPE_INT));
 
 	// Remove statistics updaters.
-	sshsNode statNode = sshsGetRelativeNode(deviceConfigNode, "statistics/");
-	sshsAttributeUpdaterRemoveAllForNode(statNode);
+	dvConfigNode statNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "statistics/");
+	dvConfigNodeAttributeUpdaterRemoveAll(statNode);
 
 	caerDeviceDataStop(moduleData->moduleState);
 
 	caerDeviceClose((caerDeviceHandle *) &moduleData->moduleState);
 
 	// Clear sourceInfo node.
-	sshsNode sourceInfoNode = sshsGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
-	sshsNodeRemoveAllAttributes(sourceInfoNode);
+	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+	dvConfigNodeRemoveAllAttributes(sourceInfoNode);
 }
 
 static void createDefaultAERConfiguration(caerModuleData moduleData, const char *nodePrefix) {
 	// Device related configuration has its own sub-node.
-	sshsNode deviceConfigNode = sshsGetRelativeNode(moduleData->moduleNode, nodePrefix);
+	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, nodePrefix);
 
 	// Subsystem 9: DDR AER output configuration.
-	sshsNode aerNode = sshsGetRelativeNode(deviceConfigNode, "aer/");
-	sshsNodeCreateBool(aerNode, "Run", true, SSHS_FLAGS_NORMAL,
+	dvConfigNode aerNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "aer/");
+	dvConfigNodeCreateBool(aerNode, "Run", true, DVCFG_FLAGS_NORMAL,
 		"Enable the DDR AER output state machine (FPGA to Raspberry-Pi data exchange).");
 }
 
 static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davis_info *devInfo) {
 	// Device related configuration has its own sub-node.
-	sshsNode deviceConfigNode = sshsGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo->chipID, true));
+	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo->chipID, true));
 
 	// Send cAER configuration to libcaer and device.
-	biasConfigSend(sshsGetRelativeNode(deviceConfigNode, "bias/"), moduleData, devInfo);
-	chipConfigSend(sshsGetRelativeNode(deviceConfigNode, "chip/"), moduleData, devInfo);
-	systemConfigSend(sshsGetRelativeNode(moduleData->moduleNode, "system/"), moduleData);
-	aerConfigSend(sshsGetRelativeNode(deviceConfigNode, "aer/"), moduleData);
-	muxConfigSend(sshsGetRelativeNode(deviceConfigNode, "multiplexer/"), moduleData);
-	dvsConfigSend(sshsGetRelativeNode(deviceConfigNode, "dvs/"), moduleData, devInfo);
-	apsConfigSend(sshsGetRelativeNode(deviceConfigNode, "aps/"), moduleData, devInfo);
-	imuConfigSend(sshsGetRelativeNode(deviceConfigNode, "imu/"), moduleData, devInfo);
-	extInputConfigSend(sshsGetRelativeNode(deviceConfigNode, "externalInput/"), moduleData, devInfo);
+	biasConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "bias/"), moduleData, devInfo);
+	chipConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "chip/"), moduleData, devInfo);
+	systemConfigSend(dvConfigNodeGetRelativeNode(moduleData->moduleNode, "system/"), moduleData);
+	aerConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "aer/"), moduleData);
+	muxConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "multiplexer/"), moduleData);
+	dvsConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "dvs/"), moduleData, devInfo);
+	apsConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "aps/"), moduleData, devInfo);
+	imuConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "imu/"), moduleData, devInfo);
+	extInputConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "externalInput/"), moduleData, devInfo);
 }
 
-static void aerConfigSend(sshsNode node, caerModuleData moduleData) {
+static void aerConfigSend(dvConfigNode node, caerModuleData moduleData) {
 	caerDeviceConfigSet(
-		moduleData->moduleState, DAVIS_CONFIG_DDRAER, DAVIS_CONFIG_DDRAER_RUN, sshsNodeGetBool(node, "Run"));
+		moduleData->moduleState, DAVIS_CONFIG_DDRAER, DAVIS_CONFIG_DDRAER_RUN, dvConfigNodeGetBool(node, "Run"));
 }
 
-static void aerConfigListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void aerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
 	caerModuleData moduleData = userData;
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED) {
-		if (changeType == SSHS_BOOL && caerStrEquals(changeKey, "Run")) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
+		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "Run")) {
 			caerDeviceConfigSet(
 				moduleData->moduleState, DAVIS_CONFIG_DDRAER, DAVIS_CONFIG_DDRAER_RUN, changeValue.boolean);
 		}

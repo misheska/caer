@@ -33,11 +33,11 @@ caerModuleInfo caerModuleGetInfo(void) {
 }
 
 static bool caerInputFileInit(caerModuleData moduleData) {
-	sshsNodeCreateString(
-		moduleData->moduleNode, "filePath", "", 0, PATH_MAX, SSHS_FLAGS_NORMAL, "File path for reading input data.");
-	sshsNodeCreateAttributeFileChooser(moduleData->moduleNode, "filePath", "LOAD:aedat");
+	dvConfigNodeCreateString(
+		moduleData->moduleNode, "filePath", "", 0, PATH_MAX, DVCFG_FLAGS_NORMAL, "File path for reading input data.");
+	dvConfigNodeAttributeModifierFileChooser(moduleData->moduleNode, "filePath", "LOAD:aedat");
 
-	char *filePath = sshsNodeGetString(moduleData->moduleNode, "filePath");
+	char *filePath = dvConfigNodeGetString(moduleData->moduleNode, "filePath");
 
 	if (caerStrEquals(filePath, "")) {
 		free(filePath);

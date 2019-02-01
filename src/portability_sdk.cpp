@@ -7,22 +7,22 @@
 #include <cstring>
 
 #if defined(OS_UNIX)
-#include <pthread.h>
-#include <pwd.h>
-#include <sched.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <unistd.h>
+#	include <pthread.h>
+#	include <pwd.h>
+#	include <sched.h>
+#	include <sys/time.h>
+#	include <sys/types.h>
+#	include <unistd.h>
 
-#if defined(OS_LINUX)
-#include <sys/prctl.h>
-#include <sys/resource.h>
-#endif
+#	if defined(OS_LINUX)
+#		include <sys/prctl.h>
+#		include <sys/resource.h>
+#	endif
 #elif defined(OS_WINDOWS)
-#define WIN32_LEAN_AND_MEAN
-#include <errno.h>
-#include <io.h>
-#include <windows.h>
+#	define WIN32_LEAN_AND_MEAN
+#	include <errno.h>
+#	include <io.h>
+#	include <windows.h>
 #endif
 
 char *portable_realpath(const char *path) {
@@ -31,7 +31,7 @@ char *portable_realpath(const char *path) {
 #elif defined(OS_WINDOWS)
 	return (_fullpath(nullptr, path, _MAX_PATH));
 #else
-#error "No portable realpath() found."
+#	error "No portable realpath() found."
 #endif
 }
 
@@ -41,7 +41,7 @@ int portable_fsync(int fd) {
 #elif defined(OS_WINDOWS)
 	return (_commit(fd));
 #else
-#error "No portable fsync() found."
+#	error "No portable fsync() found."
 #endif
 }
 
@@ -132,12 +132,12 @@ char *portable_get_user_home_directory(void) {
 }
 
 #if defined(OS_MACOSX)
-#include <mach/clock.h>
-#include <mach/clock_types.h>
-#include <mach/mach.h>
-#include <mach/mach_host.h>
-#include <mach/mach_port.h>
-#include <mach/mach_time.h>
+#	include <mach/clock.h>
+#	include <mach/clock_types.h>
+#	include <mach/mach.h>
+#	include <mach/mach_host.h>
+#	include <mach/mach_port.h>
+#	include <mach/mach_time.h>
 
 bool portable_clock_gettime_monotonic(struct timespec *monoTime) {
 	kern_return_t kRet;
@@ -206,8 +206,29 @@ bool portable_clock_gettime_realtime(struct timespec *realTime) {
 	return (clock_gettime(CLOCK_REALTIME, realTime) == 0);
 }
 #else
-#error "No portable way of getting absolute monotonic time found."
+#	error "No portable way of getting absolute monotonic time found."
 #endif
+
+struct tm portable_clock_localtime(void) {
+	struct tm currentTimeStruct;
+
+	time_t currentTimeEpoch = time(nullptr);
+
+#if defined(OS_WINDOWS)
+	// localtime() is thread-safe on Windows (and there is no localtime_r() at all).
+	currentTimeStruct = *localtime(&currentTimeEpoch);
+#else
+	// From localtime_r() man-page: "According to POSIX.1-2004, localtime()
+	// is required to behave as though tzset(3) was called, while
+	// localtime_r() does not have this requirement."
+	// So we make sure to call it here, to be portable.
+	tzset();
+
+	localtime_r(&currentTimeEpoch, &currentTimeStruct);
+#endif
+
+	return (currentTimeStruct);
+}
 
 bool portable_thread_set_name(const char *name) {
 #if defined(OS_LINUX)
@@ -227,7 +248,7 @@ bool portable_thread_set_name(const char *name) {
 	UNUSED_ARGUMENT(name);
 	return (false);
 #else
-#error "No portable way of setting thread name found."
+#	error "No portable way of setting thread name found."
 #endif
 }
 
@@ -255,6 +276,6 @@ bool portable_thread_set_priority_highest(void) {
 
 	return (true);
 #else
-#error "No portable way of raising thread priority found."
+#	error "No portable way of raising thread priority found."
 #endif
 }

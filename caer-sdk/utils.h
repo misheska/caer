@@ -3,20 +3,24 @@
 
 // Common includes, useful for everyone.
 #include <libcaer/libcaer.h>
+
 #include <libcaer/events/packetContainer.h>
-#include "sshs/sshs.h"
+
+#include "config/dvConfig.h"
 
 // Suppress unused argument warnings, if needed
 #define UNUSED_ARGUMENT(arg) (void) (arg)
 
 #ifdef __cplusplus
 
-#include <libcaercpp/libcaer.hpp>
-#include <libcaercpp/events/packetContainer.hpp>
-#include "sshs/sshs.hpp"
+#	include <libcaercpp/libcaer.hpp>
 
-#include <algorithm>
-#include <vector>
+#	include <libcaercpp/events/packetContainer.hpp>
+
+#	include "config/dvConfig.hpp"
+
+#	include <algorithm>
+#	include <vector>
 
 template<typename InIter, typename Elem> static inline bool findBool(InIter begin, InIter end, const Elem &val) {
 	const auto result = std::find(begin, end, val);

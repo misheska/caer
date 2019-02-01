@@ -167,7 +167,7 @@ struct input_common_state {
 	/// Reference to parent module's original data.
 	caerModuleData parentModule;
 	/// Reference to sourceInfo node (to avoid getting it each time again).
-	sshsNode sourceInfoNode;
+	dvConfigNode sourceInfoNode;
 };
 
 typedef struct input_common_state *inputCommonState;

@@ -46,6 +46,9 @@
 
 #include <libcaercpp/libcaer.hpp>
 using namespace libcaer::log;
+namespace dvCfg  = dv::Config;
+using dvCfgType  = dvCfg::AttributeType;
+using dvCfgFlags = dvCfg::AttributeFlags;
 
 // MAINLOOP DATA GLOBAL VARIABLE.
 static MainloopData glMainloopData;
@@ -54,14 +57,14 @@ static int caerMainloopRunner();
 static void printDebugInformation();
 static void caerMainloopShutdownHandler(int signum);
 static void caerMainloopSegfaultHandler(int signum);
-static void caerMainloopSystemRunningListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
-static void caerMainloopRunningListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
-static void caerUpdateModulesInformationListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
-static void caerWriteConfigurationListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
+static void caerMainloopSystemRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
+static void caerMainloopRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
+static void caerUpdateModulesInformationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
+static void caerWriteConfigurationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 void caerMainloopRun(void) {
 	// Setup internal mainloop pointer for public support library.
@@ -148,21 +151,22 @@ void caerMainloopRun(void) {
 #endif
 
 	// Initialize module related configuration.
-	sshsNode modulesNode = sshsGetNode(sshsGetGlobal(), "/caer/modules/");
+	auto modulesNode = dvCfg::GLOBAL.getNode("/caer/modules/");
 
 	// Default search directories.
 	boost::filesystem::path modulesDefaultDir(CM_SHARE_DIRECTORY);
 	modulesDefaultDir.append(MODULES_DIRECTORY, boost::filesystem::path::codecvt());
 
-	sshsNodeCreate(modulesNode, "modulesSearchPath", modulesDefaultDir.string(), 1, 8 * PATH_MAX, SSHS_FLAGS_NORMAL,
-		"Directories to search loadable modules in, separated by '|'.");
+	modulesNode.create<dvCfgType::STRING>("modulesSearchPath", modulesDefaultDir.string(), {1, 8 * PATH_MAX},
+		dvCfgFlags::NORMAL, "Directories to search loadable modules in, separated by '|'.");
 
-	sshsNodeCreate(modulesNode, "modulesListOptions", "", 0, 10000, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
-		"List of loadable modules.");
+	modulesNode.create<dvCfgType::STRING>("modulesListOptions", "", {0, 10000},
+		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "List of loadable modules.");
 
-	sshsNodeCreate(modulesNode, "updateModulesInformation", false, SSHS_FLAGS_NOTIFY_ONLY | SSHS_FLAGS_NO_EXPORT,
-		"Update modules information.");
-	sshsNodeAddAttributeListener(modulesNode, nullptr, &caerUpdateModulesInformationListener);
+	modulesNode.create<dvCfgType::BOOL>("updateModulesInformation", false, {},
+		dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Update modules information.");
+	modulesNode.attributeModifierButton("updateModulesInformation", "EXECUTE");
+	modulesNode.addAttributeListener(nullptr, &caerUpdateModulesInformationListener);
 
 	// No data at start-up.
 	glMainloopData.dataAvailable.store(0);
@@ -170,23 +174,24 @@ void caerMainloopRun(void) {
 	// System running control, separate to allow mainloop stop/start.
 	glMainloopData.systemRunning.store(true);
 
-	sshsNode systemNode = sshsGetNode(sshsGetGlobal(), "/caer/");
+	auto systemNode = dvCfg::GLOBAL.getNode("/caer/");
 
-	sshsNodeCreate(systemNode, "writeConfiguration", false, SSHS_FLAGS_NOTIFY_ONLY | SSHS_FLAGS_NO_EXPORT,
+	systemNode.create<dvCfgType::BOOL>("writeConfiguration", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT,
 		"Write current configuration to XML config file.");
-	sshsNodeAddAttributeListener(systemNode, nullptr, &caerWriteConfigurationListener);
+	systemNode.attributeModifierButton("writeConfiguration", "EXECUTE");
+	systemNode.addAttributeListener(nullptr, &caerWriteConfigurationListener);
 
-	sshsNodeCreateBool(
-		systemNode, "running", true, SSHS_FLAGS_NORMAL | SSHS_FLAGS_NO_EXPORT, "Global system start/stop.");
-	sshsNodeAddAttributeListener(systemNode, nullptr, &caerMainloopSystemRunningListener);
+	systemNode.create<dvCfgType::BOOL>(
+		"running", true, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Global system start/stop.");
+	systemNode.addAttributeListener(nullptr, &caerMainloopSystemRunningListener);
 
 	// Mainloop running control.
 	glMainloopData.running.store(true);
 
-	glMainloopData.configNode = sshsGetNode(sshsGetGlobal(), "/");
-	sshsNodeCreateBool(
-		glMainloopData.configNode, "running", true, SSHS_FLAGS_NORMAL | SSHS_FLAGS_NO_EXPORT, "Mainloop start/stop.");
-	sshsNodeAddAttributeListener(glMainloopData.configNode, nullptr, &caerMainloopRunningListener);
+	glMainloopData.configNode = dvCfg::GLOBAL.getRootNode();
+	glMainloopData.configNode.create<dvCfgType::BOOL>(
+		"running", true, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Mainloop start/stop.");
+	glMainloopData.configNode.addAttributeListener(nullptr, &caerMainloopRunningListener);
 
 	while (glMainloopData.systemRunning.load()) {
 		if (!glMainloopData.running.load()) {
@@ -194,29 +199,24 @@ void caerMainloopRun(void) {
 			continue;
 		}
 
-		// Get information on available modules, put it into SSHS.
+		// Get information on available modules, put it into ConfigTree.
 		try {
 			caerUpdateModulesInformation();
 		}
 		catch (const std::exception &ex) {
-			sshsNodePut(glMainloopData.configNode, "running", false);
+			glMainloopData.configNode.put<dvCfgType::BOOL>("running", false);
 
 			log(logLevel::CRITICAL, "Mainloop",
 				"Failed to find any modules (error: '%s'), please fix the configuration and try again!", ex.what());
 			continue;
 		}
 
-		// Write config to file on startup. This will contain all basic info and
-		// clean up the modules, which will be rewritten after module parsing and
-		// init if the mainloop has valid connectivity.
-		caerConfigWriteBack();
-
 		// Run mainloop.
 		int result = caerMainloopRunner();
 
 		// On failure, make sure to disable mainloop, user will have to fix it.
 		if (result == EXIT_FAILURE) {
-			sshsNodePut(glMainloopData.configNode, "running", false);
+			glMainloopData.configNode.put<dvCfgType::BOOL>("running", false);
 
 			log(logLevel::CRITICAL, "Mainloop",
 				"Failed to start mainloop, please fix the configuration and try again!");
@@ -225,34 +225,34 @@ void caerMainloopRun(void) {
 	}
 
 	// Remove attribute listeners for clean shutdown.
-	sshsNodeRemoveAttributeListener(glMainloopData.configNode, nullptr, &caerMainloopRunningListener);
-	sshsNodeRemoveAttributeListener(systemNode, nullptr, &caerMainloopSystemRunningListener);
-	sshsNodeRemoveAttributeListener(modulesNode, nullptr, &caerWriteConfigurationListener);
-	sshsNodeRemoveAttributeListener(modulesNode, nullptr, &caerUpdateModulesInformationListener);
+	glMainloopData.configNode.removeAttributeListener(nullptr, &caerMainloopRunningListener);
+	systemNode.removeAttributeListener(nullptr, &caerMainloopSystemRunningListener);
+	modulesNode.removeAttributeListener(nullptr, &caerWriteConfigurationListener);
+	modulesNode.removeAttributeListener(nullptr, &caerUpdateModulesInformationListener);
 }
 
 /**
  * Check for the presence of the 'moduleInput' and 'moduleOutput' configuration
  * parameters, depending on the type of module and its requirements.
  */
-static void checkModuleInputOutput(caerModuleInfo info, sshsNode configNode) {
+static void checkModuleInputOutput(caerModuleInfo info, dvCfg::Node configNode) {
 	if (info->type == CAER_MODULE_INPUT) {
 		// moduleInput must not exist for INPUT modules.
-		if (sshsNodeAttributeExists(configNode, "moduleInput", SSHS_STRING)) {
+		if (configNode.exists<dvCfgType::STRING>("moduleInput")) {
 			throw std::domain_error("INPUT type cannot have a 'moduleInput' attribute.");
 		}
 	}
 	else {
 		// CAER_MODULE_OUTPUT / CAER_MODULE_PROCESSOR
 		// moduleInput must exist for OUTPUT and PROCESSOR modules.
-		if (!sshsNodeAttributeExists(configNode, "moduleInput", SSHS_STRING)) {
+		if (!configNode.exists<dvCfgType::STRING>("moduleInput")) {
 			throw std::domain_error("OUTPUT/PROCESSOR types must have a 'moduleInput' attribute.");
 		}
 	}
 
 	if (info->type == CAER_MODULE_OUTPUT) {
 		// moduleOutput must not exist for OUTPUT modules.
-		if (sshsNodeAttributeExists(configNode, "moduleOutput", SSHS_STRING)) {
+		if (configNode.exists<dvCfgType::STRING>("moduleOutput")) {
 			throw std::domain_error("OUTPUT type cannot have a 'moduleOutput' attribute.");
 		}
 	}
@@ -261,7 +261,7 @@ static void checkModuleInputOutput(caerModuleInfo info, sshsNode configNode) {
 		// moduleOutput must exist for INPUT and PROCESSOR modules, only
 		// if their outputs are undefined (-1).
 		if (info->outputStreams != nullptr && info->outputStreamsSize == 1 && info->outputStreams[0].type == -1
-			&& !sshsNodeAttributeExists(configNode, "moduleOutput", SSHS_STRING)) {
+			&& !configNode.exists<dvCfgType::STRING>("moduleOutput")) {
 			throw std::domain_error(
 				"INPUT/PROCESSOR types with ANY_TYPE definition must have a 'moduleOutput' attribute.");
 		}
@@ -1380,54 +1380,55 @@ static int caerMainloopRunner() {
 	// Each node in the root / is a module, with a short-name as node-name,
 	// an ID (16-bit integer, "moduleId") as attribute, and the module's library
 	// (string, "moduleLibrary") as attribute.
-	size_t modulesSize = 0;
-	sshsNode *modules  = sshsNodeGetChildren(glMainloopData.configNode, &modulesSize);
-	if (modules == nullptr || modulesSize == 0) {
-		// Empty configuration.
-		log(logLevel::ERROR, "Mainloop", "No modules configuration found.");
-		return (EXIT_FAILURE);
+	{
+		auto modules = glMainloopData.configNode.getChildren();
+
+		if (modules.empty()) {
+			// Write basic config file.
+			caerConfigWriteBack();
+
+			// Empty configuration.
+			log(logLevel::ERROR, "Mainloop", "No modules configuration found.");
+			return (EXIT_FAILURE);
+		}
+
+		for (auto &module : modules) {
+			const std::string moduleName = module.getName();
+
+			if (moduleName == "caer") {
+				// Skip system configuration, not a module.
+				continue;
+			}
+
+			if (!module.exists<dvCfgType::INT>("moduleId") || !module.exists<dvCfgType::STRING>("moduleLibrary")) {
+				// Missing required attributes, notify and skip.
+				log(logLevel::ERROR, "Mainloop",
+					"Module '%s': Configuration is missing core attributes 'moduleId' and/or 'moduleLibrary'.",
+					moduleName.c_str());
+				continue;
+			}
+
+			int16_t moduleId                = I16T(module.get<dvCfgType::INT>("moduleId"));
+			const std::string moduleLibrary = module.get<dvCfgType::STRING>("moduleLibrary");
+
+			// Ensure flags and ranges are set correctly on first-load.
+			module.create<dvCfgType::INT>("moduleId", moduleId, {1, INT16_MAX}, dvCfgFlags::READ_ONLY, "Module ID.");
+			module.create<dvCfgType::STRING>(
+				"moduleLibrary", moduleLibrary, {1, PATH_MAX}, dvCfgFlags::READ_ONLY, "Module library.");
+
+			ModuleInfo info = ModuleInfo(moduleId, moduleName, module, moduleLibrary);
+
+			// Put data into an unordered map that holds all valid modules.
+			// This also ensure the numerical ID is unique!
+			auto result = glMainloopData.modules.insert(std::make_pair(info.id, info));
+			if (!result.second) {
+				// Failed insertion, key (ID) already exists!
+				log(logLevel::ERROR, "Mainloop", "Module '%s': Module with ID %d already exists.", moduleName.c_str(),
+					info.id);
+				continue;
+			}
+		}
 	}
-
-	for (size_t i = 0; i < modulesSize; i++) {
-		sshsNode module              = modules[i];
-		const std::string moduleName = sshsNodeGetName(module);
-
-		if (moduleName == "caer") {
-			// Skip system configuration, not a module.
-			continue;
-		}
-
-		if (!sshsNodeAttributeExists(module, "moduleId", SSHS_INT)
-			|| !sshsNodeAttributeExists(module, "moduleLibrary", SSHS_STRING)) {
-			// Missing required attributes, notify and skip.
-			log(logLevel::ERROR, "Mainloop",
-				"Module '%s': Configuration is missing core attributes 'moduleId' and/or 'moduleLibrary'.",
-				moduleName.c_str());
-			continue;
-		}
-
-		int16_t moduleId                = I16T(sshsNodeGetInt(module, "moduleId"));
-		const std::string moduleLibrary = sshsNodeGetStdString(module, "moduleLibrary");
-
-		// Ensure flags and ranges are set correctly on first-load.
-		sshsNodeCreate(module, "moduleId", moduleId, I16T(1), I16T(INT16_MAX), SSHS_FLAGS_READ_ONLY, "Module ID.");
-		sshsNodeCreate(module, "moduleLibrary", moduleLibrary, 1, PATH_MAX, SSHS_FLAGS_READ_ONLY, "Module library.");
-
-		ModuleInfo info = ModuleInfo(moduleId, moduleName, module, moduleLibrary);
-
-		// Put data into an unordered map that holds all valid modules.
-		// This also ensure the numerical ID is unique!
-		auto result = glMainloopData.modules.insert(std::make_pair(info.id, info));
-		if (!result.second) {
-			// Failed insertion, key (ID) already exists!
-			log(logLevel::ERROR, "Mainloop", "Module '%s': Module with ID %d already exists.", moduleName.c_str(),
-				info.id);
-			continue;
-		}
-	}
-
-	// Free temporary configuration nodes array.
-	free(modules);
 
 	// At this point we have a map with all the valid modules and their info.
 	// If that map is empty, there was nothing valid present.
@@ -1520,11 +1521,11 @@ static int caerMainloopRunner() {
 			if (info->outputStreams != nullptr) {
 				// ANY type declaration.
 				if (info->outputStreamsSize == 1 && info->outputStreams[0].type == -1) {
-					const std::string outputDefinition = sshsNodeGetStdString(m.get().configNode, "moduleOutput");
+					const std::string outputDefinition = m.get().configNode.get<dvCfgType::STRING>("moduleOutput");
 
 					// Ensure flags and ranges are set correctly on first-load.
-					sshsNodeCreate(m.get().configNode, "moduleOutput", outputDefinition, 0, 1024, SSHS_FLAGS_NORMAL,
-						"Module dynamic output definition.");
+					m.get().configNode.create<dvCfgType::STRING>("moduleOutput", outputDefinition, {0, 1024},
+						dvCfgFlags::NORMAL, "Module dynamic output definition.");
 
 					parseModuleOutput(outputDefinition, m.get().outputs, m.get().name);
 				}
@@ -1549,11 +1550,11 @@ static int caerMainloopRunner() {
 		// Then we parse all the 'moduleInput' configurations for OUTPUT and
 		// PROCESSOR modules, which we can now verify against possible streams.
 		for (const auto &m : boost::join(outputModules, processorModules)) {
-			const std::string inputDefinition = sshsNodeGetStdString(m.get().configNode, "moduleInput");
+			const std::string inputDefinition = m.get().configNode.get<dvCfgType::STRING>("moduleInput");
 
 			// Ensure flags and ranges are set correctly on first-load.
-			sshsNodeCreate(m.get().configNode, "moduleInput", inputDefinition, 0, 1024, SSHS_FLAGS_NORMAL,
-				"Module dynamic input definition.");
+			m.get().configNode.create<dvCfgType::STRING>(
+				"moduleInput", inputDefinition, {0, 1024}, dvCfgFlags::NORMAL, "Module dynamic input definition.");
 
 			parseModuleInput(inputDefinition, m.get().inputDefinition, m.get().id, m.get().name);
 
@@ -1800,7 +1801,7 @@ static int caerMainloopRunner() {
 	// Shutdown all modules. This makes them all go into the exit
 	// state for the next and last runModules() call.
 	for (const auto &m : glMainloopData.globalExecution) {
-		sshsNodePut(m.get().configNode, "running", false);
+		m.get().configNode.put<dvCfgType::BOOL>("running", false);
 	}
 
 	// Run through the loop one last time to correctly shutdown all the modules.
@@ -1879,43 +1880,43 @@ static void caerMainloopSegfaultHandler(int signum) {
 #elif defined(OS_LINUX)
 	void *traces[128];
 	int tracesActualNum = backtrace(traces, 128);
-	backtrace_symbols_fd(traces, tracesActualNum, STDOUT_FILENO);
+	backtrace_symbols_fd(traces, tracesActualNum, STDERR_FILENO);
 #endif
 
 	raise(signum);
 }
 
-static void caerMainloopSystemRunningListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerMainloopSystemRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
 	UNUSED_ARGUMENT(changeValue);
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BOOL && caerStrEquals(changeKey, "running")) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
 		glMainloopData.systemRunning.store(false);
 		glMainloopData.running.store(false);
 	}
 }
 
-static void caerMainloopRunningListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerMainloopRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BOOL && caerStrEquals(changeKey, "running")) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
 		glMainloopData.running.store(changeValue.boolean);
 	}
 }
 
-static void caerUpdateModulesInformationListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerUpdateModulesInformationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
 	UNUSED_ARGUMENT(changeValue);
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BOOL
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
 		&& caerStrEquals(changeKey, "updateModulesInformation") && changeValue.boolean) {
-		// Get information on available modules, put it into SSHS.
+		// Get information on available modules, put it into ConfigTree.
 		try {
 			caerUpdateModulesInformation();
 		}
@@ -1925,14 +1926,14 @@ static void caerUpdateModulesInformationListener(sshsNode node, void *userData, 
 	}
 }
 
-static void caerWriteConfigurationListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
+static void caerWriteConfigurationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
 	UNUSED_ARGUMENT(changeValue);
 
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BOOL && caerStrEquals(changeKey, "writeConfiguration")
-		&& changeValue.boolean) {
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
+		&& caerStrEquals(changeKey, "writeConfiguration") && changeValue.boolean) {
 		caerConfigWriteBack();
 	}
 }

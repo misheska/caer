@@ -33,7 +33,7 @@ caerModuleInfo caerModuleGetInfo(void) {
 static bool caerInputUnixSocketInit(caerModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
-	sshsNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
 		"Unix Socket path for reading input data.");
 
 	// Open an existing Unix local socket at a known path, where we'll write to.
@@ -48,7 +48,7 @@ static bool caerInputUnixSocketInit(caerModuleData moduleData) {
 
 	unixSocketAddr.sun_family = AF_UNIX;
 
-	char *socketPath = sshsNodeGetString(moduleData->moduleNode, "socketPath");
+	char *socketPath = dvConfigNodeGetString(moduleData->moduleNode, "socketPath");
 	strncpy(unixSocketAddr.sun_path, socketPath, sizeof(unixSocketAddr.sun_path) - 1);
 	unixSocketAddr.sun_path[sizeof(unixSocketAddr.sun_path) - 1] = '\0'; // Ensure NUL terminated string.
 	free(socketPath);
