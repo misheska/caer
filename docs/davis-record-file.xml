@@ -1,4 +1,4 @@
-<sshs version="1.0">
+<dv version="2.0">
     <node name="" path="/">
         <node name="dvsnoisefilter" path="/dvsnoisefilter/">
             <attr key="moduleId" type="int">2</attr>
@@ -29,4 +29,4 @@
 			<attr key="validOnly" type="bool">true</attr>
 		</node>
     </node>
-</sshs>
+</dv>

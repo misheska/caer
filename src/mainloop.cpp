@@ -1383,6 +1383,11 @@ static int caerMainloopRunner() {
 	{
 		auto modules = glMainloopData.configNode.getChildren();
 
+		// Remove system configuration, not a module.
+		modules.erase(std::remove_if(modules.begin(), modules.end(),
+						  [](const auto &module) { return (module.getName() == "caer"); }),
+			modules.end());
+
 		if (modules.empty()) {
 			// Write basic config file.
 			caerConfigWriteBack();
@@ -1394,11 +1399,6 @@ static int caerMainloopRunner() {
 
 		for (auto &module : modules) {
 			const std::string moduleName = module.getName();
-
-			if (moduleName == "caer") {
-				// Skip system configuration, not a module.
-				continue;
-			}
 
 			if (!module.exists<dvCfgType::INT>("moduleId") || !module.exists<dvCfgType::STRING>("moduleLibrary")) {
 				// Missing required attributes, notify and skip.

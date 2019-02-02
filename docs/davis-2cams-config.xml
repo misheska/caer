@@ -1,4 +1,4 @@
-<sshs version="1.0">
+<dv version="2.0">
     <node name="" path="/">
         <node name="caer" path="/caer/">
             <node name="logger" path="/caer/logger/">
@@ -54,4 +54,4 @@
             <attr key="renderer" type="string">Frame</attr>
         </node>
     </node>
-</sshs>
+</dv>

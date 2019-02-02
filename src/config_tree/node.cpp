@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 
-class sshs_node_attr {
+class dv_node_attribute {
 private:
 	dv_value value;
 	dv_ranges ranges;
@@ -24,10 +24,11 @@ private:
 	std::string description;
 
 public:
-	sshs_node_attr() : flags(DVCFG_FLAGS_NORMAL) {
+	dv_node_attribute() : flags(DVCFG_FLAGS_NORMAL) {
 	}
 
-	sshs_node_attr(const dv_value &_value, const dv_ranges &_ranges, int _flags, const std::string &_description) :
+	dv_node_attribute(
+		const dv_value &_value, const dv_ranges &_ranges, int _flags, const std::string_view _description) :
 		value(_value),
 		ranges(_ranges),
 		flags(_flags),
@@ -36,10 +37,6 @@ public:
 
 	const dv_value &getValue() const noexcept {
 		return (value);
-	}
-
-	void setValue(const dv_value &v) noexcept {
-		value = v;
 	}
 
 	const dv_ranges &getRanges() const noexcept {
@@ -59,13 +56,13 @@ public:
 	}
 };
 
-class sshs_node_listener {
+class dv_node_listener {
 private:
 	dvConfigNodeChangeListener nodeChanged;
 	void *userData;
 
 public:
-	sshs_node_listener(dvConfigNodeChangeListener _listener, void *_userData) :
+	dv_node_listener(dvConfigNodeChangeListener _listener, void *_userData) :
 		nodeChanged(_listener),
 		userData(_userData) {
 	}
@@ -79,22 +76,22 @@ public:
 	}
 
 	// Comparison operators.
-	bool operator==(const sshs_node_listener &rhs) const noexcept {
+	bool operator==(const dv_node_listener &rhs) const noexcept {
 		return ((nodeChanged == rhs.nodeChanged) && (userData == rhs.userData));
 	}
 
-	bool operator!=(const sshs_node_listener &rhs) const noexcept {
+	bool operator!=(const dv_node_listener &rhs) const noexcept {
 		return (!this->operator==(rhs));
 	}
 };
 
-class sshs_attribute_listener {
+class dv_attribute_listener {
 private:
 	dvConfigAttributeChangeListener attributeChanged;
 	void *userData;
 
 public:
-	sshs_attribute_listener(dvConfigAttributeChangeListener _listener, void *_userData) :
+	dv_attribute_listener(dvConfigAttributeChangeListener _listener, void *_userData) :
 		attributeChanged(_listener),
 		userData(_userData) {
 	}
@@ -108,16 +105,16 @@ public:
 	}
 
 	// Comparison operators.
-	bool operator==(const sshs_attribute_listener &rhs) const noexcept {
+	bool operator==(const dv_attribute_listener &rhs) const noexcept {
 		return ((attributeChanged == rhs.attributeChanged) && (userData == rhs.userData));
 	}
 
-	bool operator!=(const sshs_attribute_listener &rhs) const noexcept {
+	bool operator!=(const dv_attribute_listener &rhs) const noexcept {
 		return (!this->operator==(rhs));
 	}
 };
 
-static const std::regex sshsKeyRegexp("^[a-zA-Z-_\\d\\.]+$");
+static const std::regex dvKeyRegexp("^[a-zA-Z-_\\d\\.]+$");
 
 // struct for C compatibility
 struct dv_config_node {
@@ -127,9 +124,9 @@ public:
 	dvConfigTree global;
 	dvConfigNode parent;
 	std::map<std::string, dvConfigNode> children;
-	std::map<std::string, sshs_node_attr> attributes;
-	std::vector<sshs_node_listener> nodeListeners;
-	std::vector<sshs_attribute_listener> attrListeners;
+	std::map<std::string, dv_node_attribute> attributes;
+	std::vector<dv_node_listener> nodeListeners;
+	std::vector<dv_attribute_listener> attrListeners;
 	std::shared_mutex traversal_lock;
 	std::recursive_mutex node_lock;
 
@@ -150,7 +147,7 @@ public:
 	void createAttribute(const std::string &key, const dv_value &defaultValue, const dv_ranges &ranges, int flags,
 		const std::string &description) {
 		// Check key name string against allowed characters via regexp.
-		if (!std::regex_match(key, sshsKeyRegexp)) {
+		if (!std::regex_match(key, dvKeyRegexp)) {
 			boost::format errorMsg = boost::format("Invalid key name format: '%s'.") % key;
 
 			dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(), errorMsg.str());
@@ -182,79 +179,76 @@ public:
 			dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(), errorMsg.str());
 		}
 
-		sshs_node_attr newAttr(defaultValue, ranges, flags, description);
+		enum dvConfigAttributeEvents attrEvents;
 
 		std::lock_guard<std::recursive_mutex> lock(node_lock);
 
-		// Add if not present. Else update value (below).
-		enum dvConfigAttributeEvents attrEvents;
-
+		// Add if not present, else replace.
 		if (!attributes.count(key)) {
-			attributes[key] = newAttr;
+			// Insert newAttr. Execute Listener support.
+			attributes[key] = dv_node_attribute(defaultValue, ranges, flags, description);
 			attrEvents      = DVCFG_ATTRIBUTE_ADDED;
 		}
 		else {
-			const sshs_node_attr &oldAttr = attributes[key];
+			const auto &oldAttr = attributes[key];
 
 			// To simplify things, we don't support multiple types per key.
-			if (oldAttr.getValue().getType() != newAttr.getValue().getType()) {
-				boost::format errorMsg
-					= boost::format("value with this key already exists and has a different type of '%s'")
-					  % dvConfigHelperCppTypeToStringConverter(oldAttr.getValue().getType());
+			if (oldAttr.getValue().getType() != defaultValue.getType()) {
+				boost::format errorMsg = boost::format("attribute already exists and has a different type of '%s'")
+										 % dvConfigHelperCppTypeToStringConverter(oldAttr.getValue().getType());
 
-				dvConfigNodeError("dvConfigNodeCreateAttribute", key, newAttr.getValue().getType(), errorMsg.str());
+				dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(), errorMsg.str());
 			}
 
-			// Check if the current value is still fine and within range; if it is
-			// we use it, else just use the new value.
-			if (oldAttr.getValue().inRange(ranges)) {
-				// Only update value, then use newAttr. Listeners are called because
-				// description, flags or ranges might have changed.
-				newAttr.setValue(oldAttr.getValue());
-			}
-
-			// Determine what, if anything, changed.
+			// If old value is out of range, replace with new default value, which must be in
+			// range and thus different. Else keep old value.
 			bool valueChanged = false;
-			if (newAttr.getValue() != oldAttr.getValue()) {
+			if (!oldAttr.getValue().inRange(ranges)) {
 				valueChanged = true;
 			}
 
 			bool extraChanged = false;
-			if ((newAttr.getFlags() != oldAttr.getFlags()) || (newAttr.getRanges() != oldAttr.getRanges())
-				|| (newAttr.getDescription() != oldAttr.getDescription())) {
+			if ((oldAttr.getFlags() != flags) || (oldAttr.getRanges() != ranges)
+				|| (oldAttr.getDescription() != description)) {
 				extraChanged = true;
 			}
 
 			// Always call listeners on modification in create. Flags, ranges, description
 			// might have changed and we want to ensure that is notified.
 			if (!valueChanged && !extraChanged) {
-				// Nothing changed, same call. Do nothing.
+				// Nothing changed, maybe same call. Do nothing.
 				return;
 			}
+			else if (!valueChanged && extraChanged) {
+				// Only the extra bits changed, value was still fine.
+				attributes[key] = dv_node_attribute(oldAttr.getValue(), ranges, flags, description);
+				attrEvents      = DVCFG_ATTRIBUTE_MODIFIED_CREATE;
+			}
 			else if (valueChanged && !extraChanged) {
-				// Only the value changed, same as a put().
-				attrEvents = DVCFG_ATTRIBUTE_MODIFIED;
+				// Only the value changed, same as a put(). Use new value.
+				attributes[key] = dv_node_attribute(defaultValue, ranges, flags, description);
+				attrEvents      = DVCFG_ATTRIBUTE_MODIFIED;
 			}
-			else {
-				// One of the extra parameters (flags, ranges, description) changed.
-				// Call listeners with special value.
-				attrEvents = DVCFG_ATTRIBUTE_MODIFIED_CREATE;
+			else { // valueChanged && extraChanged
+				   // Everything changed. Use new value.
+				attributes[key] = dv_node_attribute(defaultValue, ranges, flags, description);
+				attrEvents      = DVCFG_ATTRIBUTE_MODIFIED_CREATE;
 			}
-
-			attributes[key] = newAttr;
 		}
 
-		// Listener support. Call only on change, which is always the case here.
-		dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+		// Listener support.
+		const auto &listenerAttr = attributes[key];
+
+		auto globalListener = dvConfigGlobalAttributeListenerGetFunction(this->global);
 		if (globalListener != nullptr) {
 			// Global listener support.
-			(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), attrEvents, key.c_str(),
-				newAttr.getValue().getType(), newAttr.getValue().toCUnion(true));
+			(*globalListener)(this, dvConfigGlobalAttributeListenerGetUserData(this->global), attrEvents, key.c_str(),
+				listenerAttr.getValue().getType(), listenerAttr.getValue().toCUnion(true));
 		}
 
 		for (const auto &l : attrListeners) {
-			(*l.getListener())(this, l.getUserData(), attrEvents, key.c_str(), newAttr.getValue().getType(),
-				newAttr.getValue().toCUnion(true));
+			(*l.getListener())(this, l.getUserData(), attrEvents, key.c_str(), listenerAttr.getValue().getType(),
+				listenerAttr.getValue().toCUnion(true));
 		}
 	}
 
@@ -267,13 +261,13 @@ public:
 			return;
 		}
 
-		sshs_node_attr &attr = attributes[key];
+		const auto &attr = attributes[key];
 
 		// Listener support.
-		dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+		dvConfigAttributeChangeListener globalListener = dvConfigGlobalAttributeListenerGetFunction(this->global);
 		if (globalListener != nullptr) {
 			// Global listener support.
-			(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), DVCFG_ATTRIBUTE_REMOVED,
+			(*globalListener)(this, dvConfigGlobalAttributeListenerGetUserData(this->global), DVCFG_ATTRIBUTE_REMOVED,
 				key.c_str(), attr.getValue().getType(), attr.getValue().toCUnion(true));
 		}
 
@@ -290,11 +284,12 @@ public:
 		std::lock_guard<std::recursive_mutex> lock(node_lock);
 
 		for (const auto &attr : attributes) {
-			dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+			dvConfigAttributeChangeListener globalListener = dvConfigGlobalAttributeListenerGetFunction(this->global);
 			if (globalListener != nullptr) {
 				// Global listener support.
-				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), DVCFG_ATTRIBUTE_REMOVED,
-					attr.first.c_str(), attr.second.getValue().getType(), attr.second.getValue().toCUnion(true));
+				(*globalListener)(this, dvConfigGlobalAttributeListenerGetUserData(this->global),
+					DVCFG_ATTRIBUTE_REMOVED, attr.first.c_str(), attr.second.getValue().getType(),
+					attr.second.getValue().toCUnion(true));
 			}
 
 			for (const auto &l : attrListeners) {
@@ -336,7 +331,7 @@ public:
 			dvConfigNodeErrorNoAttribute("dvConfigNodePutAttribute", key, value.getType());
 		}
 
-		sshs_node_attr &attr = attributes[key];
+		const auto &attr = attributes[key];
 
 		// Value must be present, so update old one, after checking range and flags.
 		if ((!forceReadOnlyUpdate && attr.isFlagSet(DVCFG_FLAGS_READ_ONLY))
@@ -357,20 +352,20 @@ public:
 		// nothing to do, no listeners to call, and it doesn't make sense to
 		// set the value twice to the same content.
 		if (attr.getValue() != value) {
-			attr.setValue(value);
+			attributes[key] = dv_node_attribute(value, attr.getRanges(), attr.getFlags(), attr.getDescription());
 
 			// Call the appropriate listeners, on change only, which is always
 			// true at this point.
-			dvConfigAttributeChangeListener globalListener = sshsGlobalAttributeListenerGetFunction(this->global);
+			dvConfigAttributeChangeListener globalListener = dvConfigGlobalAttributeListenerGetFunction(this->global);
 			if (globalListener != nullptr) {
 				// Global listener support.
-				(*globalListener)(this, sshsGlobalAttributeListenerGetUserData(this->global), DVCFG_ATTRIBUTE_MODIFIED,
-					key.c_str(), attr.getValue().getType(), attr.getValue().toCUnion(true));
+				(*globalListener)(this, dvConfigGlobalAttributeListenerGetUserData(this->global),
+					DVCFG_ATTRIBUTE_MODIFIED, key.c_str(), value.getType(), value.toCUnion(true));
 			}
 
 			for (const auto &l : attrListeners) {
-				(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_MODIFIED, key.c_str(),
-					attr.getValue().getType(), attr.getValue().toCUnion(true));
+				(*l.getListener())(this, l.getUserData(), DVCFG_ATTRIBUTE_MODIFIED, key.c_str(), value.getType(),
+					value.toCUnion(true));
 			}
 		}
 
@@ -392,7 +387,7 @@ static void dvConfigNodeConsumeXML(dvConfigNode node, const boost::property_tree
 
 dvConfigNode dvConfigNodeNew(const char *nodeName, dvConfigNode parent, dvConfigTree global) {
 	dvConfigNode newNode = new (std::nothrow) dv_config_node(nodeName, parent, global);
-	sshsMemoryCheck(newNode, __func__);
+	dvConfigMemoryCheck(newNode, __func__);
 
 	return (newNode);
 }
@@ -434,10 +429,11 @@ dvConfigNode dvConfigNodeAddChild(dvConfigNode node, const char *childName) {
 		// Listener support (only on new addition!).
 		std::lock_guard<std::recursive_mutex> nodeLock(node->node_lock);
 
-		dvConfigNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
+		dvConfigNodeChangeListener globalListener = dvConfigGlobalNodeListenerGetFunction(node->global);
 		if (globalListener != nullptr) {
 			// Global listener support.
-			(*globalListener)(node, sshsGlobalNodeListenerGetUserData(node->global), DVCFG_NODE_CHILD_ADDED, childName);
+			(*globalListener)(
+				node, dvConfigGlobalNodeListenerGetUserData(node->global), DVCFG_NODE_CHILD_ADDED, childName);
 		}
 
 		for (const auto &l : node->nodeListeners) {
@@ -471,7 +467,7 @@ dvConfigNode *dvConfigNodeGetChildren(dvConfigNode node, size_t *numChildren) {
 	}
 
 	dvConfigNode *children = (dvConfigNode *) malloc(childrenCount * sizeof(*children));
-	sshsMemoryCheck(children, __func__);
+	dvConfigMemoryCheck(children, __func__);
 
 	size_t i = 0;
 	for (const auto &n : node->children) {
@@ -483,7 +479,7 @@ dvConfigNode *dvConfigNodeGetChildren(dvConfigNode node, size_t *numChildren) {
 }
 
 void dvConfigNodeAddNodeListener(dvConfigNode node, void *userData, dvConfigNodeChangeListener node_changed) {
-	sshs_node_listener listener(node_changed, userData);
+	dv_node_listener listener(node_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
 
@@ -493,7 +489,7 @@ void dvConfigNodeAddNodeListener(dvConfigNode node, void *userData, dvConfigNode
 }
 
 void dvConfigNodeRemoveNodeListener(dvConfigNode node, void *userData, dvConfigNodeChangeListener node_changed) {
-	sshs_node_listener listener(node_changed, userData);
+	dv_node_listener listener(node_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
 
@@ -509,7 +505,7 @@ void dvConfigNodeRemoveAllNodeListeners(dvConfigNode node) {
 
 void dvConfigNodeAddAttributeListener(
 	dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed) {
-	sshs_attribute_listener listener(attribute_changed, userData);
+	dv_attribute_listener listener(attribute_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
 
@@ -520,7 +516,7 @@ void dvConfigNodeAddAttributeListener(
 
 void dvConfigNodeRemoveAttributeListener(
 	dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed) {
-	sshs_attribute_listener listener(attribute_changed, userData);
+	dv_attribute_listener listener(attribute_changed, userData);
 
 	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
 
@@ -606,11 +602,11 @@ static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string &childN
 	}
 
 	// Listener support.
-	dvConfigNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
+	dvConfigNodeChangeListener globalListener = dvConfigGlobalNodeListenerGetFunction(node->global);
 	if (globalListener != nullptr) {
 		// Global listener support.
 		(*globalListener)(
-			node, sshsGlobalNodeListenerGetUserData(node->global), DVCFG_NODE_CHILD_REMOVED, childName.c_str());
+			node, dvConfigGlobalNodeListenerGetUserData(node->global), DVCFG_NODE_CHILD_REMOVED, childName.c_str());
 	}
 
 	for (const auto &l : node->nodeListeners) {
@@ -630,11 +626,11 @@ static void dvConfigNodeRemoveAllChildren(dvConfigNode node) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	for (const auto &child : node->children) {
-		dvConfigNodeChangeListener globalListener = sshsGlobalNodeListenerGetFunction(node->global);
+		dvConfigNodeChangeListener globalListener = dvConfigGlobalNodeListenerGetFunction(node->global);
 		if (globalListener != nullptr) {
 			// Global listener support.
-			(*globalListener)(
-				node, sshsGlobalNodeListenerGetUserData(node->global), DVCFG_NODE_CHILD_REMOVED, child.first.c_str());
+			(*globalListener)(node, dvConfigGlobalNodeListenerGetUserData(node->global), DVCFG_NODE_CHILD_REMOVED,
+				child.first.c_str());
 		}
 
 		for (const auto &l : node->nodeListeners) {
@@ -845,11 +841,11 @@ static bool dvConfigNodeToXML(dvConfigNode node, int fd, bool recursive) {
 
 	boost::property_tree::ptree xmlTree;
 
-	// Add main SSHS node and version.
-	xmlTree.put("sshs.<xmlattr>.version", "1.0");
+	// Add main configuration tree node and version.
+	xmlTree.put("dv.<xmlattr>.version", "2.0");
 
 	// Generate recursive XML for all nodes.
-	xmlTree.put_child("sshs.node", dvConfigNodeGenerateXML(node, recursive));
+	xmlTree.put_child("dv.node", dvConfigNodeGenerateXML(node, recursive));
 
 	try {
 #if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) < 56
@@ -969,9 +965,9 @@ static bool dvConfigNodeFromXML(dvConfigNode node, int fd, bool recursive, bool 
 
 	// Check name and version for compliance.
 	try {
-		const auto sshsVersion = xmlTree.get<std::string>("sshs.<xmlattr>.version");
-		if (sshsVersion != "1.0") {
-			throw boost::property_tree::ptree_error("unsupported SSHS version (supported: '1.0').");
+		const auto dvConfigVersion = xmlTree.get<std::string>("dv.<xmlattr>.version");
+		if (dvConfigVersion != "2.0") {
+			throw boost::property_tree::ptree_error("unsupported configuration tree version (supported: '2.0').");
 		}
 	}
 	catch (const boost::property_tree::ptree_error &ex) {
@@ -980,7 +976,7 @@ static bool dvConfigNodeFromXML(dvConfigNode node, int fd, bool recursive, bool 
 		return (false);
 	}
 
-	auto root = dvConfigNodeXMLFilterChildNodes(xmlTree.get_child("sshs"), "node");
+	auto root = dvConfigNodeXMLFilterChildNodes(xmlTree.get_child("dv"), "node");
 
 	if (root.size() != 1) {
 		(*dvConfigTreeErrorLogCallbackGet())("Multiple or no root child nodes present.", false);
@@ -1183,7 +1179,7 @@ const char **dvConfigNodeGetChildNames(dvConfigNode node, size_t *numNames) {
 	}
 
 	char **childNames = (char **) malloc((numChildren * sizeof(char *)) + childNamesLength);
-	sshsMemoryCheck(childNames, __func__);
+	dvConfigMemoryCheck(childNames, __func__);
 
 	size_t offset = (numChildren * sizeof(char *));
 
@@ -1225,7 +1221,7 @@ const char **dvConfigNodeGetAttributeKeys(dvConfigNode node, size_t *numKeys) {
 	}
 
 	char **attributeKeys = (char **) malloc((numAttributes * sizeof(char *)) + attributeKeysLength);
-	sshsMemoryCheck(attributeKeys, __func__);
+	dvConfigMemoryCheck(attributeKeys, __func__);
 
 	size_t offset = (numAttributes * sizeof(char *));
 
@@ -1287,7 +1283,7 @@ char *dvConfigNodeGetAttributeDescription(dvConfigNode node, const char *key, en
 	}
 
 	char *descriptionCopy = strdup(node->attributes[key].getDescription().c_str());
-	sshsMemoryCheck(descriptionCopy, __func__);
+	dvConfigMemoryCheck(descriptionCopy, __func__);
 
 	return (descriptionCopy);
 }

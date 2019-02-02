@@ -7,7 +7,7 @@
 #include <regex>
 #include <vector>
 
-class sshs_attribute_updater {
+class dv_attribute_updater {
 private:
 	dvConfigNode node;
 	std::string key;
@@ -16,7 +16,7 @@ private:
 	void *userData;
 
 public:
-	sshs_attribute_updater(dvConfigNode _node, const std::string &_key, enum dvConfigAttributeType _type,
+	dv_attribute_updater(dvConfigNode _node, const std::string &_key, enum dvConfigAttributeType _type,
 		dvConfigAttributeUpdater _updater, void *_userData) :
 		node(_node),
 		key(_key),
@@ -46,12 +46,12 @@ public:
 	}
 
 	// Comparison operators.
-	bool operator==(const sshs_attribute_updater &rhs) const noexcept {
+	bool operator==(const dv_attribute_updater &rhs) const noexcept {
 		return ((node == rhs.node) && (key == rhs.key) && (type == rhs.type) && (updater == rhs.updater)
 				&& (userData == rhs.userData));
 	}
 
-	bool operator!=(const sshs_attribute_updater &rhs) const noexcept {
+	bool operator!=(const dv_attribute_updater &rhs) const noexcept {
 		return (!this->operator==(rhs));
 	}
 };
@@ -62,7 +62,7 @@ public:
 	// Data root node. Cannot be deleted.
 	dvConfigNode root;
 	// Global attribute updaters.
-	std::vector<sshs_attribute_updater> attributeUpdaters;
+	std::vector<dv_attribute_updater> attributeUpdaters;
 	std::mutex attributeUpdatersLock;
 	// Global node listener.
 	std::atomic<dvConfigNodeChangeListener> globalNodeListenerFunction;
@@ -74,82 +74,82 @@ public:
 	std::mutex globalListenersLock;
 };
 
-static void sshsGlobalInitialize(void);
-static void sshsGlobalErrorLogCallbackInitialize(void);
-static void sshsGlobalErrorLogCallbackSetInternal(dvConfigTreeErrorLogCallback error_log_cb);
-static void sshsDefaultErrorLogCallback(const char *msg, bool fatal);
-static bool sshsCheckAbsoluteNodePath(const std::string &absolutePath);
-static bool sshsCheckRelativeNodePath(const std::string &relativePath);
+static void dvConfigGlobalInitialize(void);
+static void dvConfigGlobalErrorLogCallbackInitialize(void);
+static void dvConfigGlobalErrorLogCallbackSetInternal(dvConfigTreeErrorLogCallback error_log_cb);
+static void dvConfigDefaultErrorLogCallback(const char *msg, bool fatal);
+static bool dvConfigCheckAbsoluteNodePath(const std::string &absolutePath);
+static bool dvConfigCheckRelativeNodePath(const std::string &relativePath);
 
-static dvConfigTree sshsGlobal = nullptr;
-static std::once_flag sshsGlobalIsInitialized;
+static dvConfigTree dvConfigGlobalTree = nullptr;
+static std::once_flag dvConfigGlobalTreeIsInitialized;
 
-static void sshsGlobalInitialize(void) {
-	sshsGlobal = dvConfigTreeNew();
+static void dvConfigGlobalInitialize(void) {
+	dvConfigGlobalTree = dvConfigTreeNew();
 }
 
 dvConfigTree dvConfigTreeGlobal(void) {
-	std::call_once(sshsGlobalIsInitialized, &sshsGlobalInitialize);
+	std::call_once(dvConfigGlobalTreeIsInitialized, &dvConfigGlobalInitialize);
 
-	return (sshsGlobal);
+	return (dvConfigGlobalTree);
 }
 
-static dvConfigTreeErrorLogCallback sshsGlobalErrorLogCallback = nullptr;
-static std::once_flag sshsGlobalErrorLogCallbackIsInitialized;
+static dvConfigTreeErrorLogCallback dvConfigGlobalErrorLogCallback = nullptr;
+static std::once_flag dvConfigGlobalErrorLogCallbackIsInitialized;
 
-static void sshsGlobalErrorLogCallbackInitialize(void) {
-	sshsGlobalErrorLogCallbackSetInternal(&sshsDefaultErrorLogCallback);
+static void dvConfigGlobalErrorLogCallbackInitialize(void) {
+	dvConfigGlobalErrorLogCallbackSetInternal(&dvConfigDefaultErrorLogCallback);
 }
 
-static void sshsGlobalErrorLogCallbackSetInternal(dvConfigTreeErrorLogCallback error_log_cb) {
-	sshsGlobalErrorLogCallback = error_log_cb;
+static void dvConfigGlobalErrorLogCallbackSetInternal(dvConfigTreeErrorLogCallback error_log_cb) {
+	dvConfigGlobalErrorLogCallback = error_log_cb;
 }
 
 dvConfigTreeErrorLogCallback dvConfigTreeErrorLogCallbackGet(void) {
-	std::call_once(sshsGlobalErrorLogCallbackIsInitialized, &sshsGlobalErrorLogCallbackInitialize);
+	std::call_once(dvConfigGlobalErrorLogCallbackIsInitialized, &dvConfigGlobalErrorLogCallbackInitialize);
 
-	return (sshsGlobalErrorLogCallback);
+	return (dvConfigGlobalErrorLogCallback);
 }
 
 /**
  * This is not thread-safe, and it's not meant to be.
- * Set the global error callback preferably only once, before using SSHS.
+ * Set the global error callback preferably only once, before using the configuration store.
  */
 void dvConfigTreeErrorLogCallbackSet(dvConfigTreeErrorLogCallback error_log_cb) {
-	std::call_once(sshsGlobalErrorLogCallbackIsInitialized, &sshsGlobalErrorLogCallbackInitialize);
+	std::call_once(dvConfigGlobalErrorLogCallbackIsInitialized, &dvConfigGlobalErrorLogCallbackInitialize);
 
 	// If nullptr, set to default logging callback.
 	if (error_log_cb == nullptr) {
-		sshsGlobalErrorLogCallbackSetInternal(&sshsDefaultErrorLogCallback);
+		dvConfigGlobalErrorLogCallbackSetInternal(&dvConfigDefaultErrorLogCallback);
 	}
 	else {
-		sshsGlobalErrorLogCallbackSetInternal(error_log_cb);
+		dvConfigGlobalErrorLogCallbackSetInternal(error_log_cb);
 	}
 }
 
 dvConfigTree dvConfigTreeNew(void) {
-	dvConfigTree newSshs = (dvConfigTree) malloc(sizeof(*newSshs));
-	sshsMemoryCheck(newSshs, __func__);
+	dvConfigTree newTree = (dvConfigTree) malloc(sizeof(*newTree));
+	dvConfigMemoryCheck(newTree, __func__);
 
 	// Create root node.
-	newSshs->root = dvConfigNodeNew("", nullptr, newSshs);
+	newTree->root = dvConfigNodeNew("", nullptr, newTree);
 
 	// Initialize C++ objects using placement new.
-	new (&newSshs->attributeUpdaters) std::vector<sshs_attribute_updater>();
-	new (&newSshs->attributeUpdatersLock) std::mutex();
-	new (&newSshs->globalNodeListenerFunction) std::atomic<dvConfigNodeChangeListener>(nullptr);
-	new (&newSshs->globalNodeListenerUserData) std::atomic<void *>(nullptr);
-	new (&newSshs->globalAttributeListenerFunction) std::atomic<dvConfigAttributeChangeListener>(nullptr);
-	new (&newSshs->globalAttributeListenerUserData) std::atomic<void *>(nullptr);
-	new (&newSshs->globalListenersLock) std::mutex();
+	new (&newTree->attributeUpdaters) std::vector<dv_attribute_updater>();
+	new (&newTree->attributeUpdatersLock) std::mutex();
+	new (&newTree->globalNodeListenerFunction) std::atomic<dvConfigNodeChangeListener>(nullptr);
+	new (&newTree->globalNodeListenerUserData) std::atomic<void *>(nullptr);
+	new (&newTree->globalAttributeListenerFunction) std::atomic<dvConfigAttributeChangeListener>(nullptr);
+	new (&newTree->globalAttributeListenerUserData) std::atomic<void *>(nullptr);
+	new (&newTree->globalListenersLock) std::mutex();
 
-	return (newSshs);
+	return (newTree);
 }
 
 bool dvConfigTreeExistsNode(dvConfigTree st, const char *nodePathC) {
 	const std::string nodePath(nodePathC);
 
-	if (!sshsCheckAbsoluteNodePath(nodePath)) {
+	if (!dvConfigCheckAbsoluteNodePath(nodePath)) {
 		errno = EINVAL;
 		return (false);
 	}
@@ -184,7 +184,7 @@ bool dvConfigTreeExistsNode(dvConfigTree st, const char *nodePathC) {
 dvConfigNode dvConfigTreeGetNode(dvConfigTree st, const char *nodePathC) {
 	const std::string nodePath(nodePathC);
 
-	if (!sshsCheckAbsoluteNodePath(nodePath)) {
+	if (!dvConfigCheckAbsoluteNodePath(nodePath)) {
 		errno = EINVAL;
 		return (nullptr);
 	}
@@ -218,7 +218,7 @@ dvConfigNode dvConfigTreeGetNode(dvConfigTree st, const char *nodePathC) {
 bool dvConfigNodeExistsRelativeNode(dvConfigNode node, const char *nodePathC) {
 	const std::string nodePath(nodePathC);
 
-	if (!sshsCheckRelativeNodePath(nodePath)) {
+	if (!dvConfigCheckRelativeNodePath(nodePath)) {
 		errno = EINVAL;
 		return (false);
 	}
@@ -248,7 +248,7 @@ bool dvConfigNodeExistsRelativeNode(dvConfigNode node, const char *nodePathC) {
 dvConfigNode dvConfigNodeGetRelativeNode(dvConfigNode node, const char *nodePathC) {
 	const std::string nodePath(nodePathC);
 
-	if (!sshsCheckRelativeNodePath(nodePath)) {
+	if (!dvConfigCheckRelativeNodePath(nodePath)) {
 		errno = EINVAL;
 		return (nullptr);
 	}
@@ -276,7 +276,7 @@ dvConfigNode dvConfigNodeGetRelativeNode(dvConfigNode node, const char *nodePath
 
 void dvConfigNodeAttributeUpdaterAdd(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
 	dvConfigAttributeUpdater updater, void *updaterUserData) {
-	sshs_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
+	dv_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
 
 	dvConfigTree tree = dvConfigNodeGetGlobal(node);
 	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
@@ -285,7 +285,7 @@ void dvConfigNodeAttributeUpdaterAdd(dvConfigNode node, const char *key, enum dv
 	if (!findBool(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(), attrUpdater)) {
 		// Verify referenced attribute actually exists.
 		if (!dvConfigNodeExistsAttribute(node, key, type)) {
-			dvConfigNodeErrorNoAttribute("sshsAttributeUpdaterAdd", key, type);
+			dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeUpdaterAdd", key, type);
 		}
 
 		tree->attributeUpdaters.push_back(attrUpdater);
@@ -294,7 +294,7 @@ void dvConfigNodeAttributeUpdaterAdd(dvConfigNode node, const char *key, enum dv
 
 void dvConfigNodeAttributeUpdaterRemove(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
 	dvConfigAttributeUpdater updater, void *updaterUserData) {
-	sshs_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
+	dv_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
 
 	dvConfigTree tree = dvConfigNodeGetGlobal(node);
 	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
@@ -309,7 +309,7 @@ void dvConfigNodeAttributeUpdaterRemoveAll(dvConfigNode node) {
 	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
 
 	tree->attributeUpdaters.erase(std::remove_if(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(),
-									  [&node](const sshs_attribute_updater &up) { return (up.getNode() == node); }),
+									  [&node](const dv_attribute_updater &up) { return (up.getNode() == node); }),
 		tree->attributeUpdaters.end());
 }
 
@@ -348,11 +348,11 @@ void dvConfigTreeGlobalNodeListenerSet(dvConfigTree tree, dvConfigNodeChangeList
 	tree->globalNodeListenerUserData.store(userData);
 }
 
-dvConfigNodeChangeListener sshsGlobalNodeListenerGetFunction(dvConfigTree tree) {
+dvConfigNodeChangeListener dvConfigGlobalNodeListenerGetFunction(dvConfigTree tree) {
 	return (tree->globalNodeListenerFunction.load(std::memory_order_relaxed));
 }
 
-void *sshsGlobalNodeListenerGetUserData(dvConfigTree tree) {
+void *dvConfigGlobalNodeListenerGetUserData(dvConfigTree tree) {
 	return (tree->globalNodeListenerUserData.load(std::memory_order_relaxed));
 }
 
@@ -370,25 +370,25 @@ void dvConfigTreeGlobalAttributeListenerSet(
 	tree->globalAttributeListenerUserData.store(userData);
 }
 
-dvConfigAttributeChangeListener sshsGlobalAttributeListenerGetFunction(dvConfigTree tree) {
+dvConfigAttributeChangeListener dvConfigGlobalAttributeListenerGetFunction(dvConfigTree tree) {
 	return (tree->globalAttributeListenerFunction.load(std::memory_order_relaxed));
 }
 
-void *sshsGlobalAttributeListenerGetUserData(dvConfigTree tree) {
+void *dvConfigGlobalAttributeListenerGetUserData(dvConfigTree tree) {
 	return (tree->globalAttributeListenerUserData.load(std::memory_order_relaxed));
 }
 
 #define ALLOWED_CHARS_REGEXP "([a-zA-Z-_\\d\\.]+/)"
-static const std::regex sshsAbsoluteNodePathRegexp("^/" ALLOWED_CHARS_REGEXP "*$");
-static const std::regex sshsRelativeNodePathRegexp("^" ALLOWED_CHARS_REGEXP "+$");
+static const std::regex dvAbsoluteNodePathRegexp("^/" ALLOWED_CHARS_REGEXP "*$");
+static const std::regex dvRelativeNodePathRegexp("^" ALLOWED_CHARS_REGEXP "+$");
 
-static bool sshsCheckAbsoluteNodePath(const std::string &absolutePath) {
+static bool dvConfigCheckAbsoluteNodePath(const std::string &absolutePath) {
 	if (absolutePath.empty()) {
 		(*dvConfigTreeErrorLogCallbackGet())("Absolute node path cannot be empty.", false);
 		return (false);
 	}
 
-	if (!std::regex_match(absolutePath, sshsAbsoluteNodePathRegexp)) {
+	if (!std::regex_match(absolutePath, dvAbsoluteNodePathRegexp)) {
 		boost::format errorMsg = boost::format("Invalid absolute node path format: '%s'.") % absolutePath;
 
 		(*dvConfigTreeErrorLogCallbackGet())(errorMsg.str().c_str(), false);
@@ -399,13 +399,13 @@ static bool sshsCheckAbsoluteNodePath(const std::string &absolutePath) {
 	return (true);
 }
 
-static bool sshsCheckRelativeNodePath(const std::string &relativePath) {
+static bool dvConfigCheckRelativeNodePath(const std::string &relativePath) {
 	if (relativePath.empty()) {
 		(*dvConfigTreeErrorLogCallbackGet())("Relative node path cannot be empty.", false);
 		return (false);
 	}
 
-	if (!std::regex_match(relativePath, sshsRelativeNodePathRegexp)) {
+	if (!std::regex_match(relativePath, dvRelativeNodePathRegexp)) {
 		boost::format errorMsg = boost::format("Invalid relative node path format: '%s'.") % relativePath;
 
 		(*dvConfigTreeErrorLogCallbackGet())(errorMsg.str().c_str(), false);
@@ -416,7 +416,7 @@ static bool sshsCheckRelativeNodePath(const std::string &relativePath) {
 	return (true);
 }
 
-static void sshsDefaultErrorLogCallback(const char *msg, bool fatal) {
+static void dvConfigDefaultErrorLogCallback(const char *msg, bool fatal) {
 	std::cerr << msg << std::endl;
 
 	if (fatal) {
