@@ -1,8 +1,8 @@
-IF (NOT USE_OPENCV)
-	SET(USE_OPENCV 0 CACHE BOOL "Use OpenCV (needed for frame statistic histogram module)")
+IF (NOT ENABLE_OPENCV)
+	SET(ENABLE_OPENCV 0 CACHE BOOL "Use OpenCV (needed for frame statistic histogram module)")
 ENDIF()
 
-IF (USE_OPENCV)
+IF (ENABLE_OPENCV)
 	# Try OpenCV 4 first.
 	PKG_CHECK_MODULES(OPENCV4 opencv4>=4.0.0)
 	IF (OPENCV4_FOUND)

@@ -30,11 +30,11 @@ $ cmake -DCMAKE_INSTALL_PREFIX=/usr <OPTIONS> . <br />
 
 The following options are currently supported: <br />
 -DUSE_TCMALLOC=1 -- Enables usage of TCMalloc from Google to allocate memory. <br />
--DUSE_OPENCV=1 -- Compiles modules depending on OpenCV: camera calibration/undistortion and frame histogram statisics. <br />
+-DENABLE_OPENCV=1 -- Compiles modules depending on OpenCV: camera calibration/undistortion and frame histogram statisics. <br />
 -DVISUALIZER=1 -- Open windows in which to visualize data. <br />
 
 To enable all just type: <br />
-  cmake -DCMAKE_INSTALL_PREFIX=/usr -DUSE_OPENCV=1 -DVISUALIZER=1 .
+  cmake -DCMAKE_INSTALL_PREFIX=/usr -DENABLE_OPENCV=1 -DVISUALIZER=1 .
 <br />
 2) build:
 <br />
