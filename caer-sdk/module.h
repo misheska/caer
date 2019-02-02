@@ -10,7 +10,7 @@
 
 #ifdef __cplusplus
 
-#include <atomic>
+#	include <atomic>
 using atomic_bool          = std::atomic_bool;
 using atomic_uint_fast8_t  = std::atomic_uint_fast8_t;
 using atomic_uint_fast32_t = std::atomic_uint_fast32_t;
@@ -18,7 +18,7 @@ using atomic_int_fast16_t  = std::atomic_int_fast16_t;
 
 #else
 
-#include <stdatomic.h>
+#	include <stdatomic.h>
 
 #endif
 
