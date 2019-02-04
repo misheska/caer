@@ -141,7 +141,8 @@ public:
 	 * @param node The caer provided DvConfig node.
 	 */
 	static void configInit(dvConfigNode node) {
-		BaseModule::configInit<T>(node);
+		BaseModule::__setGetDefaultConfig(T::getConfigOptions);
+		BaseModule::staticConfigInit(node);
 	}
 
 

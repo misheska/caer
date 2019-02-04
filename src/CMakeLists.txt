@@ -37,7 +37,7 @@ SET(CAER_SRC_FILES
 	module.cpp
 	mainloop.cpp
 	service.cpp
-	main.cpp)
+	main.cpp ../caer-sdk/config.hpp)
 
 # Set full RPATH
 SET(CMAKE_INSTALL_RPATH ${CAER_LOCAL_PREFIX}/${CMAKE_INSTALL_BINDIR})
