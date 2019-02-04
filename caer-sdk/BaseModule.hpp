@@ -8,7 +8,6 @@
 #include "log.hpp"
 #include "config.hpp"
 
-#include <boost/any.hpp>
 #include <map>
 
 namespace dv {
@@ -25,8 +24,10 @@ private:
 
 public:
 	/**
-	 * Static function that calls the user provided static function `T::getConfigOptions` and processes its output.
-	 * For every config option, a node is generated in the caer configuration tree.
+	 * Static config init funtion. Calles the user provided `getConfigOptions` function
+	 * which exists in this class as a static called `__getDefaultConfig`.
+	 * It generates the default config and creates the elements for the default
+	 * config in the dv config tree.
 	 * @param node The sshs node for which the config should be generated
 	 */
 	static void staticConfigInit(dvConfigNode node) {
@@ -52,7 +53,17 @@ public:
 		__moduleData = _moduleData;
 	}
 
-
+    /**
+     * __INTERNAL USE ONLY__
+     * Sets the `__getDefaultConfig` static function to the user provided
+     * static function that generates the default config map.
+     * The reference to this function is used since there is no access
+     * to the child - subclass static functions possible from this class.
+     * The default config is both generated before instantiation in
+     * a call to `staticConfigInit` as well as in the constructor
+     * at runtime.
+     * @param _getDefaultConfig
+     */
 	static void __setGetDefaultConfig(std::function<void(std::map<std::string, ConfigOption>&)> _getDefaultConfig) {
 	    __getDefaultConfig = std::move(_getDefaultConfig);
 	}
@@ -94,7 +105,7 @@ public:
 	/**
 	 * Method that updates the configs in the map as soon as some config
 	 * change.
-	 * @param node the sshs node to read the config from.
+	 * @param node the dvConfig node to read the config from.
 	 */
 	void configUpdate(dvConfigNode node) {
         for (auto &entry : config) {

@@ -152,12 +152,24 @@ public:
 		return *(std::static_pointer_cast<_ConfigOption<V>>(configOption_));
 	}
 
-
+    /**
+     * Returns the current value of this config option. Needs a template paramenter
+     * of the type `dv::ConfigVariant::*` to determine what type of config parameter
+     * to return.
+     * @tparam V The config variant type
+     * @return A simple value (long, string etc) that is the current value of the config option
+     */
 	template<ConfigVariant V> typename _ConfigVariantType<V>::type &getValue() const {
 		return (typename _ConfigVariantType<V>::type&)(getConfigObject<V>().currentValue);
 	}
 
 
+	/**
+	 * Creates a dvConfig Attribute in the dv config tree for the object.
+	 * If a the node already has been created, nothing is done.
+	 * @param key the key under which the new attribute should get stored
+	 * @param node The dvConfigNode under which the new attribute shall be created
+	 */
 	void createDvConfigNodeIfChanged(const std::string& key, dvConfigNode node) {
 		if (dvConfigNodeCreated) {
 			return;
@@ -209,6 +221,12 @@ public:
 	}
 
 
+	/**
+	 * Updates the current value of the ConfigOption based on the value
+	 * that is present in the dv config tree.
+	 * @param key The key under which to find the value in the dv config tree.
+	 * @param node The node of the dv config treee under which the attribute is to be found.
+	 */
 	void updateValue (const std::string& key, dvConfigNode node) {
 		switch (variant_) {
 			case ConfigVariant::BOOLEAN: {
@@ -413,10 +431,26 @@ public:
  */
 class RuntimeConfigMap : public std::map<std::string, ConfigOption> {
 public:
-	template<ConfigVariant V> _ConfigOption<V> &getConfigObject(const std::string &key) {
+
+    /**
+     * Returns the underlying `_ConfigOption` object for the given key. The
+     * config option provides access to parameters and default and current values.
+     * @tparam V The type of the config param. Type of `dv::ConfigVariant::`
+     * @param key The key of the config option to retrieve
+     * @return The underlying `_ConfigObject` of the config option. Gives access to parameters.
+     */
+	template<ConfigVariant V> _ConfigOption<V> const &getConfigObject(const std::string &key) {
 		return this->at(key).getConfigObject<V>();
 	}
 
+    /**
+     * Returns the current value of the config option with the given key. Needs a template paramenter
+     * of the type `dv::ConfigVariant::*` to determine what type of config parameter
+     * to return.
+     * @tparam V The config variant type
+     * @param key the key of the config option to look up
+     * @return A simple value (long, string etc) that is the current value of the config option
+     */
 	template<ConfigVariant V> const typename _ConfigVariantType<V>::type getValue(const std::string &key) {
 		return (typename _ConfigVariantType<V>::type)(getConfigObject<V>(key).currentValue);
 	}
