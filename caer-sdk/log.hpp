@@ -9,7 +9,7 @@
 /**
  * Header file that includes the c++ wrapper for the caer logging facilities.
  */
-namespace caer {
+namespace dv {
 
     /**
      * caer custom log end type. Can be piped into the log to commit it.

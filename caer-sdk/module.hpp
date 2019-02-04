@@ -12,17 +12,17 @@
 #include <iostream>
 
 /**
- * Macro that expands into the global `caerModuleGetInfo` function, exposed to the API for caer.
+ * Macro that expands into the global `caerModuleGetInfo` function, exposed to the API for dv.
  * The function instantiates the `ModuleStaticDefinition` class with the given Module (A subclass)
- * of `caer::BaseModule` and returns the static info section.
+ * of `dv::BaseModule` and returns the static info section.
  * @param MODULE
  */
 #define registerModuleClass(MODULE)                  \
 	caerModuleInfo caerModuleGetInfo() {             \
-		return &(caer::ModuleStatics<MODULE>::info); \
+		return &(dv::ModuleStatics<MODULE>::info); \
 	}
 
-namespace caer {
+namespace dv {
 
 /**
  * Trait for the existence of a static getName method with const char* return value
@@ -51,7 +51,7 @@ struct has_getDescription<T, void_t<decltype(T::getDescription()),
 template<typename T, typename = void> struct has_getConfigOptions : std::false_type {};
 template<typename T>
 struct has_getConfigOptions<T,
-	void_t<decltype(T::getConfigOptions(std::declval<std::map<std::string, caer::ConfigOption> &>()))>>
+	void_t<decltype(T::getConfigOptions(std::declval<std::map<std::string, dv::ConfigOption> &>()))>>
 	: std::true_type {};
 
 /**
@@ -237,6 +237,6 @@ template<class T>
 const caer_module_info ModuleStatics<T>::info = {1, T::getName(), T::getDescription(), moduleType<T>,
 	sizeof(T), &functions, numberOfInputStreams<T>, T::inputStreams, numberOfOutputStreams<T>, T::outputStreams};
 
-} // namespace caer
+} // namespace dv
 
 #endif // CAER_MODULE_HPP
