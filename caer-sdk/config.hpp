@@ -154,7 +154,7 @@ public:
 
 
 	template<ConfigVariant V> typename _ConfigVariantType<V>::type &getValue() const {
-		return (typename _ConfigVariantType<V>::type)(getConfigObject<V>().currentValue);
+		return (typename _ConfigVariantType<V>::type&)(getConfigObject<V>().currentValue);
 	}
 
 
@@ -180,7 +180,7 @@ public:
 				auto& config_ = getConfigObject<ConfigVariant::INTEGER>();
 				dvConfigNodeCreateLong(node, key.c_str(), config_.initValue, config_.attributes.min,
 									   config_.attributes.max, DVCFG_FLAGS_NORMAL, config_.description.c_str());
-				break;
+                break;
 			}
 			case ConfigVariant::STRING: {
 				auto& config_ = getConfigObject<ConfigVariant::STRING>();

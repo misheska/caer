@@ -1,3 +1,5 @@
+#include <utility>
+
 #ifndef CAER_MODULES_SDK_BASEMODULE_H
 #define CAER_MODULES_SDK_BASEMODULE_H
 
@@ -19,7 +21,7 @@ namespace dv {
 class BaseModule {
 private:
 	thread_local static caerModuleData __moduleData;
-	static std::function<void(std::map<std::string, ConfigOption>)> __getDefaultConfig;
+	static std::function<void(std::map<std::string, ConfigOption>&)> __getDefaultConfig;
 
 public:
 	/**
@@ -51,8 +53,8 @@ public:
 	}
 
 
-	static void __setGetDefaultConfig(std::function<void(std::map<std::string, ConfigOption>)> &_getDefaultConfig) {
-	    __getDefaultConfig = _getDefaultConfig;
+	static void __setGetDefaultConfig(std::function<void(std::map<std::string, ConfigOption>&)> _getDefaultConfig) {
+	    __getDefaultConfig = std::move(_getDefaultConfig);
 	}
 
 	/**
@@ -134,6 +136,7 @@ public:
      */
     thread_local caerModuleData BaseModule::__moduleData = nullptr;
 
+    std::function<void(std::map<std::string, ConfigOption>&)> BaseModule::__getDefaultConfig = nullptr;
 
 } // namespace dv
 
