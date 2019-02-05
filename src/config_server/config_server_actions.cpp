@@ -678,8 +678,6 @@ void caerConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::ADD_PUSH_CLIENT: {
-			client->addPushClient();
-
 			// Send back confirmation to the client.
 			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
 				dv::ConfigActionDataBuilder msg(*msgBuild);
@@ -689,10 +687,16 @@ void caerConfigServerHandleRequest(
 				return (msg.Finish());
 			});
 
+			// Only add client after sending confirmation, so no PUSH
+			// messages may arrive before the client sees the confirmation.
+			client->addPushClient();
+
 			break;
 		}
 
 		case dv::ConfigAction::REMOVE_PUSH_CLIENT: {
+			// Remove client first, so that after confirmation of removal
+			// no more PUSH messages may arrive.
 			client->removePushClient();
 
 			// Send back confirmation to the client.
