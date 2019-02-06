@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
 	// Initialize logging sub-system.
 	dvLogInit();
 
-	// Start cAER. Can be as a background service or console application.
+	// Start the DV runtime. Can be as a background service or console application.
 	dvServiceInit(&mainRunner);
 
 	return (EXIT_SUCCESS);

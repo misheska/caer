@@ -134,7 +134,7 @@ void ConfigServerConnection::readMessage() {
 				// current client value, so that any listeners will see it too.
 				parent->setCurrentClientID(clientID);
 
-				caerConfigServerHandleRequest(self, std::move(messageBuffer));
+				dvConfigServerHandleRequest(self, std::move(messageBuffer));
 			}
 		});
 }
