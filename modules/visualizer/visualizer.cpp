@@ -144,7 +144,7 @@ static bool caerVisualizerInit(dvModuleData moduleData) {
 	std::call_once(visualizerSystemIsInitialized, &initSystemOnce, moduleData);
 
 	state->visualizerConfigNode  = moduleData->moduleNode;
-	state->eventSourceConfigNode = caerMainloopModuleGetSourceNodeForInput(moduleData->moduleID, 0);
+	state->eventSourceConfigNode = dvMainloopModuleGetSourceNodeForInput(moduleData->moduleID, 0);
 
 	// Initialize visualizer. Needs size information from the source.
 	if (!initRenderSize(moduleData)) {
@@ -380,11 +380,11 @@ static bool initRenderSize(dvModuleData moduleData) {
 	uint32_t sizeY = 32;
 
 	// Search for biggest sizes amongst all event inputs.
-	size_t inputsSize = caerMainloopModuleGetInputDeps(moduleData->moduleID, nullptr);
+	size_t inputsSize = dvMainloopModuleGetInputDeps(moduleData->moduleID, nullptr);
 
 	for (size_t i = 0; i < inputsSize; i++) {
 		// Get size information from source.
-		dvConfigNode sourceInfoNode = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, i);
+		dvConfigNode sourceInfoNode = dvMainloopModuleGetSourceInfoForInput(moduleData->moduleID, i);
 		if (sourceInfoNode == nullptr) {
 			return (false);
 		}

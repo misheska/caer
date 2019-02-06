@@ -175,8 +175,8 @@ static bool caerInputEDVSInit(dvModuleData moduleData) {
 	sendDefaultConfiguration(moduleData);
 
 	// Start data acquisition.
-	bool ret = caerDeviceDataStart(moduleData->moduleState, &caerMainloopDataNotifyIncrease,
-		&caerMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
+	bool ret = caerDeviceDataStart(moduleData->moduleState, &dvMainloopDataNotifyIncrease,
+		&dvMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
 
 	if (!ret) {
 		// Failed to start data acquisition, close device and exit.
@@ -245,7 +245,7 @@ static void caerInputEDVSRun(dvModuleData moduleData, caerEventPacketContainer i
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
 				   != NULL)) {
-			caerMainloopModuleResetOutputRevDeps(moduleData->moduleID);
+			dvMainloopModuleResetOutputRevDeps(moduleData->moduleID);
 		}
 	}
 }

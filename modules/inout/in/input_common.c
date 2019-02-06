@@ -1629,7 +1629,7 @@ retry:
 	else {
 		// Signal availability of new data to the mainloop on packet container commit.
 		atomic_fetch_add_explicit(&state->dataAvailableModule, 1, memory_order_release);
-		caerMainloopDataNotifyIncrease(NULL);
+		dvMainloopDataNotifyIncrease(NULL);
 
 		dvModuleLog(state->parentModule, CAER_LOG_DEBUG, "Submitted packet container successfully.");
 	}
@@ -2035,7 +2035,7 @@ void caerInputCommonExit(dvModuleData moduleData) {
 		caerEventPacketContainerFree(packetContainer);
 
 		// If we're here, then nobody will (or even can) consume this data afterwards.
-		caerMainloopDataNotifyDecrease(NULL);
+		dvMainloopDataNotifyDecrease(NULL);
 		atomic_fetch_sub_explicit(&state->dataAvailableModule, 1, memory_order_relaxed);
 	}
 
@@ -2104,7 +2104,7 @@ void caerInputCommonRun(dvModuleData moduleData, caerEventPacketContainer in, ca
 	if (*out != NULL) {
 		// No special memory order for decrease, because the acquire load to even start running
 		// through a mainloop already synchronizes with the release store above.
-		caerMainloopDataNotifyDecrease(NULL);
+		dvMainloopDataNotifyDecrease(NULL);
 		atomic_fetch_sub_explicit(&state->dataAvailableModule, 1, memory_order_relaxed);
 
 		caerEventPacketHeaderConst special = caerEventPacketContainerFindEventPacketByTypeConst(*out, SPECIAL_EVENT);
@@ -2112,7 +2112,7 @@ void caerInputCommonRun(dvModuleData moduleData, caerEventPacketContainer in, ca
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
 				   != NULL)) {
-			caerMainloopModuleResetOutputRevDeps(moduleData->moduleID);
+			dvMainloopModuleResetOutputRevDeps(moduleData->moduleID);
 		}
 	}
 }

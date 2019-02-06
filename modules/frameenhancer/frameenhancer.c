@@ -79,7 +79,7 @@ static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode) {
 static bool caerFrameEnhancerInit(dvModuleData moduleData) {
 	// Wait for input to be ready. All inputs, once they are up and running, will
 	// have a valid sourceInfo node to query, especially if dealing with data.
-	dvConfigNode sourceInfoSource = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
+	dvConfigNode sourceInfoSource = dvMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
 	if (sourceInfoSource == NULL) {
 		return (false);
 	}

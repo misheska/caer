@@ -173,7 +173,7 @@ static void copyPacketsToTransferRing(outputCommonState state, caerEventPacketCo
 			int16_t sourceID = I16T(atomic_load_explicit(&state->sourceID, memory_order_relaxed));
 
 			if (sourceID == -1) {
-				dvConfigNode sourceInfoNode = caerMainloopGetSourceInfo(eventSource);
+				dvConfigNode sourceInfoNode = dvMainloopGetSourceInfo(eventSource);
 				if (sourceInfoNode == NULL) {
 					// This should never happen, but we handle it gracefully.
 					dvModuleLog(

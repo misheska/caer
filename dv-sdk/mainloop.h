@@ -13,25 +13,23 @@
 extern "C" {
 #endif
 
-void caerMainloopDataNotifyIncrease(void *p);
-void caerMainloopDataNotifyDecrease(void *p);
+void dvMainloopDataNotifyIncrease(void *p);
+void dvMainloopDataNotifyDecrease(void *p);
 
-bool caerMainloopStreamExists(int16_t sourceId, int16_t typeId);
+bool dvMainloopModuleExists(int16_t id);
+enum dvModuleType dvMainloopModuleGetType(int16_t id);
+uint32_t dvMainloopModuleGetVersion(int16_t id);
+enum dvModuleStatus dvMainloopModuleGetStatus(int16_t id);
+dvConfigNode dvMainloopModuleGetConfigNode(int16_t id);
+size_t dvMainloopModuleGetInputDeps(int16_t id, int16_t **inputDepIds);
+size_t dvMainloopModuleGetOutputRevDeps(int16_t id, int16_t **outputRevDepIds);
+size_t dvMainloopModuleResetOutputRevDeps(int16_t id);
+dvConfigNode dvMainloopModuleGetSourceNodeForInput(int16_t id, size_t inputNum);
+dvConfigNode dvMainloopModuleGetSourceInfoForInput(int16_t id, size_t inputNum);
 
-bool caerMainloopModuleExists(int16_t id);
-enum dvModuleType caerMainloopModuleGetType(int16_t id);
-uint32_t caerMainloopModuleGetVersion(int16_t id);
-enum dvModuleStatus caerMainloopModuleGetStatus(int16_t id);
-dvConfigNode caerMainloopModuleGetConfigNode(int16_t id);
-size_t caerMainloopModuleGetInputDeps(int16_t id, int16_t **inputDepIds);
-size_t caerMainloopModuleGetOutputRevDeps(int16_t id, int16_t **outputRevDepIds);
-size_t caerMainloopModuleResetOutputRevDeps(int16_t id);
-dvConfigNode caerMainloopModuleGetSourceNodeForInput(int16_t id, size_t inputNum);
-dvConfigNode caerMainloopModuleGetSourceInfoForInput(int16_t id, size_t inputNum);
-
-dvConfigNode caerMainloopGetSourceNode(int16_t sourceID); // Can be NULL.
-void *caerMainloopGetSourceState(int16_t sourceID);       // Can be NULL.
-dvConfigNode caerMainloopGetSourceInfo(int16_t sourceID); // Can be NULL.
+dvConfigNode dvMainloopGetSourceNode(int16_t sourceID); // Can be NULL.
+void *dvMainloopGetSourceState(int16_t sourceID);       // Can be NULL.
+dvConfigNode dvMainloopGetSourceInfo(int16_t sourceID); // Can be NULL.
 
 #ifdef __cplusplus
 }

@@ -94,7 +94,7 @@ static bool caerCameraCalibrationInit(dvModuleData moduleData) {
 	// Both input packets (polarity and frame) must be from the same source, which
 	// means inputSize should be 1 here (one module from which both come). If it isn't,
 	// it means we connected the module wrongly.
-	size_t inputsSize = caerMainloopModuleGetInputDeps(moduleData->moduleID, NULL);
+	size_t inputsSize = dvMainloopModuleGetInputDeps(moduleData->moduleID, NULL);
 
 	if (inputsSize != 1) {
 		dvModuleLog(moduleData, CAER_LOG_ERROR,
@@ -104,7 +104,7 @@ static bool caerCameraCalibrationInit(dvModuleData moduleData) {
 
 	// Wait for input to be ready. All inputs, once they are up and running, will
 	// have a valid sourceInfo node to query, especially if dealing with data.
-	dvConfigNode sourceInfo = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
+	dvConfigNode sourceInfo = dvMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
 	if (sourceInfo == NULL) {
 		return (false);
 	}

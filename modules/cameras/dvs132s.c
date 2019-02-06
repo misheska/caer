@@ -204,8 +204,8 @@ static bool caerInputDVS132SInit(dvModuleData moduleData) {
 	createDefaultUSBConfiguration(moduleData);
 
 	// Start data acquisition.
-	bool ret = caerDeviceDataStart(moduleData->moduleState, &caerMainloopDataNotifyIncrease,
-		&caerMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
+	bool ret = caerDeviceDataStart(moduleData->moduleState, &dvMainloopDataNotifyIncrease,
+		&dvMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
 
 	if (!ret) {
 		// Failed to start data acquisition, close device and exit.
@@ -259,7 +259,7 @@ static void caerInputDVS132SRun(dvModuleData moduleData, caerEventPacketContaine
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
 				   != NULL)) {
-			caerMainloopModuleResetOutputRevDeps(moduleData->moduleID);
+			dvMainloopModuleResetOutputRevDeps(moduleData->moduleID);
 
 			// Update master/slave information.
 			struct caer_dvs132s_info devInfo = caerDVS132SInfoGet(moduleData->moduleState);

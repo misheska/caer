@@ -116,11 +116,11 @@ void caerModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, si
 	else if (moduleData->moduleStatus == DV_MODULE_STOPPED && running) {
 		// Check that all modules this module depends on are also running.
 		int16_t *neededModules;
-		size_t neededModulesSize = caerMainloopModuleGetInputDeps(moduleData->moduleID, &neededModules);
+		size_t neededModulesSize = dvMainloopModuleGetInputDeps(moduleData->moduleID, &neededModules);
 
 		if (neededModulesSize > 0) {
 			for (size_t i = 0; i < neededModulesSize; i++) {
-				if (caerMainloopModuleGetStatus(neededModules[i]) != DV_MODULE_RUNNING) {
+				if (dvMainloopModuleGetStatus(neededModules[i]) != DV_MODULE_RUNNING) {
 					free(neededModules);
 					return;
 				}
@@ -175,11 +175,11 @@ void caerModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, si
 		// an input would kill everything until mainloop restart.
 		// This is consistent with initial mainloop start.
 		int16_t *dependantModules;
-		size_t dependantModulesSize = caerMainloopModuleGetOutputRevDeps(moduleData->moduleID, &dependantModules);
+		size_t dependantModulesSize = dvMainloopModuleGetOutputRevDeps(moduleData->moduleID, &dependantModules);
 
 		if (dependantModulesSize > 0) {
 			for (size_t i = 0; i < dependantModulesSize; i++) {
-				dvCfg::Node moduleConfigNode(caerMainloopModuleGetConfigNode(dependantModules[i]));
+				dvCfg::Node moduleConfigNode(dvMainloopModuleGetConfigNode(dependantModules[i]));
 
 				if (moduleConfigNode.get<dvCfgType::BOOL>("runAtStartup")) {
 					moduleNode.put<dvCfgType::BOOL>("running", true);
@@ -211,11 +211,11 @@ void caerModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, si
 		// Shutdown of module: ensure all modules depending on this
 		// one also get stopped (running set to false).
 		int16_t *dependantModules;
-		size_t dependantModulesSize = caerMainloopModuleGetOutputRevDeps(moduleData->moduleID, &dependantModules);
+		size_t dependantModulesSize = dvMainloopModuleGetOutputRevDeps(moduleData->moduleID, &dependantModules);
 
 		if (dependantModulesSize > 0) {
 			for (size_t i = 0; i < dependantModulesSize; i++) {
-				dvCfg::Node moduleConfigNode(caerMainloopModuleGetConfigNode(dependantModules[i]));
+				dvCfg::Node moduleConfigNode(dvMainloopModuleGetConfigNode(dependantModules[i]));
 
 				moduleConfigNode.put<dvCfgType::BOOL>("running", false);
 			}

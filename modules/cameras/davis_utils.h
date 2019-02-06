@@ -220,7 +220,7 @@ static void caerInputDAVISCommonRun(
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
 				   != NULL)) {
-			caerMainloopModuleResetOutputRevDeps(moduleData->moduleID);
+			dvMainloopModuleResetOutputRevDeps(moduleData->moduleID);
 
 			// Update master/slave information.
 			struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);

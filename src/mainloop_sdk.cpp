@@ -6,13 +6,13 @@ void caerMainloopSDKLibInit(MainloopData *setMainloopPtr) {
 	glMainloopDataPtr = setMainloopPtr;
 }
 
-void caerMainloopDataNotifyIncrease(void *p) {
+void dvMainloopDataNotifyIncrease(void *p) {
 	UNUSED_ARGUMENT(p);
 
 	glMainloopDataPtr->dataAvailable.fetch_add(1, std::memory_order_release);
 }
 
-void caerMainloopDataNotifyDecrease(void *p) {
+void dvMainloopDataNotifyDecrease(void *p) {
 	UNUSED_ARGUMENT(p);
 
 	// No special memory order for decrease, because the acquire load to even start running
@@ -20,32 +20,27 @@ void caerMainloopDataNotifyDecrease(void *p) {
 	glMainloopDataPtr->dataAvailable.fetch_sub(1, std::memory_order_relaxed);
 }
 
-bool caerMainloopStreamExists(int16_t sourceId, int16_t typeId) {
-	return (findBool(
-		glMainloopDataPtr->streams.cbegin(), glMainloopDataPtr->streams.cend(), ActiveStreams(sourceId, typeId)));
-}
-
-bool caerMainloopModuleExists(int16_t id) {
+bool dvMainloopModuleExists(int16_t id) {
 	return (glMainloopDataPtr->modules.count(id) == 1);
 }
 
-enum dvModuleType caerMainloopModuleGetType(int16_t id) {
+enum dvModuleType dvMainloopModuleGetType(int16_t id) {
 	return (glMainloopDataPtr->modules.at(id).libraryInfo->type);
 }
 
-uint32_t caerMainloopModuleGetVersion(int16_t id) {
+uint32_t dvMainloopModuleGetVersion(int16_t id) {
 	return (glMainloopDataPtr->modules.at(id).libraryInfo->version);
 }
 
-enum dvModuleStatus caerMainloopModuleGetStatus(int16_t id) {
+enum dvModuleStatus dvMainloopModuleGetStatus(int16_t id) {
 	return (glMainloopDataPtr->modules.at(id).runtimeData->moduleStatus);
 }
 
-dvConfigNode caerMainloopModuleGetConfigNode(int16_t id) {
+dvConfigNode dvMainloopModuleGetConfigNode(int16_t id) {
 	return (glMainloopDataPtr->modules.at(id).runtimeData->moduleNode);
 }
 
-size_t caerMainloopModuleGetInputDeps(int16_t id, int16_t **inputDepIds) {
+size_t dvMainloopModuleGetInputDeps(int16_t id, int16_t **inputDepIds) {
 	// Ensure is set to NULL for error return.
 	// Support passing in NULL directly if not interested in result.
 	if (inputDepIds != nullptr) {
@@ -54,7 +49,7 @@ size_t caerMainloopModuleGetInputDeps(int16_t id, int16_t **inputDepIds) {
 
 	// Only makes sense to be called from PROCESSORs or OUTPUTs, as INPUTs
 	// do not have inputs themselves.
-	if (caerMainloopModuleGetType(id) == DV_MODULE_INPUT) {
+	if (dvMainloopModuleGetType(id) == DV_MODULE_INPUT) {
 		return (0);
 	}
 
@@ -82,7 +77,7 @@ size_t caerMainloopModuleGetInputDeps(int16_t id, int16_t **inputDepIds) {
 	return (inputModuleIds.size());
 }
 
-size_t caerMainloopModuleGetOutputRevDeps(int16_t id, int16_t **outputRevDepIds) {
+size_t dvMainloopModuleGetOutputRevDeps(int16_t id, int16_t **outputRevDepIds) {
 	// Ensure is set to NULL for error return.
 	// Support passing in NULL directly if not interested in result.
 	if (outputRevDepIds != nullptr) {
@@ -91,7 +86,7 @@ size_t caerMainloopModuleGetOutputRevDeps(int16_t id, int16_t **outputRevDepIds)
 
 	// Only makes sense to be called from INPUTs or PROCESSORs, as OUTPUTs
 	// do not have outputs themselves.
-	if (caerMainloopModuleGetType(id) == DV_MODULE_OUTPUT) {
+	if (dvMainloopModuleGetType(id) == DV_MODULE_OUTPUT) {
 		return (0);
 	}
 
@@ -122,10 +117,10 @@ size_t caerMainloopModuleGetOutputRevDeps(int16_t id, int16_t **outputRevDepIds)
 	return (outputModuleIds.size());
 }
 
-size_t caerMainloopModuleResetOutputRevDeps(int16_t id) {
+size_t dvMainloopModuleResetOutputRevDeps(int16_t id) {
 	// Find and reset all reverse dependencies of a particular module.
 	int16_t *outputRevDepIds;
-	size_t numRevDeps = caerMainloopModuleGetOutputRevDeps(id, &outputRevDepIds);
+	size_t numRevDeps = dvMainloopModuleGetOutputRevDeps(id, &outputRevDepIds);
 
 	if (numRevDeps > 0) {
 		for (size_t i = 0; i < numRevDeps; i++) {
@@ -140,9 +135,9 @@ size_t caerMainloopModuleResetOutputRevDeps(int16_t id) {
 	return (numRevDeps);
 }
 
-dvConfigNode caerMainloopModuleGetSourceNodeForInput(int16_t id, size_t inputNum) {
+dvConfigNode dvMainloopModuleGetSourceNodeForInput(int16_t id, size_t inputNum) {
 	int16_t *inputModules;
-	size_t inputModulesNum = caerMainloopModuleGetInputDeps(id, &inputModules);
+	size_t inputModulesNum = dvMainloopModuleGetInputDeps(id, &inputModules);
 
 	if (inputNum >= inputModulesNum) {
 		return (nullptr);
@@ -152,12 +147,12 @@ dvConfigNode caerMainloopModuleGetSourceNodeForInput(int16_t id, size_t inputNum
 
 	free(inputModules);
 
-	return (caerMainloopGetSourceNode(sourceId));
+	return (dvMainloopGetSourceNode(sourceId));
 }
 
-dvConfigNode caerMainloopModuleGetSourceInfoForInput(int16_t id, size_t inputNum) {
+dvConfigNode dvMainloopModuleGetSourceInfoForInput(int16_t id, size_t inputNum) {
 	int16_t *inputModules;
-	size_t inputModulesNum = caerMainloopModuleGetInputDeps(id, &inputModules);
+	size_t inputModulesNum = dvMainloopModuleGetInputDeps(id, &inputModules);
 
 	if (inputNum >= inputModulesNum) {
 		return (nullptr);
@@ -167,12 +162,12 @@ dvConfigNode caerMainloopModuleGetSourceInfoForInput(int16_t id, size_t inputNum
 
 	free(inputModules);
 
-	return (caerMainloopGetSourceInfo(sourceId));
+	return (dvMainloopGetSourceInfo(sourceId));
 }
 
-static inline dvModuleData caerMainloopGetSourceData(int16_t sourceID) {
+static inline dvModuleData dvMainloopGetSourceData(int16_t sourceID) {
 	// Sources must be INPUTs or PROCESSORs.
-	if (caerMainloopModuleGetType(sourceID) == DV_MODULE_OUTPUT) {
+	if (dvMainloopModuleGetType(sourceID) == DV_MODULE_OUTPUT) {
 		return (nullptr);
 	}
 
@@ -193,8 +188,8 @@ static inline dvModuleData caerMainloopGetSourceData(int16_t sourceID) {
 	return (glMainloopDataPtr->modules.at(sourceID).runtimeData);
 }
 
-dvConfigNode caerMainloopGetSourceNode(int16_t sourceID) {
-	dvModuleData moduleData = caerMainloopGetSourceData(sourceID);
+dvConfigNode dvMainloopGetSourceNode(int16_t sourceID) {
+	dvModuleData moduleData = dvMainloopGetSourceData(sourceID);
 	if (moduleData == nullptr) {
 		return (nullptr);
 	}
@@ -202,8 +197,8 @@ dvConfigNode caerMainloopGetSourceNode(int16_t sourceID) {
 	return (moduleData->moduleNode);
 }
 
-void *caerMainloopGetSourceState(int16_t sourceID) {
-	dvModuleData moduleData = caerMainloopGetSourceData(sourceID);
+void *dvMainloopGetSourceState(int16_t sourceID) {
+	dvModuleData moduleData = dvMainloopGetSourceData(sourceID);
 	if (moduleData == nullptr) {
 		return (nullptr);
 	}
@@ -211,8 +206,8 @@ void *caerMainloopGetSourceState(int16_t sourceID) {
 	return (moduleData->moduleState);
 }
 
-dvConfigNode caerMainloopGetSourceInfo(int16_t sourceID) {
-	dvModuleData moduleData = caerMainloopGetSourceData(sourceID);
+dvConfigNode dvMainloopGetSourceInfo(int16_t sourceID) {
+	dvModuleData moduleData = dvMainloopGetSourceData(sourceID);
 	if (moduleData == nullptr) {
 		return (nullptr);
 	}

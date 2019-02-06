@@ -330,14 +330,14 @@ static std::vector<OrderedInput> parseAugmentedTypeIDString(const std::string &t
 			}
 
 			// Check that the module ID actually exists in the system.
-			if (!caerMainloopModuleExists(static_cast<int16_t>(afterModuleOrder))) {
+			if (!dvMainloopModuleExists(static_cast<int16_t>(afterModuleOrder))) {
 				throw std::out_of_range("Unknown module ID found.");
 			}
 
 			// Verify that the module ID belongs to a PROCESSOR module,
 			// as only those can ever modify event streams and thus impose
 			// an ordering on it and modules using it.
-			if (caerMainloopModuleGetType(static_cast<int16_t>(afterModuleOrder)) != DV_MODULE_PROCESSOR) {
+			if (dvMainloopModuleGetType(static_cast<int16_t>(afterModuleOrder)) != DV_MODULE_PROCESSOR) {
 				throw std::out_of_range("Module ID doesn't belong to a PROCESSOR type modules.");
 			}
 		}
@@ -415,7 +415,7 @@ static void parseModuleInput(const std::string &inputDefinition,
 			}
 
 			// Check that the referenced module ID actually exists in the system.
-			if (!caerMainloopModuleExists(mId)) {
+			if (!dvMainloopModuleExists(mId)) {
 				throw std::out_of_range("Unknown referenced module ID found.");
 			}
 
@@ -1109,7 +1109,8 @@ static void buildConnectivity() {
 		if (m.get().libraryInfo->type == DV_MODULE_INPUT
 			|| (m.get().libraryInfo->type == DV_MODULE_PROCESSOR && m.get().libraryInfo->outputStreams != nullptr)) {
 			for (auto &o : m.get().outputs) {
-				if (caerMainloopStreamExists(m.get().id, o.first)) {
+				if (findBool(glMainloopData.streams.cbegin(), glMainloopData.streams.cend(),
+						ActiveStreams(m.get().id, o.first))) {
 					// Update active outputs with a viable index.
 					o.second = static_cast<ssize_t>(nextFreeSlot);
 

@@ -130,7 +130,7 @@ static bool caerDVSNoiseFilterInit(dvModuleData moduleData) {
 	// Wait for input to be ready. All inputs, once they are up and running, will
 	// have a valid sourceInfo node to query, especially if dealing with data.
 	// Allocate map using info from sourceInfo.
-	dvConfigNode sourceInfo = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
+	dvConfigNode sourceInfo = dvMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
 	if (sourceInfo == NULL) {
 		return (false);
 	}

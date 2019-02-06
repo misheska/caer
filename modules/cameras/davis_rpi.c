@@ -65,8 +65,8 @@ static bool caerInputDAVISRPiInit(dvModuleData moduleData) {
 	sendDefaultConfiguration(moduleData, &devInfo);
 
 	// Start data acquisition.
-	bool ret = caerDeviceDataStart(moduleData->moduleState, &caerMainloopDataNotifyIncrease,
-		&caerMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
+	bool ret = caerDeviceDataStart(moduleData->moduleState, &dvMainloopDataNotifyIncrease,
+		&dvMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
 
 	if (!ret) {
 		// Failed to start data acquisition, close device and exit.
