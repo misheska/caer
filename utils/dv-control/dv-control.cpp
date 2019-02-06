@@ -133,7 +133,7 @@ static inline const dv::ConfigActionData *receiveMessage() {
 }
 
 int main(int argc, char *argv[]) {
-	// Allowed command-line options for caer-ctl.
+	// Allowed command-line options for dv-control.
 	po::options_description cliDescription("Command-line options");
 	cliDescription.add_options()("help,h", "print help text")("ipaddress,i", po::value<std::string>(),
 		"IP-address or hostname to connect to")("port,p", po::value<std::string>(), "port to connect to")("ssl",
@@ -270,7 +270,7 @@ int main(int argc, char *argv[]) {
 
 	commandHistoryFilePath.append(DVCTL_HISTORY_FILE_NAME, boost::filesystem::path::codecvt());
 
-	// Connect to the remote cAER config server.
+	// Connect to the remote DV config server.
 	try {
 		asioTCP::resolver resolver(ioService);
 		asio::connect(sslSocket.next_layer(), resolver.resolve({ipAddress, portNumber}));
@@ -315,7 +315,7 @@ int main(int argc, char *argv[]) {
 	}
 	else {
 		// Create a shell prompt with the IP:Port displayed.
-		boost::format shellPrompt = boost::format("cAER @ %s:%s >> ") % ipAddress % portNumber;
+		boost::format shellPrompt = boost::format("DV @ %s:%s >> ") % ipAddress % portNumber;
 
 		// Set our own command completion function.
 		linenoiseSetCompletionCallback(&handleCommandCompletion);
