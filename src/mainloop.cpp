@@ -33,6 +33,9 @@
 #	include <execinfo.h>
 #endif
 
+#define INTERNAL_XSTR(a) INTERNAL_STR(a)
+#define INTERNAL_STR(a) #a
+
 #include <libcaercpp/libcaer.hpp>
 using namespace libcaer::log;
 namespace dvCfg  = dv::Config;
@@ -143,7 +146,7 @@ void caerMainloopRun(void) {
 	auto modulesNode = dvCfg::GLOBAL.getNode("/system/modules/");
 
 	// Default search directories.
-	boost::filesystem::path modulesDefaultDir(DV_MODULES_DIR);
+	boost::filesystem::path modulesDefaultDir(INTERNAL_XSTR(DV_MODULES_DIR));
 
 	modulesNode.create<dvCfgType::STRING>("modulesSearchPath", modulesDefaultDir.string(), {1, 8 * PATH_MAX},
 		dvCfgFlags::NORMAL, "Directories to search loadable modules in, separated by '|'.");
