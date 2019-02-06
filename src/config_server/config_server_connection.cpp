@@ -10,9 +10,9 @@ namespace logger = libcaer::log;
 std::atomic_uint64_t ConfigServerConnection::clientIDGenerator{1};
 
 ConfigServerConnection::ConfigServerConnection(
-	asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext, ConfigServer *server) :
+	asioTCP::socket s, bool tlsEnabled, asioSSL::context *tlsContext, ConfigServer *server) :
 	parent(server),
-	socket(std::move(s), sslEnabled, sslContext) {
+	socket(std::move(s), tlsEnabled, tlsContext) {
 	clientID = clientIDGenerator.fetch_add(1);
 
 	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "New connection from client %lld (%s:%d).", clientID,
@@ -32,7 +32,7 @@ void ConfigServerConnection::start() {
 	socket.start(
 		[this, self](const boost::system::error_code &error) {
 			if (error) {
-				handleError(error, "Failed startup (SSL handshake)");
+				handleError(error, "Failed startup (TLS handshake)");
 			}
 			else {
 				readMessageSize();

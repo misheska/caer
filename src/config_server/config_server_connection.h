@@ -20,7 +20,7 @@ private:
 	flatbuffers::uoffset_t incomingMessageSize;
 
 public:
-	ConfigServerConnection(asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext, ConfigServer *server);
+	ConfigServerConnection(asioTCP::socket s, bool tlsEnabled, asioSSL::context *tlsContext, ConfigServer *server);
 	~ConfigServerConnection();
 
 	void start();

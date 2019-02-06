@@ -32,8 +32,8 @@ ConfigServer::ConfigServer() :
 	ioThreadState(IOThreadState::STOPPED),
 	acceptor(ioService),
 	acceptorNewSocket(ioService),
-	sslContext(asioSSL::context::tlsv12_server),
-	sslEnabled(false),
+	tlsContext(asioSSL::context::tlsv12_server),
+	tlsEnabled(false),
 	numPushClients(0) {
 }
 
@@ -128,63 +128,68 @@ void ConfigServer::serviceConfigure() {
 	auto endpoint = asioTCP::endpoint(asioIP::address::from_string(serverNode.get<dvCfgType::STRING>("ipAddress")),
 		U16T(serverNode.get<dvCfgType::INT>("portNumber")));
 
+	// TODO: this can fail if port already in use!
 	acceptor.open(endpoint.protocol());
 	acceptor.set_option(asioTCP::socket::reuse_address(true));
 	acceptor.bind(endpoint);
 	acceptor.listen();
 
-	// Configure SSL support.
-	sslEnabled = serverNode.get<dvCfgType::BOOL>("ssl");
+	// Configure TLS support.
+	tlsEnabled = serverNode.get<dvCfgType::BOOL>("tls");
 
-	if (sslEnabled) {
-		try {
-			sslContext.use_certificate_chain_file(serverNode.get<dvCfgType::STRING>("sslCertFile"));
-		}
-		catch (const boost::system::system_error &ex) {
-			logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
-				"Failed to load certificate file (error '%s'), disabling SSL.", ex.what());
-			sslEnabled = false;
-			return;
-		}
-
-		try {
-			sslContext.use_private_key_file(
-				serverNode.get<dvCfgType::STRING>("sslKeyFile"), boost::asio::ssl::context::pem);
-		}
-		catch (const boost::system::system_error &ex) {
-			logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
-				"Failed to load private key file (error '%s'), disabling SSL.", ex.what());
-			sslEnabled = false;
-			return;
-		}
-
-		sslContext.set_options(
-			boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use);
-
-		// Default: no client verification enforced.
-		sslContext.set_verify_mode(asioSSL::context::verify_peer);
-
-		if (serverNode.get<dvCfgType::BOOL>("sslClientVerification")) {
-			const std::string sslVerifyFile = serverNode.get<dvCfgType::STRING>("sslClientVerificationFile");
-
-			if (sslVerifyFile.empty()) {
-				sslContext.set_default_verify_paths();
+	try {
+		if (tlsEnabled) {
+			try {
+				tlsContext.use_certificate_chain_file(serverNode.get<dvCfgType::STRING>("tlsCertFile"));
 			}
-			else {
-				try {
-					sslContext.load_verify_file(sslVerifyFile);
-				}
-				catch (const boost::system::system_error &ex) {
-					logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
-						"Failed to load certificate authority verification file (error '%s'), disabling SSL "
-						"client verification.",
-						ex.what());
-					return;
-				}
+			catch (const boost::system::system_error &ex) {
+				logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
+					"Failed to load certificate file (error '%s'), disabling TLS.", ex.what());
+				throw;
 			}
 
-			sslContext.set_verify_mode(asioSSL::context::verify_peer | asioSSL::context::verify_fail_if_no_peer_cert);
+			try {
+				tlsContext.use_private_key_file(serverNode.get<dvCfgType::STRING>("tlsKeyFile"), asioSSL::context::pem);
+			}
+			catch (const boost::system::system_error &ex) {
+				logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
+					"Failed to load private key file (error '%s'), disabling TLS.", ex.what());
+				throw;
+			}
+
+			tlsContext.set_options(asioSSL::context::default_workarounds | asioSSL::context::single_dh_use);
+
+			// Default: no client verification enforced.
+			tlsContext.set_verify_mode(asioSSL::context::verify_peer);
+
+			if (serverNode.get<dvCfgType::BOOL>("tlsClientVerification")) {
+				const std::string tlsVerifyFile = serverNode.get<dvCfgType::STRING>("tlsClientVerificationFile");
+
+				if (tlsVerifyFile.empty()) {
+					tlsContext.set_default_verify_paths();
+				}
+				else {
+					try {
+						tlsContext.load_verify_file(tlsVerifyFile);
+					}
+					catch (const boost::system::system_error &ex) {
+						logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
+							"Failed to load certificate authority verification file (error '%s') for client "
+							"verification, disabling TLS.",
+							ex.what());
+						throw;
+					}
+				}
+
+				tlsContext.set_verify_mode(
+					asioSSL::context::verify_peer | asioSSL::context::verify_fail_if_no_peer_cert);
+			}
 		}
+	}
+	catch (const boost::system::system_error &) {
+		// Disable TLS on error.
+		tlsEnabled = false;
+		serverNode.put<dvCfgType::BOOL>("tls", false);
 	}
 }
 
@@ -236,7 +241,7 @@ void ConfigServer::acceptStart() {
 		}
 		else {
 			auto client
-				= std::make_shared<ConfigServerConnection>(std::move(acceptorNewSocket), sslEnabled, &sslContext, this);
+				= std::make_shared<ConfigServerConnection>(std::move(acceptorNewSocket), tlsEnabled, &tlsContext, this);
 
 			clients.push_back(client.get());
 
@@ -268,18 +273,18 @@ void dvConfigServerStart(void) {
 	serverNode.create<dvCfgType::INT>("portNumber", 4040, {1, UINT16_MAX}, dvCfgFlags::NORMAL,
 		"Port to listen on for configuration server connections.");
 
-	// Default values for SSL encryption support.
+	// Default values for TLS secure connection support.
 	serverNode.create<dvCfgType::BOOL>(
-		"ssl", false, {}, dvCfgFlags::NORMAL, "Require SSL encryption for configuration server communication.");
+		"tls", false, {}, dvCfgFlags::NORMAL, "Require TLS encryption for configuration server communication.");
 	serverNode.create<dvCfgType::STRING>(
-		"sslCertFile", "", {0, PATH_MAX}, dvCfgFlags::NORMAL, "Path to SSL certificate file (PEM format).");
+		"tlsCertFile", "", {0, PATH_MAX}, dvCfgFlags::NORMAL, "Path to TLS certificate file (PEM format).");
 	serverNode.create<dvCfgType::STRING>(
-		"sslKeyFile", "", {0, PATH_MAX}, dvCfgFlags::NORMAL, "Path to SSL private key file (PEM format).");
+		"tlsKeyFile", "", {0, PATH_MAX}, dvCfgFlags::NORMAL, "Path to TLS private key file (PEM format).");
 
 	serverNode.create<dvCfgType::BOOL>(
-		"sslClientVerification", false, {}, dvCfgFlags::NORMAL, "Require SSL client certificate verification.");
-	serverNode.create<dvCfgType::STRING>("sslClientVerificationFile", "", {0, PATH_MAX}, dvCfgFlags::NORMAL,
-		"Path to SSL CA file for client verification (PEM format). Leave empty to use system defaults.");
+		"tlsClientVerification", false, {}, dvCfgFlags::NORMAL, "Require TLS client certificate verification.");
+	serverNode.create<dvCfgType::STRING>("tlsClientVerificationFile", "", {0, PATH_MAX}, dvCfgFlags::NORMAL,
+		"Path to TLS CA file for client verification (PEM format). Leave empty to use system defaults.");
 
 	try {
 		// Start threads.
