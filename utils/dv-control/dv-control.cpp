@@ -1,5 +1,5 @@
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/utils.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/utils.h"
 
 #include "../../src/config_server/dv_config_action_data.h"
 #include "utils/ext/linenoise-ng/linenoise.h"
@@ -21,8 +21,8 @@ namespace asioIP  = boost::asio::ip;
 using asioTCP     = boost::asio::ip::tcp;
 namespace po      = boost::program_options;
 
-#define CAERCTL_HISTORY_FILE_NAME ".caer-ctl.history"
-#define CAERCTL_CLIENT_BUFFER_MAX_SIZE 8192
+#define DVCTL_HISTORY_FILE_NAME ".dv-control.history"
+#define DVCTL_CLIENT_BUFFER_MAX_SIZE 8192
 
 static void handleInputLine(const char *buf, size_t bufLength);
 static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoComplete);
@@ -56,8 +56,8 @@ static const struct {
 	{"dump_tree", dv::ConfigAction::DUMP_TREE},
 };
 
-static flatbuffers::FlatBufferBuilder dataBufferSend{CAERCTL_CLIENT_BUFFER_MAX_SIZE};
-static uint8_t dataBufferReceive[CAERCTL_CLIENT_BUFFER_MAX_SIZE];
+static flatbuffers::FlatBufferBuilder dataBufferSend{DVCTL_CLIENT_BUFFER_MAX_SIZE};
+static uint8_t dataBufferReceive[DVCTL_CLIENT_BUFFER_MAX_SIZE];
 
 static asio::io_service ioService;
 static asioSSL::context sslContext{asioSSL::context::tlsv12_client};
@@ -112,7 +112,7 @@ static inline const dv::ConfigActionData *receiveMessage() {
 	asioSocketRead(asio::buffer(&incomingMessageSize, sizeof(incomingMessageSize)));
 
 	// Check for wrong (excessive) message length.
-	if (incomingMessageSize > CAERCTL_CLIENT_BUFFER_MAX_SIZE) {
+	if (incomingMessageSize > DVCTL_CLIENT_BUFFER_MAX_SIZE) {
 		throw std::runtime_error("Message length error (%d bytes).");
 	}
 
@@ -268,7 +268,7 @@ int main(int argc, char *argv[]) {
 		commandHistoryFilePath = boost::filesystem::current_path();
 	}
 
-	commandHistoryFilePath.append(CAERCTL_HISTORY_FILE_NAME, boost::filesystem::path::codecvt());
+	commandHistoryFilePath.append(DVCTL_HISTORY_FILE_NAME, boost::filesystem::path::codecvt());
 
 	// Connect to the remote cAER config server.
 	try {

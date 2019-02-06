@@ -2,12 +2,12 @@
 #define OUTPUT_COMMON_H_
 
 #include <libcaer/ringbuffer.h>
-#include "caer-sdk/module.h"
+#include "dv-sdk/module.h"
 #include "../inout_common.h"
 #include "libuv.h"
 
 #ifdef HAVE_PTHREADS
-#include "caer-sdk/cross/c11threads_posix.h"
+#include "dv-sdk/cross/c11threads_posix.h"
 #endif
 
 #define MAX_OUTPUT_RINGBUFFER_GET 10

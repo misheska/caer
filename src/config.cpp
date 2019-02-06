@@ -1,6 +1,6 @@
 #include "config.h"
 
-#include "caer-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_io.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -59,7 +59,7 @@ void caerConfigInit(int argc, char *argv[]) {
 	else {
 		// Default config file in $USER_HOME.
 		char *userHome = portable_get_user_home_directory();
-		configFile     = boost::filesystem::path(std::string(userHome) + "/" + CAER_CONFIG_FILE_NAME);
+		configFile     = boost::filesystem::path(std::string(userHome) + "/" + DV_CONFIG_FILE_NAME);
 		free(userHome);
 	}
 

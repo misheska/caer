@@ -4,7 +4,7 @@
 
 #include <libcaer/devices/dvs128.h>
 
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 
 static void caerInputDVS128ConfigInit(dvConfigNode moduleNode);
 static bool caerInputDVS128Init(caerModuleData moduleData);
@@ -26,7 +26,7 @@ static const struct caer_module_info DVS128Info = {
 	.version           = 1,
 	.name              = "DVS128",
 	.description       = "Connects to a DVS128 camera to get data.",
-	.type              = CAER_MODULE_INPUT,
+	.type              = DV_MODULE_INPUT,
 	.memSize           = 0,
 	.functions         = &DVS128Functions,
 	.inputStreams      = NULL,

@@ -1,8 +1,8 @@
 #ifndef SRC_CONFIG_SERVER_CONFIG_UPDATER_H_
 #define SRC_CONFIG_SERVER_CONFIG_UPDATER_H_
 
-#include "caer-sdk/config/dvConfig.hpp"
-#include "caer-sdk/cross/portable_threads.h"
+#include "dv-sdk/config/dvConfig.hpp"
+#include "dv-sdk/cross/portable_threads.h"
 
 #include <atomic>
 #include <chrono>

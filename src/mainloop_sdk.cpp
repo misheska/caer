@@ -54,7 +54,7 @@ size_t caerMainloopModuleGetInputDeps(int16_t id, int16_t **inputDepIds) {
 
 	// Only makes sense to be called from PROCESSORs or OUTPUTs, as INPUTs
 	// do not have inputs themselves.
-	if (caerMainloopModuleGetType(id) == CAER_MODULE_INPUT) {
+	if (caerMainloopModuleGetType(id) == DV_MODULE_INPUT) {
 		return (0);
 	}
 
@@ -91,7 +91,7 @@ size_t caerMainloopModuleGetOutputRevDeps(int16_t id, int16_t **outputRevDepIds)
 
 	// Only makes sense to be called from INPUTs or PROCESSORs, as OUTPUTs
 	// do not have outputs themselves.
-	if (caerMainloopModuleGetType(id) == CAER_MODULE_OUTPUT) {
+	if (caerMainloopModuleGetType(id) == DV_MODULE_OUTPUT) {
 		return (0);
 	}
 
@@ -129,7 +129,7 @@ size_t caerMainloopModuleResetOutputRevDeps(int16_t id) {
 
 	if (numRevDeps > 0) {
 		for (size_t i = 0; i < numRevDeps; i++) {
-			if (glMainloopDataPtr->modules.at(outputRevDepIds[i]).runtimeData->moduleStatus == CAER_MODULE_RUNNING) {
+			if (glMainloopDataPtr->modules.at(outputRevDepIds[i]).runtimeData->moduleStatus == DV_MODULE_RUNNING) {
 				glMainloopDataPtr->modules.at(outputRevDepIds[i]).runtimeData->doReset.store(id);
 			}
 		}
@@ -172,7 +172,7 @@ dvConfigNode caerMainloopModuleGetSourceInfoForInput(int16_t id, size_t inputNum
 
 static inline caerModuleData caerMainloopGetSourceData(int16_t sourceID) {
 	// Sources must be INPUTs or PROCESSORs.
-	if (caerMainloopModuleGetType(sourceID) == CAER_MODULE_OUTPUT) {
+	if (caerMainloopModuleGetType(sourceID) == DV_MODULE_OUTPUT) {
 		return (nullptr);
 	}
 
@@ -219,7 +219,7 @@ dvConfigNode caerMainloopGetSourceInfo(int16_t sourceID) {
 
 	// All sources should have a sub-node in ConfigTree called 'sourceInfo/',
 	// while they are running only (so check running and existence).
-	if (moduleData->moduleStatus == CAER_MODULE_STOPPED) {
+	if (moduleData->moduleStatus == DV_MODULE_STOPPED) {
 		return (nullptr);
 	}
 

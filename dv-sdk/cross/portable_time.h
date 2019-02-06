@@ -1,5 +1,5 @@
-#ifndef CAER_SDK_PORTABLE_TIME_H_
-#define CAER_SDK_PORTABLE_TIME_H_
+#ifndef DV_SDK_PORTABLE_TIME_H_
+#define DV_SDK_PORTABLE_TIME_H_
 
 #ifdef __cplusplus
 
@@ -26,4 +26,4 @@ struct tm portable_clock_localtime(void);
 }
 #endif
 
-#endif /* CAER_SDK_PORTABLE_TIME_H_ */
+#endif /* DV_SDK_PORTABLE_TIME_H_ */

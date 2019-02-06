@@ -3,8 +3,8 @@
  * Modules can use this and link to it.
  */
 
-#ifndef CAER_SDK_MAINLOOP_H_
-#define CAER_SDK_MAINLOOP_H_
+#ifndef DV_SDK_MAINLOOP_H_
+#define DV_SDK_MAINLOOP_H_
 
 #include "module.h"
 #include "utils.h"
@@ -37,4 +37,4 @@ dvConfigNode caerMainloopGetSourceInfo(int16_t sourceID); // Can be NULL.
 }
 #endif
 
-#endif /* CAER_SDK_MAINLOOP_H_ */
+#endif /* DV_SDK_MAINLOOP_H_ */

@@ -5,8 +5,8 @@
 
 #include <libcaer/devices/dvs132s.h>
 
-#include <caer-sdk/cross/c11threads_posix.h>
-#include <caer-sdk/mainloop.h>
+#include <dv-sdk/cross/c11threads_posix.h>
+#include <dv-sdk/mainloop.h>
 
 static void caerInputDVS132SConfigInit(dvConfigNode moduleNode);
 static bool caerInputDVS132SInit(caerModuleData moduleData);
@@ -32,7 +32,7 @@ static const struct caer_module_info DVS132SInfo = {
 	.version           = 1,
 	.name              = "DVS132S",
 	.description       = "Connects to a DVS132S camera to get data.",
-	.type              = CAER_MODULE_INPUT,
+	.type              = DV_MODULE_INPUT,
 	.memSize           = 0,
 	.functions         = &DVS132SFunctions,
 	.inputStreams      = NULL,

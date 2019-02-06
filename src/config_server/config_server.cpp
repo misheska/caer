@@ -1,7 +1,7 @@
 #include "config_server.h"
 
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/cross/portable_threads.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_threads.h"
 
 #include "config_server_main.h"
 #include "config_updater.h"
@@ -337,7 +337,7 @@ static void caerConfigServerGlobalNodeChangeListener(
 	dvCfg::Node node(n);
 
 	if (globalConfigData.server.pushClientsPresent()) {
-		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
+		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 		std::string nodePath(node.getPath());
 		nodePath += changeNode;
@@ -375,7 +375,7 @@ static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode n, void *
 	dvCfg::Node node(n);
 
 	if (globalConfigData.server.pushClientsPresent()) {
-		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
+		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 		auto type  = static_cast<dvCfg::AttributeType>(changeType);
 		auto flags = node.getAttributeFlags(changeKey, type);

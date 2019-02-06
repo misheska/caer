@@ -94,7 +94,7 @@ void ConfigServerConnection::readMessageSize() {
 			else {
 				// Check for wrong (excessive) message length.
 				// Close connection by falling out of scope.
-				if (incomingMessageSize > CAER_CONFIG_SERVER_MAX_INCOMING_SIZE) {
+				if (incomingMessageSize > DV_CONFIG_SERVER_MAX_INCOMING_SIZE) {
 					logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME,
 						"Client %lld: message length error (%d bytes).", clientID, incomingMessageSize);
 					return;

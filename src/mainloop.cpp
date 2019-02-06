@@ -1,6 +1,6 @@
 #include "mainloop.h"
 
-#include "caer-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_io.h"
 
 #include "config.h"
 
@@ -227,28 +227,28 @@ void caerMainloopRun(void) {
  * parameters, depending on the type of module and its requirements.
  */
 static void checkModuleInputOutput(caerModuleInfo info, dvCfg::Node configNode) {
-	if (info->type == CAER_MODULE_INPUT) {
+	if (info->type == DV_MODULE_INPUT) {
 		// moduleInput must not exist for INPUT modules.
 		if (configNode.exists<dvCfgType::STRING>("moduleInput")) {
 			throw std::domain_error("INPUT type cannot have a 'moduleInput' attribute.");
 		}
 	}
 	else {
-		// CAER_MODULE_OUTPUT / CAER_MODULE_PROCESSOR
+		// DV_MODULE_OUTPUT / DV_MODULE_PROCESSOR
 		// moduleInput must exist for OUTPUT and PROCESSOR modules.
 		if (!configNode.exists<dvCfgType::STRING>("moduleInput")) {
 			throw std::domain_error("OUTPUT/PROCESSOR types must have a 'moduleInput' attribute.");
 		}
 	}
 
-	if (info->type == CAER_MODULE_OUTPUT) {
+	if (info->type == DV_MODULE_OUTPUT) {
 		// moduleOutput must not exist for OUTPUT modules.
 		if (configNode.exists<dvCfgType::STRING>("moduleOutput")) {
 			throw std::domain_error("OUTPUT type cannot have a 'moduleOutput' attribute.");
 		}
 	}
 	else {
-		// CAER_MODULE_INPUT / CAER_MODULE_PROCESSOR
+		// DV_MODULE_INPUT / DV_MODULE_PROCESSOR
 		// moduleOutput must exist for INPUT and PROCESSOR modules, only
 		// if their outputs are undefined (-1).
 		if (info->outputStreams != nullptr && info->outputStreamsSize == 1 && info->outputStreams[0].type == -1
@@ -337,7 +337,7 @@ static std::vector<OrderedInput> parseAugmentedTypeIDString(const std::string &t
 			// Verify that the module ID belongs to a PROCESSOR module,
 			// as only those can ever modify event streams and thus impose
 			// an ordering on it and modules using it.
-			if (caerMainloopModuleGetType(static_cast<int16_t>(afterModuleOrder)) != CAER_MODULE_PROCESSOR) {
+			if (caerMainloopModuleGetType(static_cast<int16_t>(afterModuleOrder)) != DV_MODULE_PROCESSOR) {
 				throw std::out_of_range("Module ID doesn't belong to a PROCESSOR type modules.");
 			}
 		}
@@ -1106,8 +1106,8 @@ static void buildConnectivity() {
 
 	for (auto &m : glMainloopData.globalExecution) {
 		// INPUT module or PROCESSOR with data output defined.
-		if (m.get().libraryInfo->type == CAER_MODULE_INPUT
-			|| (m.get().libraryInfo->type == CAER_MODULE_PROCESSOR && m.get().libraryInfo->outputStreams != nullptr)) {
+		if (m.get().libraryInfo->type == DV_MODULE_INPUT
+			|| (m.get().libraryInfo->type == DV_MODULE_PROCESSOR && m.get().libraryInfo->outputStreams != nullptr)) {
 			for (auto &o : m.get().outputs) {
 				if (caerMainloopStreamExists(m.get().id, o.first)) {
 					// Update active outputs with a viable index.
@@ -1123,7 +1123,7 @@ static void buildConnectivity() {
 		}
 
 		// PROCESSOR module or OUTPUT (both must have data input defined).
-		if (m.get().libraryInfo->type == CAER_MODULE_PROCESSOR || m.get().libraryInfo->type == CAER_MODULE_OUTPUT) {
+		if (m.get().libraryInfo->type == DV_MODULE_PROCESSOR || m.get().libraryInfo->type == DV_MODULE_OUTPUT) {
 			for (const auto &inputDef : m.get().inputDefinition) {
 				int16_t sourceId = inputDef.first;
 
@@ -1216,7 +1216,7 @@ static void runModules(caerEventPacketContainer in) {
 		size_t outputsExpectedBack = 0;
 
 		// Prepare input container. Only do if the module is running.
-		if (m.get().runtimeData->moduleStatus == CAER_MODULE_RUNNING) {
+		if (m.get().runtimeData->moduleStatus == DV_MODULE_RUNNING) {
 			// Clean up container. NULL pointers, memory has been already freed
 			// previously from the global event packets storage.
 			for (int32_t i = 0; i < caerEventPacketContainerGetEventPacketsNumber(in); i++) {
@@ -1252,7 +1252,7 @@ static void runModules(caerEventPacketContainer in) {
 			outputsExpectedBack = m.get().outputs.size();
 		}
 		else {
-			// !CAER_MODULE_RUNNING, so we need to make any side-effects of the
+			// !DV_MODULE_RUNNING, so we need to make any side-effects of the
 			// above code happen, in this case any packet copy operation, which
 			// would fill a slot with new data, has to happen. The copy must
 			// happen, because later modules in this stream might be using the
@@ -1473,10 +1473,10 @@ static int caerMainloopRunner() {
 	// Now we must parse, validate and create the connectivity map between modules.
 	// First we sort the modules into their three possible categories.
 	for (auto &m : glMainloopData.modules) {
-		if (m.second.libraryInfo->type == CAER_MODULE_INPUT) {
+		if (m.second.libraryInfo->type == DV_MODULE_INPUT) {
 			inputModules.push_back(m.second);
 		}
-		else if (m.second.libraryInfo->type == CAER_MODULE_OUTPUT) {
+		else if (m.second.libraryInfo->type == DV_MODULE_OUTPUT) {
 			outputModules.push_back(m.second);
 		}
 		else {
@@ -1524,7 +1524,7 @@ static int caerMainloopRunner() {
 					ActiveStreams st = ActiveStreams(m.get().id, o.first);
 
 					// Store if stream originates from a PROCESSOR (default from INPUT).
-					if (info->type == CAER_MODULE_PROCESSOR) {
+					if (info->type == DV_MODULE_PROCESSOR) {
 						st.isProcessor = true;
 					}
 

@@ -1,7 +1,7 @@
-#ifndef CAER_MODULES_SDK_BASEMODULE_H
-#define CAER_MODULES_SDK_BASEMODULE_H
+#ifndef DV_MODULES_SDK_BASEMODULE_H
+#define DV_MODULES_SDK_BASEMODULE_H
 
-#include <caer-sdk/module.h>
+#include <dv-sdk/module.h>
 
 #include "log.hpp"
 
@@ -521,4 +521,4 @@ public:
 
 } // namespace caer
 
-#endif // CAER_MODULES_SDK_BASEMODULE_H
+#endif // DV_MODULES_SDK_BASEMODULE_H

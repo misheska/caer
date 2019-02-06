@@ -1,6 +1,6 @@
 #include <libcaercpp/events/frame.hpp>
 
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -37,7 +37,7 @@ static const struct caer_event_stream_in FrameStatisticsInputs[]
 static const struct caer_module_info FrameStatisticsInfo = {.version = 1,
 	.name                                                            = "FrameStatistics",
 	.description                                                     = "Display statistics on frames (histogram).",
-	.type                                                            = CAER_MODULE_OUTPUT,
+	.type                                                            = DV_MODULE_OUTPUT,
 	.memSize                                                         = sizeof(struct caer_frame_statistics_state),
 	.functions                                                       = &FrameStatisticsFunctions,
 	.inputStreamsSize                                                = CAER_EVENT_STREAM_IN_SIZE(FrameStatisticsInputs),

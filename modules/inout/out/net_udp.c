@@ -1,4 +1,4 @@
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 #include "output_common.h"
 
 static bool caerOutputNetUDPInit(caerModuleData moduleData);
@@ -15,7 +15,7 @@ static const struct caer_module_info OutputNetUDPInfo = {
 	.version           = 1,
 	.name              = "NetUDPOutput",
 	.description       = "Send AEDAT 3 data out via UDP messages.",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),
 	.functions         = &OutputNetUDPFunctions,
 	.inputStreams      = OutputNetUDPInputs,

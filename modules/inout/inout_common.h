@@ -2,7 +2,7 @@
 #define INPUT_OUTPUT_COMMON_H_
 
 #include <libcaer/network.h>
-#include "caer-sdk/utils.h"
+#include "dv-sdk/utils.h"
 
 static inline void caerGenericEventSetTimestamp(
 	void *eventPtr, caerEventPacketHeaderConst headerPtr, int32_t timestamp) {

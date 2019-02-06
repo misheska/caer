@@ -1,6 +1,6 @@
 #include "statistics.h"
 
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 
 static void statisticsModuleConfigInit(dvConfigNode moduleNode);
 static bool statisticsModuleInit(caerModuleData moduleData);
@@ -26,7 +26,7 @@ static const struct caer_module_info StatisticsInfo = {
 	.version           = 1,
 	.name              = "Statistics",
 	.description       = "Display statistics on events.",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct caer_statistics_state),
 	.functions         = &StatisticsFunctions,
 	.inputStreams      = StatisticsInputs,

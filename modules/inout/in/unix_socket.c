@@ -1,5 +1,5 @@
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/mainloop.h"
 #include "input_common.h"
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -17,7 +17,7 @@ static const struct caer_module_info InputUnixSocketInfo = {
 	.version           = 1,
 	.name              = "UnixSocketInput",
 	.description       = "Read AEDAT data from an existing Unix Socket.",
-	.type              = CAER_MODULE_INPUT,
+	.type              = DV_MODULE_INPUT,
 	.memSize           = sizeof(struct input_common_state),
 	.functions         = &InputUnixSocketFunctions,
 	.inputStreams      = NULL,

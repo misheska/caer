@@ -1,6 +1,6 @@
 #include "config_server_actions.h"
 
-#include "caer-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_io.h"
 
 #include "../module.h"
 #include "config_server_connection.h"
@@ -20,7 +20,7 @@ static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnec
 template<typename MsgOps>
 static inline void sendMessage(std::shared_ptr<ConfigServerConnection> client, MsgOps msgFunc) {
 	// Send back flags directly.
-	auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
+	auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 	// Build and then finish off message.
 	auto msgRoot = msgFunc(msgBuild.get());
@@ -591,14 +591,14 @@ void caerConfigServerHandleRequest(
 			const std::string inputType = moduleSysNode.get<dvCfgType::STRING>("type");
 
 			if (inputType != "INPUT") {
-				// CAER_MODULE_OUTPUT / CAER_MODULE_PROCESSOR
+				// DV_MODULE_OUTPUT / DV_MODULE_PROCESSOR
 				// moduleInput must exist for OUTPUT and PROCESSOR modules.
 				newModuleNode.create<dvCfgType::STRING>(
 					"moduleInput", "", {0, 1024}, dvCfgFlags::NORMAL, "Module dynamic input definition.");
 			}
 
 			if (inputType != "OUTPUT") {
-				// CAER_MODULE_INPUT / CAER_MODULE_PROCESSOR
+				// DV_MODULE_INPUT / DV_MODULE_PROCESSOR
 				// moduleOutput must exist for INPUT and PROCESSOR modules, only
 				// if their outputs are undefined (-1).
 				if (moduleSysNode.existsRelativeNode("outputStreams/0/")) {
@@ -743,7 +743,7 @@ void caerConfigServerHandleRequest(
 static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnection *client) {
 	// Dump node path.
 	{
-		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
+		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 		auto nodeStr = msgBuild->CreateString(node.getPath());
 
@@ -763,7 +763,7 @@ static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnec
 
 	// Dump all attribute keys.
 	for (const auto &key : node.getAttributeKeys()) {
-		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
+		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 		auto type  = node.getAttributeType(key);
 		auto flags = node.getAttributeFlags(key, type);

@@ -2,7 +2,7 @@
 
 #include <libcaer/filters/dvs_noise.h>
 
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 
 static void caerDVSNoiseFilterConfigInit(dvConfigNode moduleNode);
 static bool caerDVSNoiseFilterInit(caerModuleData moduleData);
@@ -35,7 +35,7 @@ static const struct caer_module_info DVSNoiseFilterInfo = {
 	.version           = 1,
 	.name              = "DVSNoiseFilter",
 	.description       = "Filters out noise from DVS change events.",
-	.type              = CAER_MODULE_PROCESSOR,
+	.type              = DV_MODULE_PROCESSOR,
 	.memSize           = 0,
 	.functions         = &DVSNoiseFilterFunctions,
 	.inputStreams      = DVSNoiseFilterInputs,

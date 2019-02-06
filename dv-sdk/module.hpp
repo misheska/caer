@@ -1,9 +1,9 @@
-#ifndef CAER_MODULE_HPP
-#define CAER_MODULE_HPP
+#ifndef DV_MODULE_HPP
+#define DV_MODULE_HPP
 
-#include <caer-sdk/config/dvConfig.hpp>
-#include <caer-sdk/mainloop.h>
-#include <caer-sdk/module.h>
+#include <dv-sdk/config/dvConfig.hpp>
+#include <dv-sdk/mainloop.h>
+#include <dv-sdk/module.h>
 
 #include "BaseModule.hpp"
 #include "utils.h"
@@ -99,8 +99,8 @@ const size_t numberOfOutputStreams = T::outputStreams == nullptr ? 0 : CAER_EVEN
  */
 template<typename T>
 const caer_module_type moduleType
-	= (numberOfInputStreams<T> == 0) ? CAER_MODULE_INPUT
-									 : ((numberOfOutputStreams<T> == 0) ? CAER_MODULE_OUTPUT : CAER_MODULE_PROCESSOR);
+	= (numberOfInputStreams<T> == 0) ? DV_MODULE_INPUT
+									 : ((numberOfOutputStreams<T> == 0) ? DV_MODULE_OUTPUT : DV_MODULE_PROCESSOR);
 
 /**
  * Pure static template class that provides the static C interface functions
@@ -239,4 +239,4 @@ const caer_module_info ModuleStatics<T>::info = {1, T::getName(), T::getDescript
 
 } // namespace caer
 
-#endif // CAER_MODULE_HPP
+#endif // DV_MODULE_HPP

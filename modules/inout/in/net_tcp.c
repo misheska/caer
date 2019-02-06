@@ -1,4 +1,4 @@
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 #include "input_common.h"
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -17,7 +17,7 @@ static const struct caer_module_info InputNetTCPInfo = {
 	.version           = 1,
 	.name              = "NetTCPInput",
 	.description       = "Read AEDAT data from a TCP server.",
-	.type              = CAER_MODULE_INPUT,
+	.type              = DV_MODULE_INPUT,
 	.memSize           = sizeof(struct input_common_state),
 	.functions         = &InputNetTCPFunctions,
 	.inputStreams      = NULL,

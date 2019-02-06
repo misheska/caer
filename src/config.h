@@ -1,13 +1,13 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#include "caer-sdk/utils.h"
+#include "dv-sdk/utils.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define CAER_CONFIG_FILE_NAME ".caer-config.xml"
+#define DV_CONFIG_FILE_NAME ".dv-config.xml"
 
 // Create configuration storage, initialize it with content from the
 // configuration file, and apply eventual CLI overrides.

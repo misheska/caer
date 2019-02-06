@@ -2,8 +2,8 @@
 
 #include <libcaer/ringbuffer.h>
 
-#include "caer-sdk/cross/portable_threads.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_threads.h"
+#include "dv-sdk/mainloop.h"
 
 #include "ext/fonts/LiberationSans-Bold.h"
 #include "ext/sfml/helpers.hpp"
@@ -103,7 +103,7 @@ static const struct caer_event_stream_in VisualizerInputs[] = {{.type = -1, .num
 static const struct caer_module_info VisualizerInfo = {.version = 1,
 	.name                                                       = "Visualizer",
 	.description                                                = "Visualize data in various ways.",
-	.type                                                       = CAER_MODULE_OUTPUT,
+	.type                                                       = DV_MODULE_OUTPUT,
 	.memSize                                                    = sizeof(struct caer_visualizer_state),
 	.functions                                                  = &VisualizerFunctions,
 	.inputStreamsSize                                           = CAER_EVENT_STREAM_IN_SIZE(VisualizerInputs),
@@ -351,10 +351,10 @@ static void initSystemOnce(caerModuleData moduleData) {
 
 	// Determine biggest possible statistics string. Total and Valid parts have same length. TSDiff is bigger, so use
 	// that one.
-	size_t maxStatStringLength = (size_t) snprintf(nullptr, 0, CAER_STATISTICS_STRING_PKT_TSDIFF, INT64_MAX);
+	size_t maxStatStringLength = (size_t) snprintf(nullptr, 0, DV_STATISTICS_STRING_PKT_TSDIFF, INT64_MAX);
 
 	char maxStatString[maxStatStringLength + 1];
-	snprintf(maxStatString, maxStatStringLength + 1, CAER_STATISTICS_STRING_PKT_TSDIFF, INT64_MAX);
+	snprintf(maxStatString, maxStatStringLength + 1, DV_STATISTICS_STRING_PKT_TSDIFF, INT64_MAX);
 	maxStatString[maxStatStringLength] = '\0';
 
 	// Load statistics font into memory.
@@ -865,7 +865,7 @@ static void renderThread(caerModuleData moduleData) {
 
 	// Destroy render state, if it exists.
 	if ((state->renderer->stateExit != nullptr) && (state->renderState != nullptr)
-		&& (state->renderState != CAER_VISUALIZER_RENDER_INIT_NO_MEM)) {
+		&& (state->renderState != DV_VISUALIZER_RENDER_INIT_NO_MEM)) {
 		(*state->renderer->stateExit)((caerVisualizerPublicState) state);
 	}
 

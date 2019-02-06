@@ -66,7 +66,7 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 	bool running = moduleData->running.load(std::memory_order_relaxed);
 	dvCfg::Node moduleNode(moduleData->moduleNode);
 
-	if (moduleData->moduleStatus == CAER_MODULE_RUNNING && running) {
+	if (moduleData->moduleStatus == DV_MODULE_RUNNING && running) {
 		if (moduleData->configUpdate.load(std::memory_order_relaxed) != 0) {
 			moduleData->configUpdate.store(0);
 
@@ -113,14 +113,14 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 			}
 		}
 	}
-	else if (moduleData->moduleStatus == CAER_MODULE_STOPPED && running) {
+	else if (moduleData->moduleStatus == DV_MODULE_STOPPED && running) {
 		// Check that all modules this module depends on are also running.
 		int16_t *neededModules;
 		size_t neededModulesSize = caerMainloopModuleGetInputDeps(moduleData->moduleID, &neededModules);
 
 		if (neededModulesSize > 0) {
 			for (size_t i = 0; i < neededModulesSize; i++) {
-				if (caerMainloopModuleGetStatus(neededModules[i]) != CAER_MODULE_RUNNING) {
+				if (caerMainloopModuleGetStatus(neededModules[i]) != DV_MODULE_RUNNING) {
 					free(neededModules);
 					return;
 				}
@@ -168,7 +168,7 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 			}
 		}
 
-		moduleData->moduleStatus = CAER_MODULE_RUNNING;
+		moduleData->moduleStatus = DV_MODULE_RUNNING;
 
 		// After starting successfully, try to enable dependent
 		// modules if their 'runAtStartup' is true. Else shutting down
@@ -189,8 +189,8 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 			free(dependantModules);
 		}
 	}
-	else if (moduleData->moduleStatus == CAER_MODULE_RUNNING && !running) {
-		moduleData->moduleStatus = CAER_MODULE_STOPPED;
+	else if (moduleData->moduleStatus == DV_MODULE_RUNNING && !running) {
+		moduleData->moduleStatus = DV_MODULE_STOPPED;
 
 		if (moduleFunctions->moduleExit != nullptr) {
 			try {
@@ -240,7 +240,7 @@ caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv
 	moduleData->moduleNode = static_cast<dvConfigNode>(moduleNode);
 
 	// Put module into startup state. 'running' flag is updated later based on user startup wishes.
-	moduleData->moduleStatus = CAER_MODULE_STOPPED;
+	moduleData->moduleStatus = DV_MODULE_STOPPED;
 
 	// Setup default full log string name.
 	size_t nameLength                 = strlen(moduleName);
@@ -396,13 +396,13 @@ void caerUnloadModuleLibrary(ModuleLibrary &moduleLibrary) {
 }
 
 static void checkInputOutputStreamDefinitions(caerModuleInfo info) {
-	if (info->type == CAER_MODULE_INPUT) {
+	if (info->type == DV_MODULE_INPUT) {
 		if (info->inputStreams != nullptr || info->inputStreamsSize != 0 || info->outputStreams == nullptr
 			|| info->outputStreamsSize == 0) {
 			throw std::domain_error("Wrong I/O event stream definitions for type INPUT.");
 		}
 	}
-	else if (info->type == CAER_MODULE_OUTPUT) {
+	else if (info->type == DV_MODULE_OUTPUT) {
 		if (info->inputStreams == nullptr || info->inputStreamsSize == 0 || info->outputStreams != nullptr
 			|| info->outputStreamsSize != 0) {
 			throw std::domain_error("Wrong I/O event stream definitions for type OUTPUT.");
@@ -423,7 +423,7 @@ static void checkInputOutputStreamDefinitions(caerModuleInfo info) {
 		}
 	}
 	else {
-		// CAER_MODULE_PROCESSOR
+		// DV_MODULE_PROCESSOR
 		if (info->inputStreams == nullptr || info->inputStreamsSize == 0) {
 			throw std::domain_error("Wrong I/O event stream definitions for type PROCESSOR.");
 		}

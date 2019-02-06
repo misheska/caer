@@ -3,8 +3,8 @@
  * Modules can use this and link to it.
  */
 
-#ifndef CAER_SDK_MODULE_H_
-#define CAER_SDK_MODULE_H_
+#ifndef DV_SDK_MODULE_H_
+#define DV_SDK_MODULE_H_
 
 #include "utils.h"
 
@@ -28,8 +28,8 @@ extern "C" {
 
 // Module-related definitions.
 enum caer_module_status {
-	CAER_MODULE_STOPPED = 0,
-	CAER_MODULE_RUNNING = 1,
+	DV_MODULE_STOPPED = 0,
+	DV_MODULE_RUNNING = 1,
 };
 
 /**
@@ -48,22 +48,22 @@ enum caer_module_status {
  * runtime, or be well defined. Only one output stream per type is allowed.
  */
 enum caer_module_type {
-	CAER_MODULE_INPUT     = 0,
-	CAER_MODULE_OUTPUT    = 1,
-	CAER_MODULE_PROCESSOR = 2,
+	DV_MODULE_INPUT     = 0,
+	DV_MODULE_OUTPUT    = 1,
+	DV_MODULE_PROCESSOR = 2,
 };
 
 static inline const char *caerModuleTypeToString(enum caer_module_type type) {
 	switch (type) {
-		case CAER_MODULE_INPUT:
+		case DV_MODULE_INPUT:
 			return ("INPUT");
 			break;
 
-		case CAER_MODULE_OUTPUT:
+		case DV_MODULE_OUTPUT:
 			return ("OUTPUT");
 			break;
 
-		case CAER_MODULE_PROCESSOR:
+		case DV_MODULE_PROCESSOR:
 			return ("PROCESSOR");
 			break;
 
@@ -145,4 +145,4 @@ void caerModuleConfigDefaultListener(dvConfigNode node, void *userData, enum dvC
 }
 #endif
 
-#endif /* CAER_SDK_MODULE_H_ */
+#endif /* DV_SDK_MODULE_H_ */

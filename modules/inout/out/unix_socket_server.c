@@ -1,5 +1,5 @@
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/mainloop.h"
 
 #include "output_common.h"
 
@@ -19,7 +19,7 @@ static const struct caer_module_info OutputUnixSockeServertInfo = {
 	.version           = 1,
 	.name              = "UnixSocketServerOutput",
 	.description       = "Send AEDAT 3 data out through a Unix Socket to connected clients (server mode).",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),
 	.functions         = &OutputUnixSocketServerFunctions,
 	.inputStreams      = OutputUnixSocketServerInputs,

@@ -68,11 +68,11 @@
 
 #include "output_common.h"
 
-#include "caer-sdk/buffers.h"
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/cross/portable_threads.h"
-#include "caer-sdk/cross/portable_time.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/buffers.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_threads.h"
+#include "dv-sdk/cross/portable_time.h"
+#include "dv-sdk/mainloop.h"
 
 #include "ext/net_rw.h"
 

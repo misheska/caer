@@ -1,8 +1,8 @@
 #ifndef MAINLOOP_H_
 #define MAINLOOP_H_
 
-#include "caer-sdk/mainloop.h"
-#include "caer-sdk/module.h"
+#include "dv-sdk/mainloop.h"
+#include "dv-sdk/module.h"
 
 #include "module.h"
 

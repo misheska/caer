@@ -1,8 +1,8 @@
 #include <libcaer/events/frame.h>
 #include <libcaer/events/polarity.h>
 
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/mainloop.h"
 
 #include "calibration_settings.h"
 #include "calibration_wrapper.h"
@@ -41,7 +41,7 @@ static const struct caer_module_info CameraCalibrationInfo = {
 	.version           = 1,
 	.name              = "CameraCalibration",
 	.description       = "Lens distortion calibration, for undistortion of both events and frames.",
-	.type              = CAER_MODULE_PROCESSOR,
+	.type              = DV_MODULE_PROCESSOR,
 	.memSize           = sizeof(struct CameraCalibrationState_struct),
 	.functions         = &CameraCalibrationFunctions,
 	.inputStreams      = CameraCalibrationInputs,

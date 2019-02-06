@@ -1,4 +1,4 @@
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 #include "output_common.h"
 
 static bool caerOutputNetTCPInit(caerModuleData moduleData);
@@ -15,7 +15,7 @@ static const struct caer_module_info OutputNetTCPInfo = {
 	.version           = 1,
 	.name              = "NetTCPOutput",
 	.description       = "Send AEDAT 3 data out via a TCP connection (client mode).",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),
 	.functions         = &OutputNetTCPFunctions,
 	.inputStreams      = OutputNetTCPInputs,

@@ -1,6 +1,6 @@
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/cross/portable_time.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_time.h"
+#include "dv-sdk/mainloop.h"
 
 #include "output_common.h"
 
@@ -24,7 +24,7 @@ static const struct caer_module_info OutputFileInfo = {
 	.version           = 1,
 	.name              = "FileOutput",
 	.description       = "Write AEDAT 3 data out to a file.",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),
 	.functions         = &OutputFileFunctions,
 	.inputStreams      = OutputFileInputs,

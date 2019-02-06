@@ -9,7 +9,7 @@
 
 #include <libcaer/devices/davis.h>
 
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 
 static void caerInputDAVISCommonSystemConfigInit(dvConfigNode moduleNode);
 static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davis_info *devInfo);

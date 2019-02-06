@@ -1,6 +1,6 @@
 #include <libcaer/events/frame.h>
 
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 
 #include <libcaer/frame_utils.h>
 
@@ -35,7 +35,7 @@ static const struct caer_module_info FrameEnhancerInfo = {
 	.name    = "FrameEnhancer",
 	.description
 	= "Applies contrast enhancement techniques to frames, or interpolates colors to get an RGB frame (demoisaicing).",
-	.type              = CAER_MODULE_PROCESSOR,
+	.type              = DV_MODULE_PROCESSOR,
 	.memSize           = sizeof(struct FrameEnhancer_state),
 	.functions         = &FrameEnhancerFunctions,
 	.inputStreams      = FrameEnhancerInputs,

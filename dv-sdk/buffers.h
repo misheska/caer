@@ -1,5 +1,5 @@
-#ifndef CAER_SDK_BUFFERS_H_
-#define CAER_SDK_BUFFERS_H_
+#ifndef DV_SDK_BUFFERS_H_
+#define DV_SDK_BUFFERS_H_
 
 #ifdef __cplusplus
 
@@ -102,4 +102,4 @@ buffers_define_2d_typed(int8_t, Byte) buffers_define_2d_typed(int16_t, Short) bu
 }
 #endif
 
-#endif /* CAER_SDK_BUFFERS_H_ */
+#endif /* DV_SDK_BUFFERS_H_ */

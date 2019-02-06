@@ -1,5 +1,5 @@
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/mainloop.h"
 
 #include "input_common.h"
 
@@ -19,7 +19,7 @@ static const struct caer_module_info InputFileInfo = {
 	.version           = 1,
 	.name              = "FileInput",
 	.description       = "Read AEDAT data from a file.",
-	.type              = CAER_MODULE_INPUT,
+	.type              = DV_MODULE_INPUT,
 	.memSize           = sizeof(struct input_common_state),
 	.functions         = &InputFileFunctions,
 	.inputStreams      = NULL,

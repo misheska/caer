@@ -4,7 +4,7 @@
 
 #include <libcaer/devices/edvs.h>
 
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 
 static void caerInputEDVSConfigInit(dvConfigNode moduleNode);
 static bool caerInputEDVSInit(caerModuleData moduleData);
@@ -26,7 +26,7 @@ static const struct caer_module_info EDVSInfo = {
 	.version           = 1,
 	.name              = "eDVS",
 	.description       = "Connects to an eDVS/minieDVS camera to get data.",
-	.type              = CAER_MODULE_INPUT,
+	.type              = DV_MODULE_INPUT,
 	.memSize           = 0,
 	.functions         = &EDVSFunctions,
 	.inputStreams      = NULL,
