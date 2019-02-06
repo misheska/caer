@@ -73,23 +73,23 @@ struct caer_visualizer_state {
 typedef struct caer_visualizer_state *caerVisualizerState;
 
 static void caerVisualizerConfigInit(dvConfigNode moduleNode);
-static bool caerVisualizerInit(caerModuleData moduleData);
-static void caerVisualizerExit(caerModuleData moduleData);
-static void caerVisualizerRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void caerVisualizerReset(caerModuleData moduleData, int16_t resetCallSourceID);
+static bool caerVisualizerInit(dvModuleData moduleData);
+static void caerVisualizerExit(dvModuleData moduleData);
+static void caerVisualizerRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerVisualizerReset(dvModuleData moduleData, int16_t resetCallSourceID);
 static void caerVisualizerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void initSystemOnce(caerModuleData moduleData);
-static bool initRenderSize(caerModuleData moduleData);
-static void initRenderersHandlers(caerModuleData moduleData);
-static bool initGraphics(caerModuleData moduleData);
-static void exitGraphics(caerModuleData moduleData);
+static void initSystemOnce(dvModuleData moduleData);
+static bool initRenderSize(dvModuleData moduleData);
+static void initRenderersHandlers(dvModuleData moduleData);
+static bool initGraphics(dvModuleData moduleData);
+static void exitGraphics(dvModuleData moduleData);
 static void updateDisplaySize(caerVisualizerState state);
 static void updateDisplayLocation(caerVisualizerState state);
 static void saveDisplayLocation(caerVisualizerState state);
-static void handleEvents(caerModuleData moduleData);
-static void renderScreen(caerModuleData moduleData);
-static void renderThread(caerModuleData moduleData);
+static void handleEvents(dvModuleData moduleData);
+static void renderScreen(dvModuleData moduleData);
+static void renderThread(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS VisualizerFunctions = {.moduleConfigInit = &caerVisualizerConfigInit,
 	.moduleInit                                                                    = &caerVisualizerInit,
@@ -111,7 +111,7 @@ static const struct dvModuleInfoS VisualizerInfo = {.version = 1,
 	.outputStreamsSize                                          = 0,
 	.outputStreams                                              = nullptr};
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&VisualizerInfo);
 }
 
@@ -137,7 +137,7 @@ static void caerVisualizerConfigInit(dvConfigNode mn) {
 		"Position of window on screen (Y coordinate).");
 }
 
-static bool caerVisualizerInit(caerModuleData moduleData) {
+static bool caerVisualizerInit(dvModuleData moduleData) {
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
 
 	// Initialize visualizer framework (global font sizes). Do only once per startup!
@@ -215,7 +215,7 @@ static bool caerVisualizerInit(caerModuleData moduleData) {
 	return (true);
 }
 
-static void caerVisualizerExit(caerModuleData moduleData) {
+static void caerVisualizerExit(dvModuleData moduleData) {
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
 
 	// Remove listener, which can reference invalid memory in userData.
@@ -256,7 +256,7 @@ static void caerVisualizerExit(caerModuleData moduleData) {
 	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Exited successfully.");
 }
 
-static void caerVisualizerRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+static void caerVisualizerRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(out);
 
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
@@ -303,7 +303,7 @@ static void caerVisualizerRun(caerModuleData moduleData, caerEventPacketContaine
 	caerRingBufferPut(state->dataTransfer, containerCopy);
 }
 
-static void caerVisualizerReset(caerModuleData moduleData, int16_t resetCallSourceID) {
+static void caerVisualizerReset(dvModuleData moduleData, int16_t resetCallSourceID) {
 	UNUSED_ARGUMENT(resetCallSourceID);
 
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
@@ -343,7 +343,7 @@ static void caerVisualizerConfigListener(dvConfigNode node, void *userData, enum
 	}
 }
 
-static void initSystemOnce(caerModuleData moduleData) {
+static void initSystemOnce(dvModuleData moduleData) {
 // Call XInitThreads() on Linux.
 #if defined(OS_LINUX) && OS_LINUX == 1
 	XInitThreads();
@@ -372,7 +372,7 @@ static void initSystemOnce(caerModuleData moduleData) {
 	STATISTICS_HEIGHT = (4 * GLOBAL_FONT_SPACING) + (3 * U32T(maxStatText.getLocalBounds().height));
 }
 
-static bool initRenderSize(caerModuleData moduleData) {
+static bool initRenderSize(dvModuleData moduleData) {
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
 
 	// Default sizes if nothing else is specified in sourceInfo node.
@@ -420,7 +420,7 @@ static bool initRenderSize(caerModuleData moduleData) {
 	return (true);
 }
 
-static void initRenderersHandlers(caerModuleData moduleData) {
+static void initRenderersHandlers(dvModuleData moduleData) {
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
 
 	// Standard renderer is the NULL renderer.
@@ -450,7 +450,7 @@ static void initRenderersHandlers(caerModuleData moduleData) {
 	}
 }
 
-static bool initGraphics(caerModuleData moduleData) {
+static bool initGraphics(dvModuleData moduleData) {
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
 
 	// Create OpenGL context. Depending on flag, either an OpenGL 2.1
@@ -514,7 +514,7 @@ static bool initGraphics(caerModuleData moduleData) {
 	return (true);
 }
 
-static void exitGraphics(caerModuleData moduleData) {
+static void exitGraphics(dvModuleData moduleData) {
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
 
 	// Save visualizer window location in config.
@@ -577,7 +577,7 @@ static void saveDisplayLocation(caerVisualizerState state) {
 	state->visualizerConfigNode.put<dvCfgType::INT>("windowPositionY", currPos.y);
 }
 
-static void handleEvents(caerModuleData moduleData) {
+static void handleEvents(dvModuleData moduleData) {
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
 
 	sf::Event event;
@@ -702,7 +702,7 @@ static void handleEvents(caerModuleData moduleData) {
 	}
 }
 
-static void renderScreen(caerModuleData moduleData) {
+static void renderScreen(dvModuleData moduleData) {
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
 
 	// Handle resize and move first, so that when drawing the window is up-to-date.
@@ -802,7 +802,7 @@ repeat:
 	}
 }
 
-static void renderThread(caerModuleData moduleData) {
+static void renderThread(dvModuleData moduleData) {
 	if (moduleData == nullptr) {
 		return;
 	}

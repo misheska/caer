@@ -5,12 +5,12 @@
 #include "dv-sdk/mainloop.h"
 
 static void caerDVSNoiseFilterConfigInit(dvConfigNode moduleNode);
-static bool caerDVSNoiseFilterInit(caerModuleData moduleData);
+static bool caerDVSNoiseFilterInit(dvModuleData moduleData);
 static void caerDVSNoiseFilterRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void caerDVSNoiseFilterConfig(caerModuleData moduleData);
-static void caerDVSNoiseFilterExit(caerModuleData moduleData);
-static void caerDVSNoiseFilterReset(caerModuleData moduleData, int16_t resetCallSourceID);
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerDVSNoiseFilterConfig(dvModuleData moduleData);
+static void caerDVSNoiseFilterExit(dvModuleData moduleData);
+static void caerDVSNoiseFilterReset(dvModuleData moduleData, int16_t resetCallSourceID);
 
 static union dvConfigAttributeValue updateHotPixelFiltered(
 	void *userData, const char *key, enum dvConfigAttributeType type);
@@ -44,7 +44,7 @@ static const struct dvModuleInfoS DVSNoiseFilterInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&DVSNoiseFilterInfo);
 }
 
@@ -126,7 +126,7 @@ static union dvConfigAttributeValue updateRefractoryPeriodFiltered(
 	return (statisticValue);
 }
 
-static bool caerDVSNoiseFilterInit(caerModuleData moduleData) {
+static bool caerDVSNoiseFilterInit(dvModuleData moduleData) {
 	// Wait for input to be ready. All inputs, once they are up and running, will
 	// have a valid sourceInfo node to query, especially if dealing with data.
 	// Allocate map using info from sourceInfo.
@@ -165,7 +165,7 @@ static bool caerDVSNoiseFilterInit(caerModuleData moduleData) {
 }
 
 static void caerDVSNoiseFilterRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(out);
 
 	caerPolarityEventPacket polarity
@@ -174,7 +174,7 @@ static void caerDVSNoiseFilterRun(
 	caerFilterDVSNoiseApply(moduleData->moduleState, polarity);
 }
 
-static void caerDVSNoiseFilterConfig(caerModuleData moduleData) {
+static void caerDVSNoiseFilterConfig(dvModuleData moduleData) {
 	caerFilterDVSNoise state = moduleData->moduleState;
 
 	caerFilterDVSNoiseConfigSet(
@@ -224,7 +224,7 @@ static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, en
 	}
 }
 
-static void caerDVSNoiseFilterExit(caerModuleData moduleData) {
+static void caerDVSNoiseFilterExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData->moduleState, &caerDVSNoiseFilterConfigCustom);
@@ -234,7 +234,7 @@ static void caerDVSNoiseFilterExit(caerModuleData moduleData) {
 	caerFilterDVSNoiseDestroy(moduleData->moduleState);
 }
 
-static void caerDVSNoiseFilterReset(caerModuleData moduleData, int16_t resetCallSourceID) {
+static void caerDVSNoiseFilterReset(dvModuleData moduleData, int16_t resetCallSourceID) {
 	UNUSED_ARGUMENT(resetCallSourceID);
 
 	caerFilterDVSNoiseConfigSet(moduleData->moduleState, CAER_FILTER_DVS_RESET, true);

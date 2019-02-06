@@ -2,7 +2,7 @@
 
 #include "output_common.h"
 
-static bool caerOutputNetTCPServerInit(caerModuleData moduleData);
+static bool caerOutputNetTCPServerInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS OutputNetTCPServerFunctions = {.moduleInit = &caerOutputNetTCPServerInit,
 	.moduleRun                                                                       = &caerOutputCommonRun,
@@ -25,11 +25,11 @@ static const struct dvModuleInfoS OutputNetTCPServerInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&OutputNetTCPServerInfo);
 }
 
-static bool caerOutputNetTCPServerInit(caerModuleData moduleData) {
+static bool caerOutputNetTCPServerInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL,

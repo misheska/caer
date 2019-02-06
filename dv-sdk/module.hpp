@@ -18,7 +18,7 @@
  * @param MODULE
  */
 #define registerModuleClass(MODULE)                  \
-	caerModuleInfo caerModuleGetInfo() {             \
+	dvModuleInfo caerModuleGetInfo() {             \
 		return &(caer::ModuleStatics<MODULE>::info); \
 	}
 
@@ -151,7 +151,7 @@ public:
 	 * @param moduleData The caer provided moduleData.
 	 * @return true if construction succeeded, false if it failed.
 	 */
-	static bool init(caerModuleData moduleData) {
+	static bool init(dvModuleData moduleData) {
 		try {
 			// set the moduleData pointer thread local static prior to construction.
 			BaseModule::__setStaticModuleData(moduleData);
@@ -174,7 +174,7 @@ public:
 	 * @param in The input data to be processed by the module.
 	 * @param out Pointer to the output data.
 	 */
-	static void run(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+	static void run(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 		((T *) moduleData->moduleState)->runBase(in, out);
 	}
 
@@ -183,7 +183,7 @@ public:
 	 * its deconstructor. Removes the DvConfig attribute listener.
 	 * @param moduleData The caer provided moduleData.
 	 */
-	static void exit(caerModuleData moduleData) {
+	static void exit(dvModuleData moduleData) {
 		((T *) moduleData->moduleState)->~T();
 		dvConfigNodeRemoveAllAttributeListeners(moduleData->moduleNode);
 	}
@@ -195,7 +195,7 @@ public:
 	 * config from the DvConfig node and updates a runtime dict of configs.
 	 * @param moduleData The moduleData provided by caer.
 	 */
-	static void config(caerModuleData moduleData) {
+	static void config(dvModuleData moduleData) {
 		((T *) moduleData->moduleState)->configUpdate(moduleData->moduleNode);
 	}
 

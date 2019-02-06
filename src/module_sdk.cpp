@@ -2,7 +2,7 @@
 
 #include <stdarg.h>
 
-bool caerModuleSetSubSystemString(caerModuleData moduleData, const char *subSystemString) {
+bool caerModuleSetSubSystemString(dvModuleData moduleData, const char *subSystemString) {
 	// Allocate new memory for new string.
 	size_t subSystemStringLength = strlen(subSystemString);
 
@@ -31,7 +31,7 @@ void caerModuleConfigDefaultListener(dvConfigNode node, void *userData, enum dvC
 	UNUSED_ARGUMENT(changeType);
 	UNUSED_ARGUMENT(changeValue);
 
-	caerModuleData data = (caerModuleData) userData;
+	dvModuleData data = (dvModuleData) userData;
 
 	// Simply set the config update flag to 1 on any attribute change.
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
@@ -39,7 +39,7 @@ void caerModuleConfigDefaultListener(dvConfigNode node, void *userData, enum dvC
 	}
 }
 
-void caerModuleLog(caerModuleData moduleData, enum caer_log_level logLevel, const char *format, ...) {
+void caerModuleLog(dvModuleData moduleData, enum caer_log_level logLevel, const char *format, ...) {
 	va_list argumentList;
 	va_start(argumentList, format);
 	caerLogVAFull(moduleData->moduleLogLevel.load(std::memory_order_relaxed), logLevel,

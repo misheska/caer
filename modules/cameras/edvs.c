@@ -7,11 +7,11 @@
 #include "dv-sdk/mainloop.h"
 
 static void caerInputEDVSConfigInit(dvConfigNode moduleNode);
-static bool caerInputEDVSInit(caerModuleData moduleData);
-static void caerInputEDVSRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static bool caerInputEDVSInit(dvModuleData moduleData);
+static void caerInputEDVSRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 // CONFIG: Nothing to do here in the main thread!
 // All configuration is asynchronous through config listeners.
-static void caerInputEDVSExit(caerModuleData moduleData);
+static void caerInputEDVSExit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS EDVSFunctions = {.moduleConfigInit = &caerInputEDVSConfigInit,
 	.moduleInit                                                              = &caerInputEDVSInit,
@@ -35,22 +35,22 @@ static const struct dvModuleInfoS EDVSInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(EDVSOutputs),
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&EDVSInfo);
 }
 
-static void sendDefaultConfiguration(caerModuleData moduleData);
+static void sendDefaultConfiguration(dvModuleData moduleData);
 static void moduleShutdownNotify(void *p);
-static void biasConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void biasConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void dvsConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void dvsConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void serialConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void serialConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void serialConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void systemConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void systemConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void systemConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -113,7 +113,7 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
 		"Size of EventPacketContainer queue, used for transfers between data acquisition thread and mainloop.");
 }
 
-static bool caerInputEDVSInit(caerModuleData moduleData) {
+static bool caerInputEDVSInit(dvModuleData moduleData) {
 	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
@@ -203,7 +203,7 @@ static bool caerInputEDVSInit(caerModuleData moduleData) {
 	return (true);
 }
 
-static void caerInputEDVSExit(caerModuleData moduleData) {
+static void caerInputEDVSExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
 
@@ -233,7 +233,7 @@ static void caerInputEDVSExit(caerModuleData moduleData) {
 	}
 }
 
-static void caerInputEDVSRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+static void caerInputEDVSRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(in);
 
 	*out = caerDeviceDataGet(moduleData->moduleState);
@@ -250,7 +250,7 @@ static void caerInputEDVSRun(caerModuleData moduleData, caerEventPacketContainer
 	}
 }
 
-static void sendDefaultConfiguration(caerModuleData moduleData) {
+static void sendDefaultConfiguration(dvModuleData moduleData) {
 	// Send cAER configuration to libcaer and device.
 	biasConfigSend(dvConfigNodeGetRelativeNode(moduleData->moduleNode, "bias/"), moduleData);
 	systemConfigSend(dvConfigNodeGetRelativeNode(moduleData->moduleNode, "system/"), moduleData);
@@ -265,7 +265,7 @@ static void moduleShutdownNotify(void *p) {
 	dvConfigNodePutBool(moduleNode, "running", false);
 }
 
-static void biasConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void biasConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(
 		moduleData->moduleState, EDVS_CONFIG_BIAS, EDVS_CONFIG_BIAS_CAS, U32T(dvConfigNodeGetInt(node, "cas")));
 	caerDeviceConfigSet(
@@ -296,7 +296,7 @@ static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "cas")) {
@@ -349,7 +349,7 @@ static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 	}
 }
 
-static void dvsConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void dvsConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, EDVS_CONFIG_DVS, EDVS_CONFIG_DVS_TIMESTAMP_RESET,
 		dvConfigNodeGetBool(node, "TimestampReset"));
 	caerDeviceConfigSet(moduleData->moduleState, EDVS_CONFIG_DVS, EDVS_CONFIG_DVS_RUN, dvConfigNodeGetBool(node, "Run"));
@@ -359,7 +359,7 @@ static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "TimestampReset")) {
@@ -372,7 +372,7 @@ static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	}
 }
 
-static void serialConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void serialConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_SERIAL, CAER_HOST_CONFIG_SERIAL_READ_SIZE,
 		U32T(dvConfigNodeGetInt(node, "ReadSize")));
 }
@@ -381,7 +381,7 @@ static void serialConfigListener(dvConfigNode node, void *userData, enum dvConfi
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "ReadSize")) {
@@ -391,7 +391,7 @@ static void serialConfigListener(dvConfigNode node, void *userData, enum dvConfi
 	}
 }
 
-static void systemConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void systemConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
 		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_PACKET_SIZE, U32T(dvConfigNodeGetInt(node, "PacketContainerMaxPacketSize")));
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
@@ -406,7 +406,7 @@ static void systemConfigListener(dvConfigNode node, void *userData, enum dvConfi
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "PacketContainerMaxPacketSize")) {
@@ -424,7 +424,7 @@ static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAtt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
 		caerDeviceConfigSet(

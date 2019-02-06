@@ -165,15 +165,15 @@ struct input_common_state {
 	/// Flag to signal update to buffer configuration asynchronously.
 	atomic_bool bufferUpdate;
 	/// Reference to parent module's original data.
-	caerModuleData parentModule;
+	dvModuleData parentModule;
 	/// Reference to sourceInfo node (to avoid getting it each time again).
 	dvConfigNode sourceInfoNode;
 };
 
 typedef struct input_common_state *inputCommonState;
 
-bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkStream, bool isNetworkMessageBased);
-void caerInputCommonExit(caerModuleData moduleData);
-void caerInputCommonRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStream, bool isNetworkMessageBased);
+void caerInputCommonExit(dvModuleData moduleData);
+void caerInputCommonRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 
 #endif /* INPUT_COMMON_H_ */

@@ -3,7 +3,7 @@
 
 #include "output_common.h"
 
-static bool caerOutputUnixSocketServerInit(caerModuleData moduleData);
+static bool caerOutputUnixSocketServerInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS OutputUnixSocketServerFunctions
 	= {.moduleInit    = &caerOutputUnixSocketServerInit,
@@ -28,11 +28,11 @@ static const struct dvModuleInfoS OutputUnixSockeServertInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&OutputUnixSockeServertInfo);
 }
 
-static bool caerOutputUnixSocketServerInit(caerModuleData moduleData) {
+static bool caerOutputUnixSocketServerInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,

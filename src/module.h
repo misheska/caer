@@ -10,10 +10,10 @@ extern "C" {
 
 // Functions for mainloop:
 void caerModuleConfigInit(dv::Config::Node moduleNode);
-void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData, size_t memSize,
+void caerModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size_t memSize,
 	caerEventPacketContainer in, caerEventPacketContainer *out);
-caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv::Config::Node moduleNode);
-void caerModuleDestroy(caerModuleData moduleData);
+dvModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv::Config::Node moduleNode);
+void caerModuleDestroy(dvModuleData moduleData);
 
 #ifdef __cplusplus
 }
@@ -38,7 +38,7 @@ using ModuleLibrary = void *;
 #	include <string>
 #	include <utility>
 
-std::pair<ModuleLibrary, caerModuleInfo> caerLoadModuleLibrary(const std::string &moduleName);
+std::pair<ModuleLibrary, dvModuleInfo> caerLoadModuleLibrary(const std::string &moduleName);
 void caerUnloadModuleLibrary(ModuleLibrary &moduleLibrary);
 void caerUpdateModulesInformation();
 

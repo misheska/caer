@@ -14,10 +14,10 @@ struct FrameEnhancer_state {
 typedef struct FrameEnhancer_state *FrameEnhancerState;
 
 static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode);
-static bool caerFrameEnhancerInit(caerModuleData moduleData);
-static void caerFrameEnhancerRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void caerFrameEnhancerConfig(caerModuleData moduleData);
-static void caerFrameEnhancerExit(caerModuleData moduleData);
+static bool caerFrameEnhancerInit(dvModuleData moduleData);
+static void caerFrameEnhancerRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerFrameEnhancerConfig(dvModuleData moduleData);
+static void caerFrameEnhancerExit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS FrameEnhancerFunctions = {.moduleConfigInit = &caerFrameEnhancerConfigInit,
 	.moduleInit                                                                       = &caerFrameEnhancerInit,
@@ -44,7 +44,7 @@ static const struct dvModuleInfoS FrameEnhancerInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(FrameEnhancerOutputs),
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&FrameEnhancerInfo);
 }
 
@@ -76,7 +76,7 @@ static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode) {
 #endif
 }
 
-static bool caerFrameEnhancerInit(caerModuleData moduleData) {
+static bool caerFrameEnhancerInit(dvModuleData moduleData) {
 	// Wait for input to be ready. All inputs, once they are up and running, will
 	// have a valid sourceInfo node to query, especially if dealing with data.
 	dvConfigNode sourceInfoSource = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
@@ -108,7 +108,7 @@ static bool caerFrameEnhancerInit(caerModuleData moduleData) {
 }
 
 static void caerFrameEnhancerRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	caerFrameEventPacketConst inputFramePacket
 		= (caerFrameEventPacketConst) caerEventPacketContainerFindEventPacketByTypeConst(in, FRAME_EVENT);
 
@@ -182,7 +182,7 @@ static void caerFrameEnhancerRun(
 	caerEventPacketContainerSetEventPacket(*out, 0, (caerEventPacketHeader) outputFramePacket);
 }
 
-static void caerFrameEnhancerConfig(caerModuleData moduleData) {
+static void caerFrameEnhancerConfig(dvModuleData moduleData) {
 	FrameEnhancerState state = moduleData->moduleState;
 
 	state->doDemosaic = dvConfigNodeGetBool(moduleData->moduleNode, "doDemosaic");
@@ -235,7 +235,7 @@ static void caerFrameEnhancerConfig(caerModuleData moduleData) {
 	free(contrastType);
 }
 
-static void caerFrameEnhancerExit(caerModuleData moduleData) {
+static void caerFrameEnhancerExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 

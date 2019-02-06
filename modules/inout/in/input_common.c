@@ -1865,7 +1865,7 @@ static int inputAssemblerThread(void *stateArg) {
 
 static const UT_icd ut_caerEventPacketHeader_icd = {sizeof(caerEventPacketHeader), NULL, NULL, NULL};
 
-bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkStream, bool isNetworkMessageBased) {
+bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStream, bool isNetworkMessageBased) {
 	inputCommonState state = moduleData->moduleState;
 
 	state->parentModule   = moduleData;
@@ -2009,7 +2009,7 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 	return (true);
 }
 
-void caerInputCommonExit(caerModuleData moduleData) {
+void caerInputCommonExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerInputCommonConfigListener);
 
@@ -2094,7 +2094,7 @@ void caerInputCommonExit(caerModuleData moduleData) {
 	}
 }
 
-void caerInputCommonRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+void caerInputCommonRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(in);
 
 	inputCommonState state = moduleData->moduleState;
@@ -2121,7 +2121,7 @@ static void caerInputCommonConfigListener(dvConfigNode node, void *userData, enu
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 	inputCommonState state    = moduleData->moduleState;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {

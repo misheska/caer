@@ -19,12 +19,12 @@ struct CameraCalibrationState_struct {
 typedef struct CameraCalibrationState_struct *CameraCalibrationState;
 
 static void caerCameraCalibrationConfigInit(dvConfigNode moduleNode);
-static bool caerCameraCalibrationInit(caerModuleData moduleData);
+static bool caerCameraCalibrationInit(dvModuleData moduleData);
 static void caerCameraCalibrationRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void caerCameraCalibrationConfig(caerModuleData moduleData);
-static void caerCameraCalibrationExit(caerModuleData moduleData);
-static void updateSettings(caerModuleData moduleData);
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerCameraCalibrationConfig(dvModuleData moduleData);
+static void caerCameraCalibrationExit(dvModuleData moduleData);
+static void updateSettings(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS CameraCalibrationFunctions
 	= {.moduleConfigInit = &caerCameraCalibrationConfigInit,
@@ -50,7 +50,7 @@ static const struct dvModuleInfoS CameraCalibrationInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&CameraCalibrationInfo);
 }
 
@@ -90,7 +90,7 @@ static void caerCameraCalibrationConfigInit(dvConfigNode moduleNode) {
 		"at the cost of loosing some pixels.");
 }
 
-static bool caerCameraCalibrationInit(caerModuleData moduleData) {
+static bool caerCameraCalibrationInit(dvModuleData moduleData) {
 	// Both input packets (polarity and frame) must be from the same source, which
 	// means inputSize should be 1 here (one module from which both come). If it isn't,
 	// it means we connected the module wrongly.
@@ -129,7 +129,7 @@ static bool caerCameraCalibrationInit(caerModuleData moduleData) {
 	return (true);
 }
 
-static void updateSettings(caerModuleData moduleData) {
+static void updateSettings(dvModuleData moduleData) {
 	CameraCalibrationState state = moduleData->moduleState;
 
 	// Get current config settings.
@@ -176,7 +176,7 @@ static void updateSettings(caerModuleData moduleData) {
 	state->settings.loadFileName = dvConfigNodeGetString(moduleData->moduleNode, "loadFileName");
 }
 
-static void caerCameraCalibrationConfig(caerModuleData moduleData) {
+static void caerCameraCalibrationConfig(dvModuleData moduleData) {
 	CameraCalibrationState state = moduleData->moduleState;
 
 	// Free filename strings, get reloaded in next step.
@@ -196,7 +196,7 @@ static void caerCameraCalibrationConfig(caerModuleData moduleData) {
 	state->calibrationLoaded    = false;
 }
 
-static void caerCameraCalibrationExit(caerModuleData moduleData) {
+static void caerCameraCalibrationExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 
@@ -209,7 +209,7 @@ static void caerCameraCalibrationExit(caerModuleData moduleData) {
 }
 
 static void caerCameraCalibrationRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(out);
 
 	caerPolarityEventPacket polarity

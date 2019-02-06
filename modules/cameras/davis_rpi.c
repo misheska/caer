@@ -1,8 +1,8 @@
 #include "davis_utils.h"
 
 static void caerInputDAVISRPiConfigInit(dvConfigNode moduleNode);
-static bool caerInputDAVISRPiInit(caerModuleData moduleData);
-static void caerInputDAVISRPiExit(caerModuleData moduleData);
+static bool caerInputDAVISRPiInit(dvModuleData moduleData);
+static void caerInputDAVISRPiExit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS DAVISRPiFunctions = {.moduleConfigInit = &caerInputDAVISRPiConfigInit,
 	.moduleInit                                                                  = &caerInputDAVISRPiInit,
@@ -27,14 +27,14 @@ static const struct dvModuleInfoS DAVISRPiInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(DAVISRPiOutputs),
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&DAVISRPiInfo);
 }
 
-static void createDefaultAERConfiguration(caerModuleData moduleData, const char *nodePrefix);
-static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davis_info *devInfo);
+static void createDefaultAERConfiguration(dvModuleData moduleData, const char *nodePrefix);
+static void sendDefaultConfiguration(dvModuleData moduleData, struct caer_davis_info *devInfo);
 
-static void aerConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void aerConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void aerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
@@ -42,7 +42,7 @@ static void caerInputDAVISRPiConfigInit(dvConfigNode moduleNode) {
 	caerInputDAVISCommonSystemConfigInit(moduleNode);
 }
 
-static bool caerInputDAVISRPiInit(caerModuleData moduleData) {
+static bool caerInputDAVISRPiInit(dvModuleData moduleData) {
 	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
@@ -122,7 +122,7 @@ static bool caerInputDAVISRPiInit(caerModuleData moduleData) {
 	return (true);
 }
 
-static void caerInputDAVISRPiExit(caerModuleData moduleData) {
+static void caerInputDAVISRPiExit(dvModuleData moduleData) {
 	// Device related configuration has its own sub-node.
 	struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 	dvConfigNode deviceConfigNode      = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
@@ -186,7 +186,7 @@ static void caerInputDAVISRPiExit(caerModuleData moduleData) {
 	dvConfigNodeRemoveAllAttributes(sourceInfoNode);
 }
 
-static void createDefaultAERConfiguration(caerModuleData moduleData, const char *nodePrefix) {
+static void createDefaultAERConfiguration(dvModuleData moduleData, const char *nodePrefix) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, nodePrefix);
 
@@ -196,7 +196,7 @@ static void createDefaultAERConfiguration(caerModuleData moduleData, const char 
 		"Enable the DDR AER output state machine (FPGA to Raspberry-Pi data exchange).");
 }
 
-static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davis_info *devInfo) {
+static void sendDefaultConfiguration(dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo->chipID, true));
 
@@ -212,7 +212,7 @@ static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davi
 	extInputConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "externalInput/"), moduleData, devInfo);
 }
 
-static void aerConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void aerConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(
 		moduleData->moduleState, DAVIS_CONFIG_DDRAER, DAVIS_CONFIG_DDRAER_RUN, dvConfigNodeGetBool(node, "Run"));
 }
@@ -221,7 +221,7 @@ static void aerConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "Run")) {

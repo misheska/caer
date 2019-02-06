@@ -100,7 +100,7 @@ static void caerOutputCommonConfigListener(dvConfigNode node, void *userData, en
  */
 static void copyPacketsToTransferRing(outputCommonState state, caerEventPacketContainer packetsContainer);
 
-void caerOutputCommonRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+void caerOutputCommonRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(out);
 
 	outputCommonState state = moduleData->moduleState;
@@ -108,7 +108,7 @@ void caerOutputCommonRun(caerModuleData moduleData, caerEventPacketContainer in,
 	copyPacketsToTransferRing(state, in);
 }
 
-void caerOutputCommonReset(caerModuleData moduleData, int16_t resetCallSourceID) {
+void caerOutputCommonReset(dvModuleData moduleData, int16_t resetCallSourceID) {
 	outputCommonState state = moduleData->moduleState;
 
 	if (resetCallSourceID == I16T(atomic_load_explicit(&state->sourceID, memory_order_relaxed))) {
@@ -1365,7 +1365,7 @@ void caerOutputCommonOnClientConnection(uv_connect_t *connectionRequest, int sta
 cleanupRequest : { free(connectionRequest); }
 }
 
-bool caerOutputCommonInit(caerModuleData moduleData, int fileDescriptor, outputCommonNetIO streams) {
+bool caerOutputCommonInit(dvModuleData moduleData, int fileDescriptor, outputCommonNetIO streams) {
 	outputCommonState state = moduleData->moduleState;
 
 	state->parentModule = moduleData;
@@ -1486,7 +1486,7 @@ bool caerOutputCommonInit(caerModuleData moduleData, int fileDescriptor, outputC
 	return (true);
 }
 
-void caerOutputCommonExit(caerModuleData moduleData) {
+void caerOutputCommonExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerOutputCommonConfigListener);
 
@@ -1574,7 +1574,7 @@ static void caerOutputCommonConfigListener(dvConfigNode node, void *userData, en
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 	outputCommonState state   = moduleData->moduleState;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {

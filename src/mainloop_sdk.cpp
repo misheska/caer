@@ -170,7 +170,7 @@ dvConfigNode caerMainloopModuleGetSourceInfoForInput(int16_t id, size_t inputNum
 	return (caerMainloopGetSourceInfo(sourceId));
 }
 
-static inline caerModuleData caerMainloopGetSourceData(int16_t sourceID) {
+static inline dvModuleData caerMainloopGetSourceData(int16_t sourceID) {
 	// Sources must be INPUTs or PROCESSORs.
 	if (caerMainloopModuleGetType(sourceID) == DV_MODULE_OUTPUT) {
 		return (nullptr);
@@ -194,7 +194,7 @@ static inline caerModuleData caerMainloopGetSourceData(int16_t sourceID) {
 }
 
 dvConfigNode caerMainloopGetSourceNode(int16_t sourceID) {
-	caerModuleData moduleData = caerMainloopGetSourceData(sourceID);
+	dvModuleData moduleData = caerMainloopGetSourceData(sourceID);
 	if (moduleData == nullptr) {
 		return (nullptr);
 	}
@@ -203,7 +203,7 @@ dvConfigNode caerMainloopGetSourceNode(int16_t sourceID) {
 }
 
 void *caerMainloopGetSourceState(int16_t sourceID) {
-	caerModuleData moduleData = caerMainloopGetSourceData(sourceID);
+	dvModuleData moduleData = caerMainloopGetSourceData(sourceID);
 	if (moduleData == nullptr) {
 		return (nullptr);
 	}
@@ -212,7 +212,7 @@ void *caerMainloopGetSourceState(int16_t sourceID) {
 }
 
 dvConfigNode caerMainloopGetSourceInfo(int16_t sourceID) {
-	caerModuleData moduleData = caerMainloopGetSourceData(sourceID);
+	dvModuleData moduleData = caerMainloopGetSourceData(sourceID);
 	if (moduleData == nullptr) {
 		return (nullptr);
 	}

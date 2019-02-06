@@ -37,7 +37,7 @@ void caerModuleConfigInit(dv::Config::Node moduleNode) {
 	const std::string moduleName = moduleNode.get<dvCfgType::STRING>("moduleLibrary");
 
 	// Load library to get module functions.
-	std::pair<ModuleLibrary, caerModuleInfo> mLoad;
+	std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
 	try {
 		mLoad = caerLoadModuleLibrary(moduleName);
@@ -61,7 +61,7 @@ void caerModuleConfigInit(dv::Config::Node moduleNode) {
 	caerUnloadModuleLibrary(mLoad.first);
 }
 
-void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData, size_t memSize,
+void caerModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size_t memSize,
 	caerEventPacketContainer in, caerEventPacketContainer *out) {
 	bool running = moduleData->running.load(std::memory_order_relaxed);
 	dvCfg::Node moduleNode(moduleData->moduleNode);
@@ -225,9 +225,9 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 	}
 }
 
-caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dvCfg::Node moduleNode) {
+dvModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dvCfg::Node moduleNode) {
 	// Allocate memory for the module.
-	caerModuleData moduleData = (caerModuleData) calloc(1, sizeof(struct dvModuleDataS));
+	dvModuleData moduleData = (dvModuleData) calloc(1, sizeof(struct dvModuleDataS));
 	if (moduleData == nullptr) {
 		caerLog(CAER_LOG_ALERT, moduleName, "Failed to allocate memory for module. Error: %d.", errno);
 		return (nullptr);
@@ -279,7 +279,7 @@ caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv
 	return (moduleData);
 }
 
-void caerModuleDestroy(caerModuleData moduleData) {
+void caerModuleDestroy(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleShutdownListener);
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleLogLevelListener);
@@ -293,7 +293,7 @@ static void caerModuleShutdownListener(dvConfigNode node, void *userData, enum d
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData data = (caerModuleData) userData;
+	dvModuleData data = (dvModuleData) userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
 		atomic_store(&data->running, changeValue.boolean);
@@ -304,14 +304,14 @@ static void caerModuleLogLevelListener(dvConfigNode node, void *userData, enum d
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData data = (caerModuleData) userData;
+	dvModuleData data = (dvModuleData) userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
 		atomic_store(&data->moduleLogLevel, U8T(changeValue.iint));
 	}
 }
 
-std::pair<ModuleLibrary, caerModuleInfo> caerLoadModuleLibrary(const std::string &moduleName) {
+std::pair<ModuleLibrary, dvModuleInfo> caerLoadModuleLibrary(const std::string &moduleName) {
 	// For each module, we search if a path exists to load it from.
 	// If yes, we do so. The various OS's shared library load mechanisms
 	// will keep track of reference count if same module is loaded
@@ -346,9 +346,9 @@ std::pair<ModuleLibrary, caerModuleInfo> caerLoadModuleLibrary(const std::string
 		throw std::runtime_error(exMsg.str());
 	}
 
-	caerModuleInfo (*getInfo)(void);
+	dvModuleInfo (*getInfo)(void);
 	try {
-		getInfo = moduleLibrary.get<caerModuleInfo(void)>("caerModuleGetInfo");
+		getInfo = moduleLibrary.get<dvModuleInfo(void)>("caerModuleGetInfo");
 	}
 	catch (const std::exception &ex) {
 		// Failed to find symbol in shared library!
@@ -366,7 +366,7 @@ std::pair<ModuleLibrary, caerModuleInfo> caerLoadModuleLibrary(const std::string
 		throw std::runtime_error(exMsg.str());
 	}
 
-	caerModuleInfo (*getInfo)(void) = (caerModuleInfo(*)(void)) dlsym(moduleLibrary, "caerModuleGetInfo");
+	dvModuleInfo (*getInfo)(void) = (dvModuleInfo(*)(void)) dlsym(moduleLibrary, "caerModuleGetInfo");
 	if (getInfo == nullptr) {
 		// Failed to find symbol in shared library!
 		caerUnloadModuleLibrary(moduleLibrary);
@@ -376,14 +376,14 @@ std::pair<ModuleLibrary, caerModuleInfo> caerLoadModuleLibrary(const std::string
 	}
 #endif
 
-	caerModuleInfo info = (*getInfo)();
+	dvModuleInfo info = (*getInfo)();
 	if (info == nullptr) {
 		caerUnloadModuleLibrary(moduleLibrary);
 		boost::format exMsg = boost::format("Failed to get info from library '%s'.") % modulePath.string();
 		throw std::runtime_error(exMsg.str());
 	}
 
-	return (std::pair<ModuleLibrary, caerModuleInfo>(moduleLibrary, info));
+	return (std::pair<ModuleLibrary, dvModuleInfo>(moduleLibrary, info));
 }
 
 // Small helper to unload libraries on error.
@@ -395,7 +395,7 @@ void caerUnloadModuleLibrary(ModuleLibrary &moduleLibrary) {
 #endif
 }
 
-static void checkInputOutputStreamDefinitions(caerModuleInfo info) {
+static void checkInputOutputStreamDefinitions(dvModuleInfo info) {
 	if (info->type == DV_MODULE_INPUT) {
 		if (info->inputStreams != nullptr || info->inputStreamsSize != 0 || info->outputStreams == nullptr
 			|| info->outputStreamsSize == 0) {
@@ -564,7 +564,7 @@ void caerUpdateModulesInformation() {
 		std::string moduleName = iter->stem().string();
 
 		// Load library.
-		std::pair<ModuleLibrary, caerModuleInfo> mLoad;
+		std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
 		try {
 			mLoad = caerLoadModuleLibrary(moduleName);
@@ -603,7 +603,7 @@ void caerUpdateModulesInformation() {
 		// Get ConfigTree node under /system/modules/.
 		auto moduleNode = modulesNode.getRelativeNode(moduleName + "/");
 
-		// Parse caerModuleInfo into ConfigTree.
+		// Parse dvModuleInfo into ConfigTree.
 		moduleNode.create<dvCfgType::INT>("version", I32T(mLoad.second->version), {0, INT32_MAX},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module version.");
 		moduleNode.create<dvCfgType::STRING>(

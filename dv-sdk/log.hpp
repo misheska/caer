@@ -31,7 +31,7 @@ namespace caer {
          * Pointer to the caer moduleData of the module this logger
          * is compiled for. Gets set upon construction.
          */
-        caerModuleData moduleData_ = nullptr;
+        dvModuleData moduleData_ = nullptr;
 
         /**
          * internal string stream that gets used to assemble the log message.
@@ -46,7 +46,7 @@ namespace caer {
          * @param moduleData a pointer to the caer moduleData struct of the module
          * this is compiled to.
          */
-        explicit LogStream(caerModuleData moduleData) : moduleData_(moduleData) {};
+        explicit LogStream(dvModuleData moduleData) : moduleData_(moduleData) {};
 
         /**
          * Logs the given argument value.
@@ -162,7 +162,7 @@ namespace caer {
          * Constructor. Initializes log streams for the different log levels.
          * @param moduleData pointer to the caer moduleData struct.
          */
-        explicit Logger(caerModuleData moduleData) :
+        explicit Logger(dvModuleData moduleData) :
         debug(LogStream<CAER_LOG_DEBUG>(moduleData)),
         info(LogStream<CAER_LOG_INFO>(moduleData)),
         warning(LogStream<CAER_LOG_WARNING>(moduleData)),

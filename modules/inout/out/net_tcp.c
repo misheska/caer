@@ -1,7 +1,7 @@
 #include "dv-sdk/mainloop.h"
 #include "output_common.h"
 
-static bool caerOutputNetTCPInit(caerModuleData moduleData);
+static bool caerOutputNetTCPInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS OutputNetTCPFunctions = {.moduleInit = &caerOutputNetTCPInit,
 	.moduleRun                                                                 = &caerOutputCommonRun,
@@ -24,11 +24,11 @@ static const struct dvModuleInfoS OutputNetTCPInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&OutputNetTCPInfo);
 }
 
-static bool caerOutputNetTCPInit(caerModuleData moduleData) {
+static bool caerOutputNetTCPInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL,

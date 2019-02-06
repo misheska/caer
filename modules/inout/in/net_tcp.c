@@ -4,7 +4,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-static bool caerInputNetTCPInit(caerModuleData moduleData);
+static bool caerInputNetTCPInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS InputNetTCPFunctions = {.moduleInit = &caerInputNetTCPInit,
 	.moduleRun                                                                = &caerInputCommonRun,
@@ -26,11 +26,11 @@ static const struct dvModuleInfoS InputNetTCPInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(InputNetTCPOutputs),
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&InputNetTCPInfo);
 }
 
-static bool caerInputNetTCPInit(caerModuleData moduleData) {
+static bool caerInputNetTCPInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(

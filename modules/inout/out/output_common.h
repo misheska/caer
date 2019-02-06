@@ -80,15 +80,15 @@ struct output_common_state {
 	/// Output module statistics collection.
 	struct output_common_statistics statistics;
 	/// Reference to parent module's original data.
-	caerModuleData parentModule;
+	dvModuleData parentModule;
 };
 
 typedef struct output_common_state *outputCommonState;
 
-bool caerOutputCommonInit(caerModuleData moduleData, int fileDescriptor, outputCommonNetIO streams);
-void caerOutputCommonExit(caerModuleData moduleData);
-void caerOutputCommonRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-void caerOutputCommonReset(caerModuleData moduleData, int16_t resetCallSourceID);
+bool caerOutputCommonInit(dvModuleData moduleData, int fileDescriptor, outputCommonNetIO streams);
+void caerOutputCommonExit(dvModuleData moduleData);
+void caerOutputCommonRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+void caerOutputCommonReset(dvModuleData moduleData, int16_t resetCallSourceID);
 void caerOutputCommonOnServerConnection(uv_stream_t *server, int status);
 void caerOutputCommonOnClientConnection(uv_connect_t *connectionRequest, int status);
 

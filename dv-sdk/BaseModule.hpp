@@ -343,7 +343,7 @@ public:
  */
 class BaseModule {
 private:
-	thread_local static caerModuleData __moduleData;
+	thread_local static dvModuleData __moduleData;
 
 public:
 	/**
@@ -413,14 +413,14 @@ public:
 	 * @param _moduleData The moduleData param to be used for
 	 * BaseModule member initialization upon constructor
 	 */
-	static void __setStaticModuleData(caerModuleData _moduleData) {
+	static void __setStaticModuleData(dvModuleData _moduleData) {
 		__moduleData = _moduleData;
 	}
 
 	/**
 	 * caer low level module data. To be used for accessing low level caer API.
 	 */
-	caerModuleData moduleData;
+	dvModuleData moduleData;
 
 	/**
 	 * Logger object to be used in implementation
@@ -516,7 +516,7 @@ public:
      * This pointer is set prior to construction to allow the constructor
      * to access relevant data.
      */
-    thread_local caerModuleData BaseModule::__moduleData = nullptr;
+    thread_local dvModuleData BaseModule::__moduleData = nullptr;
 
 
 } // namespace caer

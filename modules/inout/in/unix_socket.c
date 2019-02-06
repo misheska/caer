@@ -4,7 +4,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-static bool caerInputUnixSocketInit(caerModuleData moduleData);
+static bool caerInputUnixSocketInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS InputUnixSocketFunctions = {.moduleInit = &caerInputUnixSocketInit,
 	.moduleRun                                                                    = &caerInputCommonRun,
@@ -26,11 +26,11 @@ static const struct dvModuleInfoS InputUnixSocketInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(InputUnixSocketOutputs),
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&InputUnixSocketInfo);
 }
 
-static bool caerInputUnixSocketInit(caerModuleData moduleData) {
+static bool caerInputUnixSocketInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,

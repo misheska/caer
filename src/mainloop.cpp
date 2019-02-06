@@ -226,7 +226,7 @@ void caerMainloopRun(void) {
  * Check for the presence of the 'moduleInput' and 'moduleOutput' configuration
  * parameters, depending on the type of module and its requirements.
  */
-static void checkModuleInputOutput(caerModuleInfo info, dvCfg::Node configNode) {
+static void checkModuleInputOutput(dvModuleInfo info, dvCfg::Node configNode) {
 	if (info->type == DV_MODULE_INPUT) {
 		// moduleInput must not exist for INPUT modules.
 		if (configNode.exists<dvCfgType::STRING>("moduleInput")) {
@@ -1428,7 +1428,7 @@ static int caerMainloopRunner() {
 
 	// Let's load the module libraries and get their internal info.
 	for (auto &m : glMainloopData.modules) {
-		std::pair<ModuleLibrary, caerModuleInfo> mLoad;
+		std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
 		try {
 			mLoad = caerLoadModuleLibrary(m.second.library);
@@ -1502,7 +1502,7 @@ static int caerMainloopRunner() {
 		// We do this first so we can build up the map of all possible active event
 		// streams, which we then can use for checking 'moduleInput' for correctness.
 		for (const auto &m : boost::join(inputModules, processorModules)) {
-			caerModuleInfo info = m.get().libraryInfo;
+			dvModuleInfo info = m.get().libraryInfo;
 
 			if (info->outputStreams != nullptr) {
 				// ANY type declaration.
@@ -1725,7 +1725,7 @@ static int caerMainloopRunner() {
 
 	// Initialize the runtime memory for all modules.
 	for (const auto &m : glMainloopData.globalExecution) {
-		caerModuleData runData = caerModuleInitialize(m.get().id, m.get().name.c_str(), m.get().configNode);
+		dvModuleData runData = caerModuleInitialize(m.get().id, m.get().name.c_str(), m.get().configNode);
 		if (runData == nullptr) {
 			// TODO: better cleanup on failure here, ensure above memory deallocation.
 			// Cleanup modules and streams on exit.

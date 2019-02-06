@@ -12,37 +12,37 @@
 #include "dv-sdk/mainloop.h"
 
 static void caerInputDAVISCommonSystemConfigInit(dvConfigNode moduleNode);
-static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davis_info *devInfo);
+static void caerInputDAVISCommonInit(dvModuleData moduleData, struct caer_davis_info *devInfo);
 static void caerInputDAVISCommonRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 static void moduleShutdownNotify(void *p);
 
-static void createDefaultBiasConfiguration(caerModuleData moduleData, const char *nodePrefix, int16_t chipID);
+static void createDefaultBiasConfiguration(dvModuleData moduleData, const char *nodePrefix, int16_t chipID);
 static void createDefaultLogicConfiguration(
-	caerModuleData moduleData, const char *nodePrefix, struct caer_davis_info *devInfo);
+	dvModuleData moduleData, const char *nodePrefix, struct caer_davis_info *devInfo);
 
-static void biasConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo);
+static void biasConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo);
 static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void chipConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo);
+static void chipConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo);
 static void chipConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void muxConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void muxConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void muxConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void dvsConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo);
+static void dvsConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo);
 static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void apsConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo);
+static void apsConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo);
 static void apsConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void imuConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo);
+static void imuConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo);
 static void imuConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void extInputConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo);
+static void extInputConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo);
 static void extInputConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void systemConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void systemConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void systemConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -122,7 +122,7 @@ static void caerInputDAVISCommonSystemConfigInit(dvConfigNode moduleNode) {
 		"Size of EventPacketContainer queue, used for transfers between data acquisition thread and mainloop.");
 }
 
-static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davis_info *devInfo) {
+static void caerInputDAVISCommonInit(dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	// Initialize per-device log-level to module log-level.
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_LOG, CAER_HOST_CONFIG_LOG_LEVEL,
 		atomic_load(&moduleData->moduleLogLevel));
@@ -208,7 +208,7 @@ static void caerInputDAVISCommonInit(caerModuleData moduleData, struct caer_davi
 }
 
 static void caerInputDAVISCommonRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(in);
 
 	*out = caerDeviceDataGet(moduleData->moduleState);
@@ -239,7 +239,7 @@ static void moduleShutdownNotify(void *p) {
 	dvConfigNodePutBool(moduleNode, "running", false);
 }
 
-static void createDefaultBiasConfiguration(caerModuleData moduleData, const char *nodePrefix, int16_t chipID) {
+static void createDefaultBiasConfiguration(dvModuleData moduleData, const char *nodePrefix, int16_t chipID) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, nodePrefix);
 
@@ -432,7 +432,7 @@ static void createDefaultBiasConfiguration(caerModuleData moduleData, const char
 }
 
 static void createDefaultLogicConfiguration(
-	caerModuleData moduleData, const char *nodePrefix, struct caer_davis_info *devInfo) {
+	dvModuleData moduleData, const char *nodePrefix, struct caer_davis_info *devInfo) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, nodePrefix);
 
@@ -704,7 +704,7 @@ static void createDefaultLogicConfiguration(
 	}
 }
 
-static void biasConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo) {
+static void biasConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	// All chips of a kind have the same bias address for the same bias!
 	if (IS_DAVIS240(devInfo->chipID)) {
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_BIAS, DAVIS240_CONFIG_BIAS_DIFFBN,
@@ -914,7 +914,7 @@ static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 	UNUSED_ARGUMENT(changeType);
 	UNUSED_ARGUMENT(changeValue);
 
-	caerModuleData moduleData      = userData;
+	dvModuleData moduleData      = userData;
 	struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
@@ -1285,7 +1285,7 @@ static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 	}
 }
 
-static void chipConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo) {
+static void chipConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	// All chips have the same parameter address for the same setting!
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_CHIP, DAVIS128_CONFIG_CHIP_DIGITALMUX0,
 		U32T(dvConfigNodeGetInt(node, "DigitalMux0")));
@@ -1358,7 +1358,7 @@ static void chipConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData      = userData;
+	dvModuleData moduleData      = userData;
 	struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
@@ -1471,7 +1471,7 @@ static void chipConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 	}
 }
 
-static void muxConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void muxConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_TIMESTAMP_RESET,
 		dvConfigNodeGetBool(node, "TimestampReset"));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_DROP_EXTINPUT_ON_TRANSFER_STALL,
@@ -1490,7 +1490,7 @@ static void muxConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "TimestampReset")) {
@@ -1519,7 +1519,7 @@ static void muxConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	}
 }
 
-static void dvsConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo) {
+static void dvsConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_WAIT_ON_TRANSFER_STALL,
 		U32T(dvConfigNodeGetBool(node, "WaitOnTransferStall")));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_EXTERNAL_AER_CONTROL,
@@ -1608,7 +1608,7 @@ static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "WaitOnTransferStall")) {
@@ -1757,7 +1757,7 @@ static inline uint32_t parseAPSFrameMode(char *configStr) {
 	}
 }
 
-static void apsConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo) {
+static void apsConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_WAIT_ON_TRANSFER_STALL,
 		dvConfigNodeGetBool(node, "WaitOnTransferStall"));
 
@@ -1812,7 +1812,7 @@ static void apsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "WaitOnTransferStall")) {
@@ -1889,7 +1889,7 @@ static void apsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	}
 }
 
-static void imuConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo) {
+static void imuConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	if (devInfo->imuType != 0) {
 		caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_IMU, DAVIS_CONFIG_IMU_SAMPLE_RATE_DIVIDER,
 			U32T(dvConfigNodeGetInt(node, "SampleRateDivider")));
@@ -1923,7 +1923,7 @@ static void imuConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "SampleRateDivider")) {
@@ -1965,7 +1965,7 @@ static void imuConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	}
 }
 
-static void extInputConfigSend(dvConfigNode node, caerModuleData moduleData, struct caer_davis_info *devInfo) {
+static void extInputConfigSend(dvConfigNode node, dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_EXTINPUT, DAVIS_CONFIG_EXTINPUT_DETECT_RISING_EDGES,
 		dvConfigNodeGetBool(node, "DetectRisingEdges"));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_EXTINPUT, DAVIS_CONFIG_EXTINPUT_DETECT_FALLING_EDGES,
@@ -2001,7 +2001,7 @@ static void extInputConfigListener(dvConfigNode node, void *userData, enum dvCon
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "DetectRisingEdges")) {
@@ -2055,7 +2055,7 @@ static void extInputConfigListener(dvConfigNode node, void *userData, enum dvCon
 	}
 }
 
-static void systemConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void systemConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
 		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_PACKET_SIZE,
 		U32T(dvConfigNodeGetInt(node, "PacketContainerMaxPacketSize")));
@@ -2071,7 +2071,7 @@ static void systemConfigListener(dvConfigNode node, void *userData, enum dvConfi
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "PacketContainerMaxPacketSize")) {
@@ -2089,7 +2089,7 @@ static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAtt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
 		caerDeviceConfigSet(

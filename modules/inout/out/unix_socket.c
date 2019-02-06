@@ -2,7 +2,7 @@
 #include "dv-sdk/mainloop.h"
 #include "output_common.h"
 
-static bool caerOutputUnixSocketInit(caerModuleData moduleData);
+static bool caerOutputUnixSocketInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS OutputUnixSocketFunctions = {.moduleInit = &caerOutputUnixSocketInit,
 	.moduleRun                                                                     = &caerOutputCommonRun,
@@ -25,11 +25,11 @@ static const struct dvModuleInfoS OutputUnixSocketInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&OutputUnixSocketInfo);
 }
 
-static bool caerOutputUnixSocketInit(caerModuleData moduleData) {
+static bool caerOutputUnixSocketInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,

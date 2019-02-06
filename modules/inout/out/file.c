@@ -10,7 +10,7 @@
 #define DEFAULT_PREFIX "caerOut"
 #define MAX_PREFIX_LENGTH 128
 
-static bool caerOutputFileInit(caerModuleData moduleData);
+static bool caerOutputFileInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS OutputFileFunctions = {.moduleInit = &caerOutputFileInit,
 	.moduleRun                                                               = &caerOutputCommonRun,
@@ -33,15 +33,15 @@ static const struct dvModuleInfoS OutputFileInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&OutputFileInfo);
 }
 
-static char *getUserHomeDirectory(caerModuleData moduleData);
-static char *getFullFilePath(caerModuleData moduleData, const char *directory, const char *prefix);
+static char *getUserHomeDirectory(dvModuleData moduleData);
+static char *getFullFilePath(dvModuleData moduleData, const char *directory, const char *prefix);
 
 // Remember to free strings returned by this.
-static char *getUserHomeDirectory(caerModuleData moduleData) {
+static char *getUserHomeDirectory(dvModuleData moduleData) {
 	size_t homeDirLength = PATH_MAX;
 
 	// Allocate memory for home directory path.
@@ -61,7 +61,7 @@ static char *getUserHomeDirectory(caerModuleData moduleData) {
 	return (homeDir);
 }
 
-static char *getFullFilePath(caerModuleData moduleData, const char *directory, const char *prefix) {
+static char *getFullFilePath(dvModuleData moduleData, const char *directory, const char *prefix) {
 	// First get time suffix string.
 	struct tm currentTimeStruct = portable_clock_localtime();
 
@@ -92,7 +92,7 @@ static char *getFullFilePath(caerModuleData moduleData, const char *directory, c
 	return (filePath);
 }
 
-static bool caerOutputFileInit(caerModuleData moduleData) {
+static bool caerOutputFileInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	char *userHomeDir = getUserHomeDirectory(moduleData);

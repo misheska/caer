@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 
-static bool caerInputFileInit(caerModuleData moduleData);
+static bool caerInputFileInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS InputFileFunctions = {.moduleInit = &caerInputFileInit,
 	.moduleRun                                                              = &caerInputCommonRun,
@@ -28,11 +28,11 @@ static const struct dvModuleInfoS InputFileInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(InputFileOutputs),
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo caerModuleGetInfo(void) {
 	return (&InputFileInfo);
 }
 
-static bool caerInputFileInit(caerModuleData moduleData) {
+static bool caerInputFileInit(dvModuleData moduleData) {
 	dvConfigNodeCreateString(
 		moduleData->moduleNode, "filePath", "", 0, PATH_MAX, DVCFG_FLAGS_NORMAL, "File path for reading input data.");
 	dvConfigNodeAttributeModifierFileChooser(moduleData->moduleNode, "filePath", "LOAD:aedat");

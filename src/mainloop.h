@@ -61,9 +61,9 @@ struct ModuleInfo {
 	// Loadable module support.
 	const std::string library;
 	ModuleLibrary libraryHandle;
-	caerModuleInfo libraryInfo;
+	dvModuleInfo libraryInfo;
 	// Module runtime data.
-	caerModuleData runtimeData;
+	dvModuleData runtimeData;
 
 	ModuleInfo() :
 		id(-1),
