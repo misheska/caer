@@ -1,5 +1,5 @@
-#ifndef DV_MODULES_SDK_BASEMODULE_H
-#define DV_MODULES_SDK_BASEMODULE_H
+#ifndef DV_SDK_BASE_MODULE_HPP
+#define DV_SDK_BASE_MODULE_HPP
 
 #include <dv-sdk/module.h>
 
@@ -18,7 +18,7 @@ template<class T> inline T sgn(T x) {
 	return (x < (T) 0) ? (T) -1 : (T) 1;
 }
 
-namespace caer {
+namespace dv {
 
 /**
  * Different opening modes for a File Dialog config option
@@ -348,7 +348,7 @@ private:
 public:
 	/**
 	 * Static function that calls the user provided static function `T::getConfigOptions` and processes its output.
-	 * For every config option, a node is generated in the caer configuration tree.
+	 * For every config option, a node is generated in the DV configuration tree.
 	 * @tparam T The subclass of T for which the config nodes should be generated.
 	 * @param node The sshs node for which the config should be generated
 	 */
@@ -363,11 +363,11 @@ public:
 			auto key    = entry.first;
 			auto config = entry.second;
 			switch (config.getVariant()) {
-			    case _ConfigVariant::BOOLEAN: {
-			        auto config_ = config.getConfigObject<_ConfigVariant::BOOLEAN>();
-			        dvConfigNodeCreateBool(node, key.c_str(), config_.initValue, DVCFG_FLAGS_NORMAL,
-			                config_.description.c_str());
-			    }
+				case _ConfigVariant::BOOLEAN: {
+					auto config_ = config.getConfigObject<_ConfigVariant::BOOLEAN>();
+					dvConfigNodeCreateBool(
+						node, key.c_str(), config_.initValue, DVCFG_FLAGS_NORMAL, config_.description.c_str());
+				}
 				case _ConfigVariant::FRACTIONAL: {
 					auto config_ = config.getConfigObject<_ConfigVariant::FRACTIONAL>();
 					dvConfigNodeCreateDouble(node, key.c_str(), config_.initValue, config_.attributes.min,
@@ -382,14 +382,14 @@ public:
 				}
 				case _ConfigVariant::STRING: {
 					auto config_ = config.getConfigObject<_ConfigVariant::STRING>();
-					dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, UINT32_MAX, DVCFG_FLAGS_NORMAL,
-						config_.description.c_str());
+					dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, UINT32_MAX,
+						DVCFG_FLAGS_NORMAL, config_.description.c_str());
 					break;
 				}
 				case _ConfigVariant::FILE: {
 					auto config_ = config.getConfigObject<_ConfigVariant::FILE>();
-					dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, PATH_MAX, DVCFG_FLAGS_NORMAL,
-						config_.description.c_str());
+					dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, PATH_MAX,
+						DVCFG_FLAGS_NORMAL, config_.description.c_str());
 
 					std::string fileChooserAttribute
 						= (config_.attributes.mode == _FileDialogMode::OPEN)
@@ -400,7 +400,7 @@ public:
 					break;
 				}
 				case _ConfigVariant::NONE: {
-				    break;
+					break;
 				}
 			}
 		}
@@ -418,7 +418,7 @@ public:
 	}
 
 	/**
-	 * caer low level module data. To be used for accessing low level caer API.
+	 * DV low level module data. To be used for accessing low-level DV API.
 	 */
 	dvModuleData moduleData;
 
@@ -433,20 +433,18 @@ public:
 	 */
 	RuntimeConfigMap config;
 
-
 	/**
 	 * Base module constructor. The base module constructor initializes
 	 * the logger and config members of the class, by utilizing the
-	 * `static_thread` local pointer to the caer moduleData pointer
+	 * `static_thread` local pointer to the DV moduleData pointer
 	 * provided prior to constructrion. This makes sure, that logger
 	 * and config are available at the time the subclass constructor is
 	 * called.
 	 */
-	BaseModule() :  moduleData(__moduleData), log(Logger(__moduleData)) {
-	    assert(__moduleData);
-	    configUpdate(__moduleData->moduleNode);
+	BaseModule() : moduleData(__moduleData), log(Logger(__moduleData)) {
+		assert(__moduleData);
+		configUpdate(__moduleData->moduleNode);
 	}
-
 
 	/**
 	 * Method that updates the configs in the map as soon as some config
@@ -494,13 +492,14 @@ public:
 	 * @param out the output libcaer packet
 	 */
 	void runBase(caerEventPacketContainer in, caerEventPacketContainer *out) {
-        // TODO: Handle the out behaviour
-	    if (!in) {
-	        run(libcaer::events::EventPacketContainer());
-	    } else {
-            auto in_ = libcaer::events::EventPacketContainer(in, false);
-            run(in_);
-	    }
+		// TODO: Handle the out behaviour
+		if (!in) {
+			run(libcaer::events::EventPacketContainer());
+		}
+		else {
+			auto in_ = libcaer::events::EventPacketContainer(in, false);
+			run(in_);
+		}
 	};
 
 	/**
@@ -511,14 +510,13 @@ public:
 	virtual void run(const libcaer::events::EventPacketContainer &in) = 0;
 };
 
-    /**
-     * Instantiation of thread_local static moduleData pointer.
-     * This pointer is set prior to construction to allow the constructor
-     * to access relevant data.
-     */
-    thread_local dvModuleData BaseModule::__moduleData = nullptr;
+/**
+ * Instantiation of thread_local static moduleData pointer.
+ * This pointer is set prior to construction to allow the constructor
+ * to access relevant data.
+ */
+thread_local dvModuleData BaseModule::__moduleData = nullptr;
 
+} // namespace dv
 
-} // namespace caer
-
-#endif // DV_MODULES_SDK_BASEMODULE_H
+#endif // DV_SDK_BASE_MODULE_HPP
