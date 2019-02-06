@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#define DV_LOG_FILE_NAME ".dv-logger.log"
+#define DV_LOG_FILE_NAME ".dv-logger.txt"
 
 void dvLogInit(void);
 
