@@ -27,7 +27,7 @@ void caerConfigInit(int argc, char *argv[]) {
 	cliDescription.add_options()("help,h", "print help text")("config,c", po::value<std::string>(),
 		"use the specified XML configuration file")("override,o", po::value<std::vector<std::string>>()->multitoken(),
 		"override a configuration parameter from the XML configuration file with the supplied value.\n"
-		"Format: <node> <attribute> <type> <value>\nExample: /caer/logger/ logLevel byte 7");
+		"Format: <node> <attribute> <type> <value>\nExample: /system/logger/ logLevel byte 7");
 
 	po::variables_map cliVarMap;
 	try {

@@ -517,7 +517,7 @@ static void checkOutputStreamDefinitions(caerEventStreamOut outputStreams, size_
 void caerUpdateModulesInformation() {
 	std::lock_guard<std::recursive_mutex> lock(glModuleData.modulePathsMutex);
 
-	auto modulesNode = dvCfg::GLOBAL.getNode("/caer/modules/");
+	auto modulesNode = dvCfg::GLOBAL.getNode("/system/modules/");
 
 	// Clear out modules information.
 	modulesNode.clearSubTree(false);
@@ -600,7 +600,7 @@ void caerUpdateModulesInformation() {
 			continue;
 		}
 
-		// Get ConfigTree node under /caer/modules/.
+		// Get ConfigTree node under /system/modules/.
 		auto moduleNode = modulesNode.getRelativeNode(moduleName + "/");
 
 		// Parse caerModuleInfo into ConfigTree.

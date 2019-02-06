@@ -122,7 +122,7 @@ void ConfigServer::pushMessageToClients(std::shared_ptr<const flatbuffers::FlatB
 
 void ConfigServer::serviceConfigure() {
 	// Get config.
-	auto serverNode = dvCfg::GLOBAL.getNode("/caer/server/");
+	auto serverNode = dvCfg::GLOBAL.getNode("/system/server/");
 
 	// Configure acceptor.
 	auto endpoint = asioTCP::endpoint(asioIP::address::from_string(serverNode.get<dvCfgType::STRING>("ipAddress")),
@@ -254,7 +254,7 @@ static struct {
 
 void caerConfigServerStart(void) {
 	// Get the right configuration node first.
-	auto serverNode = dvCfg::GLOBAL.getNode("/caer/server/");
+	auto serverNode = dvCfg::GLOBAL.getNode("/system/server/");
 
 	// Support restarting the config server.
 	serverNode.create<dvCfgType::BOOL>("restart", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT,
@@ -298,7 +298,7 @@ void caerConfigServerStart(void) {
 }
 
 void caerConfigServerStop(void) {
-	auto serverNode = dvCfg::GLOBAL.getNode("/caer/server/");
+	auto serverNode = dvCfg::GLOBAL.getNode("/system/server/");
 
 	// Remove restart listener first.
 	serverNode.removeAttributeListener(nullptr, &caerConfigServerRestartListener);

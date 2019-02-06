@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
 		"sslkey", po::value<std::string>(), "SSL key file for client authentication (PEM format)")("script,s",
 		po::value<std::vector<std::string>>()->multitoken(),
 		"script mode, sends the given command directly to the server as if typed in and exits.\n"
-		"Format: <action> <node> [<attribute> <type> [<value>]]\nExample: set /caer/logger/ logLevel byte 7");
+		"Format: <action> <node> [<attribute> <type> [<value>]]\nExample: set /system/logger/ logLevel byte 7");
 
 	po::variables_map cliVarMap;
 	try {

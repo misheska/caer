@@ -80,7 +80,7 @@ static void caerUnixDaemonize(void) {
 #endif
 
 void caerServiceInit(void (*runner)(void)) {
-	auto systemNode = dv::Config::GLOBAL.getNode("/caer/");
+	auto systemNode = dv::Config::GLOBAL.getNode("/system/");
 
 	systemNode.create<dvCfgType::BOOL>(
 		"backgroundService", false, {}, dvCfgFlags::READ_ONLY, "Start program as a background service.");

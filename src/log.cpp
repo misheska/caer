@@ -23,7 +23,7 @@ static void caerLogLevelListener(dvConfigNode node, void *userData, enum dvConfi
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 void caerLogInit(void) {
-	logNode = dvCfg::Tree::globalTree().getNode("/caer/logger/");
+	logNode = dvCfg::Tree::globalTree().getNode("/system/logger/");
 
 	// Ensure default log file and value are present.
 	char *userHome                       = portable_get_user_home_directory();

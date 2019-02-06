@@ -530,12 +530,6 @@ void caerConfigServerHandleRequest(
 				break;
 			}
 
-			// Check module name.
-			if (moduleName == "caer") {
-				caerConfigSendError(client, "Name is reserved for system use.");
-				break;
-			}
-
 			const std::regex moduleNameRegex("^[a-zA-Z-_\\d\\.]+$");
 
 			if (!std::regex_match(moduleName, moduleNameRegex)) {
@@ -543,13 +537,13 @@ void caerConfigServerHandleRequest(
 				break;
 			}
 
-			if (configStore.existsNode("/" + moduleName + "/")) {
+			if (configStore.existsNode("/mainloop/" + moduleName + "/")) {
 				caerConfigSendError(client, "Name is already in use.");
 				break;
 			}
 
 			// Check module library.
-			auto modulesSysNode                  = configStore.getNode("/caer/modules/");
+			auto modulesSysNode                  = configStore.getNode("/system/modules/");
 			const std::string modulesListOptions = modulesSysNode.get<dvCfgType::STRING>("modulesListOptions");
 
 			boost::tokenizer<boost::char_separator<char>> modulesList(
@@ -561,7 +555,7 @@ void caerConfigServerHandleRequest(
 			}
 
 			// Name and library are fine, let's determine the next free ID.
-			auto rootNodes = configStore.getRootNode().getChildren();
+			auto rootNodes = configStore.getNode("/mainloop/").getChildren();
 
 			std::vector<int16_t> usedModuleIDs;
 
@@ -585,7 +579,7 @@ void caerConfigServerHandleRequest(
 			}
 
 			// Let's create the needed configuration for the new module.
-			auto newModuleNode = configStore.getNode("/" + moduleName + "/");
+			auto newModuleNode = configStore.getNode("/mainloop/" + moduleName + "/");
 
 			newModuleNode.create<dvCfgType::INT>(
 				"moduleId", nextFreeModuleID, {1, INT16_MAX}, dvCfgFlags::READ_ONLY, "Module ID.");
@@ -643,27 +637,21 @@ void caerConfigServerHandleRequest(
 				break;
 			}
 
-			// Check module name.
-			if (moduleName == "caer") {
-				caerConfigSendError(client, "Name is reserved for system use.");
-				break;
-			}
-
-			if (!configStore.existsNode("/" + moduleName + "/")) {
+			if (!configStore.existsNode("/mainloop/" + moduleName + "/")) {
 				caerConfigSendError(client, "Name is not in use.");
 				break;
 			}
 
 			// Modules can only be deleted while the mainloop is not running, to not
 			// destroy data the system is relying on.
-			bool isMainloopRunning = configStore.getRootNode().get<dvCfgType::BOOL>("running");
+			bool isMainloopRunning = configStore.getNode("/mainloop/").get<dvCfgType::BOOL>("running");
 			if (isMainloopRunning) {
 				caerConfigSendError(client, "Mainloop is running.");
 				break;
 			}
 
 			// Truly delete the node and all its children.
-			configStore.getNode("/" + moduleName + "/").removeNode();
+			configStore.getNode("/mainloop/" + moduleName + "/").removeNode();
 
 			// Send back confirmation to the client.
 			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {

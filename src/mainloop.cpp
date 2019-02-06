@@ -151,7 +151,7 @@ void caerMainloopRun(void) {
 #endif
 
 	// Initialize module related configuration.
-	auto modulesNode = dvCfg::GLOBAL.getNode("/caer/modules/");
+	auto modulesNode = dvCfg::GLOBAL.getNode("/system/modules/");
 
 	// Default search directories.
 	boost::filesystem::path modulesDefaultDir(CM_SHARE_DIRECTORY);
@@ -174,7 +174,7 @@ void caerMainloopRun(void) {
 	// System running control, separate to allow mainloop stop/start.
 	glMainloopData.systemRunning.store(true);
 
-	auto systemNode = dvCfg::GLOBAL.getNode("/caer/");
+	auto systemNode = dvCfg::GLOBAL.getNode("/system/");
 
 	systemNode.create<dvCfgType::BOOL>("writeConfiguration", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT,
 		"Write current configuration to XML config file.");
@@ -188,7 +188,7 @@ void caerMainloopRun(void) {
 	// Mainloop running control.
 	glMainloopData.running.store(true);
 
-	glMainloopData.configNode = dvCfg::GLOBAL.getRootNode();
+	glMainloopData.configNode = dvCfg::GLOBAL.getNode("/mainloop/");
 	glMainloopData.configNode.create<dvCfgType::BOOL>(
 		"running", true, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Mainloop start/stop.");
 	glMainloopData.configNode.addAttributeListener(nullptr, &caerMainloopRunningListener);
@@ -1382,11 +1382,6 @@ static int caerMainloopRunner() {
 	// (string, "moduleLibrary") as attribute.
 	{
 		auto modules = glMainloopData.configNode.getChildren();
-
-		// Remove system configuration, not a module.
-		modules.erase(std::remove_if(modules.begin(), modules.end(),
-						  [](const auto &module) { return (module.getName() == "caer"); }),
-			modules.end());
 
 		if (modules.empty()) {
 			// Write basic config file.
