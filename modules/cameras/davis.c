@@ -29,7 +29,7 @@ static const struct dvModuleInfoS DAVISInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(DAVISOutputs),
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&DAVISInfo);
 }
 
@@ -55,7 +55,7 @@ static void caerInputDAVISConfigInit(dvConfigNode moduleNode) {
 }
 
 static bool caerInputDAVISInit(dvModuleData moduleData) {
-	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).
@@ -91,7 +91,7 @@ static bool caerInputDAVISInit(dvModuleData moduleData) {
 		devInfo.deviceUSBDeviceAddress);
 	subSystemString[subSystemStringLength] = '\0';
 
-	caerModuleSetSubSystemString(moduleData, subSystemString);
+	dvModuleSetLogString(moduleData, subSystemString);
 
 	// Create default settings and send them to the device.
 	createDefaultBiasConfiguration(moduleData, chipIDToName(devInfo.chipID, true), devInfo.chipID);

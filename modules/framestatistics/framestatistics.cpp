@@ -45,7 +45,7 @@ static const struct dvModuleInfoS FrameStatisticsInfo = {.version = 1,
 	.outputStreamsSize                                               = 0,
 	.outputStreams                                                   = NULL};
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&FrameStatisticsInfo);
 }
 
@@ -66,7 +66,7 @@ static bool caerFrameStatisticsInit(dvModuleData moduleData) {
 	caerFrameStatisticsConfig(moduleData);
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 
 	cv::namedWindow(moduleData->moduleSubSystemString,
 		cv::WindowFlags::WINDOW_AUTOSIZE | cv::WindowFlags::WINDOW_KEEPRATIO | cv::WindowFlags::WINDOW_GUI_EXPANDED);
@@ -129,7 +129,7 @@ static void caerFrameStatisticsExit(dvModuleData moduleData) {
 	cv::destroyWindow(moduleData->moduleSubSystemString);
 
 	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 }
 
 static void caerFrameStatisticsConfig(dvModuleData moduleData) {

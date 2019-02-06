@@ -44,7 +44,7 @@ static const struct dvModuleInfoS DVSNoiseFilterInfo = {
 	.outputStreamsSize = 0,
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&DVSNoiseFilterInfo);
 }
 
@@ -140,7 +140,7 @@ static bool caerDVSNoiseFilterInit(dvModuleData moduleData) {
 
 	moduleData->moduleState = caerFilterDVSNoiseInitialize(U16T(sizeX), U16T(sizeY));
 	if (moduleData->moduleState == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize DVS Noise filter.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize DVS Noise filter.");
 		return (false);
 	}
 
@@ -157,7 +157,7 @@ static bool caerDVSNoiseFilterInit(dvModuleData moduleData) {
 		&updateRefractoryPeriodFiltered, moduleData->moduleState);
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData->moduleState, &caerDVSNoiseFilterConfigCustom);
 
 	// Nothing that can fail here.
@@ -226,7 +226,7 @@ static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, en
 
 static void caerDVSNoiseFilterExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData->moduleState, &caerDVSNoiseFilterConfigCustom);
 
 	dvConfigNodeAttributeUpdaterRemoveAll(moduleData->moduleNode);

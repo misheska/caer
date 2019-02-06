@@ -35,7 +35,7 @@ static const struct dvModuleInfoS StatisticsInfo = {
 	.outputStreamsSize = 0,
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&StatisticsInfo);
 }
 

@@ -116,7 +116,7 @@ namespace caer {
          */
         void commit() {
             if (moduleData_) {
-                caerModuleLog(moduleData_, L, "%s", stream_.str().c_str());
+                dvModuleLog(moduleData_, L, "%s", stream_.str().c_str());
             } else {
                 caerLog(L, "[UNKNOWN SUBSYSTEM]", "%s", stream_.str().c_str());
             }

@@ -28,7 +28,7 @@ static const struct dvModuleInfoS InputFileInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(InputFileOutputs),
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&InputFileInfo);
 }
 
@@ -42,20 +42,20 @@ static bool caerInputFileInit(dvModuleData moduleData) {
 	if (caerStrEquals(filePath, "")) {
 		free(filePath);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "No input file given, please specify the 'filePath' parameter.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "No input file given, please specify the 'filePath' parameter.");
 		return (false);
 	}
 
 	int fileFd = open(filePath, O_RDONLY);
 	if (fileFd < 0) {
-		caerModuleLog(
+		dvModuleLog(
 			moduleData, CAER_LOG_CRITICAL, "Could not open input file '%s' for reading. Error: %d.", filePath, errno);
 		free(filePath);
 
 		return (false);
 	}
 
-	caerModuleLog(moduleData, CAER_LOG_INFO, "Opened input file '%s' successfully for reading.", filePath);
+	dvModuleLog(moduleData, CAER_LOG_INFO, "Opened input file '%s' successfully for reading.", filePath);
 	free(filePath);
 
 	if (!caerInputCommonInit(moduleData, fileFd, false, false)) {

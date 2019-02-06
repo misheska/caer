@@ -26,7 +26,7 @@ static const struct dvModuleInfoS InputUnixSocketInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(InputUnixSocketOutputs),
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&InputUnixSocketInfo);
 }
 
@@ -39,7 +39,7 @@ static bool caerInputUnixSocketInit(dvModuleData moduleData) {
 	// Open an existing Unix local socket at a known path, where we'll write to.
 	int sockFd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockFd < 0) {
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not create local Unix socket. Error: %d.", errno);
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not create local Unix socket. Error: %d.", errno);
 		return (false);
 	}
 
@@ -57,7 +57,7 @@ static bool caerInputUnixSocketInit(dvModuleData moduleData) {
 	if (connect(sockFd, (struct sockaddr *) &unixSocketAddr, sizeof(struct sockaddr_un)) < 0) {
 		close(sockFd);
 
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not connect to local Unix socket. Error: %d.", errno);
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not connect to local Unix socket. Error: %d.", errno);
 		return (false);
 	}
 
@@ -66,7 +66,7 @@ static bool caerInputUnixSocketInit(dvModuleData moduleData) {
 		return (false);
 	}
 
-	caerModuleLog(moduleData, CAER_LOG_INFO, "Local Unix socket ready at '%s'.", unixSocketAddr.sun_path);
+	dvModuleLog(moduleData, CAER_LOG_INFO, "Local Unix socket ready at '%s'.", unixSocketAddr.sun_path);
 
 	return (true);
 }

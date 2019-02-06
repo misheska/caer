@@ -44,7 +44,7 @@ static const struct dvModuleInfoS FrameEnhancerInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(FrameEnhancerOutputs),
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&FrameEnhancerInfo);
 }
 
@@ -101,7 +101,7 @@ static bool caerFrameEnhancerInit(dvModuleData moduleData) {
 	caerFrameEnhancerConfig(moduleData);
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 
 	// Nothing that can fail here.
 	return (true);
@@ -237,7 +237,7 @@ static void caerFrameEnhancerConfig(dvModuleData moduleData) {
 
 static void caerFrameEnhancerExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	dvConfigNodeClearSubTree(sourceInfoNode, true);

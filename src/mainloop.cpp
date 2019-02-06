@@ -1266,8 +1266,8 @@ static void runModules(caerEventPacketContainer in) {
 		}
 
 		// Debug logging.
-		caerModuleLog(m.get().runtimeData, CAER_LOG_DEBUG, "Module Input: passing %zu packets in.", inputsToPass);
-		caerModuleLog(
+		dvModuleLog(m.get().runtimeData, CAER_LOG_DEBUG, "Module Input: passing %zu packets in.", inputsToPass);
+		dvModuleLog(
 			m.get().runtimeData, CAER_LOG_DEBUG, "Module Output: expecting %zu packets back out.", outputsExpectedBack);
 
 		// Run module state machine.
@@ -1277,7 +1277,7 @@ static void runModules(caerEventPacketContainer in) {
 
 		// Parse possible output container.
 		if (out != nullptr) {
-			caerModuleLog(m.get().runtimeData, CAER_LOG_DEBUG, "Module Output: got %" PRIi32 " packets.",
+			dvModuleLog(m.get().runtimeData, CAER_LOG_DEBUG, "Module Output: got %" PRIi32 " packets.",
 				caerEventPacketContainerGetEventPacketsNumber(out));
 
 			// Go through all packets, put them in their right place inside
@@ -1328,7 +1328,7 @@ static void runModules(caerEventPacketContainer in) {
 					}
 				}
 				else {
-					caerModuleLog(
+					dvModuleLog(
 						m.get().runtimeData, CAER_LOG_DEBUG, "Module Output: got null packet at idx=%" PRIi32 ".", i);
 				}
 			}

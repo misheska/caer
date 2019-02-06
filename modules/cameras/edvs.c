@@ -35,7 +35,7 @@ static const struct dvModuleInfoS EDVSInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(EDVSOutputs),
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&EDVSInfo);
 }
 
@@ -114,7 +114,7 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
 }
 
 static bool caerInputEDVSInit(dvModuleData moduleData) {
-	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).

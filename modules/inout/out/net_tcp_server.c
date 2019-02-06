@@ -25,7 +25,7 @@ static const struct dvModuleInfoS OutputNetTCPServerInfo = {
 	.outputStreamsSize = 0,
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&OutputNetTCPServerInfo);
 }
 
@@ -55,7 +55,7 @@ static bool caerOutputNetTCPServerInit(dvModuleData moduleData) {
 	size_t numClients         = (size_t) dvConfigNodeGetInt(moduleData->moduleNode, "concurrentConnections");
 	outputCommonNetIO streams = malloc(sizeof(*streams) + (numClients * sizeof(uv_stream_t *)));
 	if (streams == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
 		return (false);
 	}
 
@@ -63,7 +63,7 @@ static bool caerOutputNetTCPServerInit(dvModuleData moduleData) {
 	if (streams->address == NULL) {
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network address.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network address.");
 		return (false);
 	}
 
@@ -72,7 +72,7 @@ static bool caerOutputNetTCPServerInit(dvModuleData moduleData) {
 		free(streams->address);
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network server.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network server.");
 		return (false);
 	}
 

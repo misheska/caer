@@ -12,13 +12,13 @@
 #include <iostream>
 
 /**
- * Macro that expands into the global `caerModuleGetInfo` function, exposed to the API for caer.
+ * Macro that expands into the global `dvModuleGetInfo` function, exposed to the API for caer.
  * The function instantiates the `ModuleStaticDefinition` class with the given Module (A subclass)
  * of `caer::BaseModule` and returns the static info section.
  * @param MODULE
  */
 #define registerModuleClass(MODULE)                  \
-	dvModuleInfo caerModuleGetInfo() {             \
+	dvModuleInfo dvModuleGetInfo() {             \
 		return &(caer::ModuleStatics<MODULE>::info); \
 	}
 
@@ -156,11 +156,11 @@ public:
 			// set the moduleData pointer thread local static prior to construction.
 			BaseModule::__setStaticModuleData(moduleData);
 			new (moduleData->moduleState) T();
-			dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+			dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 		}
 		catch (const std::exception &e) {
-			caerModuleLog(moduleData, CAER_LOG_ERROR, "%s", e.what());
-			caerModuleLog(moduleData, CAER_LOG_ERROR, "%s", "Could not initialize Module");
+			dvModuleLog(moduleData, CAER_LOG_ERROR, "%s", e.what());
+			dvModuleLog(moduleData, CAER_LOG_ERROR, "%s", "Could not initialize Module");
 			return false;
 		}
 		return true;

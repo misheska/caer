@@ -120,7 +120,7 @@ void caerOutputCommonReset(dvModuleData moduleData, int16_t resetCallSourceID) {
 		// Allocate packet container just for this event.
 		caerEventPacketContainer tsResetContainer = caerEventPacketContainerAllocate(1);
 		if (tsResetContainer == NULL) {
-			caerModuleLog(moduleData, CAER_LOG_CRITICAL, "Failed to allocate tsReset event packet container.");
+			dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Failed to allocate tsReset event packet container.");
 			return;
 		}
 
@@ -128,7 +128,7 @@ void caerOutputCommonReset(dvModuleData moduleData, int16_t resetCallSourceID) {
 		caerSpecialEventPacket tsResetPacket
 			= caerSpecialEventPacketAllocate(1, resetCallSourceID, I32T(state->lastTimestamp >> 31));
 		if (tsResetPacket == NULL) {
-			caerModuleLog(moduleData, CAER_LOG_CRITICAL, "Failed to allocate tsReset special event packet.");
+			dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Failed to allocate tsReset special event packet.");
 			return;
 		}
 
@@ -176,7 +176,7 @@ static void copyPacketsToTransferRing(outputCommonState state, caerEventPacketCo
 				dvConfigNode sourceInfoNode = caerMainloopGetSourceInfo(eventSource);
 				if (sourceInfoNode == NULL) {
 					// This should never happen, but we handle it gracefully.
-					caerModuleLog(
+					dvModuleLog(
 						state->parentModule, CAER_LOG_ERROR, "Failed to get source info to setup output module.");
 					return;
 				}
@@ -186,7 +186,7 @@ static void copyPacketsToTransferRing(outputCommonState state, caerEventPacketCo
 				atomic_store(&state->sourceID, eventSource); // Remember this!
 			}
 			else if (sourceID != eventSource) {
-				caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+				dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 					"An output module can only handle packets from the same source! "
 					"A packet with source %" PRIi16
 					" was sent, but this output module expects only packets from source %" PRIi16 ".",
@@ -234,7 +234,7 @@ static void copyPacketsToTransferRing(outputCommonState state, caerEventPacketCo
 	for (size_t i = 0; i < packetsSize; i++) {
 		if ((validOnly && (caerEventPacketHeaderGetEventValid(packets[i]) == 0))
 			|| (!validOnly && (caerEventPacketHeaderGetEventNumber(packets[i]) == 0))) {
-			caerModuleLog(state->parentModule, CAER_LOG_NOTICE,
+			dvModuleLog(state->parentModule, CAER_LOG_NOTICE,
 				"Submitted empty event packet to output. Ignoring empty event packet.");
 			continue;
 		}
@@ -244,7 +244,7 @@ static void copyPacketsToTransferRing(outputCommonState state, caerEventPacketCo
 
 		if (cpFirstEventTimestamp < state->lastTimestamp) {
 			// Smaller TS than already sent, illegal, ignore packet.
-			caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+			dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 				"Detected timestamp going back, expected at least %" PRIi64 " but got %" PRIi64 "."
 				" Ignoring packet of type %" PRIi16 " from source %" PRIi16 ", with %" PRIi32 " events!",
 				state->lastTimestamp, cpFirstEventTimestamp, caerEventPacketHeaderGetEventType(packets[i]),
@@ -275,7 +275,7 @@ static void copyPacketsToTransferRing(outputCommonState state, caerEventPacketCo
 
 		if (caerEventPacketContainerGetEventPacket(eventPackets, (int32_t) idx) == NULL) {
 			// Failed to copy packet. Signal but try to continue anyway.
-			caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to copy event packet to output.");
+			dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to copy event packet to output.");
 		}
 		else {
 			idx++;
@@ -311,7 +311,7 @@ retry:
 
 		caerEventPacketContainerFree(eventPackets);
 
-		caerModuleLog(
+		dvModuleLog(
 			state->parentModule, CAER_LOG_NOTICE, "Failed to put packet's array copy on transfer ring-buffer: full.");
 	}
 }
@@ -451,7 +451,7 @@ static void sendEventPacket(outputCommonState state, caerEventPacketHeader packe
 	if (packetBuffer == NULL) {
 		free(packet);
 
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for libuv packet buffer.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for libuv packet buffer.");
 		return;
 	}
 
@@ -744,7 +744,7 @@ static size_t compressFramePNG(outputCommonState state, caerEventPacketHeader pa
 			caerFrameEventGetLengthX(caerFrameIteratorElement), caerFrameEventGetLengthY(caerFrameIteratorElement),
 			caerFrameEventGetChannelNumber(caerFrameIteratorElement))) {
 		// Failed to generate PNG.
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 			"Failed to compress frame event. "
 			"PNG generation from frame failed. Keeping uncompressed frame.");
 
@@ -762,7 +762,7 @@ static size_t compressFramePNG(outputCommonState state, caerEventPacketHeader pa
 	// Check that the image didn't actually grow or fail to compress.
 	// If we don't gain any size advantages, just keep it uncompressed.
 	if (pngSize >= pixelSize) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 			"Failed to compress frame event. "
 			"Image didn't shrink, original: %zu, compressed: %zu, difference: %zu.",
 			pixelSize, pngSize, (pngSize - pixelSize));
@@ -894,7 +894,7 @@ static int outputThread(void *stateArg) {
 
 		// Treat anything being still alive as an error too. Async shutdown should have closed everything!
 		if (retVal > 0) {
-			caerModuleLog(state->parentModule, CAER_LOG_WARNING, "uv_run() exited with still active handles.");
+			dvModuleLog(state->parentModule, CAER_LOG_WARNING, "uv_run() exited with still active handles.");
 			errorExit(state, NULL);
 		}
 	}
@@ -995,7 +995,7 @@ static void libuvAsyncShutdown(uv_async_t *handle) {
 
 		uv_shutdown_t *clientShutdown = calloc(1, sizeof(*clientShutdown));
 		if (clientShutdown == NULL) {
-			caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for client shutdown.");
+			dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for client shutdown.");
 
 			// Hard close.
 			uv_close((uv_handle_t *) client, &libuvCloseFree);
@@ -1075,7 +1075,7 @@ static void writePacket(outputCommonState state, libuvWriteBuf packetBuffer) {
 		while (packetSize > 0) {
 			libuvWriteMultiBuf buffers = libuvWriteBufAlloc(2); // One for network header, one for data.
 			if (buffers == NULL) {
-				caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for network buffers.");
+				dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for network buffers.");
 
 				goto freePacketBufferUDP;
 			}
@@ -1084,7 +1084,7 @@ static void writePacket(outputCommonState state, libuvWriteBuf packetBuffer) {
 
 			// Write header into first buffer.
 			if (!writeNetworkHeader(state->networkIO, &buffers->buffers[0], firstChunk)) {
-				caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to write network header.");
+				dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to write network header.");
 
 				libuvWriteBufFree(buffers);
 				goto freePacketBufferUDP;
@@ -1097,7 +1097,7 @@ static void writePacket(outputCommonState state, libuvWriteBuf packetBuffer) {
 
 			libuvWriteBufInit(&buffers->buffers[1], sendSize);
 			if (buffers->buffers[1].buf.base == NULL) {
-				caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for data buffer.");
+				dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for data buffer.");
 
 				libuvWriteBufFree(buffers);
 				goto freePacketBufferUDP;
@@ -1127,7 +1127,7 @@ static void writePacket(outputCommonState state, libuvWriteBuf packetBuffer) {
 		// Prepare buffers, increase reference count.
 		libuvWriteMultiBuf buffers = libuvWriteBufAlloc(1);
 		if (buffers == NULL) {
-			caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for network buffers.");
+			dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for network buffers.");
 
 			free(packetBuffer->freeBuf);
 			free(packetBuffer);
@@ -1406,7 +1406,7 @@ bool caerOutputCommonInit(dvModuleData moduleData, int fileDescriptor, outputCom
 	// Initialize compressor ring-buffer. ringBufferSize only changes here at init time!
 	state->compressorRing = caerRingBufferInit((size_t) ringSize);
 	if (state->compressorRing == NULL) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate compressor ring-buffer.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate compressor ring-buffer.");
 		return (false);
 	}
 
@@ -1415,7 +1415,7 @@ bool caerOutputCommonInit(dvModuleData moduleData, int fileDescriptor, outputCom
 	if (state->outputRing == NULL) {
 		caerRingBufferFree(state->compressorRing);
 
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate output ring-buffer.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate output ring-buffer.");
 		return (false);
 	}
 
@@ -1454,7 +1454,7 @@ bool caerOutputCommonInit(dvModuleData moduleData, int fileDescriptor, outputCom
 		caerRingBufferFree(state->compressorRing);
 		caerRingBufferFree(state->outputRing);
 
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to start compressor thread.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to start compressor thread.");
 		return (false);
 	}
 
@@ -1464,7 +1464,7 @@ bool caerOutputCommonInit(dvModuleData moduleData, int fileDescriptor, outputCom
 
 		if ((errno = thrd_join(state->compressorThread, NULL)) != thrd_success) {
 			// This should never happen!
-			caerModuleLog(
+			dvModuleLog(
 				state->parentModule, CAER_LOG_CRITICAL, "Failed to join compressor thread. Error: %d.", errno);
 		}
 
@@ -1476,7 +1476,7 @@ bool caerOutputCommonInit(dvModuleData moduleData, int fileDescriptor, outputCom
 		caerRingBufferFree(state->compressorRing);
 		caerRingBufferFree(state->outputRing);
 
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to start output thread.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to start output thread.");
 		return (false);
 	}
 
@@ -1500,12 +1500,12 @@ void caerOutputCommonExit(dvModuleData moduleData) {
 
 	if ((errno = thrd_join(state->compressorThread, NULL)) != thrd_success) {
 		// This should never happen!
-		caerModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to join compressor thread. Error: %d.", errno);
+		dvModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to join compressor thread. Error: %d.", errno);
 	}
 
 	if ((errno = thrd_join(state->outputThread, NULL)) != thrd_success) {
 		// This should never happen!
-		caerModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to join output thread. Error: %d.", errno);
+		dvModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to join output thread. Error: %d.", errno);
 	}
 
 	// Now clean up the ring-buffers: they should be empty, so sanity check!
@@ -1515,7 +1515,7 @@ void caerOutputCommonExit(dvModuleData moduleData) {
 		caerEventPacketContainerFree(packetContainer);
 
 		// This should never happen!
-		caerModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Compressor ring-buffer was not empty!");
+		dvModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Compressor ring-buffer was not empty!");
 	}
 
 	caerRingBufferFree(state->compressorRing);
@@ -1526,7 +1526,7 @@ void caerOutputCommonExit(dvModuleData moduleData) {
 		free(packetBuffer);
 
 		// This should never happen!
-		caerModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Output ring-buffer was not empty!");
+		dvModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Output ring-buffer was not empty!");
 	}
 
 	caerRingBufferFree(state->outputRing);
@@ -1560,7 +1560,7 @@ void caerOutputCommonExit(dvModuleData moduleData) {
 	free(state->sourceInfoString);
 
 	// Print final statistics results.
-	caerModuleLog(state->parentModule, CAER_LOG_INFO,
+	dvModuleLog(state->parentModule, CAER_LOG_INFO,
 		"Statistics: wrote %" PRIu64 " packets, for a total uncompressed size of %" PRIu64 " bytes (%" PRIu64
 		" bytes header + %" PRIu64 " bytes data). "
 		"Actually written to output were %" PRIu64 " bytes (after compression), resulting in a saving of %" PRIu64

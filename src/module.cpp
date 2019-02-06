@@ -21,7 +21,7 @@ static struct {
 
 static void caerModuleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void caerModuleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void dvModuleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 void caerModuleConfigInit(dv::Config::Node moduleNode) {
@@ -262,7 +262,7 @@ dvModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dvCf
 	uint8_t logLevel = U8T(moduleNode.get<dvCfgType::INT>("logLevel"));
 
 	moduleData->moduleLogLevel.store(logLevel, std::memory_order_relaxed);
-	moduleNode.addAttributeListener(moduleData, &caerModuleLogLevelListener);
+	moduleNode.addAttributeListener(moduleData, &dvModuleLogLevelListener);
 
 	// Initialize shutdown controls.
 	bool runModule = moduleNode.get<dvCfgType::BOOL>("runAtStartup");
@@ -282,7 +282,7 @@ dvModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dvCf
 void caerModuleDestroy(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleShutdownListener);
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleLogLevelListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &dvModuleLogLevelListener);
 
 	// Deallocate module memory. Module state has already been destroyed.
 	free(moduleData->moduleSubSystemString);
@@ -300,7 +300,7 @@ static void caerModuleShutdownListener(dvConfigNode node, void *userData, enum d
 	}
 }
 
-static void caerModuleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void dvModuleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
@@ -348,7 +348,7 @@ std::pair<ModuleLibrary, dvModuleInfo> caerLoadModuleLibrary(const std::string &
 
 	dvModuleInfo (*getInfo)(void);
 	try {
-		getInfo = moduleLibrary.get<dvModuleInfo(void)>("caerModuleGetInfo");
+		getInfo = moduleLibrary.get<dvModuleInfo(void)>("dvModuleGetInfo");
 	}
 	catch (const std::exception &ex) {
 		// Failed to find symbol in shared library!
@@ -366,7 +366,7 @@ std::pair<ModuleLibrary, dvModuleInfo> caerLoadModuleLibrary(const std::string &
 		throw std::runtime_error(exMsg.str());
 	}
 
-	dvModuleInfo (*getInfo)(void) = (dvModuleInfo(*)(void)) dlsym(moduleLibrary, "caerModuleGetInfo");
+	dvModuleInfo (*getInfo)(void) = (dvModuleInfo(*)(void)) dlsym(moduleLibrary, "dvModuleGetInfo");
 	if (getInfo == nullptr) {
 		// Failed to find symbol in shared library!
 		caerUnloadModuleLibrary(moduleLibrary);

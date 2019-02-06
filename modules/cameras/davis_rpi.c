@@ -27,7 +27,7 @@ static const struct dvModuleInfoS DAVISRPiInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(DAVISRPiOutputs),
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&DAVISRPiInfo);
 }
 
@@ -43,7 +43,7 @@ static void caerInputDAVISRPiConfigInit(dvConfigNode moduleNode) {
 }
 
 static bool caerInputDAVISRPiInit(dvModuleData moduleData) {
-	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).

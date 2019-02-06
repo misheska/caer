@@ -111,7 +111,7 @@ static const struct dvModuleInfoS VisualizerInfo = {.version = 1,
 	.outputStreamsSize                                          = 0,
 	.outputStreams                                              = nullptr};
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&VisualizerInfo);
 }
 
@@ -148,7 +148,7 @@ static bool caerVisualizerInit(dvModuleData moduleData) {
 
 	// Initialize visualizer. Needs size information from the source.
 	if (!initRenderSize(moduleData)) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize render sizes from source.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize render sizes from source.");
 
 		return (false);
 	}
@@ -159,7 +159,7 @@ static bool caerVisualizerInit(dvModuleData moduleData) {
 
 	// Enable packet statistics.
 	if (!caerStatisticsStringInit(&state->packetStatistics)) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize statistics string.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize statistics string.");
 		return (false);
 	}
 
@@ -168,7 +168,7 @@ static bool caerVisualizerInit(dvModuleData moduleData) {
 	if (state->dataTransfer == nullptr) {
 		caerStatisticsStringExit(&state->packetStatistics);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize transfer ring-buffer.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize transfer ring-buffer.");
 		return (false);
 	}
 
@@ -180,7 +180,7 @@ static bool caerVisualizerInit(dvModuleData moduleData) {
 		caerRingBufferFree(state->dataTransfer);
 		caerStatisticsStringExit(&state->packetStatistics);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize rendering window.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize rendering window.");
 		return (false);
 	}
 
@@ -202,7 +202,7 @@ static bool caerVisualizerInit(dvModuleData moduleData) {
 		caerRingBufferFree(state->dataTransfer);
 		caerStatisticsStringExit(&state->packetStatistics);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to start rendering thread. Error: '%s' (%d).", ex.what(),
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to start rendering thread. Error: '%s' (%d).", ex.what(),
 			ex.code().value());
 		return (false);
 	}
@@ -210,7 +210,7 @@ static bool caerVisualizerInit(dvModuleData moduleData) {
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
 	state->visualizerConfigNode.addAttributeListener(state, &caerVisualizerConfigListener);
 
-	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Initialized successfully.");
+	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initialized successfully.");
 
 	return (true);
 }
@@ -229,7 +229,7 @@ static void caerVisualizerExit(dvModuleData moduleData) {
 	}
 	catch (const std::system_error &ex) {
 		// This should never happen!
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL, "Failed to join rendering thread. Error: '%s' (%d).", ex.what(),
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Failed to join rendering thread. Error: '%s' (%d).", ex.what(),
 			ex.code().value());
 	}
 
@@ -253,7 +253,7 @@ static void caerVisualizerExit(dvModuleData moduleData) {
 	// Then the statistics string.
 	caerStatisticsStringExit(&state->packetStatistics);
 
-	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Exited successfully.");
+	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Exited successfully.");
 }
 
 static void caerVisualizerRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
@@ -289,13 +289,13 @@ static void caerVisualizerRun(dvModuleData moduleData, caerEventPacketContainer 
 	}
 
 	if (caerRingBufferFull(state->dataTransfer)) {
-		caerModuleLog(moduleData, CAER_LOG_INFO, "Transfer ring-buffer full.");
+		dvModuleLog(moduleData, CAER_LOG_INFO, "Transfer ring-buffer full.");
 		return;
 	}
 
 	caerEventPacketContainer containerCopy = caerEventPacketContainerCopyAllEvents(in);
 	if (containerCopy == nullptr) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to copy event packet container for rendering.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to copy event packet container for rendering.");
 		return;
 	}
 
@@ -360,7 +360,7 @@ static void initSystemOnce(dvModuleData moduleData) {
 	// Load statistics font into memory.
 	sf::Font font;
 	if (!font.loadFromMemory(LiberationSans_Bold_ttf, LiberationSans_Bold_ttf_len)) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to load font for system init.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to load font for system init.");
 		return;
 	}
 
@@ -477,7 +477,7 @@ static bool initGraphics(dvModuleData moduleData) {
 	state->renderWindow = new sf::RenderWindow(sf::VideoMode(state->renderSizeX, state->renderSizeY),
 		moduleData->moduleSubSystemString, sf::Style::Titlebar | sf::Style::Close, openGLSettings);
 	if (state->renderWindow == nullptr) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR,
+		dvModuleLog(moduleData, CAER_LOG_ERROR,
 			"Failed to create display window with sizeX=%" PRIu32 ", sizeY=%" PRIu32 ".", state->renderSizeX,
 			state->renderSizeY);
 		return (false);
@@ -498,12 +498,12 @@ static bool initGraphics(dvModuleData moduleData) {
 	// Load font here to have it always available on request.
 	state->font = new sf::Font();
 	if (state->font == nullptr) {
-		caerModuleLog(
+		dvModuleLog(
 			moduleData, CAER_LOG_WARNING, "Failed to create display font. Text rendering will not be possible.");
 	}
 	else {
 		if (!state->font->loadFromMemory(LiberationSans_Bold_ttf, LiberationSans_Bold_ttf_len)) {
-			caerModuleLog(
+			dvModuleLog(
 				moduleData, CAER_LOG_WARNING, "Failed to load display font. Text rendering will not be possible.");
 
 			delete state->font;
@@ -815,7 +815,7 @@ static void renderThread(dvModuleData moduleData) {
 #if VISUALIZER_HANDLE_EVENTS_MAIN == 0
 	// Initialize graphics on separate thread. Mostly to avoid Windows quirkiness.
 	if (!initGraphics(moduleData)) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize rendering window.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize rendering window.");
 		return;
 	}
 #endif
@@ -833,7 +833,7 @@ static void renderThread(dvModuleData moduleData) {
 		exitGraphics(moduleData); // Destroy on error.
 #endif
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize GLEW, error: %s.", glewGetErrorString(res));
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize GLEW, error: %s.", glewGetErrorString(res));
 		return;
 	}
 
@@ -846,7 +846,7 @@ static void renderThread(dvModuleData moduleData) {
 #endif
 
 			// Failed at requested state initialization, error out!
-			caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize renderer state.");
+			dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize renderer state.");
 			return;
 		}
 	}

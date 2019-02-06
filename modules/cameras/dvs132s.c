@@ -41,7 +41,7 @@ static const struct dvModuleInfoS DVS132SInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(DVS132SOutputs),
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&DVS132SInfo);
 }
 
@@ -108,7 +108,7 @@ static void caerInputDVS132SConfigInit(dvConfigNode moduleNode) {
 }
 
 static bool caerInputDVS132SInit(dvModuleData moduleData) {
-	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and
 	// module of exceptional shutdown cases (device pulled, ...).
@@ -186,7 +186,7 @@ static bool caerInputDVS132SInit(dvModuleData moduleData) {
 		devInfo.deviceUSBDeviceAddress);
 	subSystemString[subSystemStringLength] = '\0';
 
-	caerModuleSetSubSystemString(moduleData, subSystemString);
+	dvModuleSetLogString(moduleData, subSystemString);
 
 	// Ensure good defaults for data acquisition settings.
 	// No blocking behavior due to mainloop notification, and no auto-start of

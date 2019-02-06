@@ -132,13 +132,13 @@ struct dvModuleInfoS {
 typedef struct dvModuleInfoS const *dvModuleInfo;
 
 // Function to be implemented by modules:
-dvModuleInfo caerModuleGetInfo(void);
+dvModuleInfo dvModuleGetInfo(void);
 
 // Functions available to call:
-void caerModuleLog(dvModuleData moduleData, enum caer_log_level logLevel, const char *format, ...)
+void dvModuleLog(dvModuleData moduleData, enum caer_log_level logLevel, const char *format, ...)
 	ATTRIBUTE_FORMAT(3);
-bool caerModuleSetSubSystemString(dvModuleData moduleData, const char *subSystemString);
-void caerModuleConfigDefaultListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+bool dvModuleSetLogString(dvModuleData moduleData, const char *subSystemString);
+void dvModuleDefaultConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 #ifdef __cplusplus

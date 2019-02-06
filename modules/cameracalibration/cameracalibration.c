@@ -50,7 +50,7 @@ static const struct dvModuleInfoS CameraCalibrationInfo = {
 	.outputStreamsSize = 0,
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&CameraCalibrationInfo);
 }
 
@@ -97,7 +97,7 @@ static bool caerCameraCalibrationInit(dvModuleData moduleData) {
 	size_t inputsSize = caerMainloopModuleGetInputDeps(moduleData->moduleID, NULL);
 
 	if (inputsSize != 1) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR,
+		dvModuleLog(moduleData, CAER_LOG_ERROR,
 			"Polarity and Frame inputs come from two different sources. Both must be from the same source!");
 		return (false);
 	}
@@ -124,7 +124,7 @@ static bool caerCameraCalibrationInit(dvModuleData moduleData) {
 	}
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 
 	return (true);
 }
@@ -161,7 +161,7 @@ static void updateSettings(dvModuleData moduleData) {
 		state->settings.calibrationPattern = CAMCALIB_ASYMMETRIC_CIRCLES_GRID;
 	}
 	else {
-		caerModuleLog(moduleData, CAER_LOG_ERROR,
+		dvModuleLog(moduleData, CAER_LOG_ERROR,
 			"Invalid calibration pattern defined. Select one of: 'chessboard', "
 			"'circlesGrid' or 'asymmetricCirclesGrid'. Defaulting to "
 			"'chessboard'.");
@@ -198,7 +198,7 @@ static void caerCameraCalibrationConfig(dvModuleData moduleData) {
 
 static void caerCameraCalibrationExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 
 	CameraCalibrationState state = moduleData->moduleState;
 
@@ -229,7 +229,7 @@ static void caerCameraCalibrationRun(
 			state->lastFrameTimestamp = currTimestamp;
 
 			bool foundPoint = calibration_findNewPoints(state->cpp_class, caerFrameIteratorElement);
-			caerModuleLog(moduleData, CAER_LOG_WARNING, "Searching for new point set, result = %d.", foundPoint);
+			dvModuleLog(moduleData, CAER_LOG_WARNING, "Searching for new point set, result = %d.", foundPoint);
 		}
 		CAER_FRAME_ITERATOR_VALID_END
 
@@ -241,7 +241,7 @@ static void caerCameraCalibrationRun(
 
 			double totalAvgError;
 			state->calibrationCompleted = calibration_runCalibrationAndSave(state->cpp_class, &totalAvgError);
-			caerModuleLog(moduleData, CAER_LOG_WARNING, "Executing calibration, result = %d, error = %f.",
+			dvModuleLog(moduleData, CAER_LOG_WARNING, "Executing calibration, result = %d, error = %f.",
 				state->calibrationCompleted, totalAvgError);
 		}
 	}

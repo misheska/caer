@@ -33,7 +33,7 @@ static const struct dvModuleInfoS OutputFileInfo = {
 	.outputStreamsSize = 0,
 };
 
-dvModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&OutputFileInfo);
 }
 
@@ -47,14 +47,14 @@ static char *getUserHomeDirectory(dvModuleData moduleData) {
 	// Allocate memory for home directory path.
 	char *homeDir = malloc(homeDirLength);
 	if (homeDir == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for home directory string.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for home directory string.");
 		return (NULL);
 	}
 
 	// Discover home directory path, use libuv for cross-platform support.
 	int retVal = uv_os_homedir(homeDir, &homeDirLength);
 	if (retVal < 0) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "uv_os_homedir failed, error %d (%s).", retVal, uv_err_name(retVal));
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "uv_os_homedir failed, error %d (%s).", retVal, uv_err_name(retVal));
 		return (NULL);
 	}
 
@@ -83,7 +83,7 @@ static char *getFullFilePath(dvModuleData moduleData, const char *directory, con
 
 	char *filePath = malloc(filePathLength);
 	if (filePath == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL, "Unable to allocate memory for full file path.");
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Unable to allocate memory for full file path.");
 		return (NULL);
 	}
 
@@ -97,7 +97,7 @@ static bool caerOutputFileInit(dvModuleData moduleData) {
 	// and add their listeners.
 	char *userHomeDir = getUserHomeDirectory(moduleData);
 	if (userHomeDir == NULL) {
-		// caerModuleLog() called inside getUserHomeDirectory().
+		// dvModuleLog() called inside getUserHomeDirectory().
 		return (false);
 	}
 
@@ -120,20 +120,20 @@ static bool caerOutputFileInit(dvModuleData moduleData) {
 	free(prefix);
 
 	if (filePath == NULL) {
-		// caerModuleLog() called inside getFullFilePath().
+		// dvModuleLog() called inside getFullFilePath().
 		return (false);
 	}
 
 	int fileFd = open(filePath, O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR | S_IRGRP);
 	if (fileFd < 0) {
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL,
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL,
 			"Could not create or open output file '%s' for writing. Error: %d.", filePath, errno);
 		free(filePath);
 
 		return (false);
 	}
 
-	caerModuleLog(moduleData, CAER_LOG_INFO, "Opened output file '%s' successfully for writing.", filePath);
+	dvModuleLog(moduleData, CAER_LOG_INFO, "Opened output file '%s' successfully for writing.", filePath);
 	free(filePath);
 
 	if (!caerOutputCommonInit(moduleData, fileFd, NULL)) {
