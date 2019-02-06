@@ -6,8 +6,8 @@ cmake_install.cmake
 /install_manifest.txt
 /*.xml
 /*.log
-/src/caer-bin*
-/libcaersdk.pc
+/src/dv-runtime*
+/libdvsdk.pc
 /*.sh
 *~
 *.swp

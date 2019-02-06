@@ -86,6 +86,11 @@ LINK_DIRECTORIES(${DV_LIBDIRS})
 MESSAGE(STATUS "Include directories: ${DV_INCDIRS}")
 MESSAGE(STATUS "Link directories: ${DV_LIBDIRS}")
 
+# Define module installation paths.
+SET(DV_MODULES_DIR ${CMAKE_INSTALL_DATAROOTDIR}/dv/modules)
+MESSAGE(STATUS "Final modules installation directory is: ${CMAKE_INSTALL_PREFIX}/${DV_MODULES_DIR}")
+ADD_DEFINITIONS(-DDV_MODULES_DIR=${USER_LOCAL_PREFIX}/${DV_MODULES_DIR})
+
 # Install SDK library.
 ADD_SUBDIRECTORY(dv-sdk)
 
