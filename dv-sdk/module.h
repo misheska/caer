@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 // Module-related definitions.
-enum caer_module_status {
+enum dvModuleStatus {
 	DV_MODULE_STOPPED = 0,
 	DV_MODULE_RUNNING = 1,
 };
@@ -47,13 +47,13 @@ enum caer_module_status {
  * Output streams can either be undefined and later be determined at
  * runtime, or be well defined. Only one output stream per type is allowed.
  */
-enum caer_module_type {
+enum dvModuleType {
 	DV_MODULE_INPUT     = 0,
 	DV_MODULE_OUTPUT    = 1,
 	DV_MODULE_PROCESSOR = 2,
 };
 
-static inline const char *caerModuleTypeToString(enum caer_module_type type) {
+static inline const char *dvModuleTypeToString(enum dvModuleType type) {
 	switch (type) {
 		case DV_MODULE_INPUT:
 			return ("INPUT");
@@ -91,10 +91,10 @@ typedef struct caer_event_stream_out const *caerEventStreamOut;
 
 #define CAER_EVENT_STREAM_OUT_SIZE(x) (sizeof(x) / sizeof(struct caer_event_stream_out))
 
-struct caer_module_data {
+struct dvModuleDataS {
 	int16_t moduleID;
 	dvConfigNode moduleNode;
-	enum caer_module_status moduleStatus;
+	enum dvModuleStatus moduleStatus;
 	atomic_bool running;
 	atomic_uint_fast8_t moduleLogLevel;
 	atomic_uint_fast32_t configUpdate;
@@ -103,24 +103,24 @@ struct caer_module_data {
 	char *moduleSubSystemString;
 };
 
-typedef struct caer_module_data *caerModuleData;
+typedef struct dvModuleDataS *caerModuleData;
 
-struct caer_module_functions {
+struct dvModuleFunctionsS {
 	void (*const moduleConfigInit)(dvConfigNode moduleNode); // Can be NULL.
-	bool (*const moduleInit)(caerModuleData moduleData); // Can be NULL.
+	bool (*const moduleInit)(caerModuleData moduleData);     // Can be NULL.
 	void (*const moduleRun)(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 	void (*const moduleConfig)(caerModuleData moduleData);                           // Can be NULL.
 	void (*const moduleExit)(caerModuleData moduleData);                             // Can be NULL.
 	void (*const moduleReset)(caerModuleData moduleData, int16_t resetCallSourceID); // Can be NULL.
 };
 
-typedef struct caer_module_functions const *caerModuleFunctions;
+typedef struct dvModuleFunctionsS const *caerModuleFunctions;
 
-struct caer_module_info {
+struct dvModuleInfoS {
 	uint32_t version;
 	const char *name;
 	const char *description;
-	enum caer_module_type type;
+	enum dvModuleType type;
 	size_t memSize;
 	caerModuleFunctions functions;
 	size_t inputStreamsSize;
@@ -129,7 +129,7 @@ struct caer_module_info {
 	caerEventStreamOut outputStreams;
 };
 
-typedef struct caer_module_info const *caerModuleInfo;
+typedef struct dvModuleInfoS const *caerModuleInfo;
 
 // Function to be implemented by modules:
 caerModuleInfo caerModuleGetInfo(void);

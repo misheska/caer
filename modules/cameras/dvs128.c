@@ -13,7 +13,7 @@ static void caerInputDVS128Run(caerModuleData moduleData, caerEventPacketContain
 // All configuration is asynchronous through config listeners.
 static void caerInputDVS128Exit(caerModuleData moduleData);
 
-static const struct caer_module_functions DVS128Functions = {.moduleConfigInit = &caerInputDVS128ConfigInit,
+static const struct dvModuleFunctionsS DVS128Functions = {.moduleConfigInit = &caerInputDVS128ConfigInit,
 	.moduleInit                                                                = &caerInputDVS128Init,
 	.moduleRun                                                                 = &caerInputDVS128Run,
 	.moduleConfig                                                              = NULL,
@@ -22,7 +22,7 @@ static const struct caer_module_functions DVS128Functions = {.moduleConfigInit =
 
 static const struct caer_event_stream_out DVS128Outputs[] = {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}};
 
-static const struct caer_module_info DVS128Info = {
+static const struct dvModuleInfoS DVS128Info = {
 	.version           = 1,
 	.name              = "DVS128",
 	.description       = "Connects to a DVS128 camera to get data.",

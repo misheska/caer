@@ -5,7 +5,7 @@
 
 static bool caerOutputUnixSocketServerInit(caerModuleData moduleData);
 
-static const struct caer_module_functions OutputUnixSocketServerFunctions
+static const struct dvModuleFunctionsS OutputUnixSocketServerFunctions
 	= {.moduleInit    = &caerOutputUnixSocketServerInit,
 		.moduleRun    = &caerOutputCommonRun,
 		.moduleConfig = NULL,
@@ -15,7 +15,7 @@ static const struct caer_module_functions OutputUnixSocketServerFunctions
 static const struct caer_event_stream_in OutputUnixSocketServerInputs[]
 	= {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct caer_module_info OutputUnixSockeServertInfo = {
+static const struct dvModuleInfoS OutputUnixSockeServertInfo = {
 	.version           = 1,
 	.name              = "UnixSocketServerOutput",
 	.description       = "Send AEDAT 3 data out through a Unix Socket to connected clients (server mode).",

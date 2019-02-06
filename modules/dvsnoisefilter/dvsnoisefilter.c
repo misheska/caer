@@ -21,7 +21,7 @@ static union dvConfigAttributeValue updateRefractoryPeriodFiltered(
 static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-static const struct caer_module_functions DVSNoiseFilterFunctions = {.moduleConfigInit = &caerDVSNoiseFilterConfigInit,
+static const struct dvModuleFunctionsS DVSNoiseFilterFunctions = {.moduleConfigInit = &caerDVSNoiseFilterConfigInit,
 	.moduleInit                                                                        = &caerDVSNoiseFilterInit,
 	.moduleRun                                                                         = &caerDVSNoiseFilterRun,
 	.moduleConfig                                                                      = &caerDVSNoiseFilterConfig,
@@ -31,7 +31,7 @@ static const struct caer_module_functions DVSNoiseFilterFunctions = {.moduleConf
 static const struct caer_event_stream_in DVSNoiseFilterInputs[]
 	= {{.type = POLARITY_EVENT, .number = 1, .readOnly = false}};
 
-static const struct caer_module_info DVSNoiseFilterInfo = {
+static const struct dvModuleInfoS DVSNoiseFilterInfo = {
 	.version           = 1,
 	.name              = "DVSNoiseFilter",
 	.description       = "Filters out noise from DVS change events.",

@@ -4,7 +4,7 @@ static void caerInputDAVISRPiConfigInit(dvConfigNode moduleNode);
 static bool caerInputDAVISRPiInit(caerModuleData moduleData);
 static void caerInputDAVISRPiExit(caerModuleData moduleData);
 
-static const struct caer_module_functions DAVISRPiFunctions = {.moduleConfigInit = &caerInputDAVISRPiConfigInit,
+static const struct dvModuleFunctionsS DAVISRPiFunctions = {.moduleConfigInit = &caerInputDAVISRPiConfigInit,
 	.moduleInit                                                                  = &caerInputDAVISRPiInit,
 	.moduleRun                                                                   = &caerInputDAVISCommonRun,
 	.moduleConfig                                                                = NULL,
@@ -14,7 +14,7 @@ static const struct caer_module_functions DAVISRPiFunctions = {.moduleConfigInit
 static const struct caer_event_stream_out DAVISRPiOutputs[]
 	= {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}, {.type = FRAME_EVENT}, {.type = IMU6_EVENT}};
 
-static const struct caer_module_info DAVISRPiInfo = {
+static const struct dvModuleInfoS DAVISRPiInfo = {
 	.version           = 1,
 	.name              = "DAVISRPi",
 	.description       = "Connects to a DAVIS Raspberry-Pi camera module to get data.",

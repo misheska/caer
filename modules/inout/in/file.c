@@ -8,14 +8,14 @@
 
 static bool caerInputFileInit(caerModuleData moduleData);
 
-static const struct caer_module_functions InputFileFunctions = {.moduleInit = &caerInputFileInit,
+static const struct dvModuleFunctionsS InputFileFunctions = {.moduleInit = &caerInputFileInit,
 	.moduleRun                                                              = &caerInputCommonRun,
 	.moduleConfig                                                           = NULL,
 	.moduleExit                                                             = &caerInputCommonExit};
 
 static const struct caer_event_stream_out InputFileOutputs[] = {{.type = -1}};
 
-static const struct caer_module_info InputFileInfo = {
+static const struct dvModuleInfoS InputFileInfo = {
 	.version           = 1,
 	.name              = "FileInput",
 	.description       = "Read AEDAT data from a file.",

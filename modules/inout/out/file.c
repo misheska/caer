@@ -12,7 +12,7 @@
 
 static bool caerOutputFileInit(caerModuleData moduleData);
 
-static const struct caer_module_functions OutputFileFunctions = {.moduleInit = &caerOutputFileInit,
+static const struct dvModuleFunctionsS OutputFileFunctions = {.moduleInit = &caerOutputFileInit,
 	.moduleRun                                                               = &caerOutputCommonRun,
 	.moduleConfig                                                            = NULL,
 	.moduleExit                                                              = &caerOutputCommonExit,
@@ -20,7 +20,7 @@ static const struct caer_module_functions OutputFileFunctions = {.moduleInit = &
 
 static const struct caer_event_stream_in OutputFileInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct caer_module_info OutputFileInfo = {
+static const struct dvModuleInfoS OutputFileInfo = {
 	.version           = 1,
 	.name              = "FileOutput",
 	.description       = "Write AEDAT 3 data out to a file.",

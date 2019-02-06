@@ -3,7 +3,7 @@
 
 static bool caerOutputNetUDPInit(caerModuleData moduleData);
 
-static const struct caer_module_functions OutputNetUDPFunctions = {.moduleInit = &caerOutputNetUDPInit,
+static const struct dvModuleFunctionsS OutputNetUDPFunctions = {.moduleInit = &caerOutputNetUDPInit,
 	.moduleRun                                                                 = &caerOutputCommonRun,
 	.moduleConfig                                                              = NULL,
 	.moduleExit                                                                = &caerOutputCommonExit,
@@ -11,7 +11,7 @@ static const struct caer_module_functions OutputNetUDPFunctions = {.moduleInit =
 
 static const struct caer_event_stream_in OutputNetUDPInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct caer_module_info OutputNetUDPInfo = {
+static const struct dvModuleInfoS OutputNetUDPInfo = {
 	.version           = 1,
 	.name              = "NetUDPOutput",
 	.description       = "Send AEDAT 3 data out via UDP messages.",

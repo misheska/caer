@@ -19,7 +19,7 @@ static void caerFrameEnhancerRun(caerModuleData moduleData, caerEventPacketConta
 static void caerFrameEnhancerConfig(caerModuleData moduleData);
 static void caerFrameEnhancerExit(caerModuleData moduleData);
 
-static const struct caer_module_functions FrameEnhancerFunctions = {.moduleConfigInit = &caerFrameEnhancerConfigInit,
+static const struct dvModuleFunctionsS FrameEnhancerFunctions = {.moduleConfigInit = &caerFrameEnhancerConfigInit,
 	.moduleInit                                                                       = &caerFrameEnhancerInit,
 	.moduleRun                                                                        = &caerFrameEnhancerRun,
 	.moduleConfig                                                                     = &caerFrameEnhancerConfig,
@@ -30,7 +30,7 @@ static const struct caer_event_stream_in FrameEnhancerInputs[] = {{.type = FRAME
 // The output frame here is a _different_ frame than the above input!
 static const struct caer_event_stream_out FrameEnhancerOutputs[] = {{.type = FRAME_EVENT}};
 
-static const struct caer_module_info FrameEnhancerInfo = {
+static const struct dvModuleInfoS FrameEnhancerInfo = {
 	.version = 1,
 	.name    = "FrameEnhancer",
 	.description

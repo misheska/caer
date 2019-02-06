@@ -26,7 +26,7 @@ static void caerCameraCalibrationConfig(caerModuleData moduleData);
 static void caerCameraCalibrationExit(caerModuleData moduleData);
 static void updateSettings(caerModuleData moduleData);
 
-static const struct caer_module_functions CameraCalibrationFunctions
+static const struct dvModuleFunctionsS CameraCalibrationFunctions
 	= {.moduleConfigInit = &caerCameraCalibrationConfigInit,
 		.moduleInit      = &caerCameraCalibrationInit,
 		.moduleRun       = &caerCameraCalibrationRun,
@@ -37,7 +37,7 @@ static const struct caer_module_functions CameraCalibrationFunctions
 static const struct caer_event_stream_in CameraCalibrationInputs[]
 	= {{.type = POLARITY_EVENT, .number = 1, .readOnly = false}, {.type = FRAME_EVENT, .number = 1, .readOnly = false}};
 
-static const struct caer_module_info CameraCalibrationInfo = {
+static const struct dvModuleInfoS CameraCalibrationInfo = {
 	.version           = 1,
 	.name              = "CameraCalibration",
 	.description       = "Lens distortion calibration, for undistortion of both events and frames.",

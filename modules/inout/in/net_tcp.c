@@ -6,14 +6,14 @@
 
 static bool caerInputNetTCPInit(caerModuleData moduleData);
 
-static const struct caer_module_functions InputNetTCPFunctions = {.moduleInit = &caerInputNetTCPInit,
+static const struct dvModuleFunctionsS InputNetTCPFunctions = {.moduleInit = &caerInputNetTCPInit,
 	.moduleRun                                                                = &caerInputCommonRun,
 	.moduleConfig                                                             = NULL,
 	.moduleExit                                                               = &caerInputCommonExit};
 
 static const struct caer_event_stream_out InputNetTCPOutputs[] = {{.type = -1}};
 
-static const struct caer_module_info InputNetTCPInfo = {
+static const struct dvModuleInfoS InputNetTCPInfo = {
 	.version           = 1,
 	.name              = "NetTCPInput",
 	.description       = "Read AEDAT data from a TCP server.",

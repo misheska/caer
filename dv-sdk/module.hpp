@@ -6,8 +6,8 @@
 #include <dv-sdk/module.h>
 
 #include "BaseModule.hpp"
-#include "utils.h"
 #include "log.hpp"
+#include "utils.h"
 
 #include <iostream>
 
@@ -98,7 +98,7 @@ const size_t numberOfOutputStreams = T::outputStreams == nullptr ? 0 : CAER_EVEN
  * @tparam T The module T to be analyzed
  */
 template<typename T>
-const caer_module_type moduleType
+const dvModuleType moduleType
 	= (numberOfInputStreams<T> == 0) ? DV_MODULE_INPUT
 									 : ((numberOfOutputStreams<T> == 0) ? DV_MODULE_OUTPUT : DV_MODULE_PROCESSOR);
 
@@ -144,7 +144,6 @@ public:
 		BaseModule::configInit<T>(node);
 	}
 
-
 	/**
 	 * Wrapper for the `init` caer function. Constructs the user defined `T` module
 	 * into the module state, calls the config update function after construction
@@ -153,14 +152,14 @@ public:
 	 * @return true if construction succeeded, false if it failed.
 	 */
 	static bool init(caerModuleData moduleData) {
-        try {
-            // set the moduleData pointer thread local static prior to construction.
-        	BaseModule::__setStaticModuleData(moduleData);
+		try {
+			// set the moduleData pointer thread local static prior to construction.
+			BaseModule::__setStaticModuleData(moduleData);
 			new (moduleData->moduleState) T();
 			dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
 		}
 		catch (const std::exception &e) {
-		    caerModuleLog(moduleData, CAER_LOG_ERROR, "%s", e.what());
+			caerModuleLog(moduleData, CAER_LOG_ERROR, "%s", e.what());
 			caerModuleLog(moduleData, CAER_LOG_ERROR, "%s", "Could not initialize Module");
 			return false;
 		}
@@ -201,17 +200,17 @@ public:
 	}
 
 	/**
-	 * Static definition of the caer_module_functions struct. This struct
+	 * Static definition of the dvModuleFunctionsS struct. This struct
 	 * gets filles with the static wrapper functions provided in this class
 	 * at compile time.
 	 */
-	static const struct caer_module_functions functions;
+	static const struct dvModuleFunctionsS functions;
 
 	/**
-	 * Static definition of the caer_module_info struct. This struct
+	 * Static definition of the dvModuleInfoS struct. This struct
 	 * gets filled with the static information from the user provided `T` module.
 	 */
-	static const struct caer_module_info info;
+	static const struct dvModuleInfoS info;
 };
 
 /**
@@ -222,9 +221,8 @@ public:
  * @tparam T The user defined module. Must inherit from `caer::BaseModule`
  */
 template<class T>
-const caer_module_functions ModuleStatics<T>::functions
-	= {&ModuleStatics<T>::configInit, &ModuleStatics<T>::init, &ModuleStatics<T>::run,
-		&ModuleStatics<T>::config, &ModuleStatics<T>::exit, nullptr};
+const dvModuleFunctionsS ModuleStatics<T>::functions = {&ModuleStatics<T>::configInit, &ModuleStatics<T>::init,
+	&ModuleStatics<T>::run, &ModuleStatics<T>::config, &ModuleStatics<T>::exit, nullptr};
 
 /**
  * Static definition of the info struct, which gets passed to caer.
@@ -234,8 +232,8 @@ const caer_module_functions ModuleStatics<T>::functions
  * @tparam T The user defined module. Must inherit from `caer::BaseModule`
  */
 template<class T>
-const caer_module_info ModuleStatics<T>::info = {1, T::getName(), T::getDescription(), moduleType<T>,
-	sizeof(T), &functions, numberOfInputStreams<T>, T::inputStreams, numberOfOutputStreams<T>, T::outputStreams};
+const dvModuleInfoS ModuleStatics<T>::info = {1, T::getName(), T::getDescription(), moduleType<T>, sizeof(T),
+	&functions, numberOfInputStreams<T>, T::inputStreams, numberOfOutputStreams<T>, T::outputStreams};
 
 } // namespace caer
 

@@ -13,7 +13,7 @@ static void caerInputEDVSRun(caerModuleData moduleData, caerEventPacketContainer
 // All configuration is asynchronous through config listeners.
 static void caerInputEDVSExit(caerModuleData moduleData);
 
-static const struct caer_module_functions EDVSFunctions = {.moduleConfigInit = &caerInputEDVSConfigInit,
+static const struct dvModuleFunctionsS EDVSFunctions = {.moduleConfigInit = &caerInputEDVSConfigInit,
 	.moduleInit                                                              = &caerInputEDVSInit,
 	.moduleRun                                                               = &caerInputEDVSRun,
 	.moduleConfig                                                            = NULL,
@@ -22,7 +22,7 @@ static const struct caer_module_functions EDVSFunctions = {.moduleConfigInit = &
 
 static const struct caer_event_stream_out EDVSOutputs[] = {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}};
 
-static const struct caer_module_info EDVSInfo = {
+static const struct dvModuleInfoS EDVSInfo = {
 	.version           = 1,
 	.name              = "eDVS",
 	.description       = "Connects to an eDVS/minieDVS camera to get data.",

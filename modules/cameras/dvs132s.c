@@ -13,7 +13,7 @@ static bool caerInputDVS132SInit(caerModuleData moduleData);
 static void caerInputDVS132SRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 static void caerInputDVS132SExit(caerModuleData moduleData);
 
-static const struct caer_module_functions DVS132SFunctions = {
+static const struct dvModuleFunctionsS DVS132SFunctions = {
 	.moduleConfigInit = &caerInputDVS132SConfigInit,
 	.moduleInit       = &caerInputDVS132SInit,
 	.moduleRun        = &caerInputDVS132SRun,
@@ -28,7 +28,7 @@ static const struct caer_event_stream_out DVS132SOutputs[] = {
 	{.type = IMU6_EVENT},
 };
 
-static const struct caer_module_info DVS132SInfo = {
+static const struct dvModuleInfoS DVS132SInfo = {
 	.version           = 1,
 	.name              = "DVS132S",
 	.description       = "Connects to a DVS132S camera to get data.",

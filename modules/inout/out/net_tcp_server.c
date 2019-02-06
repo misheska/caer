@@ -4,7 +4,7 @@
 
 static bool caerOutputNetTCPServerInit(caerModuleData moduleData);
 
-static const struct caer_module_functions OutputNetTCPServerFunctions = {.moduleInit = &caerOutputNetTCPServerInit,
+static const struct dvModuleFunctionsS OutputNetTCPServerFunctions = {.moduleInit = &caerOutputNetTCPServerInit,
 	.moduleRun                                                                       = &caerOutputCommonRun,
 	.moduleConfig                                                                    = NULL,
 	.moduleExit                                                                      = &caerOutputCommonExit,
@@ -12,7 +12,7 @@ static const struct caer_module_functions OutputNetTCPServerFunctions = {.module
 
 static const struct caer_event_stream_in OutputNetTCPServerInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct caer_module_info OutputNetTCPServerInfo = {
+static const struct dvModuleInfoS OutputNetTCPServerInfo = {
 	.version           = 1,
 	.name              = "NetTCPServerOutput",
 	.description       = "Send AEDAT 3 data out via TCP to connected clients (server mode).",

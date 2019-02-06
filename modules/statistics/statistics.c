@@ -7,7 +7,7 @@ static bool statisticsModuleInit(caerModuleData moduleData);
 static void statisticsModuleRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 static void statisticsModuleReset(caerModuleData moduleData, int16_t resetCallSourceID);
 
-static const struct caer_module_functions StatisticsFunctions = {
+static const struct dvModuleFunctionsS StatisticsFunctions = {
 	.moduleConfigInit = &statisticsModuleConfigInit,
 	.moduleInit       = &statisticsModuleInit,
 	.moduleRun        = &statisticsModuleRun,
@@ -22,7 +22,7 @@ static const struct caer_event_stream_in StatisticsInputs[] = {{
 	.readOnly = true,
 }};
 
-static const struct caer_module_info StatisticsInfo = {
+static const struct dvModuleInfoS StatisticsInfo = {
 	.version           = 1,
 	.name              = "Statistics",
 	.description       = "Display statistics on events.",

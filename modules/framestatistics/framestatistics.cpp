@@ -23,7 +23,7 @@ static void caerFrameStatisticsRun(
 static void caerFrameStatisticsExit(caerModuleData moduleData);
 static void caerFrameStatisticsConfig(caerModuleData moduleData);
 
-static const struct caer_module_functions FrameStatisticsFunctions
+static const struct dvModuleFunctionsS FrameStatisticsFunctions
 	= {.moduleConfigInit = &caerFrameStatisticsConfigInit,
 		.moduleInit      = &caerFrameStatisticsInit,
 		.moduleRun       = &caerFrameStatisticsRun,
@@ -34,7 +34,7 @@ static const struct caer_module_functions FrameStatisticsFunctions
 static const struct caer_event_stream_in FrameStatisticsInputs[]
 	= {{.type = FRAME_EVENT, .number = 1, .readOnly = true}};
 
-static const struct caer_module_info FrameStatisticsInfo = {.version = 1,
+static const struct dvModuleInfoS FrameStatisticsInfo = {.version = 1,
 	.name                                                            = "FrameStatistics",
 	.description                                                     = "Display statistics on frames (histogram).",
 	.type                                                            = DV_MODULE_OUTPUT,

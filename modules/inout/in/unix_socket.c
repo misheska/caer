@@ -6,14 +6,14 @@
 
 static bool caerInputUnixSocketInit(caerModuleData moduleData);
 
-static const struct caer_module_functions InputUnixSocketFunctions = {.moduleInit = &caerInputUnixSocketInit,
+static const struct dvModuleFunctionsS InputUnixSocketFunctions = {.moduleInit = &caerInputUnixSocketInit,
 	.moduleRun                                                                    = &caerInputCommonRun,
 	.moduleConfig                                                                 = NULL,
 	.moduleExit                                                                   = &caerInputCommonExit};
 
 static const struct caer_event_stream_out InputUnixSocketOutputs[] = {{.type = -1}};
 
-static const struct caer_module_info InputUnixSocketInfo = {
+static const struct dvModuleInfoS InputUnixSocketInfo = {
 	.version           = 1,
 	.name              = "UnixSocketInput",
 	.description       = "Read AEDAT data from an existing Unix Socket.",

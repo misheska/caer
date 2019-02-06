@@ -6,7 +6,7 @@ static void caerInputDAVISConfigInit(dvConfigNode moduleNode);
 static bool caerInputDAVISInit(caerModuleData moduleData);
 static void caerInputDAVISExit(caerModuleData moduleData);
 
-static const struct caer_module_functions DAVISFunctions = {.moduleConfigInit = &caerInputDAVISConfigInit,
+static const struct dvModuleFunctionsS DAVISFunctions = {.moduleConfigInit = &caerInputDAVISConfigInit,
 	.moduleInit                                                               = &caerInputDAVISInit,
 	.moduleRun                                                                = &caerInputDAVISCommonRun,
 	.moduleConfig                                                             = NULL,
@@ -16,7 +16,7 @@ static const struct caer_module_functions DAVISFunctions = {.moduleConfigInit = 
 static const struct caer_event_stream_out DAVISOutputs[]
 	= {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}, {.type = FRAME_EVENT}, {.type = IMU6_EVENT}};
 
-static const struct caer_module_info DAVISInfo = {
+static const struct dvModuleInfoS DAVISInfo = {
 	.version           = 1,
 	.name              = "DAVIS",
 	.description       = "Connects to a DAVIS camera to get data.",

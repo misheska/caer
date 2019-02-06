@@ -227,7 +227,7 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 
 caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dvCfg::Node moduleNode) {
 	// Allocate memory for the module.
-	caerModuleData moduleData = (caerModuleData) calloc(1, sizeof(struct caer_module_data));
+	caerModuleData moduleData = (caerModuleData) calloc(1, sizeof(struct dvModuleDataS));
 	if (moduleData == nullptr) {
 		caerLog(CAER_LOG_ALERT, moduleName, "Failed to allocate memory for module. Error: %d.", errno);
 		return (nullptr);
@@ -610,7 +610,7 @@ void caerUpdateModulesInformation() {
 			"name", mLoad.second->name, {1, 256}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module name.");
 		moduleNode.create<dvCfgType::STRING>("description", mLoad.second->description, {1, 8192},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module description.");
-		moduleNode.create<dvCfgType::STRING>("type", caerModuleTypeToString(mLoad.second->type), {1, 64},
+		moduleNode.create<dvCfgType::STRING>("type", dvModuleTypeToString(mLoad.second->type), {1, 64},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module type.");
 
 		if (mLoad.second->inputStreamsSize > 0) {

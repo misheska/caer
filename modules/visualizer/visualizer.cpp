@@ -91,7 +91,7 @@ static void handleEvents(caerModuleData moduleData);
 static void renderScreen(caerModuleData moduleData);
 static void renderThread(caerModuleData moduleData);
 
-static const struct caer_module_functions VisualizerFunctions = {.moduleConfigInit = &caerVisualizerConfigInit,
+static const struct dvModuleFunctionsS VisualizerFunctions = {.moduleConfigInit = &caerVisualizerConfigInit,
 	.moduleInit                                                                    = &caerVisualizerInit,
 	.moduleRun                                                                     = &caerVisualizerRun,
 	.moduleConfig                                                                  = nullptr,
@@ -100,7 +100,7 @@ static const struct caer_module_functions VisualizerFunctions = {.moduleConfigIn
 
 static const struct caer_event_stream_in VisualizerInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct caer_module_info VisualizerInfo = {.version = 1,
+static const struct dvModuleInfoS VisualizerInfo = {.version = 1,
 	.name                                                       = "Visualizer",
 	.description                                                = "Visualize data in various ways.",
 	.type                                                       = DV_MODULE_OUTPUT,

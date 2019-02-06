@@ -29,7 +29,7 @@ bool caerMainloopModuleExists(int16_t id) {
 	return (glMainloopDataPtr->modules.count(id) == 1);
 }
 
-enum caer_module_type caerMainloopModuleGetType(int16_t id) {
+enum dvModuleType caerMainloopModuleGetType(int16_t id) {
 	return (glMainloopDataPtr->modules.at(id).libraryInfo->type);
 }
 
@@ -37,7 +37,7 @@ uint32_t caerMainloopModuleGetVersion(int16_t id) {
 	return (glMainloopDataPtr->modules.at(id).libraryInfo->version);
 }
 
-enum caer_module_status caerMainloopModuleGetStatus(int16_t id) {
+enum dvModuleStatus caerMainloopModuleGetStatus(int16_t id) {
 	return (glMainloopDataPtr->modules.at(id).runtimeData->moduleStatus);
 }
 
