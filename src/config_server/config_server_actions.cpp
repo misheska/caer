@@ -614,7 +614,7 @@ void caerConfigServerHandleRequest(
 
 			// Create static module configuration, so users can start
 			// changing it right away after module add.
-			caerModuleConfigInit(newModuleNode);
+			dvModuleConfigInit(newModuleNode);
 
 			// Send back confirmation to the client.
 			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {

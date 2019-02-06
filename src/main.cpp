@@ -6,25 +6,25 @@
 
 static void mainRunner(void) {
 	// Start the configuration server thread for run-time config changes.
-	caerConfigServerStart();
+	dvConfigServerStart();
 
 	// Finally run the main event processing loop.
-	caerMainloopRun();
+	dvMainloopRun();
 
 	// After shutting down the mainloops, also shutdown the config server
 	// thread if needed.
-	caerConfigServerStop();
+	dvConfigServerStop();
 }
 
 int main(int argc, char **argv) {
 	// Initialize config storage from file, support command-line overrides.
-	caerConfigInit(argc, argv);
+	dvConfigInit(argc, argv);
 
 	// Initialize logging sub-system.
-	caerLogInit();
+	dvLogInit();
 
 	// Start cAER. Can be as a background service or console application.
-	caerServiceInit(&mainRunner);
+	dvServiceInit(&mainRunner);
 
 	return (EXIT_SUCCESS);
 }

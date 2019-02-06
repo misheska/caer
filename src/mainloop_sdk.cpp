@@ -2,7 +2,7 @@
 
 static MainloopData *glMainloopDataPtr;
 
-void caerMainloopSDKLibInit(MainloopData *setMainloopPtr) {
+void dvMainloopSDKLibInit(MainloopData *setMainloopPtr) {
 	glMainloopDataPtr = setMainloopPtr;
 }
 

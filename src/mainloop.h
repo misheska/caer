@@ -189,12 +189,12 @@ extern "C" {
 /*
  * Run global mainloop (data processing).
  */
-void caerMainloopRun(void);
+void dvMainloopRun(void);
 
 /**
  * Only for internal usage! Do not reset the mainloop pointer!
  */
-void caerMainloopSDKLibInit(MainloopData *setMainloopPtr);
+void dvMainloopSDKLibInit(MainloopData *setMainloopPtr);
 
 #ifdef __cplusplus
 }

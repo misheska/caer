@@ -16,11 +16,11 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
-static void caerConfigServerRestartListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void configServerRestartListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void caerConfigServerGlobalNodeChangeListener(
+static void configServerGlobalNodeChangeListener(
 	dvConfigNode node, void *userData, enum dvConfigNodeEvents event, const char *changeNode);
-static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode node, void *userData,
+static void configServerGlobalAttributeChangeListener(dvConfigNode node, void *userData,
 	enum dvConfigAttributeEvents event, const char *changeKey, enum dvConfigAttributeType changeType,
 	union dvConfigAttributeValue changeValue);
 
@@ -196,8 +196,8 @@ void ConfigServer::serviceStart() {
 
 	ioThreadState = IOThreadState::RUNNING;
 
-	dvCfg::GLOBAL.globalNodeListenerSet(&caerConfigServerGlobalNodeChangeListener, nullptr);
-	dvCfg::GLOBAL.globalAttributeListenerSet(&caerConfigServerGlobalAttributeChangeListener, nullptr);
+	dvCfg::GLOBAL.globalNodeListenerSet(&configServerGlobalNodeChangeListener, nullptr);
+	dvCfg::GLOBAL.globalAttributeListenerSet(&configServerGlobalAttributeChangeListener, nullptr);
 
 	// Run IO service.
 	ioService.run();
@@ -252,7 +252,7 @@ static struct {
 	ConfigServer server;
 } globalConfigData;
 
-void caerConfigServerStart(void) {
+void dvConfigServerStart(void) {
 	// Get the right configuration node first.
 	auto serverNode = dvCfg::GLOBAL.getNode("/system/server/");
 
@@ -260,7 +260,7 @@ void caerConfigServerStart(void) {
 	serverNode.create<dvCfgType::BOOL>("restart", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT,
 		"Restart configuration server, disconnects all clients and reloads itself.");
 	serverNode.attributeModifierButton("restart", "ONOFF");
-	serverNode.addAttributeListener(nullptr, &caerConfigServerRestartListener);
+	serverNode.addAttributeListener(nullptr, &configServerRestartListener);
 
 	// Ensure default values are present for IP/Port.
 	serverNode.create<dvCfgType::STRING>("ipAddress", "127.0.0.1", {2, 39}, dvCfgFlags::NORMAL,
@@ -297,11 +297,11 @@ void caerConfigServerStart(void) {
 	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads created successfully.");
 }
 
-void caerConfigServerStop(void) {
+void dvConfigServerStop(void) {
 	auto serverNode = dvCfg::GLOBAL.getNode("/system/server/");
 
 	// Remove restart listener first.
-	serverNode.removeAttributeListener(nullptr, &caerConfigServerRestartListener);
+	serverNode.removeAttributeListener(nullptr, &configServerRestartListener);
 
 	try {
 		// Stop threads.
@@ -320,7 +320,7 @@ void caerConfigServerStop(void) {
 	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads terminated successfully.");
 }
 
-static void caerConfigServerRestartListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void configServerRestartListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
@@ -331,7 +331,7 @@ static void caerConfigServerRestartListener(dvConfigNode node, void *userData, e
 	}
 }
 
-static void caerConfigServerGlobalNodeChangeListener(
+static void configServerGlobalNodeChangeListener(
 	dvConfigNode n, void *userData, enum dvConfigNodeEvents event, const char *changeNode) {
 	UNUSED_ARGUMENT(userData);
 	dvCfg::Node node(n);
@@ -368,7 +368,7 @@ static void caerConfigServerGlobalNodeChangeListener(
 	}
 }
 
-static void caerConfigServerGlobalAttributeChangeListener(dvConfigNode n, void *userData,
+static void configServerGlobalAttributeChangeListener(dvConfigNode n, void *userData,
 	enum dvConfigAttributeEvents event, const char *changeKey, enum dvConfigAttributeType changeType,
 	union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(userData);

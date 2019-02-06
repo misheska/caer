@@ -11,8 +11,8 @@ extern "C" {
 
 // Create configuration storage, initialize it with content from the
 // configuration file, and apply eventual CLI overrides.
-void caerConfigInit(int argc, char *argv[]);
-void caerConfigWriteBack(void);
+void dvConfigInit(int argc, char *argv[]);
+void dvConfigWriteBack(void);
 
 #ifdef __cplusplus
 }

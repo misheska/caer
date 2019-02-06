@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-void caerServiceInit(void (*runner)(void));
+void dvServiceInit(void (*runner)(void));
 
 #ifdef __cplusplus
 }

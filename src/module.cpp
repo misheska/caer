@@ -19,12 +19,12 @@ static struct {
 	std::recursive_mutex modulePathsMutex;
 } glModuleData;
 
-static void caerModuleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void dvModuleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-void caerModuleConfigInit(dv::Config::Node moduleNode) {
+void dvModuleConfigInit(dv::Config::Node moduleNode) {
 	// Per-module log level support. Initialize with global log level value.
 	moduleNode.create<dvCfgType::INT>("logLevel", caerLogLevelGet(), {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
 		dvCfgFlags::NORMAL, "Module-specific log-level.");
@@ -40,7 +40,7 @@ void caerModuleConfigInit(dv::Config::Node moduleNode) {
 	std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
 	try {
-		mLoad = caerLoadModuleLibrary(moduleName);
+		mLoad = dvModuleLoadLibrary(moduleName);
 	}
 	catch (const std::exception &ex) {
 		boost::format exMsg = boost::format("moduleConfigInit() load for '%s': %s") % moduleName % ex.what();
@@ -58,11 +58,11 @@ void caerModuleConfigInit(dv::Config::Node moduleNode) {
 		}
 	}
 
-	caerUnloadModuleLibrary(mLoad.first);
+	dvModuleUnloadLibrary(mLoad.first);
 }
 
-void caerModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size_t memSize,
-	caerEventPacketContainer in, caerEventPacketContainer *out) {
+void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size_t memSize, caerEventPacketContainer in,
+	caerEventPacketContainer *out) {
 	bool running = moduleData->running.load(std::memory_order_relaxed);
 	dvCfg::Node moduleNode(moduleData->moduleNode);
 
@@ -225,7 +225,7 @@ void caerModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, si
 	}
 }
 
-dvModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dvCfg::Node moduleNode) {
+dvModuleData dvModuleInitialize(int16_t moduleID, const char *moduleName, dvCfg::Node moduleNode) {
 	// Allocate memory for the module.
 	dvModuleData moduleData = (dvModuleData) calloc(1, sizeof(struct dvModuleDataS));
 	if (moduleData == nullptr) {
@@ -256,13 +256,13 @@ dvModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dvCf
 	moduleData->moduleSubSystemString[nameLength] = '\0';
 
 	// Ensure static configuration is created on each module initialization.
-	caerModuleConfigInit(moduleNode);
+	dvModuleConfigInit(moduleNode);
 
 	// Per-module log level support.
 	uint8_t logLevel = U8T(moduleNode.get<dvCfgType::INT>("logLevel"));
 
 	moduleData->moduleLogLevel.store(logLevel, std::memory_order_relaxed);
-	moduleNode.addAttributeListener(moduleData, &dvModuleLogLevelListener);
+	moduleNode.addAttributeListener(moduleData, &moduleLogLevelListener);
 
 	// Initialize shutdown controls.
 	bool runModule = moduleNode.get<dvCfgType::BOOL>("runAtStartup");
@@ -272,24 +272,24 @@ dvModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dvCf
 	moduleNode.put<dvCfgType::BOOL>("running", runModule);
 
 	moduleData->running.store(runModule, std::memory_order_relaxed);
-	moduleNode.addAttributeListener(moduleData, &caerModuleShutdownListener);
+	moduleNode.addAttributeListener(moduleData, &moduleShutdownListener);
 
 	std::atomic_thread_fence(std::memory_order_release);
 
 	return (moduleData);
 }
 
-void caerModuleDestroy(dvModuleData moduleData) {
+void dvModuleDestroy(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleShutdownListener);
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &dvModuleLogLevelListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &moduleShutdownListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &moduleLogLevelListener);
 
 	// Deallocate module memory. Module state has already been destroyed.
 	free(moduleData->moduleSubSystemString);
 	free(moduleData);
 }
 
-static void caerModuleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
@@ -300,7 +300,7 @@ static void caerModuleShutdownListener(dvConfigNode node, void *userData, enum d
 	}
 }
 
-static void dvModuleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
@@ -311,7 +311,7 @@ static void dvModuleLogLevelListener(dvConfigNode node, void *userData, enum dvC
 	}
 }
 
-std::pair<ModuleLibrary, dvModuleInfo> caerLoadModuleLibrary(const std::string &moduleName) {
+std::pair<ModuleLibrary, dvModuleInfo> dvModuleLoadLibrary(const std::string &moduleName) {
 	// For each module, we search if a path exists to load it from.
 	// If yes, we do so. The various OS's shared library load mechanisms
 	// will keep track of reference count if same module is loaded
@@ -352,7 +352,7 @@ std::pair<ModuleLibrary, dvModuleInfo> caerLoadModuleLibrary(const std::string &
 	}
 	catch (const std::exception &ex) {
 		// Failed to find symbol in shared library!
-		caerUnloadModuleLibrary(moduleLibrary);
+		dvModuleUnloadLibrary(moduleLibrary);
 		boost::format exMsg
 			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % ex.what();
 		throw std::runtime_error(exMsg.str());
@@ -369,7 +369,7 @@ std::pair<ModuleLibrary, dvModuleInfo> caerLoadModuleLibrary(const std::string &
 	dvModuleInfo (*getInfo)(void) = (dvModuleInfo(*)(void)) dlsym(moduleLibrary, "dvModuleGetInfo");
 	if (getInfo == nullptr) {
 		// Failed to find symbol in shared library!
-		caerUnloadModuleLibrary(moduleLibrary);
+		dvModuleUnloadLibrary(moduleLibrary);
 		boost::format exMsg
 			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % dlerror();
 		throw std::runtime_error(exMsg.str());
@@ -378,7 +378,7 @@ std::pair<ModuleLibrary, dvModuleInfo> caerLoadModuleLibrary(const std::string &
 
 	dvModuleInfo info = (*getInfo)();
 	if (info == nullptr) {
-		caerUnloadModuleLibrary(moduleLibrary);
+		dvModuleUnloadLibrary(moduleLibrary);
 		boost::format exMsg = boost::format("Failed to get info from library '%s'.") % modulePath.string();
 		throw std::runtime_error(exMsg.str());
 	}
@@ -387,7 +387,7 @@ std::pair<ModuleLibrary, dvModuleInfo> caerLoadModuleLibrary(const std::string &
 }
 
 // Small helper to unload libraries on error.
-void caerUnloadModuleLibrary(ModuleLibrary &moduleLibrary) {
+void dvModuleUnloadLibrary(ModuleLibrary &moduleLibrary) {
 #if BOOST_HAS_DLL_LOAD
 	moduleLibrary.unload();
 #else
@@ -514,7 +514,7 @@ static void checkOutputStreamDefinitions(caerEventStreamOut outputStreams, size_
 	}
 }
 
-void caerUpdateModulesInformation() {
+void dvUpdateModulesInformation() {
 	std::lock_guard<std::recursive_mutex> lock(glModuleData.modulePathsMutex);
 
 	auto modulesNode = dvCfg::GLOBAL.getNode("/system/modules/");
@@ -567,7 +567,7 @@ void caerUpdateModulesInformation() {
 		std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
 		try {
-			mLoad = caerLoadModuleLibrary(moduleName);
+			mLoad = dvModuleLoadLibrary(moduleName);
 		}
 		catch (const std::exception &ex) {
 			boost::format exMsg = boost::format("Module '%s': %s") % moduleName % ex.what();
@@ -594,7 +594,7 @@ void caerUpdateModulesInformation() {
 			boost::format exMsg = boost::format("Module '%s': %s") % moduleName % ex.what();
 			libcaer::log::log(libcaer::log::logLevel::ERROR, "Module", exMsg.str().c_str());
 
-			caerUnloadModuleLibrary(mLoad.first);
+			dvModuleUnloadLibrary(mLoad.first);
 
 			iter = glModuleData.modulePaths.erase(iter);
 			continue;
@@ -650,7 +650,7 @@ void caerUpdateModulesInformation() {
 		}
 
 		// Done, unload library.
-		caerUnloadModuleLibrary(mLoad.first);
+		dvModuleUnloadLibrary(mLoad.first);
 
 		iter++;
 	}

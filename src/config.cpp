@@ -21,7 +21,7 @@ static boost::filesystem::path configFile;
 	exit(EXIT_FAILURE);
 }
 
-void caerConfigInit(int argc, char *argv[]) {
+void dvConfigInit(int argc, char *argv[]) {
 	// Allowed command-line options for configuration.
 	po::options_description cliDescription("Command-line options");
 	cliDescription.add_options()("help,h", "print help text")("config,c", po::value<std::string>(),
@@ -138,7 +138,7 @@ void caerConfigInit(int argc, char *argv[]) {
 	}
 }
 
-void caerConfigWriteBack(void) {
+void dvConfigWriteBack(void) {
 	// configFile can only be correctly initialized, absolute and canonical
 	// by the point this function may ever be called, so we use it directly.
 	int configFileFd = open(configFile.string().c_str(), O_WRONLY | O_TRUNC);

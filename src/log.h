@@ -14,9 +14,9 @@
 extern "C" {
 #endif
 
-#define CAER_LOG_FILE_NAME ".caer.log"
+#define DV_LOG_FILE_NAME ".dv-logger.log"
 
-void caerLogInit(void);
+void dvLogInit(void);
 
 #ifdef __cplusplus
 }

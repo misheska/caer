@@ -5,7 +5,7 @@
 
 #define CONFIG_SERVER_NAME "ConfigServer"
 
-void caerConfigServerStart(void);
-void caerConfigServerStop(void);
+void dvConfigServerStart(void);
+void dvConfigServerStop(void);
 
 #endif /* SRC_CONFIG_SERVER_CONFIG_SERVER_MAIN_H_ */
