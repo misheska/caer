@@ -19,19 +19,19 @@ private:
 	asioTCP::endpoint remoteEndpoint;
 	asioSSL::stream<asioTCP::socket> socket;
 	bool socketClosed;
-	bool sslConnection;
+	bool secureConnection;
 
 public:
-	TCPTLSSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext) :
+	TCPTLSSocket(asioTCP::socket s, bool tlsEnabled, asioSSL::context *tlsContext) :
 		localEndpoint(s.local_endpoint()),
 		remoteEndpoint(s.remote_endpoint()),
 #if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 66
-		socket(std::move(s), *sslContext),
+		socket(std::move(s), *tlsContext),
 #else
-		socket(s.get_io_service(), *sslContext),
+		socket(s.get_io_service(), *tlsContext),
 #endif
 		socketClosed(false),
-		sslConnection(sslEnabled) {
+		secureConnection(tlsEnabled) {
 #if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) < 66
 		socket.next_layer() = std::move(s);
 #endif
@@ -66,7 +66,7 @@ public:
 	 */
 	template<typename StartupHandler>
 	void start(StartupHandler &&stHandler, asioSSL::stream_base::handshake_type type) {
-		if (sslConnection) {
+		if (secureConnection) {
 			socket.async_handshake(type, stHandler);
 		}
 		else {
@@ -81,7 +81,7 @@ public:
 	template<typename WriteHandler> void write(const asio::const_buffer &buf, WriteHandler &&wrHandler) {
 		const asio::const_buffers_1 buf2(buf);
 
-		if (sslConnection) {
+		if (secureConnection) {
 			asio::async_write(socket, buf2, wrHandler);
 		}
 		else {
@@ -96,7 +96,7 @@ public:
 	template<typename ReadHandler> void read(const asio::mutable_buffer &buf, ReadHandler &&rdHandler) {
 		const asio::mutable_buffers_1 buf2(buf);
 
-		if (sslConnection) {
+		if (secureConnection) {
 			asio::async_read(socket, buf2, rdHandler);
 		}
 		else {
@@ -136,8 +136,8 @@ private:
 
 class TCPTLSWriteOrderedSocket : public TCPTLSSocket {
 public:
-	TCPTLSWriteOrderedSocket(asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext) :
-		TCPTLSSocket(std::move(s), sslEnabled, sslContext) {
+	TCPTLSWriteOrderedSocket(asioTCP::socket s, bool tlsEnabled, asioSSL::context *tlsContext) :
+		TCPTLSSocket(std::move(s), tlsEnabled, tlsContext) {
 	}
 
 	/**

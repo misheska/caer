@@ -1,10 +1,10 @@
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 
 #include "output_common.h"
 
-static bool caerOutputNetTCPServerInit(caerModuleData moduleData);
+static bool caerOutputNetTCPServerInit(dvModuleData moduleData);
 
-static const struct caer_module_functions OutputNetTCPServerFunctions = {.moduleInit = &caerOutputNetTCPServerInit,
+static const struct dvModuleFunctionsS OutputNetTCPServerFunctions = {.moduleInit = &caerOutputNetTCPServerInit,
 	.moduleRun                                                                       = &caerOutputCommonRun,
 	.moduleConfig                                                                    = NULL,
 	.moduleExit                                                                      = &caerOutputCommonExit,
@@ -12,11 +12,11 @@ static const struct caer_module_functions OutputNetTCPServerFunctions = {.module
 
 static const struct caer_event_stream_in OutputNetTCPServerInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct caer_module_info OutputNetTCPServerInfo = {
+static const struct dvModuleInfoS OutputNetTCPServerInfo = {
 	.version           = 1,
 	.name              = "NetTCPServerOutput",
 	.description       = "Send AEDAT 3 data out via TCP to connected clients (server mode).",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),
 	.functions         = &OutputNetTCPServerFunctions,
 	.inputStreams      = OutputNetTCPServerInputs,
@@ -25,11 +25,11 @@ static const struct caer_module_info OutputNetTCPServerInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&OutputNetTCPServerInfo);
 }
 
-static bool caerOutputNetTCPServerInit(caerModuleData moduleData) {
+static bool caerOutputNetTCPServerInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL,
@@ -55,7 +55,7 @@ static bool caerOutputNetTCPServerInit(caerModuleData moduleData) {
 	size_t numClients         = (size_t) dvConfigNodeGetInt(moduleData->moduleNode, "concurrentConnections");
 	outputCommonNetIO streams = malloc(sizeof(*streams) + (numClients * sizeof(uv_stream_t *)));
 	if (streams == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
 		return (false);
 	}
 
@@ -63,7 +63,7 @@ static bool caerOutputNetTCPServerInit(caerModuleData moduleData) {
 	if (streams->address == NULL) {
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network address.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network address.");
 		return (false);
 	}
 
@@ -72,7 +72,7 @@ static bool caerOutputNetTCPServerInit(caerModuleData moduleData) {
 		free(streams->address);
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network server.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network server.");
 		return (false);
 	}
 

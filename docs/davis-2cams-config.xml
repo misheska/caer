@@ -1,57 +1,59 @@
 <dv version="2.0">
     <node name="" path="/">
-        <node name="caer" path="/caer/">
-            <node name="logger" path="/caer/logger/">
+        <node name="system" path="/system/">
+            <node name="logger" path="/system/logger/">
                 <attr key="logLevel" type="int">5</attr>
             </node>
-            <node name="server" path="/caer/server/">
+            <node name="server" path="/system/server/">
                 <attr key="ipAddress" type="string">127.0.0.1</attr>
                 <attr key="portNumber" type="int">4040</attr>
             </node>
         </node>
-        <node name="davis-cam1" path="/davis-cam1/">
+		<node name="mainloop" path="/mainloop/">
+        <node name="davis-cam1" path="/mainloop/davis-cam1/">
             <attr key="moduleId" type="int">1</attr>
-            <attr key="moduleLibrary" type="string">caer_davis</attr>
+            <attr key="moduleLibrary" type="string">dv_davis</attr>
             <attr key="serialNumber" type="string">SN_CAM1_HERE</attr>
         </node>
-        <node name="dvsnoisefilter-cam1" path="/dvsnoisefilter-cam1/">
+        <node name="dvsnoisefilter-cam1" path="/mainloop/dvsnoisefilter-cam1/">
             <attr key="moduleId" type="int">2</attr>
             <attr key="moduleInput" type="string">1[1]</attr>
-            <attr key="moduleLibrary" type="string">caer_dvsnoisefilter</attr>
+            <attr key="moduleLibrary" type="string">dv_dvsnoisefilter</attr>
         </node>
-        <node name="eventVisualizer-cam1" path="/eventVisualizer-cam1/">
+        <node name="eventVisualizer-cam1" path="/mainloop/eventVisualizer-cam1/">
             <attr key="moduleId" type="int">3</attr>
             <attr key="moduleInput" type="string">1[1a2]</attr>
-            <attr key="moduleLibrary" type="string">caer_visualizer</attr>
+            <attr key="moduleLibrary" type="string">dv_visualizer</attr>
             <attr key="renderer" type="string">Polarity</attr>
         </node>
-        <node name="frameVisualizer-cam1" path="/frameVisualizer-cam1/">
+        <node name="frameVisualizer-cam1" path="/mainloop/frameVisualizer-cam1/">
             <attr key="moduleId" type="int">4</attr>
             <attr key="moduleInput" type="string">1[2]</attr>
-            <attr key="moduleLibrary" type="string">caer_visualizer</attr>
+            <attr key="moduleLibrary" type="string">dv_visualizer</attr>
             <attr key="renderer" type="string">Frame</attr>
         </node>
-        <node name="davis-cam2" path="/davis-cam2/">
+        <node name="davis-cam2" path="/mainloop/davis-cam2/">
             <attr key="moduleId" type="int">5</attr>
-            <attr key="moduleLibrary" type="string">caer_davis</attr>
+            <attr key="moduleLibrary" type="string">dv_davis</attr>
             <attr key="serialNumber" type="string">SN_CAM2_HERE</attr>
         </node>
-        <node name="dvsnoisefilter-cam2" path="/dvsnoisefilter-cam2/">
+        <node name="dvsnoisefilter-cam2" path="/mainloop/dvsnoisefilter-cam2/">
             <attr key="moduleId" type="int">6</attr>
             <attr key="moduleInput" type="string">5[1]</attr>
-            <attr key="moduleLibrary" type="string">caer_dvsnoisefilter</attr>
+            <attr key="moduleLibrary" type="string">dv_dvsnoisefilter</attr>
         </node>
-        <node name="eventVisualizer-cam2" path="/eventVisualizer-cam2/">
+        <node name="eventVisualizer-cam2" path="/mainloop/eventVisualizer-cam2/">
             <attr key="moduleId" type="int">7</attr>
             <attr key="moduleInput" type="string">5[1a6]</attr>
-            <attr key="moduleLibrary" type="string">caer_visualizer</attr>
+            <attr key="moduleLibrary" type="string">dv_visualizer</attr>
             <attr key="renderer" type="string">Polarity</attr>
         </node>
-        <node name="frameVisualizer-cam2" path="/frameVisualizer-cam2/">
+        <node name="frameVisualizer-cam2" path="/mainloop/frameVisualizer-cam2/">
             <attr key="moduleId" type="int">8</attr>
             <attr key="moduleInput" type="string">5[2]</attr>
-            <attr key="moduleLibrary" type="string">caer_visualizer</attr>
+            <attr key="moduleLibrary" type="string">dv_visualizer</attr>
             <attr key="renderer" type="string">Frame</attr>
         </node>
+		</node>
     </node>
 </dv>

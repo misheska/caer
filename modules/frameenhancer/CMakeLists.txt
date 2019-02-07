@@ -2,9 +2,9 @@ ADD_LIBRARY(frameenhancer SHARED frameenhancer.c)
 
 SET_TARGET_PROPERTIES(frameenhancer
 	PROPERTIES
-	PREFIX "caer_"
+	PREFIX "dv_"
 )
 
-TARGET_LINK_LIBRARIES(frameenhancer ${CAER_LIBS})
+TARGET_LINK_LIBRARIES(frameenhancer ${DV_LIBS})
 
-INSTALL(TARGETS frameenhancer DESTINATION ${CAER_MODULES_DIR})
+INSTALL(TARGETS frameenhancer DESTINATION ${DV_MODULES_DIR})

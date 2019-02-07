@@ -3,10 +3,10 @@
 #include "davis_utils.h"
 
 static void caerInputDAVISConfigInit(dvConfigNode moduleNode);
-static bool caerInputDAVISInit(caerModuleData moduleData);
-static void caerInputDAVISExit(caerModuleData moduleData);
+static bool caerInputDAVISInit(dvModuleData moduleData);
+static void caerInputDAVISExit(dvModuleData moduleData);
 
-static const struct caer_module_functions DAVISFunctions = {.moduleConfigInit = &caerInputDAVISConfigInit,
+static const struct dvModuleFunctionsS DAVISFunctions = {.moduleConfigInit = &caerInputDAVISConfigInit,
 	.moduleInit                                                               = &caerInputDAVISInit,
 	.moduleRun                                                                = &caerInputDAVISCommonRun,
 	.moduleConfig                                                             = NULL,
@@ -16,11 +16,11 @@ static const struct caer_module_functions DAVISFunctions = {.moduleConfigInit = 
 static const struct caer_event_stream_out DAVISOutputs[]
 	= {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}, {.type = FRAME_EVENT}, {.type = IMU6_EVENT}};
 
-static const struct caer_module_info DAVISInfo = {
+static const struct dvModuleInfoS DAVISInfo = {
 	.version           = 1,
 	.name              = "DAVIS",
 	.description       = "Connects to a DAVIS camera to get data.",
-	.type              = CAER_MODULE_INPUT,
+	.type              = DV_MODULE_INPUT,
 	.memSize           = 0,
 	.functions         = &DAVISFunctions,
 	.inputStreams      = NULL,
@@ -29,14 +29,14 @@ static const struct caer_module_info DAVISInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(DAVISOutputs),
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&DAVISInfo);
 }
 
-static void createDefaultUSBConfiguration(caerModuleData moduleData, const char *nodePrefix);
-static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davis_info *devInfo);
+static void createDefaultUSBConfiguration(dvModuleData moduleData, const char *nodePrefix);
+static void sendDefaultConfiguration(dvModuleData moduleData, struct caer_davis_info *devInfo);
 
-static void usbConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void usbConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void usbConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
@@ -54,8 +54,8 @@ static void caerInputDAVISConfigInit(dvConfigNode moduleNode) {
 	caerInputDAVISCommonSystemConfigInit(moduleNode);
 }
 
-static bool caerInputDAVISInit(caerModuleData moduleData) {
-	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+static bool caerInputDAVISInit(dvModuleData moduleData) {
+	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).
@@ -91,7 +91,7 @@ static bool caerInputDAVISInit(caerModuleData moduleData) {
 		devInfo.deviceUSBDeviceAddress);
 	subSystemString[subSystemStringLength] = '\0';
 
-	caerModuleSetSubSystemString(moduleData, subSystemString);
+	dvModuleSetLogString(moduleData, subSystemString);
 
 	// Create default settings and send them to the device.
 	createDefaultBiasConfiguration(moduleData, chipIDToName(devInfo.chipID, true), devInfo.chipID);
@@ -100,8 +100,8 @@ static bool caerInputDAVISInit(caerModuleData moduleData) {
 	sendDefaultConfiguration(moduleData, &devInfo);
 
 	// Start data acquisition.
-	bool ret = caerDeviceDataStart(moduleData->moduleState, &caerMainloopDataNotifyIncrease,
-		&caerMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
+	bool ret = caerDeviceDataStart(moduleData->moduleState, &dvMainloopDataNotifyIncrease,
+		&dvMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
 
 	if (!ret) {
 		// Failed to start data acquisition, close device and exit.
@@ -157,7 +157,7 @@ static bool caerInputDAVISInit(caerModuleData moduleData) {
 	return (true);
 }
 
-static void caerInputDAVISExit(caerModuleData moduleData) {
+static void caerInputDAVISExit(dvModuleData moduleData) {
 	// Device related configuration has its own sub-node.
 	struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 	dvConfigNode deviceConfigNode      = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
@@ -226,7 +226,7 @@ static void caerInputDAVISExit(caerModuleData moduleData) {
 	}
 }
 
-static void createDefaultUSBConfiguration(caerModuleData moduleData, const char *nodePrefix) {
+static void createDefaultUSBConfiguration(dvModuleData moduleData, const char *nodePrefix) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, nodePrefix);
 
@@ -242,7 +242,7 @@ static void createDefaultUSBConfiguration(caerModuleData moduleData, const char 
 		usbNode, "BufferSize", 8192, 512, 32768, DVCFG_FLAGS_NORMAL, "Size in bytes of data buffers for USB transfers.");
 }
 
-static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davis_info *devInfo) {
+static void sendDefaultConfiguration(dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo->chipID, true));
 
@@ -258,7 +258,7 @@ static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davi
 	extInputConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "externalInput/"), moduleData, devInfo);
 }
 
-static void usbConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void usbConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_USB, CAER_HOST_CONFIG_USB_BUFFER_NUMBER,
 		U32T(dvConfigNodeGetInt(node, "BufferNumber")));
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_USB, CAER_HOST_CONFIG_USB_BUFFER_SIZE,
@@ -273,7 +273,7 @@ static void usbConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "BufferNumber")) {

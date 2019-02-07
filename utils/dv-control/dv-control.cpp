@@ -1,5 +1,5 @@
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/utils.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/utils.h"
 
 #include "../../src/config_server/dv_config_action_data.h"
 #include "utils/ext/linenoise-ng/linenoise.h"
@@ -21,8 +21,8 @@ namespace asioIP  = boost::asio::ip;
 using asioTCP     = boost::asio::ip::tcp;
 namespace po      = boost::program_options;
 
-#define CAERCTL_HISTORY_FILE_NAME ".caer-ctl.history"
-#define CAERCTL_CLIENT_BUFFER_MAX_SIZE 8192
+#define DVCTL_HISTORY_FILE_NAME ".dv-control.history"
+#define DVCTL_CLIENT_BUFFER_MAX_SIZE 8192
 
 static void handleInputLine(const char *buf, size_t bufLength);
 static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoComplete);
@@ -56,13 +56,13 @@ static const struct {
 	{"dump_tree", dv::ConfigAction::DUMP_TREE},
 };
 
-static flatbuffers::FlatBufferBuilder dataBufferSend{CAERCTL_CLIENT_BUFFER_MAX_SIZE};
-static uint8_t dataBufferReceive[CAERCTL_CLIENT_BUFFER_MAX_SIZE];
+static flatbuffers::FlatBufferBuilder dataBufferSend{DVCTL_CLIENT_BUFFER_MAX_SIZE};
+static uint8_t dataBufferReceive[DVCTL_CLIENT_BUFFER_MAX_SIZE];
 
 static asio::io_service ioService;
-static asioSSL::context sslContext{asioSSL::context::tlsv12_client};
-static asioSSL::stream<asioTCP::socket> sslSocket{ioService, sslContext};
-static bool sslConnection{false};
+static asioSSL::context tlsContext{asioSSL::context::tlsv12_client};
+static asioSSL::stream<asioTCP::socket> tlsSocket{ioService, tlsContext};
+static bool secureConnection{false};
 
 [[noreturn]] static inline void printHelpAndExit(const po::options_description &desc) {
 	std::cout << std::endl << desc << std::endl;
@@ -72,22 +72,22 @@ static bool sslConnection{false};
 static inline void asioSocketWrite(const asio::const_buffer &buf) {
 	const asio::const_buffers_1 buf2(buf);
 
-	if (sslConnection) {
-		asio::write(sslSocket, buf2);
+	if (secureConnection) {
+		asio::write(tlsSocket, buf2);
 	}
 	else {
-		asio::write(sslSocket.next_layer(), buf2);
+		asio::write(tlsSocket.next_layer(), buf2);
 	}
 }
 
 static inline void asioSocketRead(const asio::mutable_buffer &buf) {
 	const asio::mutable_buffers_1 buf2(buf);
 
-	if (sslConnection) {
-		asio::read(sslSocket, buf2);
+	if (secureConnection) {
+		asio::read(tlsSocket, buf2);
 	}
 	else {
-		asio::read(sslSocket.next_layer(), buf2);
+		asio::read(tlsSocket.next_layer(), buf2);
 	}
 }
 
@@ -112,7 +112,7 @@ static inline const dv::ConfigActionData *receiveMessage() {
 	asioSocketRead(asio::buffer(&incomingMessageSize, sizeof(incomingMessageSize)));
 
 	// Check for wrong (excessive) message length.
-	if (incomingMessageSize > CAERCTL_CLIENT_BUFFER_MAX_SIZE) {
+	if (incomingMessageSize > DVCTL_CLIENT_BUFFER_MAX_SIZE) {
 		throw std::runtime_error("Message length error (%d bytes).");
 	}
 
@@ -133,18 +133,18 @@ static inline const dv::ConfigActionData *receiveMessage() {
 }
 
 int main(int argc, char *argv[]) {
-	// Allowed command-line options for caer-ctl.
+	// Allowed command-line options for dv-control.
 	po::options_description cliDescription("Command-line options");
 	cliDescription.add_options()("help,h", "print help text")("ipaddress,i", po::value<std::string>(),
-		"IP-address or hostname to connect to")("port,p", po::value<std::string>(), "port to connect to")("ssl",
+		"IP-address or hostname to connect to")("port,p", po::value<std::string>(), "port to connect to")("tls",
 		po::value<std::string>()->implicit_value(""),
-		"enable SSL for connection (no argument uses default CA for verification, or pass a path to a specific CA file "
+		"enable TLS for connection (no argument uses default CA for verification, or pass a path to a specific CA file "
 		"in the PEM format)")(
-		"sslcert", po::value<std::string>(), "SSL certificate file for client authentication (PEM format)")(
-		"sslkey", po::value<std::string>(), "SSL key file for client authentication (PEM format)")("script,s",
+		"tlscert", po::value<std::string>(), "TLS certificate file for client authentication (PEM format)")(
+		"tlskey", po::value<std::string>(), "TLS key file for client authentication (PEM format)")("script,s",
 		po::value<std::vector<std::string>>()->multitoken(),
 		"script mode, sends the given command directly to the server as if typed in and exits.\n"
-		"Format: <action> <node> [<attribute> <type> [<value>]]\nExample: set /caer/logger/ logLevel byte 7");
+		"Format: <action> <node> [<attribute> <type> [<value>]]\nExample: set /system/logger/ logLevel byte 7");
 
 	po::variables_map cliVarMap;
 	try {
@@ -171,64 +171,63 @@ int main(int argc, char *argv[]) {
 		portNumber = cliVarMap["port"].as<std::string>();
 	}
 
-	if (cliVarMap.count("ssl")) {
-		sslConnection = true;
+	if (cliVarMap.count("tls")) {
+		secureConnection = true;
 
-		// Client-side SSL authentication support.
-		if (cliVarMap.count("sslcert")) {
-			std::string sslCertFile = cliVarMap["sslcert"].as<std::string>();
+		// Client-side TLS authentication support.
+		if (cliVarMap.count("tlscert")) {
+			std::string tlsCertFile = cliVarMap["tlscert"].as<std::string>();
 
 			try {
-				sslContext.use_certificate_chain_file(sslCertFile);
+				tlsContext.use_certificate_chain_file(tlsCertFile);
 			}
 			catch (const boost::system::system_error &ex) {
 				boost::format exMsg
-					= boost::format("Failed to load SSL client certificate file '%s', error message is:\n\t%s.")
-					  % sslCertFile % ex.what();
+					= boost::format("Failed to load TLS client certificate file '%s', error message is:\n\t%s.")
+					  % tlsCertFile % ex.what();
 				std::cerr << exMsg.str() << std::endl;
 				return (EXIT_FAILURE);
 			}
 		}
 
-		if (cliVarMap.count("sslkey")) {
-			std::string sslKeyFile = cliVarMap["sslkey"].as<std::string>();
+		if (cliVarMap.count("tlskey")) {
+			std::string tlsKeyFile = cliVarMap["tlskey"].as<std::string>();
 
 			try {
-				sslContext.use_private_key_file(sslKeyFile, boost::asio::ssl::context::pem);
+				tlsContext.use_private_key_file(tlsKeyFile, asioSSL::context::pem);
 			}
 			catch (const boost::system::system_error &ex) {
-				boost::format exMsg = boost::format("Failed to load SSL client key file '%s', error message is:\n\t%s.")
-									  % sslKeyFile % ex.what();
+				boost::format exMsg = boost::format("Failed to load TLS client key file '%s', error message is:\n\t%s.")
+									  % tlsKeyFile % ex.what();
 				std::cerr << exMsg.str() << std::endl;
 				return (EXIT_FAILURE);
 			}
 		}
 
-		sslContext.set_options(
-			boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use);
+		tlsContext.set_options(asioSSL::context::default_workarounds | asioSSL::context::single_dh_use);
 
-		std::string sslVerifyFile = cliVarMap["ssl"].as<std::string>();
+		std::string tlsVerifyFile = cliVarMap["tls"].as<std::string>();
 
-		if (sslVerifyFile.empty()) {
-			sslContext.set_default_verify_paths();
+		if (tlsVerifyFile.empty()) {
+			tlsContext.set_default_verify_paths();
 		}
 		else {
 			try {
-				sslContext.load_verify_file(sslVerifyFile);
+				tlsContext.load_verify_file(tlsVerifyFile);
 			}
 			catch (const boost::system::system_error &ex) {
 				boost::format exMsg
-					= boost::format("Failed to load SSL CA verification file '%s', error message is:\n\t%s.")
-					  % sslVerifyFile % ex.what();
+					= boost::format("Failed to load TLS CA verification file '%s', error message is:\n\t%s.")
+					  % tlsVerifyFile % ex.what();
 				std::cerr << exMsg.str() << std::endl;
 				return (EXIT_FAILURE);
 			}
 		}
 
-		sslContext.set_verify_mode(asioSSL::context::verify_peer);
+		tlsContext.set_verify_mode(asioSSL::context::verify_peer);
 
-		// Rebuild SSL socket, so it picks up changes to SSL context above.
-		new (&sslSocket) asioSSL::stream<asioTCP::socket>(ioService, sslContext);
+		// Rebuild TLS socket, so it picks up changes to TLS context above.
+		new (&tlsSocket) asioSSL::stream<asioTCP::socket>(ioService, tlsContext);
 	}
 
 	bool scriptMode = false;
@@ -268,12 +267,12 @@ int main(int argc, char *argv[]) {
 		commandHistoryFilePath = boost::filesystem::current_path();
 	}
 
-	commandHistoryFilePath.append(CAERCTL_HISTORY_FILE_NAME, boost::filesystem::path::codecvt());
+	commandHistoryFilePath.append(DVCTL_HISTORY_FILE_NAME, boost::filesystem::path::codecvt());
 
-	// Connect to the remote cAER config server.
+	// Connect to the remote DV config server.
 	try {
 		asioTCP::resolver resolver(ioService);
-		asio::connect(sslSocket.next_layer(), resolver.resolve({ipAddress, portNumber}));
+		asio::connect(tlsSocket.next_layer(), resolver.resolve({ipAddress, portNumber}));
 	}
 	catch (const boost::system::system_error &ex) {
 		boost::format exMsg = boost::format("Failed to connect to %s:%s, error message is:\n\t%s.") % ipAddress
@@ -282,13 +281,13 @@ int main(int argc, char *argv[]) {
 		return (EXIT_FAILURE);
 	}
 
-	// SSL connection support.
-	if (sslConnection) {
+	// Secure connection support.
+	if (secureConnection) {
 		try {
-			sslSocket.handshake(asioSSL::stream_base::client);
+			tlsSocket.handshake(asioSSL::stream_base::client);
 		}
 		catch (const boost::system::system_error &ex) {
-			boost::format exMsg = boost::format("Failed SSL handshake, error message is:\n\t%s.") % ex.what();
+			boost::format exMsg = boost::format("Failed TLS handshake, error message is:\n\t%s.") % ex.what();
 			std::cerr << exMsg.str() << std::endl;
 			return (EXIT_FAILURE);
 		}
@@ -315,7 +314,7 @@ int main(int argc, char *argv[]) {
 	}
 	else {
 		// Create a shell prompt with the IP:Port displayed.
-		boost::format shellPrompt = boost::format("cAER @ %s:%s >> ") % ipAddress % portNumber;
+		boost::format shellPrompt = boost::format("DV @ %s:%s >> ") % ipAddress % portNumber;
 
 		// Set our own command completion function.
 		linenoiseSetCompletionCallback(&handleCommandCompletion);
@@ -355,15 +354,15 @@ int main(int argc, char *argv[]) {
 	// Save command history file.
 	linenoiseHistorySave(commandHistoryFilePath.string().c_str());
 
-	// Close SSL connection properly.
-	if (sslConnection) {
+	// Close secure connection properly.
+	if (secureConnection) {
 		boost::system::error_code error;
-		sslSocket.shutdown(error);
+		tlsSocket.shutdown(error);
 
-		// EOF is expected for good SSL shutdown. See:
+		// EOF is expected for good TLS shutdown. See:
 		// https://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
 		if (error != asio::error::eof) {
-			boost::format errMsg = boost::format("Failed SSL shutdown, error message is:\n\t%s.") % error.message();
+			boost::format errMsg = boost::format("Failed TLS shutdown, error message is:\n\t%s.") % error.message();
 			std::cerr << errMsg.str() << std::endl;
 		}
 	}

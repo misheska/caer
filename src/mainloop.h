@@ -1,8 +1,8 @@
 #ifndef MAINLOOP_H_
 #define MAINLOOP_H_
 
-#include "caer-sdk/mainloop.h"
-#include "caer-sdk/module.h"
+#include "dv-sdk/mainloop.h"
+#include "dv-sdk/module.h"
 
 #include "module.h"
 
@@ -61,9 +61,9 @@ struct ModuleInfo {
 	// Loadable module support.
 	const std::string library;
 	ModuleLibrary libraryHandle;
-	caerModuleInfo libraryInfo;
+	dvModuleInfo libraryInfo;
 	// Module runtime data.
-	caerModuleData runtimeData;
+	dvModuleData runtimeData;
 
 	ModuleInfo() :
 		id(-1),
@@ -189,12 +189,12 @@ extern "C" {
 /*
  * Run global mainloop (data processing).
  */
-void caerMainloopRun(void);
+void dvMainloopRun(void);
 
 /**
  * Only for internal usage! Do not reset the mainloop pointer!
  */
-void caerMainloopSDKLibInit(MainloopData *setMainloopPtr);
+void dvMainloopSDKLibInit(MainloopData *setMainloopPtr);
 
 #ifdef __cplusplus
 }

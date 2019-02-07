@@ -19,12 +19,12 @@ static struct {
 	std::recursive_mutex modulePathsMutex;
 } glModuleData;
 
-static void caerModuleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void caerModuleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-void caerModuleConfigInit(dv::Config::Node moduleNode) {
+void dvModuleConfigInit(dv::Config::Node moduleNode) {
 	// Per-module log level support. Initialize with global log level value.
 	moduleNode.create<dvCfgType::INT>("logLevel", caerLogLevelGet(), {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
 		dvCfgFlags::NORMAL, "Module-specific log-level.");
@@ -37,10 +37,10 @@ void caerModuleConfigInit(dv::Config::Node moduleNode) {
 	const std::string moduleName = moduleNode.get<dvCfgType::STRING>("moduleLibrary");
 
 	// Load library to get module functions.
-	std::pair<ModuleLibrary, caerModuleInfo> mLoad;
+	std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
 	try {
-		mLoad = caerLoadModuleLibrary(moduleName);
+		mLoad = dvModuleLoadLibrary(moduleName);
 	}
 	catch (const std::exception &ex) {
 		boost::format exMsg = boost::format("moduleConfigInit() load for '%s': %s") % moduleName % ex.what();
@@ -58,15 +58,15 @@ void caerModuleConfigInit(dv::Config::Node moduleNode) {
 		}
 	}
 
-	caerUnloadModuleLibrary(mLoad.first);
+	dvModuleUnloadLibrary(mLoad.first);
 }
 
-void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData, size_t memSize,
-	caerEventPacketContainer in, caerEventPacketContainer *out) {
+void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size_t memSize, caerEventPacketContainer in,
+	caerEventPacketContainer *out) {
 	bool running = moduleData->running.load(std::memory_order_relaxed);
 	dvCfg::Node moduleNode(moduleData->moduleNode);
 
-	if (moduleData->moduleStatus == CAER_MODULE_RUNNING && running) {
+	if (moduleData->moduleStatus == DV_MODULE_RUNNING && running) {
 		if (moduleData->configUpdate.load(std::memory_order_relaxed) != 0) {
 			moduleData->configUpdate.store(0);
 
@@ -113,14 +113,14 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 			}
 		}
 	}
-	else if (moduleData->moduleStatus == CAER_MODULE_STOPPED && running) {
+	else if (moduleData->moduleStatus == DV_MODULE_STOPPED && running) {
 		// Check that all modules this module depends on are also running.
 		int16_t *neededModules;
-		size_t neededModulesSize = caerMainloopModuleGetInputDeps(moduleData->moduleID, &neededModules);
+		size_t neededModulesSize = dvMainloopModuleGetInputDeps(moduleData->moduleID, &neededModules);
 
 		if (neededModulesSize > 0) {
 			for (size_t i = 0; i < neededModulesSize; i++) {
-				if (caerMainloopModuleGetStatus(neededModules[i]) != CAER_MODULE_RUNNING) {
+				if (dvMainloopModuleGetStatus(neededModules[i]) != DV_MODULE_RUNNING) {
 					free(neededModules);
 					return;
 				}
@@ -168,18 +168,18 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 			}
 		}
 
-		moduleData->moduleStatus = CAER_MODULE_RUNNING;
+		moduleData->moduleStatus = DV_MODULE_RUNNING;
 
 		// After starting successfully, try to enable dependent
 		// modules if their 'runAtStartup' is true. Else shutting down
 		// an input would kill everything until mainloop restart.
 		// This is consistent with initial mainloop start.
 		int16_t *dependantModules;
-		size_t dependantModulesSize = caerMainloopModuleGetOutputRevDeps(moduleData->moduleID, &dependantModules);
+		size_t dependantModulesSize = dvMainloopModuleGetOutputRevDeps(moduleData->moduleID, &dependantModules);
 
 		if (dependantModulesSize > 0) {
 			for (size_t i = 0; i < dependantModulesSize; i++) {
-				dvCfg::Node moduleConfigNode(caerMainloopModuleGetConfigNode(dependantModules[i]));
+				dvCfg::Node moduleConfigNode(dvMainloopModuleGetConfigNode(dependantModules[i]));
 
 				if (moduleConfigNode.get<dvCfgType::BOOL>("runAtStartup")) {
 					moduleNode.put<dvCfgType::BOOL>("running", true);
@@ -189,8 +189,8 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 			free(dependantModules);
 		}
 	}
-	else if (moduleData->moduleStatus == CAER_MODULE_RUNNING && !running) {
-		moduleData->moduleStatus = CAER_MODULE_STOPPED;
+	else if (moduleData->moduleStatus == DV_MODULE_RUNNING && !running) {
+		moduleData->moduleStatus = DV_MODULE_STOPPED;
 
 		if (moduleFunctions->moduleExit != nullptr) {
 			try {
@@ -211,11 +211,11 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 		// Shutdown of module: ensure all modules depending on this
 		// one also get stopped (running set to false).
 		int16_t *dependantModules;
-		size_t dependantModulesSize = caerMainloopModuleGetOutputRevDeps(moduleData->moduleID, &dependantModules);
+		size_t dependantModulesSize = dvMainloopModuleGetOutputRevDeps(moduleData->moduleID, &dependantModules);
 
 		if (dependantModulesSize > 0) {
 			for (size_t i = 0; i < dependantModulesSize; i++) {
-				dvCfg::Node moduleConfigNode(caerMainloopModuleGetConfigNode(dependantModules[i]));
+				dvCfg::Node moduleConfigNode(dvMainloopModuleGetConfigNode(dependantModules[i]));
 
 				moduleConfigNode.put<dvCfgType::BOOL>("running", false);
 			}
@@ -225,9 +225,9 @@ void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData
 	}
 }
 
-caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dvCfg::Node moduleNode) {
+dvModuleData dvModuleInitialize(int16_t moduleID, const char *moduleName, dvCfg::Node moduleNode) {
 	// Allocate memory for the module.
-	caerModuleData moduleData = (caerModuleData) calloc(1, sizeof(struct caer_module_data));
+	dvModuleData moduleData = (dvModuleData) calloc(1, sizeof(struct dvModuleDataS));
 	if (moduleData == nullptr) {
 		caerLog(CAER_LOG_ALERT, moduleName, "Failed to allocate memory for module. Error: %d.", errno);
 		return (nullptr);
@@ -240,7 +240,7 @@ caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv
 	moduleData->moduleNode = static_cast<dvConfigNode>(moduleNode);
 
 	// Put module into startup state. 'running' flag is updated later based on user startup wishes.
-	moduleData->moduleStatus = CAER_MODULE_STOPPED;
+	moduleData->moduleStatus = DV_MODULE_STOPPED;
 
 	// Setup default full log string name.
 	size_t nameLength                 = strlen(moduleName);
@@ -256,13 +256,13 @@ caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv
 	moduleData->moduleSubSystemString[nameLength] = '\0';
 
 	// Ensure static configuration is created on each module initialization.
-	caerModuleConfigInit(moduleNode);
+	dvModuleConfigInit(moduleNode);
 
 	// Per-module log level support.
 	uint8_t logLevel = U8T(moduleNode.get<dvCfgType::INT>("logLevel"));
 
 	moduleData->moduleLogLevel.store(logLevel, std::memory_order_relaxed);
-	moduleNode.addAttributeListener(moduleData, &caerModuleLogLevelListener);
+	moduleNode.addAttributeListener(moduleData, &moduleLogLevelListener);
 
 	// Initialize shutdown controls.
 	bool runModule = moduleNode.get<dvCfgType::BOOL>("runAtStartup");
@@ -272,46 +272,46 @@ caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv
 	moduleNode.put<dvCfgType::BOOL>("running", runModule);
 
 	moduleData->running.store(runModule, std::memory_order_relaxed);
-	moduleNode.addAttributeListener(moduleData, &caerModuleShutdownListener);
+	moduleNode.addAttributeListener(moduleData, &moduleShutdownListener);
 
 	std::atomic_thread_fence(std::memory_order_release);
 
 	return (moduleData);
 }
 
-void caerModuleDestroy(caerModuleData moduleData) {
+void dvModuleDestroy(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleShutdownListener);
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleLogLevelListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &moduleShutdownListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &moduleLogLevelListener);
 
 	// Deallocate module memory. Module state has already been destroyed.
 	free(moduleData->moduleSubSystemString);
 	free(moduleData);
 }
 
-static void caerModuleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData data = (caerModuleData) userData;
+	dvModuleData data = (dvModuleData) userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
 		atomic_store(&data->running, changeValue.boolean);
 	}
 }
 
-static void caerModuleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData data = (caerModuleData) userData;
+	dvModuleData data = (dvModuleData) userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
 		atomic_store(&data->moduleLogLevel, U8T(changeValue.iint));
 	}
 }
 
-std::pair<ModuleLibrary, caerModuleInfo> caerLoadModuleLibrary(const std::string &moduleName) {
+std::pair<ModuleLibrary, dvModuleInfo> dvModuleLoadLibrary(const std::string &moduleName) {
 	// For each module, we search if a path exists to load it from.
 	// If yes, we do so. The various OS's shared library load mechanisms
 	// will keep track of reference count if same module is loaded
@@ -346,13 +346,13 @@ std::pair<ModuleLibrary, caerModuleInfo> caerLoadModuleLibrary(const std::string
 		throw std::runtime_error(exMsg.str());
 	}
 
-	caerModuleInfo (*getInfo)(void);
+	dvModuleInfo (*getInfo)(void);
 	try {
-		getInfo = moduleLibrary.get<caerModuleInfo(void)>("caerModuleGetInfo");
+		getInfo = moduleLibrary.get<dvModuleInfo(void)>("dvModuleGetInfo");
 	}
 	catch (const std::exception &ex) {
 		// Failed to find symbol in shared library!
-		caerUnloadModuleLibrary(moduleLibrary);
+		dvModuleUnloadLibrary(moduleLibrary);
 		boost::format exMsg
 			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % ex.what();
 		throw std::runtime_error(exMsg.str());
@@ -366,28 +366,28 @@ std::pair<ModuleLibrary, caerModuleInfo> caerLoadModuleLibrary(const std::string
 		throw std::runtime_error(exMsg.str());
 	}
 
-	caerModuleInfo (*getInfo)(void) = (caerModuleInfo(*)(void)) dlsym(moduleLibrary, "caerModuleGetInfo");
+	dvModuleInfo (*getInfo)(void) = (dvModuleInfo(*)(void)) dlsym(moduleLibrary, "dvModuleGetInfo");
 	if (getInfo == nullptr) {
 		// Failed to find symbol in shared library!
-		caerUnloadModuleLibrary(moduleLibrary);
+		dvModuleUnloadLibrary(moduleLibrary);
 		boost::format exMsg
 			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % dlerror();
 		throw std::runtime_error(exMsg.str());
 	}
 #endif
 
-	caerModuleInfo info = (*getInfo)();
+	dvModuleInfo info = (*getInfo)();
 	if (info == nullptr) {
-		caerUnloadModuleLibrary(moduleLibrary);
+		dvModuleUnloadLibrary(moduleLibrary);
 		boost::format exMsg = boost::format("Failed to get info from library '%s'.") % modulePath.string();
 		throw std::runtime_error(exMsg.str());
 	}
 
-	return (std::pair<ModuleLibrary, caerModuleInfo>(moduleLibrary, info));
+	return (std::pair<ModuleLibrary, dvModuleInfo>(moduleLibrary, info));
 }
 
 // Small helper to unload libraries on error.
-void caerUnloadModuleLibrary(ModuleLibrary &moduleLibrary) {
+void dvModuleUnloadLibrary(ModuleLibrary &moduleLibrary) {
 #if BOOST_HAS_DLL_LOAD
 	moduleLibrary.unload();
 #else
@@ -395,14 +395,14 @@ void caerUnloadModuleLibrary(ModuleLibrary &moduleLibrary) {
 #endif
 }
 
-static void checkInputOutputStreamDefinitions(caerModuleInfo info) {
-	if (info->type == CAER_MODULE_INPUT) {
+static void checkInputOutputStreamDefinitions(dvModuleInfo info) {
+	if (info->type == DV_MODULE_INPUT) {
 		if (info->inputStreams != nullptr || info->inputStreamsSize != 0 || info->outputStreams == nullptr
 			|| info->outputStreamsSize == 0) {
 			throw std::domain_error("Wrong I/O event stream definitions for type INPUT.");
 		}
 	}
-	else if (info->type == CAER_MODULE_OUTPUT) {
+	else if (info->type == DV_MODULE_OUTPUT) {
 		if (info->inputStreams == nullptr || info->inputStreamsSize == 0 || info->outputStreams != nullptr
 			|| info->outputStreamsSize != 0) {
 			throw std::domain_error("Wrong I/O event stream definitions for type OUTPUT.");
@@ -423,7 +423,7 @@ static void checkInputOutputStreamDefinitions(caerModuleInfo info) {
 		}
 	}
 	else {
-		// CAER_MODULE_PROCESSOR
+		// DV_MODULE_PROCESSOR
 		if (info->inputStreams == nullptr || info->inputStreamsSize == 0) {
 			throw std::domain_error("Wrong I/O event stream definitions for type PROCESSOR.");
 		}
@@ -514,10 +514,10 @@ static void checkOutputStreamDefinitions(caerEventStreamOut outputStreams, size_
 	}
 }
 
-void caerUpdateModulesInformation() {
+void dvUpdateModulesInformation() {
 	std::lock_guard<std::recursive_mutex> lock(glModuleData.modulePathsMutex);
 
-	auto modulesNode = dvCfg::GLOBAL.getNode("/caer/modules/");
+	auto modulesNode = dvCfg::GLOBAL.getNode("/system/modules/");
 
 	// Clear out modules information.
 	modulesNode.clearSubTree(false);
@@ -564,10 +564,10 @@ void caerUpdateModulesInformation() {
 		std::string moduleName = iter->stem().string();
 
 		// Load library.
-		std::pair<ModuleLibrary, caerModuleInfo> mLoad;
+		std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
 		try {
-			mLoad = caerLoadModuleLibrary(moduleName);
+			mLoad = dvModuleLoadLibrary(moduleName);
 		}
 		catch (const std::exception &ex) {
 			boost::format exMsg = boost::format("Module '%s': %s") % moduleName % ex.what();
@@ -594,23 +594,23 @@ void caerUpdateModulesInformation() {
 			boost::format exMsg = boost::format("Module '%s': %s") % moduleName % ex.what();
 			libcaer::log::log(libcaer::log::logLevel::ERROR, "Module", exMsg.str().c_str());
 
-			caerUnloadModuleLibrary(mLoad.first);
+			dvModuleUnloadLibrary(mLoad.first);
 
 			iter = glModuleData.modulePaths.erase(iter);
 			continue;
 		}
 
-		// Get ConfigTree node under /caer/modules/.
+		// Get ConfigTree node under /system/modules/.
 		auto moduleNode = modulesNode.getRelativeNode(moduleName + "/");
 
-		// Parse caerModuleInfo into ConfigTree.
+		// Parse dvModuleInfo into ConfigTree.
 		moduleNode.create<dvCfgType::INT>("version", I32T(mLoad.second->version), {0, INT32_MAX},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module version.");
 		moduleNode.create<dvCfgType::STRING>(
 			"name", mLoad.second->name, {1, 256}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module name.");
 		moduleNode.create<dvCfgType::STRING>("description", mLoad.second->description, {1, 8192},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module description.");
-		moduleNode.create<dvCfgType::STRING>("type", caerModuleTypeToString(mLoad.second->type), {1, 64},
+		moduleNode.create<dvCfgType::STRING>("type", dvModuleTypeToString(mLoad.second->type), {1, 64},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module type.");
 
 		if (mLoad.second->inputStreamsSize > 0) {
@@ -650,7 +650,7 @@ void caerUpdateModulesInformation() {
 		}
 
 		// Done, unload library.
-		caerUnloadModuleLibrary(mLoad.first);
+		dvModuleUnloadLibrary(mLoad.first);
 
 		iter++;
 	}

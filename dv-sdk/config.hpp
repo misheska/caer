@@ -2,14 +2,14 @@
 // Created by najiji on 04.02.19.
 //
 
-#ifndef CAER_CONFIG_HPP
-#define CAER_CONFIG_HPP
+#ifndef DV_CONFIG_HPP
+#define DV_CONFIG_HPP
 
 #include <string>
 #include <memory>
 #include <cmath>
 #include <boost/any.hpp>
-#include <caer-sdk/module.h>
+#include <dv-sdk/module.h>
 
 #include <map>
 
@@ -457,4 +457,4 @@ public:
 };
 } // namespace dv
 
-#endif // CAER_CONFIG_HPP
+#endif // DV_CONFIG_HPP

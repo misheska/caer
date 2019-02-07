@@ -1,6 +1,6 @@
 #include "mainloop.h"
 
-#include "caer-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_io.h"
 
 #include "config.h"
 
@@ -36,14 +36,6 @@
 #define INTERNAL_XSTR(a) INTERNAL_STR(a)
 #define INTERNAL_STR(a) #a
 
-#ifdef CM_SHARE_DIR
-#	define CM_SHARE_DIRECTORY INTERNAL_XSTR(CM_SHARE_DIR)
-#else
-#	define CM_SHARE_DIRECTORY "/usr/share/caer"
-#endif
-
-#define MODULES_DIRECTORY "modules/"
-
 #include <libcaercpp/libcaer.hpp>
 using namespace libcaer::log;
 namespace dvCfg  = dv::Config;
@@ -53,51 +45,51 @@ using dvCfgFlags = dvCfg::AttributeFlags;
 // MAINLOOP DATA GLOBAL VARIABLE.
 static MainloopData glMainloopData;
 
-static int caerMainloopRunner();
+static int mainloopRunner();
 static void printDebugInformation();
-static void caerMainloopShutdownHandler(int signum);
-static void caerMainloopSegfaultHandler(int signum);
-static void caerMainloopSystemRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void mainloopShutdownHandler(int signum);
+static void mainloopSegfaultHandler(int signum);
+static void systemRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void caerMainloopRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void mainloopRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void caerUpdateModulesInformationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void updateModulesInformationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void caerWriteConfigurationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void writeConfigurationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-void caerMainloopRun(void) {
+void dvMainloopRun(void) {
 	// Setup internal mainloop pointer for public support library.
-	caerMainloopSDKLibInit(&glMainloopData);
+	dvMainloopSDKLibInit(&glMainloopData);
 
 // Install signal handler for global shutdown.
 #if defined(OS_WINDOWS)
-	if (signal(SIGTERM, &caerMainloopShutdownHandler) == SIG_ERR) {
+	if (signal(SIGTERM, &mainloopShutdownHandler) == SIG_ERR) {
 		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGTERM. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
-	if (signal(SIGINT, &caerMainloopShutdownHandler) == SIG_ERR) {
+	if (signal(SIGINT, &mainloopShutdownHandler) == SIG_ERR) {
 		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGINT. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
-	if (signal(SIGBREAK, &caerMainloopShutdownHandler) == SIG_ERR) {
+	if (signal(SIGBREAK, &mainloopShutdownHandler) == SIG_ERR) {
 		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGBREAK. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
-	if (signal(SIGSEGV, &caerMainloopSegfaultHandler) == SIG_ERR) {
+	if (signal(SIGSEGV, &mainloopSegfaultHandler) == SIG_ERR) {
 		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGSEGV. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
-	if (signal(SIGABRT, &caerMainloopSegfaultHandler) == SIG_ERR) {
+	if (signal(SIGABRT, &mainloopSegfaultHandler) == SIG_ERR) {
 		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGABRT. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
-	// Disable closing of the console window where cAER is executing.
+	// Disable closing of the console window where DV is executing.
 	// While we do catch the signal (SIGBREAK) that such an action generates, it seems
 	// we can't reliably shut down within the hard time window that Windows enforces when
 	// pressing the close button (X in top right corner usually). This seems to be just
@@ -112,7 +104,7 @@ void caerMainloopRun(void) {
 #else
 	struct sigaction shutdown;
 
-	shutdown.sa_handler = &caerMainloopShutdownHandler;
+	shutdown.sa_handler = &mainloopShutdownHandler;
 	shutdown.sa_flags   = 0;
 	sigemptyset(&shutdown.sa_mask);
 	sigaddset(&shutdown.sa_mask, SIGTERM);
@@ -130,7 +122,7 @@ void caerMainloopRun(void) {
 
 	struct sigaction segfault;
 
-	segfault.sa_handler = &caerMainloopSegfaultHandler;
+	segfault.sa_handler = &mainloopSegfaultHandler;
 	segfault.sa_flags   = 0;
 	sigemptyset(&segfault.sa_mask);
 	sigaddset(&segfault.sa_mask, SIGSEGV);
@@ -151,11 +143,10 @@ void caerMainloopRun(void) {
 #endif
 
 	// Initialize module related configuration.
-	auto modulesNode = dvCfg::GLOBAL.getNode("/caer/modules/");
+	auto modulesNode = dvCfg::GLOBAL.getNode("/system/modules/");
 
 	// Default search directories.
-	boost::filesystem::path modulesDefaultDir(CM_SHARE_DIRECTORY);
-	modulesDefaultDir.append(MODULES_DIRECTORY, boost::filesystem::path::codecvt());
+	boost::filesystem::path modulesDefaultDir(INTERNAL_XSTR(DV_MODULES_DIR));
 
 	modulesNode.create<dvCfgType::STRING>("modulesSearchPath", modulesDefaultDir.string(), {1, 8 * PATH_MAX},
 		dvCfgFlags::NORMAL, "Directories to search loadable modules in, separated by '|'.");
@@ -166,7 +157,7 @@ void caerMainloopRun(void) {
 	modulesNode.create<dvCfgType::BOOL>("updateModulesInformation", false, {},
 		dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Update modules information.");
 	modulesNode.attributeModifierButton("updateModulesInformation", "EXECUTE");
-	modulesNode.addAttributeListener(nullptr, &caerUpdateModulesInformationListener);
+	modulesNode.addAttributeListener(nullptr, &updateModulesInformationListener);
 
 	// No data at start-up.
 	glMainloopData.dataAvailable.store(0);
@@ -174,24 +165,24 @@ void caerMainloopRun(void) {
 	// System running control, separate to allow mainloop stop/start.
 	glMainloopData.systemRunning.store(true);
 
-	auto systemNode = dvCfg::GLOBAL.getNode("/caer/");
+	auto systemNode = dvCfg::GLOBAL.getNode("/system/");
 
 	systemNode.create<dvCfgType::BOOL>("writeConfiguration", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT,
 		"Write current configuration to XML config file.");
 	systemNode.attributeModifierButton("writeConfiguration", "EXECUTE");
-	systemNode.addAttributeListener(nullptr, &caerWriteConfigurationListener);
+	systemNode.addAttributeListener(nullptr, &writeConfigurationListener);
 
 	systemNode.create<dvCfgType::BOOL>(
 		"running", true, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Global system start/stop.");
-	systemNode.addAttributeListener(nullptr, &caerMainloopSystemRunningListener);
+	systemNode.addAttributeListener(nullptr, &systemRunningListener);
 
 	// Mainloop running control.
 	glMainloopData.running.store(true);
 
-	glMainloopData.configNode = dvCfg::GLOBAL.getRootNode();
+	glMainloopData.configNode = dvCfg::GLOBAL.getNode("/mainloop/");
 	glMainloopData.configNode.create<dvCfgType::BOOL>(
 		"running", true, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Mainloop start/stop.");
-	glMainloopData.configNode.addAttributeListener(nullptr, &caerMainloopRunningListener);
+	glMainloopData.configNode.addAttributeListener(nullptr, &mainloopRunningListener);
 
 	while (glMainloopData.systemRunning.load()) {
 		if (!glMainloopData.running.load()) {
@@ -201,7 +192,7 @@ void caerMainloopRun(void) {
 
 		// Get information on available modules, put it into ConfigTree.
 		try {
-			caerUpdateModulesInformation();
+			dvUpdateModulesInformation();
 		}
 		catch (const std::exception &ex) {
 			glMainloopData.configNode.put<dvCfgType::BOOL>("running", false);
@@ -212,7 +203,7 @@ void caerMainloopRun(void) {
 		}
 
 		// Run mainloop.
-		int result = caerMainloopRunner();
+		int result = mainloopRunner();
 
 		// On failure, make sure to disable mainloop, user will have to fix it.
 		if (result == EXIT_FAILURE) {
@@ -225,39 +216,39 @@ void caerMainloopRun(void) {
 	}
 
 	// Remove attribute listeners for clean shutdown.
-	glMainloopData.configNode.removeAttributeListener(nullptr, &caerMainloopRunningListener);
-	systemNode.removeAttributeListener(nullptr, &caerMainloopSystemRunningListener);
-	modulesNode.removeAttributeListener(nullptr, &caerWriteConfigurationListener);
-	modulesNode.removeAttributeListener(nullptr, &caerUpdateModulesInformationListener);
+	glMainloopData.configNode.removeAttributeListener(nullptr, &mainloopRunningListener);
+	systemNode.removeAttributeListener(nullptr, &systemRunningListener);
+	modulesNode.removeAttributeListener(nullptr, &writeConfigurationListener);
+	modulesNode.removeAttributeListener(nullptr, &updateModulesInformationListener);
 }
 
 /**
  * Check for the presence of the 'moduleInput' and 'moduleOutput' configuration
  * parameters, depending on the type of module and its requirements.
  */
-static void checkModuleInputOutput(caerModuleInfo info, dvCfg::Node configNode) {
-	if (info->type == CAER_MODULE_INPUT) {
+static void checkModuleInputOutput(dvModuleInfo info, dvCfg::Node configNode) {
+	if (info->type == DV_MODULE_INPUT) {
 		// moduleInput must not exist for INPUT modules.
 		if (configNode.exists<dvCfgType::STRING>("moduleInput")) {
 			throw std::domain_error("INPUT type cannot have a 'moduleInput' attribute.");
 		}
 	}
 	else {
-		// CAER_MODULE_OUTPUT / CAER_MODULE_PROCESSOR
+		// DV_MODULE_OUTPUT / DV_MODULE_PROCESSOR
 		// moduleInput must exist for OUTPUT and PROCESSOR modules.
 		if (!configNode.exists<dvCfgType::STRING>("moduleInput")) {
 			throw std::domain_error("OUTPUT/PROCESSOR types must have a 'moduleInput' attribute.");
 		}
 	}
 
-	if (info->type == CAER_MODULE_OUTPUT) {
+	if (info->type == DV_MODULE_OUTPUT) {
 		// moduleOutput must not exist for OUTPUT modules.
 		if (configNode.exists<dvCfgType::STRING>("moduleOutput")) {
 			throw std::domain_error("OUTPUT type cannot have a 'moduleOutput' attribute.");
 		}
 	}
 	else {
-		// CAER_MODULE_INPUT / CAER_MODULE_PROCESSOR
+		// DV_MODULE_INPUT / DV_MODULE_PROCESSOR
 		// moduleOutput must exist for INPUT and PROCESSOR modules, only
 		// if their outputs are undefined (-1).
 		if (info->outputStreams != nullptr && info->outputStreamsSize == 1 && info->outputStreams[0].type == -1
@@ -339,14 +330,14 @@ static std::vector<OrderedInput> parseAugmentedTypeIDString(const std::string &t
 			}
 
 			// Check that the module ID actually exists in the system.
-			if (!caerMainloopModuleExists(static_cast<int16_t>(afterModuleOrder))) {
+			if (!dvMainloopModuleExists(static_cast<int16_t>(afterModuleOrder))) {
 				throw std::out_of_range("Unknown module ID found.");
 			}
 
 			// Verify that the module ID belongs to a PROCESSOR module,
 			// as only those can ever modify event streams and thus impose
 			// an ordering on it and modules using it.
-			if (caerMainloopModuleGetType(static_cast<int16_t>(afterModuleOrder)) != CAER_MODULE_PROCESSOR) {
+			if (dvMainloopModuleGetType(static_cast<int16_t>(afterModuleOrder)) != DV_MODULE_PROCESSOR) {
 				throw std::out_of_range("Module ID doesn't belong to a PROCESSOR type modules.");
 			}
 		}
@@ -424,7 +415,7 @@ static void parseModuleInput(const std::string &inputDefinition,
 			}
 
 			// Check that the referenced module ID actually exists in the system.
-			if (!caerMainloopModuleExists(mId)) {
+			if (!dvMainloopModuleExists(mId)) {
 				throw std::out_of_range("Unknown referenced module ID found.");
 			}
 
@@ -1115,10 +1106,11 @@ static void buildConnectivity() {
 
 	for (auto &m : glMainloopData.globalExecution) {
 		// INPUT module or PROCESSOR with data output defined.
-		if (m.get().libraryInfo->type == CAER_MODULE_INPUT
-			|| (m.get().libraryInfo->type == CAER_MODULE_PROCESSOR && m.get().libraryInfo->outputStreams != nullptr)) {
+		if (m.get().libraryInfo->type == DV_MODULE_INPUT
+			|| (m.get().libraryInfo->type == DV_MODULE_PROCESSOR && m.get().libraryInfo->outputStreams != nullptr)) {
 			for (auto &o : m.get().outputs) {
-				if (caerMainloopStreamExists(m.get().id, o.first)) {
+				if (findBool(glMainloopData.streams.cbegin(), glMainloopData.streams.cend(),
+						ActiveStreams(m.get().id, o.first))) {
 					// Update active outputs with a viable index.
 					o.second = static_cast<ssize_t>(nextFreeSlot);
 
@@ -1132,7 +1124,7 @@ static void buildConnectivity() {
 		}
 
 		// PROCESSOR module or OUTPUT (both must have data input defined).
-		if (m.get().libraryInfo->type == CAER_MODULE_PROCESSOR || m.get().libraryInfo->type == CAER_MODULE_OUTPUT) {
+		if (m.get().libraryInfo->type == DV_MODULE_PROCESSOR || m.get().libraryInfo->type == DV_MODULE_OUTPUT) {
 			for (const auto &inputDef : m.get().inputDefinition) {
 				int16_t sourceId = inputDef.first;
 
@@ -1225,7 +1217,7 @@ static void runModules(caerEventPacketContainer in) {
 		size_t outputsExpectedBack = 0;
 
 		// Prepare input container. Only do if the module is running.
-		if (m.get().runtimeData->moduleStatus == CAER_MODULE_RUNNING) {
+		if (m.get().runtimeData->moduleStatus == DV_MODULE_RUNNING) {
 			// Clean up container. NULL pointers, memory has been already freed
 			// previously from the global event packets storage.
 			for (int32_t i = 0; i < caerEventPacketContainerGetEventPacketsNumber(in); i++) {
@@ -1261,7 +1253,7 @@ static void runModules(caerEventPacketContainer in) {
 			outputsExpectedBack = m.get().outputs.size();
 		}
 		else {
-			// !CAER_MODULE_RUNNING, so we need to make any side-effects of the
+			// !DV_MODULE_RUNNING, so we need to make any side-effects of the
 			// above code happen, in this case any packet copy operation, which
 			// would fill a slot with new data, has to happen. The copy must
 			// happen, because later modules in this stream might be using the
@@ -1275,18 +1267,18 @@ static void runModules(caerEventPacketContainer in) {
 		}
 
 		// Debug logging.
-		caerModuleLog(m.get().runtimeData, CAER_LOG_DEBUG, "Module Input: passing %zu packets in.", inputsToPass);
-		caerModuleLog(
+		dvModuleLog(m.get().runtimeData, CAER_LOG_DEBUG, "Module Input: passing %zu packets in.", inputsToPass);
+		dvModuleLog(
 			m.get().runtimeData, CAER_LOG_DEBUG, "Module Output: expecting %zu packets back out.", outputsExpectedBack);
 
 		// Run module state machine.
 		caerEventPacketContainer out = nullptr;
-		caerModuleSM(m.get().libraryInfo->functions, m.get().runtimeData, m.get().libraryInfo->memSize,
+		dvModuleSM(m.get().libraryInfo->functions, m.get().runtimeData, m.get().libraryInfo->memSize,
 			(inputsToPass > 0) ? (in) : (nullptr), (outputsExpectedBack > 0) ? (&out) : (nullptr));
 
 		// Parse possible output container.
 		if (out != nullptr) {
-			caerModuleLog(m.get().runtimeData, CAER_LOG_DEBUG, "Module Output: got %" PRIi32 " packets.",
+			dvModuleLog(m.get().runtimeData, CAER_LOG_DEBUG, "Module Output: got %" PRIi32 " packets.",
 				caerEventPacketContainerGetEventPacketsNumber(out));
 
 			// Go through all packets, put them in their right place inside
@@ -1337,7 +1329,7 @@ static void runModules(caerEventPacketContainer in) {
 					}
 				}
 				else {
-					caerModuleLog(
+					dvModuleLog(
 						m.get().runtimeData, CAER_LOG_DEBUG, "Module Output: got null packet at idx=%" PRIi32 ".", i);
 				}
 			}
@@ -1359,7 +1351,7 @@ static void runModules(caerEventPacketContainer in) {
 static void cleanupGlobals() {
 	for (auto &m : glMainloopData.modules) {
 		if (m.second.libraryInfo != nullptr) {
-			caerUnloadModuleLibrary(m.second.libraryHandle);
+			dvModuleUnloadLibrary(m.second.libraryHandle);
 		}
 	}
 
@@ -1374,7 +1366,7 @@ static void cleanupGlobals() {
 	glMainloopData.eventPackets.clear();
 }
 
-static int caerMainloopRunner() {
+static int mainloopRunner() {
 	// At this point configuration is already loaded, so let's see if everything
 	// we need to build and run a mainloop is really there.
 	// Each node in the root / is a module, with a short-name as node-name,
@@ -1383,14 +1375,9 @@ static int caerMainloopRunner() {
 	{
 		auto modules = glMainloopData.configNode.getChildren();
 
-		// Remove system configuration, not a module.
-		modules.erase(std::remove_if(modules.begin(), modules.end(),
-						  [](const auto &module) { return (module.getName() == "caer"); }),
-			modules.end());
-
 		if (modules.empty()) {
 			// Write basic config file.
-			caerConfigWriteBack();
+			dvConfigWriteBack();
 
 			// Empty configuration.
 			log(logLevel::ERROR, "Mainloop", "No modules configuration found.");
@@ -1442,10 +1429,10 @@ static int caerMainloopRunner() {
 
 	// Let's load the module libraries and get their internal info.
 	for (auto &m : glMainloopData.modules) {
-		std::pair<ModuleLibrary, caerModuleInfo> mLoad;
+		std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
 		try {
-			mLoad = caerLoadModuleLibrary(m.second.library);
+			mLoad = dvModuleLoadLibrary(m.second.library);
 		}
 		catch (const std::exception &ex) {
 			boost::format exMsg = boost::format("Module '%s': %s") % m.second.name % ex.what();
@@ -1457,7 +1444,7 @@ static int caerMainloopRunner() {
 			checkModuleInputOutput(mLoad.second, m.second.configNode);
 		}
 		catch (const std::exception &ex) {
-			caerUnloadModuleLibrary(mLoad.first);
+			dvModuleUnloadLibrary(mLoad.first);
 			boost::format exMsg = boost::format("Module '%s': %s") % m.second.name % ex.what();
 			log(logLevel::ERROR, "Mainloop", exMsg.str().c_str());
 			continue;
@@ -1487,10 +1474,10 @@ static int caerMainloopRunner() {
 	// Now we must parse, validate and create the connectivity map between modules.
 	// First we sort the modules into their three possible categories.
 	for (auto &m : glMainloopData.modules) {
-		if (m.second.libraryInfo->type == CAER_MODULE_INPUT) {
+		if (m.second.libraryInfo->type == DV_MODULE_INPUT) {
 			inputModules.push_back(m.second);
 		}
-		else if (m.second.libraryInfo->type == CAER_MODULE_OUTPUT) {
+		else if (m.second.libraryInfo->type == DV_MODULE_OUTPUT) {
 			outputModules.push_back(m.second);
 		}
 		else {
@@ -1516,7 +1503,7 @@ static int caerMainloopRunner() {
 		// We do this first so we can build up the map of all possible active event
 		// streams, which we then can use for checking 'moduleInput' for correctness.
 		for (const auto &m : boost::join(inputModules, processorModules)) {
-			caerModuleInfo info = m.get().libraryInfo;
+			dvModuleInfo info = m.get().libraryInfo;
 
 			if (info->outputStreams != nullptr) {
 				// ANY type declaration.
@@ -1538,7 +1525,7 @@ static int caerMainloopRunner() {
 					ActiveStreams st = ActiveStreams(m.get().id, o.first);
 
 					// Store if stream originates from a PROCESSOR (default from INPUT).
-					if (info->type == CAER_MODULE_PROCESSOR) {
+					if (info->type == DV_MODULE_PROCESSOR) {
 						st.isProcessor = true;
 					}
 
@@ -1739,7 +1726,7 @@ static int caerMainloopRunner() {
 
 	// Initialize the runtime memory for all modules.
 	for (const auto &m : glMainloopData.globalExecution) {
-		caerModuleData runData = caerModuleInitialize(m.get().id, m.get().name.c_str(), m.get().configNode);
+		dvModuleData runData = dvModuleInitialize(m.get().id, m.get().name.c_str(), m.get().configNode);
 		if (runData == nullptr) {
 			// TODO: better cleanup on failure here, ensure above memory deallocation.
 			// Cleanup modules and streams on exit.
@@ -1772,7 +1759,7 @@ static int caerMainloopRunner() {
 	runModules(inputContainer);
 
 	// Write config to file, at this point basic configuration is available.
-	caerConfigWriteBack();
+	dvConfigWriteBack();
 
 	// If no data is available, sleep for a millisecond to avoid wasting resources.
 	// Every second, run all module state machines anyway to ensure they can do
@@ -1809,7 +1796,7 @@ static int caerMainloopRunner() {
 
 	// Destroy the runtime memory for all modules.
 	for (const auto &m : glMainloopData.globalExecution) {
-		caerModuleDestroy(m.get().runtimeData);
+		dvModuleDestroy(m.get().runtimeData);
 	}
 
 	free(inputContainer);
@@ -1818,7 +1805,7 @@ static int caerMainloopRunner() {
 	cleanupGlobals();
 
 	// Write config to file on shutdown.
-	caerConfigWriteBack();
+	dvConfigWriteBack();
 
 	log(logLevel::INFO, "Mainloop", "Terminated successfully.");
 
@@ -1863,7 +1850,7 @@ static void printDebugInformation() {
 	}
 }
 
-static void caerMainloopShutdownHandler(int signum) {
+static void mainloopShutdownHandler(int signum) {
 	UNUSED_ARGUMENT(signum);
 
 	// Simply set all the running flags to false on SIGTERM and SIGINT (CTRL+C) for global shutdown.
@@ -1871,7 +1858,7 @@ static void caerMainloopShutdownHandler(int signum) {
 	glMainloopData.running.store(false);
 }
 
-static void caerMainloopSegfaultHandler(int signum) {
+static void mainloopSegfaultHandler(int signum) {
 	signal(signum, SIG_DFL);
 
 // Segfault or abnormal termination, try to print a stack trace if possible.
@@ -1886,7 +1873,7 @@ static void caerMainloopSegfaultHandler(int signum) {
 	raise(signum);
 }
 
-static void caerMainloopSystemRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void systemRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
@@ -1898,7 +1885,7 @@ static void caerMainloopSystemRunningListener(dvConfigNode node, void *userData,
 	}
 }
 
-static void caerMainloopRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void mainloopRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
@@ -1908,7 +1895,7 @@ static void caerMainloopRunningListener(dvConfigNode node, void *userData, enum 
 	}
 }
 
-static void caerUpdateModulesInformationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void updateModulesInformationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
@@ -1918,7 +1905,7 @@ static void caerUpdateModulesInformationListener(dvConfigNode node, void *userDa
 		&& caerStrEquals(changeKey, "updateModulesInformation") && changeValue.boolean) {
 		// Get information on available modules, put it into ConfigTree.
 		try {
-			caerUpdateModulesInformation();
+			dvUpdateModulesInformation();
 		}
 		catch (const std::exception &ex) {
 			log(logLevel::CRITICAL, "Mainloop", "Failed to find any modules (error: '%s').", ex.what());
@@ -1926,7 +1913,7 @@ static void caerUpdateModulesInformationListener(dvConfigNode node, void *userDa
 	}
 }
 
-static void caerWriteConfigurationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void writeConfigurationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
@@ -1934,6 +1921,6 @@ static void caerWriteConfigurationListener(dvConfigNode node, void *userData, en
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
 		&& caerStrEquals(changeKey, "writeConfiguration") && changeValue.boolean) {
-		caerConfigWriteBack();
+		dvConfigWriteBack();
 	}
 }

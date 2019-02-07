@@ -2,7 +2,7 @@
 #define CONFIG_TREE_INTERNAL_HPP_
 
 // Implementation relevant common includes.
-#include "caer-sdk/config/dvConfig.h"
+#include "dv-sdk/config/dvConfig.h"
 
 #include <boost/format.hpp>
 #include <cstring>

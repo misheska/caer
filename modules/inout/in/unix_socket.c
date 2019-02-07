@@ -1,23 +1,23 @@
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/mainloop.h"
 #include "input_common.h"
 #include <sys/socket.h>
 #include <sys/un.h>
 
-static bool caerInputUnixSocketInit(caerModuleData moduleData);
+static bool caerInputUnixSocketInit(dvModuleData moduleData);
 
-static const struct caer_module_functions InputUnixSocketFunctions = {.moduleInit = &caerInputUnixSocketInit,
+static const struct dvModuleFunctionsS InputUnixSocketFunctions = {.moduleInit = &caerInputUnixSocketInit,
 	.moduleRun                                                                    = &caerInputCommonRun,
 	.moduleConfig                                                                 = NULL,
 	.moduleExit                                                                   = &caerInputCommonExit};
 
 static const struct caer_event_stream_out InputUnixSocketOutputs[] = {{.type = -1}};
 
-static const struct caer_module_info InputUnixSocketInfo = {
+static const struct dvModuleInfoS InputUnixSocketInfo = {
 	.version           = 1,
 	.name              = "UnixSocketInput",
 	.description       = "Read AEDAT data from an existing Unix Socket.",
-	.type              = CAER_MODULE_INPUT,
+	.type              = DV_MODULE_INPUT,
 	.memSize           = sizeof(struct input_common_state),
 	.functions         = &InputUnixSocketFunctions,
 	.inputStreams      = NULL,
@@ -26,11 +26,11 @@ static const struct caer_module_info InputUnixSocketInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(InputUnixSocketOutputs),
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&InputUnixSocketInfo);
 }
 
-static bool caerInputUnixSocketInit(caerModuleData moduleData) {
+static bool caerInputUnixSocketInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
@@ -39,7 +39,7 @@ static bool caerInputUnixSocketInit(caerModuleData moduleData) {
 	// Open an existing Unix local socket at a known path, where we'll write to.
 	int sockFd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockFd < 0) {
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not create local Unix socket. Error: %d.", errno);
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not create local Unix socket. Error: %d.", errno);
 		return (false);
 	}
 
@@ -57,7 +57,7 @@ static bool caerInputUnixSocketInit(caerModuleData moduleData) {
 	if (connect(sockFd, (struct sockaddr *) &unixSocketAddr, sizeof(struct sockaddr_un)) < 0) {
 		close(sockFd);
 
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not connect to local Unix socket. Error: %d.", errno);
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not connect to local Unix socket. Error: %d.", errno);
 		return (false);
 	}
 
@@ -66,7 +66,7 @@ static bool caerInputUnixSocketInit(caerModuleData moduleData) {
 		return (false);
 	}
 
-	caerModuleLog(moduleData, CAER_LOG_INFO, "Local Unix socket ready at '%s'.", unixSocketAddr.sun_path);
+	dvModuleLog(moduleData, CAER_LOG_INFO, "Local Unix socket ready at '%s'.", unixSocketAddr.sun_path);
 
 	return (true);
 }

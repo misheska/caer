@@ -1,9 +1,9 @@
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 #include "output_common.h"
 
-static bool caerOutputNetUDPInit(caerModuleData moduleData);
+static bool caerOutputNetUDPInit(dvModuleData moduleData);
 
-static const struct caer_module_functions OutputNetUDPFunctions = {.moduleInit = &caerOutputNetUDPInit,
+static const struct dvModuleFunctionsS OutputNetUDPFunctions = {.moduleInit = &caerOutputNetUDPInit,
 	.moduleRun                                                                 = &caerOutputCommonRun,
 	.moduleConfig                                                              = NULL,
 	.moduleExit                                                                = &caerOutputCommonExit,
@@ -11,11 +11,11 @@ static const struct caer_module_functions OutputNetUDPFunctions = {.moduleInit =
 
 static const struct caer_event_stream_in OutputNetUDPInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct caer_module_info OutputNetUDPInfo = {
+static const struct dvModuleInfoS OutputNetUDPInfo = {
 	.version           = 1,
 	.name              = "NetUDPOutput",
 	.description       = "Send AEDAT 3 data out via UDP messages.",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),
 	.functions         = &OutputNetUDPFunctions,
 	.inputStreams      = OutputNetUDPInputs,
@@ -24,11 +24,11 @@ static const struct caer_module_info OutputNetUDPInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&OutputNetUDPInfo);
 }
 
-static bool caerOutputNetUDPInit(caerModuleData moduleData) {
+static bool caerOutputNetUDPInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL,
@@ -50,7 +50,7 @@ static bool caerOutputNetUDPInit(caerModuleData moduleData) {
 	size_t numClients         = 1;
 	outputCommonNetIO streams = malloc(sizeof(*streams) + (numClients * sizeof(uv_stream_t *)));
 	if (streams == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
 		return (false);
 	}
 
@@ -58,7 +58,7 @@ static bool caerOutputNetUDPInit(caerModuleData moduleData) {
 	if (streams->address == NULL) {
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network address.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network address.");
 		return (false);
 	}
 
@@ -67,7 +67,7 @@ static bool caerOutputNetUDPInit(caerModuleData moduleData) {
 		free(streams->address);
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network structure.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network structure.");
 		return (false);
 	}
 

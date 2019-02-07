@@ -8,15 +8,15 @@
 #ifndef LOG_H_
 #define LOG_H_
 
-#include "caer-sdk/utils.h"
+#include "dv-sdk/utils.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define CAER_LOG_FILE_NAME ".caer.log"
+#define DV_LOG_FILE_NAME ".dv-logger.txt"
 
-void caerLogInit(void);
+void dvLogInit(void);
 
 #ifdef __cplusplus
 }

@@ -48,7 +48,7 @@ static void *caerVisualizerRendererPolarityEventsStateInit(caerVisualizerPublicS
 		"Space DVS addresses apart by doubling them, this is useful for the CDAVIS sensor to put them as they are in "
 		"the pixel array.");
 
-	return (CAER_VISUALIZER_RENDER_INIT_NO_MEM); // No allocated memory.
+	return (DV_VISUALIZER_RENDER_INIT_NO_MEM); // No allocated memory.
 }
 
 static bool caerVisualizerRendererPolarityEvents(caerVisualizerPublicState state, caerEventPacketContainer container) {

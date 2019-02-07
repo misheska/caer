@@ -1,9 +1,8 @@
 #include <utility>
+#ifndef DV_SDK_BASE_MODULE_HPP
+#define DV_SDK_BASE_MODULE_HPP
 
-#ifndef CAER_MODULES_SDK_BASEMODULE_H
-#define CAER_MODULES_SDK_BASEMODULE_H
-
-#include <caer-sdk/module.h>
+#include <dv-sdk/module.h>
 
 #include "log.hpp"
 #include "config.hpp"
@@ -11,6 +10,7 @@
 #include <map>
 
 namespace dv {
+
 /**
  * The dv BaseModule. Every module shall inherit from this module.
  * The base Module provides the following:
@@ -19,7 +19,7 @@ namespace dv {
  */
 class BaseModule {
 private:
-	thread_local static caerModuleData __moduleData;
+	thread_local static dvModuleData __moduleData;
 	static std::function<void(std::map<std::string, ConfigOption>&)> __getDefaultConfig;
 
 public:
@@ -49,7 +49,7 @@ public:
 	 * @param _moduleData The moduleData param to be used for
 	 * BaseModule member initialization upon constructor
 	 */
-	static void __setStaticModuleData(caerModuleData _moduleData) {
+	static void __setStaticModuleData(dvModuleData _moduleData) {
 		__moduleData = _moduleData;
 	}
 
@@ -69,9 +69,9 @@ public:
 	}
 
 	/**
-	 * caer low level module data. To be used for accessing low level caer API.
+	 * DV low level module data. To be used for accessing low-level DV API.
 	 */
-	caerModuleData moduleData;
+	dvModuleData moduleData;
 
 	/**
 	 * Logger object to be used in implementation
@@ -83,11 +83,10 @@ public:
 	 */
 	RuntimeConfigMap config;
 
-
 	/**
 	 * Base module constructor. The base module constructor initializes
 	 * the logger and config members of the class, by utilizing the
-	 * `static_thread` local pointer to the caer moduleData pointer
+	 * `static_thread` local pointer to the DV moduleData pointer
 	 * provided prior to constructrion. This makes sure, that logger
 	 * and config are available at the time the subclass constructor is
 	 * called.
@@ -100,7 +99,6 @@ public:
         // update the config values
 	    configUpdate(__moduleData->moduleNode);
 	}
-
 
 	/**
 	 * Method that updates the configs in the map as soon as some config
@@ -123,13 +121,14 @@ public:
 	 * @param out the output libcaer packet
 	 */
 	void runBase(caerEventPacketContainer in, caerEventPacketContainer *out) {
-        // TODO: Handle the out behaviour
-	    if (!in) {
-	        run(libcaer::events::EventPacketContainer());
-	    } else {
-            auto in_ = libcaer::events::EventPacketContainer(in, false);
-            run(in_);
-	    }
+		// TODO: Handle the out behaviour
+		if (!in) {
+			run(libcaer::events::EventPacketContainer());
+		}
+		else {
+			auto in_ = libcaer::events::EventPacketContainer(in, false);
+			run(in_);
+		}
 	};
 
 	/**
@@ -145,10 +144,9 @@ public:
      * This pointer is set prior to construction to allow the constructor
      * to access relevant data.
      */
-    thread_local caerModuleData BaseModule::__moduleData = nullptr;
+    thread_local dvModuleData BaseModule::__moduleData = nullptr;
 
     std::function<void(std::map<std::string, ConfigOption>&)> BaseModule::__getDefaultConfig = nullptr;
-
 } // namespace dv
 
-#endif // CAER_MODULES_SDK_BASEMODULE_H
+#endif // DV_SDK_BASE_MODULE_HPP

@@ -1,14 +1,14 @@
 #ifndef STATISTICS_H_
 #define STATISTICS_H_
 
-#include "caer-sdk/utils.h"
+#include "dv-sdk/utils.h"
 
 #include <libcaer/events/common.h>
-#include "caer-sdk/cross/portable_time.h"
+#include "dv-sdk/cross/portable_time.h"
 
-#define CAER_STATISTICS_STRING_EVT_TOTAL "Total events/second: %10" PRIu64
-#define CAER_STATISTICS_STRING_EVT_VALID "Valid events/second: %10" PRIu64
-#define CAER_STATISTICS_STRING_PKT_TSDIFF "Max packets time diff (us): %10" PRIi64
+#define DV_STATISTICS_STRING_EVT_TOTAL "Total events/second: %10" PRIu64
+#define DV_STATISTICS_STRING_EVT_VALID "Valid events/second: %10" PRIu64
+#define DV_STATISTICS_STRING_PKT_TSDIFF "Max packets time diff (us): %10" PRIi64
 
 struct caer_statistics_state {
 	uint64_t divisionFactor;
@@ -48,7 +48,7 @@ static inline void caerStatisticsInit(caerStatisticsState state) {
 static inline bool caerStatisticsStringInit(caerStatisticsStringState state) {
 	// Determine biggest possible statistics string. Total and Valid parts have same length. TSDiff is bigger, so use
 	// that one.
-	size_t maxStatStringLength = (size_t) snprintf(NULL, 0, CAER_STATISTICS_STRING_PKT_TSDIFF, UINT64_MAX);
+	size_t maxStatStringLength = (size_t) snprintf(NULL, 0, DV_STATISTICS_STRING_PKT_TSDIFF, UINT64_MAX);
 
 	state->currentStatisticsStringTotal
 		= (char *) calloc(maxStatStringLength + 1, sizeof(char)); // +1 for NUL termination.
@@ -139,10 +139,10 @@ static inline void caerStatisticsStringUpdate(
 	caerEventPacketHeaderConst packetHeader, caerStatisticsStringState state) {
 	if (caerStatisticsUpdate(packetHeader, &state->stats)) {
 		sprintf(
-			state->currentStatisticsStringTotal, CAER_STATISTICS_STRING_EVT_TOTAL, state->stats.currStatsEventsTotal);
+			state->currentStatisticsStringTotal, DV_STATISTICS_STRING_EVT_TOTAL, state->stats.currStatsEventsTotal);
 		sprintf(
-			state->currentStatisticsStringValid, CAER_STATISTICS_STRING_EVT_VALID, state->stats.currStatsEventsValid);
-		sprintf(state->currentStatisticsStringTSDiff, CAER_STATISTICS_STRING_PKT_TSDIFF,
+			state->currentStatisticsStringValid, DV_STATISTICS_STRING_EVT_VALID, state->stats.currStatsEventsValid);
+		sprintf(state->currentStatisticsStringTSDiff, DV_STATISTICS_STRING_PKT_TSDIFF,
 			state->stats.currStatsPacketTSDiff);
 	}
 }

@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
 		return (EXIT_FAILURE);
 	}
 
-	// Use cAER maximum UDP message size.
+	// Use libcaer maximum UDP message size.
 	size_t dataBufferLength = AEDAT3_MAX_UDP_SIZE;
 	uint8_t *dataBuffer     = malloc(dataBufferLength);
 	if (dataBuffer == NULL) {

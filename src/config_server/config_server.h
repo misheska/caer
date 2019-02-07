@@ -22,8 +22,8 @@ private:
 	asioTCP::acceptor acceptor;
 	asioTCP::socket acceptorNewSocket;
 
-	asioSSL::context sslContext;
-	bool sslEnabled;
+	asioSSL::context tlsContext;
+	bool tlsEnabled;
 
 	std::vector<ConfigServerConnection *> clients;
 	std::vector<ConfigServerConnection *> pushClients;

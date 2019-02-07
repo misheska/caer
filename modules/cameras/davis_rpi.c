@@ -1,10 +1,10 @@
 #include "davis_utils.h"
 
 static void caerInputDAVISRPiConfigInit(dvConfigNode moduleNode);
-static bool caerInputDAVISRPiInit(caerModuleData moduleData);
-static void caerInputDAVISRPiExit(caerModuleData moduleData);
+static bool caerInputDAVISRPiInit(dvModuleData moduleData);
+static void caerInputDAVISRPiExit(dvModuleData moduleData);
 
-static const struct caer_module_functions DAVISRPiFunctions = {.moduleConfigInit = &caerInputDAVISRPiConfigInit,
+static const struct dvModuleFunctionsS DAVISRPiFunctions = {.moduleConfigInit = &caerInputDAVISRPiConfigInit,
 	.moduleInit                                                                  = &caerInputDAVISRPiInit,
 	.moduleRun                                                                   = &caerInputDAVISCommonRun,
 	.moduleConfig                                                                = NULL,
@@ -14,11 +14,11 @@ static const struct caer_module_functions DAVISRPiFunctions = {.moduleConfigInit
 static const struct caer_event_stream_out DAVISRPiOutputs[]
 	= {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}, {.type = FRAME_EVENT}, {.type = IMU6_EVENT}};
 
-static const struct caer_module_info DAVISRPiInfo = {
+static const struct dvModuleInfoS DAVISRPiInfo = {
 	.version           = 1,
 	.name              = "DAVISRPi",
 	.description       = "Connects to a DAVIS Raspberry-Pi camera module to get data.",
-	.type              = CAER_MODULE_INPUT,
+	.type              = DV_MODULE_INPUT,
 	.memSize           = 0,
 	.functions         = &DAVISRPiFunctions,
 	.inputStreams      = NULL,
@@ -27,14 +27,14 @@ static const struct caer_module_info DAVISRPiInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(DAVISRPiOutputs),
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&DAVISRPiInfo);
 }
 
-static void createDefaultAERConfiguration(caerModuleData moduleData, const char *nodePrefix);
-static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davis_info *devInfo);
+static void createDefaultAERConfiguration(dvModuleData moduleData, const char *nodePrefix);
+static void sendDefaultConfiguration(dvModuleData moduleData, struct caer_davis_info *devInfo);
 
-static void aerConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void aerConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void aerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
@@ -42,8 +42,8 @@ static void caerInputDAVISRPiConfigInit(dvConfigNode moduleNode) {
 	caerInputDAVISCommonSystemConfigInit(moduleNode);
 }
 
-static bool caerInputDAVISRPiInit(caerModuleData moduleData) {
-	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+static bool caerInputDAVISRPiInit(dvModuleData moduleData) {
+	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).
@@ -65,8 +65,8 @@ static bool caerInputDAVISRPiInit(caerModuleData moduleData) {
 	sendDefaultConfiguration(moduleData, &devInfo);
 
 	// Start data acquisition.
-	bool ret = caerDeviceDataStart(moduleData->moduleState, &caerMainloopDataNotifyIncrease,
-		&caerMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
+	bool ret = caerDeviceDataStart(moduleData->moduleState, &dvMainloopDataNotifyIncrease,
+		&dvMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
 
 	if (!ret) {
 		// Failed to start data acquisition, close device and exit.
@@ -122,7 +122,7 @@ static bool caerInputDAVISRPiInit(caerModuleData moduleData) {
 	return (true);
 }
 
-static void caerInputDAVISRPiExit(caerModuleData moduleData) {
+static void caerInputDAVISRPiExit(dvModuleData moduleData) {
 	// Device related configuration has its own sub-node.
 	struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 	dvConfigNode deviceConfigNode      = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
@@ -186,7 +186,7 @@ static void caerInputDAVISRPiExit(caerModuleData moduleData) {
 	dvConfigNodeRemoveAllAttributes(sourceInfoNode);
 }
 
-static void createDefaultAERConfiguration(caerModuleData moduleData, const char *nodePrefix) {
+static void createDefaultAERConfiguration(dvModuleData moduleData, const char *nodePrefix) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, nodePrefix);
 
@@ -196,7 +196,7 @@ static void createDefaultAERConfiguration(caerModuleData moduleData, const char 
 		"Enable the DDR AER output state machine (FPGA to Raspberry-Pi data exchange).");
 }
 
-static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davis_info *devInfo) {
+static void sendDefaultConfiguration(dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo->chipID, true));
 
@@ -212,7 +212,7 @@ static void sendDefaultConfiguration(caerModuleData moduleData, struct caer_davi
 	extInputConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "externalInput/"), moduleData, devInfo);
 }
 
-static void aerConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void aerConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(
 		moduleData->moduleState, DAVIS_CONFIG_DDRAER, DAVIS_CONFIG_DDRAER_RUN, dvConfigNodeGetBool(node, "Run"));
 }
@@ -221,7 +221,7 @@ static void aerConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "Run")) {

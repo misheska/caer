@@ -1,30 +1,32 @@
 <dv version="2.0">
     <node name="" path="/">
-        <node name="noisefilter" path="/noisefilter/">
-            <attr key="moduleId" type="int">2</attr>
-            <attr key="moduleInput" type="string">1[1]</attr>
-            <attr key="moduleLibrary" type="string">caer_dvsnoisefilter</attr>
-        </node>
-        <node name="caer" path="/caer/">
-            <node name="logger" path="/caer/logger/">
+        <node name="system" path="/system/">
+            <node name="logger" path="/system/logger/">
                 <attr key="logLevel" type="int">5</attr>
             </node>
-            <node name="server" path="/caer/server/">
+            <node name="server" path="/system/server/">
                 <attr key="ipAddress" type="string">127.0.0.1</attr>
                 <attr key="portNumber" type="int">4040</attr>
             </node>
         </node>
-        <node name="davisFilePlayer" path="/davisFilePlayer/">
+		<node name="mainloop" path="/mainloop/">
+        <node name="davisFilePlayer" path="/mainloop/davisFilePlayer/">
             <attr key="moduleId" type="int">1</attr>
-            <attr key="moduleLibrary" type="string">caer_input_file</attr>
+            <attr key="moduleLibrary" type="string">dv_input_file</attr>
 			<attr key="moduleOutput" type="string">1</attr>
 			<attr key="filePath" type="string">/where/my/file/is.aedat</attr>
         </node>
-        <node name="eventVisualizer" path="/eventVisualizer/">
+		<node name="noisefilter" path="/mainloop/noisefilter/">
+            <attr key="moduleId" type="int">2</attr>
+            <attr key="moduleInput" type="string">1[1]</attr>
+            <attr key="moduleLibrary" type="string">dv_dvsnoisefilter</attr>
+        </node>
+        <node name="eventVisualizer" path="/mainloop/eventVisualizer/">
             <attr key="moduleId" type="int">3</attr>
             <attr key="moduleInput" type="string">1[1a2]</attr>
-            <attr key="moduleLibrary" type="string">caer_visualizer</attr>
+            <attr key="moduleLibrary" type="string">dv_visualizer</attr>
             <attr key="renderer" type="string">Polarity</attr>
         </node>
+		</node>
     </node>
 </dv>

@@ -67,7 +67,7 @@ IncludeCategories:
     Priority:        3
   - Regex:           filters/
     Priority:        4
-  - Regex:           caer-sdk/
+  - Regex:           dv-sdk/
     Priority:        5
   - Regex:           '^".*'
     Priority:        6

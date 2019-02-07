@@ -1,6 +1,6 @@
 #include "config_server_actions.h"
 
-#include "caer-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_io.h"
 
 #include "../module.h"
 #include "config_server_connection.h"
@@ -20,7 +20,7 @@ static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnec
 template<typename MsgOps>
 static inline void sendMessage(std::shared_ptr<ConfigServerConnection> client, MsgOps msgFunc) {
 	// Send back flags directly.
-	auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
+	auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 	// Build and then finish off message.
 	auto msgRoot = msgFunc(msgBuild.get());
@@ -31,7 +31,7 @@ static inline void sendMessage(std::shared_ptr<ConfigServerConnection> client, M
 	client->writeMessage(msgBuild);
 }
 
-static inline void caerConfigSendError(std::shared_ptr<ConfigServerConnection> client, const std::string &errorMsg) {
+static inline void sendError(std::shared_ptr<ConfigServerConnection> client, const std::string &errorMsg) {
 	sendMessage(client, [errorMsg](flatbuffers::FlatBufferBuilder *msgBuild) {
 		auto valStr = msgBuild->CreateString(errorMsg);
 
@@ -55,7 +55,7 @@ static inline bool checkNodeExists(
 	// control, so we only manipulate what's already there!
 	if (!nodeExists) {
 		// Send back error message to client.
-		caerConfigSendError(client, "Node doesn't exist. Operations are only allowed on existing data.");
+		sendError(client, "Node doesn't exist. Operations are only allowed on existing data.");
 	}
 
 	return (nodeExists);
@@ -68,8 +68,7 @@ static inline bool checkAttributeExists(dvCfg::Node wantedNode, const std::strin
 
 	if (!attrExists) {
 		// Send back error message to client.
-		caerConfigSendError(
-			client, "Attribute of given type doesn't exist. Operations are only allowed on existing data.");
+		sendError(client, "Attribute of given type doesn't exist. Operations are only allowed on existing data.");
 	}
 
 	return (attrExists);
@@ -78,14 +77,14 @@ static inline bool checkAttributeExists(dvCfg::Node wantedNode, const std::strin
 static inline const std::string getString(
 	const flatbuffers::String *str, std::shared_ptr<ConfigServerConnection> client) {
 	if (str == nullptr) {
-		caerConfigSendError(client, "Required string member missing.");
+		sendError(client, "Required string member missing.");
 		return (std::string());
 	}
 
 	return (str->str());
 }
 
-void caerConfigServerHandleRequest(
+void dvConfigServerHandleRequest(
 	std::shared_ptr<ConfigServerConnection> client, std::unique_ptr<uint8_t[]> messageBuffer) {
 	auto message = dv::GetConfigActionData(messageBuffer.get());
 
@@ -133,7 +132,7 @@ void caerConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				caerConfigSendError(client, "Invalid type.");
+				sendError(client, "Invalid type.");
 				break;
 			}
 
@@ -181,7 +180,7 @@ void caerConfigServerHandleRequest(
 			// No children at all, return empty.
 			if (childNames.empty()) {
 				// Send back error message to client.
-				caerConfigSendError(client, "Node has no children.");
+				sendError(client, "Node has no children.");
 				break;
 			}
 
@@ -222,7 +221,7 @@ void caerConfigServerHandleRequest(
 			// No attributes at all, return empty.
 			if (attrKeys.empty()) {
 				// Send back error message to client.
-				caerConfigSendError(client, "Node has no attributes.");
+				sendError(client, "Node has no attributes.");
 				break;
 			}
 
@@ -264,7 +263,7 @@ void caerConfigServerHandleRequest(
 			// No attributes for specified key, return empty.
 			if (attrType == dvCfgType::UNKNOWN) {
 				// Send back error message to client.
-				caerConfigSendError(client, "Node has no attribute with specified key.");
+				sendError(client, "Node has no attribute with specified key.");
 				break;
 			}
 
@@ -291,7 +290,7 @@ void caerConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				caerConfigSendError(client, "Invalid type.");
+				sendError(client, "Invalid type.");
 				break;
 			}
 
@@ -335,7 +334,7 @@ void caerConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				caerConfigSendError(client, "Invalid type.");
+				sendError(client, "Invalid type.");
 				break;
 			}
 
@@ -375,7 +374,7 @@ void caerConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				caerConfigSendError(client, "Invalid type.");
+				sendError(client, "Invalid type.");
 				break;
 			}
 
@@ -417,7 +416,7 @@ void caerConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				caerConfigSendError(client, "Invalid type.");
+				sendError(client, "Invalid type.");
 				break;
 			}
 
@@ -465,7 +464,7 @@ void caerConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				caerConfigSendError(client, "Invalid type.");
+				sendError(client, "Invalid type.");
 				break;
 			}
 
@@ -486,17 +485,17 @@ void caerConfigServerHandleRequest(
 			if (!wantedNode.stringToAttributeConverter(key, typeStr, value)) {
 				// Send back correct error message to client.
 				if (errno == EINVAL) {
-					caerConfigSendError(client, "Impossible to convert value according to type.");
+					sendError(client, "Impossible to convert value according to type.");
 				}
 				else if (errno == EPERM) {
-					caerConfigSendError(client, "Cannot write to a read-only attribute.");
+					sendError(client, "Cannot write to a read-only attribute.");
 				}
 				else if (errno == ERANGE) {
-					caerConfigSendError(client, "Value out of attribute range.");
+					sendError(client, "Value out of attribute range.");
 				}
 				else {
 					// Unknown error.
-					caerConfigSendError(client, "Unknown error.");
+					sendError(client, "Unknown error.");
 				}
 
 				break;
@@ -520,48 +519,42 @@ void caerConfigServerHandleRequest(
 
 			if (moduleName.empty()) {
 				// Disallow empty strings.
-				caerConfigSendError(client, "Name cannot be empty.");
+				sendError(client, "Name cannot be empty.");
 				break;
 			}
 
 			if (moduleLibrary.empty()) {
 				// Disallow empty strings.
-				caerConfigSendError(client, "Library cannot be empty.");
-				break;
-			}
-
-			// Check module name.
-			if (moduleName == "caer") {
-				caerConfigSendError(client, "Name is reserved for system use.");
+				sendError(client, "Library cannot be empty.");
 				break;
 			}
 
 			const std::regex moduleNameRegex("^[a-zA-Z-_\\d\\.]+$");
 
 			if (!std::regex_match(moduleName, moduleNameRegex)) {
-				caerConfigSendError(client, "Name uses invalid characters.");
+				sendError(client, "Name uses invalid characters.");
 				break;
 			}
 
-			if (configStore.existsNode("/" + moduleName + "/")) {
-				caerConfigSendError(client, "Name is already in use.");
+			if (configStore.existsNode("/mainloop/" + moduleName + "/")) {
+				sendError(client, "Name is already in use.");
 				break;
 			}
 
 			// Check module library.
-			auto modulesSysNode                  = configStore.getNode("/caer/modules/");
+			auto modulesSysNode                  = configStore.getNode("/system/modules/");
 			const std::string modulesListOptions = modulesSysNode.get<dvCfgType::STRING>("modulesListOptions");
 
 			boost::tokenizer<boost::char_separator<char>> modulesList(
 				modulesListOptions, boost::char_separator<char>(","));
 
 			if (!findBool(modulesList.begin(), modulesList.end(), moduleLibrary)) {
-				caerConfigSendError(client, "Library does not exist.");
+				sendError(client, "Library does not exist.");
 				break;
 			}
 
 			// Name and library are fine, let's determine the next free ID.
-			auto rootNodes = configStore.getRootNode().getChildren();
+			auto rootNodes = configStore.getNode("/mainloop/").getChildren();
 
 			std::vector<int16_t> usedModuleIDs;
 
@@ -585,7 +578,7 @@ void caerConfigServerHandleRequest(
 			}
 
 			// Let's create the needed configuration for the new module.
-			auto newModuleNode = configStore.getNode("/" + moduleName + "/");
+			auto newModuleNode = configStore.getNode("/mainloop/" + moduleName + "/");
 
 			newModuleNode.create<dvCfgType::INT>(
 				"moduleId", nextFreeModuleID, {1, INT16_MAX}, dvCfgFlags::READ_ONLY, "Module ID.");
@@ -597,14 +590,14 @@ void caerConfigServerHandleRequest(
 			const std::string inputType = moduleSysNode.get<dvCfgType::STRING>("type");
 
 			if (inputType != "INPUT") {
-				// CAER_MODULE_OUTPUT / CAER_MODULE_PROCESSOR
+				// DV_MODULE_OUTPUT / DV_MODULE_PROCESSOR
 				// moduleInput must exist for OUTPUT and PROCESSOR modules.
 				newModuleNode.create<dvCfgType::STRING>(
 					"moduleInput", "", {0, 1024}, dvCfgFlags::NORMAL, "Module dynamic input definition.");
 			}
 
 			if (inputType != "OUTPUT") {
-				// CAER_MODULE_INPUT / CAER_MODULE_PROCESSOR
+				// DV_MODULE_INPUT / DV_MODULE_PROCESSOR
 				// moduleOutput must exist for INPUT and PROCESSOR modules, only
 				// if their outputs are undefined (-1).
 				if (moduleSysNode.existsRelativeNode("outputStreams/0/")) {
@@ -620,7 +613,7 @@ void caerConfigServerHandleRequest(
 
 			// Create static module configuration, so users can start
 			// changing it right away after module add.
-			caerModuleConfigInit(newModuleNode);
+			dvModuleConfigInit(newModuleNode);
 
 			// Send back confirmation to the client.
 			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
@@ -639,31 +632,25 @@ void caerConfigServerHandleRequest(
 
 			if (moduleName.empty()) {
 				// Disallow empty strings.
-				caerConfigSendError(client, "Name cannot be empty.");
+				sendError(client, "Name cannot be empty.");
 				break;
 			}
 
-			// Check module name.
-			if (moduleName == "caer") {
-				caerConfigSendError(client, "Name is reserved for system use.");
-				break;
-			}
-
-			if (!configStore.existsNode("/" + moduleName + "/")) {
-				caerConfigSendError(client, "Name is not in use.");
+			if (!configStore.existsNode("/mainloop/" + moduleName + "/")) {
+				sendError(client, "Name is not in use.");
 				break;
 			}
 
 			// Modules can only be deleted while the mainloop is not running, to not
 			// destroy data the system is relying on.
-			bool isMainloopRunning = configStore.getRootNode().get<dvCfgType::BOOL>("running");
+			bool isMainloopRunning = configStore.getNode("/mainloop/").get<dvCfgType::BOOL>("running");
 			if (isMainloopRunning) {
-				caerConfigSendError(client, "Mainloop is running.");
+				sendError(client, "Mainloop is running.");
 				break;
 			}
 
 			// Truly delete the node and all its children.
-			configStore.getNode("/" + moduleName + "/").removeNode();
+			configStore.getNode("/mainloop/" + moduleName + "/").removeNode();
 
 			// Send back confirmation to the client.
 			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
@@ -678,8 +665,6 @@ void caerConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::ADD_PUSH_CLIENT: {
-			client->addPushClient();
-
 			// Send back confirmation to the client.
 			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
 				dv::ConfigActionDataBuilder msg(*msgBuild);
@@ -689,10 +674,16 @@ void caerConfigServerHandleRequest(
 				return (msg.Finish());
 			});
 
+			// Only add client after sending confirmation, so no PUSH
+			// messages may arrive before the client sees the confirmation.
+			client->addPushClient();
+
 			break;
 		}
 
 		case dv::ConfigAction::REMOVE_PUSH_CLIENT: {
+			// Remove client first, so that after confirmation of removal
+			// no more PUSH messages may arrive.
 			client->removePushClient();
 
 			// Send back confirmation to the client.
@@ -741,7 +732,7 @@ void caerConfigServerHandleRequest(
 
 		default: {
 			// Unknown action, send error back to client.
-			caerConfigSendError(client, "Unknown action.");
+			sendError(client, "Unknown action.");
 
 			break;
 		}
@@ -751,7 +742,7 @@ void caerConfigServerHandleRequest(
 static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnection *client) {
 	// Dump node path.
 	{
-		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
+		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 		auto nodeStr = msgBuild->CreateString(node.getPath());
 
@@ -771,7 +762,7 @@ static void dumpNodeToClientRecursive(const dvCfg::Node node, ConfigServerConnec
 
 	// Dump all attribute keys.
 	for (const auto &key : node.getAttributeKeys()) {
-		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(CAER_CONFIG_SERVER_MAX_INCOMING_SIZE);
+		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 		auto type  = node.getAttributeType(key);
 		auto flags = node.getAttributeFlags(key, type);

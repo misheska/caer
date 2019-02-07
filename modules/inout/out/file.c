@@ -1,6 +1,6 @@
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/cross/portable_time.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_time.h"
+#include "dv-sdk/mainloop.h"
 
 #include "output_common.h"
 
@@ -10,9 +10,9 @@
 #define DEFAULT_PREFIX "caerOut"
 #define MAX_PREFIX_LENGTH 128
 
-static bool caerOutputFileInit(caerModuleData moduleData);
+static bool caerOutputFileInit(dvModuleData moduleData);
 
-static const struct caer_module_functions OutputFileFunctions = {.moduleInit = &caerOutputFileInit,
+static const struct dvModuleFunctionsS OutputFileFunctions = {.moduleInit = &caerOutputFileInit,
 	.moduleRun                                                               = &caerOutputCommonRun,
 	.moduleConfig                                                            = NULL,
 	.moduleExit                                                              = &caerOutputCommonExit,
@@ -20,11 +20,11 @@ static const struct caer_module_functions OutputFileFunctions = {.moduleInit = &
 
 static const struct caer_event_stream_in OutputFileInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct caer_module_info OutputFileInfo = {
+static const struct dvModuleInfoS OutputFileInfo = {
 	.version           = 1,
 	.name              = "FileOutput",
 	.description       = "Write AEDAT 3 data out to a file.",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),
 	.functions         = &OutputFileFunctions,
 	.inputStreams      = OutputFileInputs,
@@ -33,35 +33,35 @@ static const struct caer_module_info OutputFileInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&OutputFileInfo);
 }
 
-static char *getUserHomeDirectory(caerModuleData moduleData);
-static char *getFullFilePath(caerModuleData moduleData, const char *directory, const char *prefix);
+static char *getUserHomeDirectory(dvModuleData moduleData);
+static char *getFullFilePath(dvModuleData moduleData, const char *directory, const char *prefix);
 
 // Remember to free strings returned by this.
-static char *getUserHomeDirectory(caerModuleData moduleData) {
+static char *getUserHomeDirectory(dvModuleData moduleData) {
 	size_t homeDirLength = PATH_MAX;
 
 	// Allocate memory for home directory path.
 	char *homeDir = malloc(homeDirLength);
 	if (homeDir == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for home directory string.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for home directory string.");
 		return (NULL);
 	}
 
 	// Discover home directory path, use libuv for cross-platform support.
 	int retVal = uv_os_homedir(homeDir, &homeDirLength);
 	if (retVal < 0) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "uv_os_homedir failed, error %d (%s).", retVal, uv_err_name(retVal));
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "uv_os_homedir failed, error %d (%s).", retVal, uv_err_name(retVal));
 		return (NULL);
 	}
 
 	return (homeDir);
 }
 
-static char *getFullFilePath(caerModuleData moduleData, const char *directory, const char *prefix) {
+static char *getFullFilePath(dvModuleData moduleData, const char *directory, const char *prefix) {
 	// First get time suffix string.
 	struct tm currentTimeStruct = portable_clock_localtime();
 
@@ -83,7 +83,7 @@ static char *getFullFilePath(caerModuleData moduleData, const char *directory, c
 
 	char *filePath = malloc(filePathLength);
 	if (filePath == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL, "Unable to allocate memory for full file path.");
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Unable to allocate memory for full file path.");
 		return (NULL);
 	}
 
@@ -92,12 +92,12 @@ static char *getFullFilePath(caerModuleData moduleData, const char *directory, c
 	return (filePath);
 }
 
-static bool caerOutputFileInit(caerModuleData moduleData) {
+static bool caerOutputFileInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	char *userHomeDir = getUserHomeDirectory(moduleData);
 	if (userHomeDir == NULL) {
-		// caerModuleLog() called inside getUserHomeDirectory().
+		// dvModuleLog() called inside getUserHomeDirectory().
 		return (false);
 	}
 
@@ -120,20 +120,20 @@ static bool caerOutputFileInit(caerModuleData moduleData) {
 	free(prefix);
 
 	if (filePath == NULL) {
-		// caerModuleLog() called inside getFullFilePath().
+		// dvModuleLog() called inside getFullFilePath().
 		return (false);
 	}
 
 	int fileFd = open(filePath, O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR | S_IRGRP);
 	if (fileFd < 0) {
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL,
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL,
 			"Could not create or open output file '%s' for writing. Error: %d.", filePath, errno);
 		free(filePath);
 
 		return (false);
 	}
 
-	caerModuleLog(moduleData, CAER_LOG_INFO, "Opened output file '%s' successfully for writing.", filePath);
+	dvModuleLog(moduleData, CAER_LOG_INFO, "Opened output file '%s' successfully for writing.", filePath);
 	free(filePath);
 
 	if (!caerOutputCommonInit(moduleData, fileFd, NULL)) {

@@ -3,8 +3,8 @@
  * Modules can use this and link to it.
  */
 
-#ifndef CAER_SDK_MODULE_H_
-#define CAER_SDK_MODULE_H_
+#ifndef DV_SDK_MODULE_H_
+#define DV_SDK_MODULE_H_
 
 #include "utils.h"
 
@@ -27,9 +27,9 @@ extern "C" {
 #endif
 
 // Module-related definitions.
-enum caer_module_status {
-	CAER_MODULE_STOPPED = 0,
-	CAER_MODULE_RUNNING = 1,
+enum dvModuleStatus {
+	DV_MODULE_STOPPED = 0,
+	DV_MODULE_RUNNING = 1,
 };
 
 /**
@@ -47,23 +47,23 @@ enum caer_module_status {
  * Output streams can either be undefined and later be determined at
  * runtime, or be well defined. Only one output stream per type is allowed.
  */
-enum caer_module_type {
-	CAER_MODULE_INPUT     = 0,
-	CAER_MODULE_OUTPUT    = 1,
-	CAER_MODULE_PROCESSOR = 2,
+enum dvModuleType {
+	DV_MODULE_INPUT     = 0,
+	DV_MODULE_OUTPUT    = 1,
+	DV_MODULE_PROCESSOR = 2,
 };
 
-static inline const char *caerModuleTypeToString(enum caer_module_type type) {
+static inline const char *dvModuleTypeToString(enum dvModuleType type) {
 	switch (type) {
-		case CAER_MODULE_INPUT:
+		case DV_MODULE_INPUT:
 			return ("INPUT");
 			break;
 
-		case CAER_MODULE_OUTPUT:
+		case DV_MODULE_OUTPUT:
 			return ("OUTPUT");
 			break;
 
-		case CAER_MODULE_PROCESSOR:
+		case DV_MODULE_PROCESSOR:
 			return ("PROCESSOR");
 			break;
 
@@ -91,10 +91,10 @@ typedef struct caer_event_stream_out const *caerEventStreamOut;
 
 #define CAER_EVENT_STREAM_OUT_SIZE(x) (sizeof(x) / sizeof(struct caer_event_stream_out))
 
-struct caer_module_data {
+struct dvModuleDataS {
 	int16_t moduleID;
 	dvConfigNode moduleNode;
-	enum caer_module_status moduleStatus;
+	enum dvModuleStatus moduleStatus;
 	atomic_bool running;
 	atomic_uint_fast8_t moduleLogLevel;
 	atomic_uint_fast32_t configUpdate;
@@ -103,46 +103,46 @@ struct caer_module_data {
 	char *moduleSubSystemString;
 };
 
-typedef struct caer_module_data *caerModuleData;
+typedef struct dvModuleDataS *dvModuleData;
 
-struct caer_module_functions {
+struct dvModuleFunctionsS {
 	void (*const moduleConfigInit)(dvConfigNode moduleNode); // Can be NULL.
-	bool (*const moduleInit)(caerModuleData moduleData); // Can be NULL.
-	void (*const moduleRun)(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-	void (*const moduleConfig)(caerModuleData moduleData);                           // Can be NULL.
-	void (*const moduleExit)(caerModuleData moduleData);                             // Can be NULL.
-	void (*const moduleReset)(caerModuleData moduleData, int16_t resetCallSourceID); // Can be NULL.
+	bool (*const moduleInit)(dvModuleData moduleData);     // Can be NULL.
+	void (*const moduleRun)(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+	void (*const moduleConfig)(dvModuleData moduleData);                           // Can be NULL.
+	void (*const moduleExit)(dvModuleData moduleData);                             // Can be NULL.
+	void (*const moduleReset)(dvModuleData moduleData, int16_t resetCallSourceID); // Can be NULL.
 };
 
-typedef struct caer_module_functions const *caerModuleFunctions;
+typedef struct dvModuleFunctionsS const *dvModuleFunctions;
 
-struct caer_module_info {
+struct dvModuleInfoS {
 	uint32_t version;
 	const char *name;
 	const char *description;
-	enum caer_module_type type;
+	enum dvModuleType type;
 	size_t memSize;
-	caerModuleFunctions functions;
+	dvModuleFunctions functions;
 	size_t inputStreamsSize;
 	caerEventStreamIn inputStreams;
 	size_t outputStreamsSize;
 	caerEventStreamOut outputStreams;
 };
 
-typedef struct caer_module_info const *caerModuleInfo;
+typedef struct dvModuleInfoS const *dvModuleInfo;
 
 // Function to be implemented by modules:
-caerModuleInfo caerModuleGetInfo(void);
+dvModuleInfo dvModuleGetInfo(void);
 
 // Functions available to call:
-void caerModuleLog(caerModuleData moduleData, enum caer_log_level logLevel, const char *format, ...)
+void dvModuleLog(dvModuleData moduleData, enum caer_log_level logLevel, const char *format, ...)
 	ATTRIBUTE_FORMAT(3);
-bool caerModuleSetSubSystemString(caerModuleData moduleData, const char *subSystemString);
-void caerModuleConfigDefaultListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+bool dvModuleSetLogString(dvModuleData moduleData, const char *subSystemString);
+void dvModuleDefaultConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* CAER_SDK_MODULE_H_ */
+#endif /* DV_SDK_MODULE_H_ */

@@ -3,7 +3,7 @@
 
 #include <libcaer/events/packetContainer.h>
 
-#include "caer-sdk/utils.h"
+#include "dv-sdk/utils.h"
 
 #include <GL/glew.h>
 #include <SFML/Graphics.hpp>
@@ -27,6 +27,6 @@ typedef struct caer_visualizer_public_state *caerVisualizerPublicState;
 void caerVisualizerResetRenderSize(caerVisualizerPublicState pubState, uint32_t newX, uint32_t newY);
 
 // This define is for Render State Init functions that allocate no memory, to use as return value.
-#define CAER_VISUALIZER_RENDER_INIT_NO_MEM ((void *) 0x01)
+#define DV_VISUALIZER_RENDER_INIT_NO_MEM ((void *) 0x01)
 
 #endif /* VISUALIZER_H_ */

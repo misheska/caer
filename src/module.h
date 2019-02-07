@@ -1,19 +1,19 @@
 #ifndef MODULE_H_
 #define MODULE_H_
 
-#include "caer-sdk/mainloop.h"
-#include "caer-sdk/module.h"
+#include "dv-sdk/mainloop.h"
+#include "dv-sdk/module.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // Functions for mainloop:
-void caerModuleConfigInit(dv::Config::Node moduleNode);
-void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData, size_t memSize,
-	caerEventPacketContainer in, caerEventPacketContainer *out);
-caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, dv::Config::Node moduleNode);
-void caerModuleDestroy(caerModuleData moduleData);
+void dvModuleConfigInit(dv::Config::Node moduleNode);
+void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size_t memSize, caerEventPacketContainer in,
+	caerEventPacketContainer *out);
+dvModuleData dvModuleInitialize(int16_t moduleID, const char *moduleName, dv::Config::Node moduleNode);
+void dvModuleDestroy(dvModuleData moduleData);
 
 #ifdef __cplusplus
 }
@@ -38,9 +38,9 @@ using ModuleLibrary = void *;
 #	include <string>
 #	include <utility>
 
-std::pair<ModuleLibrary, caerModuleInfo> caerLoadModuleLibrary(const std::string &moduleName);
-void caerUnloadModuleLibrary(ModuleLibrary &moduleLibrary);
-void caerUpdateModulesInformation();
+std::pair<ModuleLibrary, dvModuleInfo> dvModuleLoadLibrary(const std::string &moduleName);
+void dvModuleUnloadLibrary(ModuleLibrary &moduleLibrary);
+void dvUpdateModulesInformation();
 
 #endif
 

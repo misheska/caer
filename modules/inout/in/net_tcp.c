@@ -1,23 +1,23 @@
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 #include "input_common.h"
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-static bool caerInputNetTCPInit(caerModuleData moduleData);
+static bool caerInputNetTCPInit(dvModuleData moduleData);
 
-static const struct caer_module_functions InputNetTCPFunctions = {.moduleInit = &caerInputNetTCPInit,
+static const struct dvModuleFunctionsS InputNetTCPFunctions = {.moduleInit = &caerInputNetTCPInit,
 	.moduleRun                                                                = &caerInputCommonRun,
 	.moduleConfig                                                             = NULL,
 	.moduleExit                                                               = &caerInputCommonExit};
 
 static const struct caer_event_stream_out InputNetTCPOutputs[] = {{.type = -1}};
 
-static const struct caer_module_info InputNetTCPInfo = {
+static const struct dvModuleInfoS InputNetTCPInfo = {
 	.version           = 1,
 	.name              = "NetTCPInput",
 	.description       = "Read AEDAT data from a TCP server.",
-	.type              = CAER_MODULE_INPUT,
+	.type              = DV_MODULE_INPUT,
 	.memSize           = sizeof(struct input_common_state),
 	.functions         = &InputNetTCPFunctions,
 	.inputStreams      = NULL,
@@ -26,11 +26,11 @@ static const struct caer_module_info InputNetTCPInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(InputNetTCPOutputs),
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&InputNetTCPInfo);
 }
 
-static bool caerInputNetTCPInit(caerModuleData moduleData) {
+static bool caerInputNetTCPInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(
@@ -41,7 +41,7 @@ static bool caerInputNetTCPInit(caerModuleData moduleData) {
 	// Open a TCP socket to the remote client, to which we'll send data packets.
 	int sockFd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sockFd < 0) {
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not create TCP socket. Error: %d.", errno);
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not create TCP socket. Error: %d.", errno);
 		return (false);
 	}
 
@@ -55,7 +55,7 @@ static bool caerInputNetTCPInit(caerModuleData moduleData) {
 	if (inet_pton(AF_INET, ipAddress, &tcpClient.sin_addr) == 0) {
 		close(sockFd);
 
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL, "No valid IP address found. '%s' is invalid!", ipAddress);
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL, "No valid IP address found. '%s' is invalid!", ipAddress);
 
 		free(ipAddress);
 		return (false);
@@ -65,7 +65,7 @@ static bool caerInputNetTCPInit(caerModuleData moduleData) {
 	if (connect(sockFd, (struct sockaddr *) &tcpClient, sizeof(struct sockaddr_in)) != 0) {
 		close(sockFd);
 
-		caerModuleLog(moduleData, CAER_LOG_CRITICAL,
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL,
 			"Could not connect to remote TCP server %s:%" PRIu16 ". Error: %d.",
 			inet_ntop(AF_INET, &tcpClient.sin_addr, (char[INET_ADDRSTRLEN]){0x00}, INET_ADDRSTRLEN),
 			ntohs(tcpClient.sin_port), errno);
@@ -77,7 +77,7 @@ static bool caerInputNetTCPInit(caerModuleData moduleData) {
 		return (false);
 	}
 
-	caerModuleLog(moduleData, CAER_LOG_INFO, "TCP socket connected to %s:%" PRIu16 ".",
+	dvModuleLog(moduleData, CAER_LOG_INFO, "TCP socket connected to %s:%" PRIu16 ".",
 		inet_ntop(AF_INET, &tcpClient.sin_addr, (char[INET_ADDRSTRLEN]){0x00}, INET_ADDRSTRLEN),
 		ntohs(tcpClient.sin_port));
 

@@ -2,15 +2,15 @@
 
 #include <libcaer/filters/dvs_noise.h>
 
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 
 static void caerDVSNoiseFilterConfigInit(dvConfigNode moduleNode);
-static bool caerDVSNoiseFilterInit(caerModuleData moduleData);
+static bool caerDVSNoiseFilterInit(dvModuleData moduleData);
 static void caerDVSNoiseFilterRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void caerDVSNoiseFilterConfig(caerModuleData moduleData);
-static void caerDVSNoiseFilterExit(caerModuleData moduleData);
-static void caerDVSNoiseFilterReset(caerModuleData moduleData, int16_t resetCallSourceID);
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerDVSNoiseFilterConfig(dvModuleData moduleData);
+static void caerDVSNoiseFilterExit(dvModuleData moduleData);
+static void caerDVSNoiseFilterReset(dvModuleData moduleData, int16_t resetCallSourceID);
 
 static union dvConfigAttributeValue updateHotPixelFiltered(
 	void *userData, const char *key, enum dvConfigAttributeType type);
@@ -21,7 +21,7 @@ static union dvConfigAttributeValue updateRefractoryPeriodFiltered(
 static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-static const struct caer_module_functions DVSNoiseFilterFunctions = {.moduleConfigInit = &caerDVSNoiseFilterConfigInit,
+static const struct dvModuleFunctionsS DVSNoiseFilterFunctions = {.moduleConfigInit = &caerDVSNoiseFilterConfigInit,
 	.moduleInit                                                                        = &caerDVSNoiseFilterInit,
 	.moduleRun                                                                         = &caerDVSNoiseFilterRun,
 	.moduleConfig                                                                      = &caerDVSNoiseFilterConfig,
@@ -31,11 +31,11 @@ static const struct caer_module_functions DVSNoiseFilterFunctions = {.moduleConf
 static const struct caer_event_stream_in DVSNoiseFilterInputs[]
 	= {{.type = POLARITY_EVENT, .number = 1, .readOnly = false}};
 
-static const struct caer_module_info DVSNoiseFilterInfo = {
+static const struct dvModuleInfoS DVSNoiseFilterInfo = {
 	.version           = 1,
 	.name              = "DVSNoiseFilter",
 	.description       = "Filters out noise from DVS change events.",
-	.type              = CAER_MODULE_PROCESSOR,
+	.type              = DV_MODULE_PROCESSOR,
 	.memSize           = 0,
 	.functions         = &DVSNoiseFilterFunctions,
 	.inputStreams      = DVSNoiseFilterInputs,
@@ -44,7 +44,7 @@ static const struct caer_module_info DVSNoiseFilterInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&DVSNoiseFilterInfo);
 }
 
@@ -126,11 +126,11 @@ static union dvConfigAttributeValue updateRefractoryPeriodFiltered(
 	return (statisticValue);
 }
 
-static bool caerDVSNoiseFilterInit(caerModuleData moduleData) {
+static bool caerDVSNoiseFilterInit(dvModuleData moduleData) {
 	// Wait for input to be ready. All inputs, once they are up and running, will
 	// have a valid sourceInfo node to query, especially if dealing with data.
 	// Allocate map using info from sourceInfo.
-	dvConfigNode sourceInfo = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
+	dvConfigNode sourceInfo = dvMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
 	if (sourceInfo == NULL) {
 		return (false);
 	}
@@ -140,7 +140,7 @@ static bool caerDVSNoiseFilterInit(caerModuleData moduleData) {
 
 	moduleData->moduleState = caerFilterDVSNoiseInitialize(U16T(sizeX), U16T(sizeY));
 	if (moduleData->moduleState == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize DVS Noise filter.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize DVS Noise filter.");
 		return (false);
 	}
 
@@ -157,7 +157,7 @@ static bool caerDVSNoiseFilterInit(caerModuleData moduleData) {
 		&updateRefractoryPeriodFiltered, moduleData->moduleState);
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData->moduleState, &caerDVSNoiseFilterConfigCustom);
 
 	// Nothing that can fail here.
@@ -165,7 +165,7 @@ static bool caerDVSNoiseFilterInit(caerModuleData moduleData) {
 }
 
 static void caerDVSNoiseFilterRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(out);
 
 	caerPolarityEventPacket polarity
@@ -174,7 +174,7 @@ static void caerDVSNoiseFilterRun(
 	caerFilterDVSNoiseApply(moduleData->moduleState, polarity);
 }
 
-static void caerDVSNoiseFilterConfig(caerModuleData moduleData) {
+static void caerDVSNoiseFilterConfig(dvModuleData moduleData) {
 	caerFilterDVSNoise state = moduleData->moduleState;
 
 	caerFilterDVSNoiseConfigSet(
@@ -224,9 +224,9 @@ static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, en
 	}
 }
 
-static void caerDVSNoiseFilterExit(caerModuleData moduleData) {
+static void caerDVSNoiseFilterExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData->moduleState, &caerDVSNoiseFilterConfigCustom);
 
 	dvConfigNodeAttributeUpdaterRemoveAll(moduleData->moduleNode);
@@ -234,7 +234,7 @@ static void caerDVSNoiseFilterExit(caerModuleData moduleData) {
 	caerFilterDVSNoiseDestroy(moduleData->moduleState);
 }
 
-static void caerDVSNoiseFilterReset(caerModuleData moduleData, int16_t resetCallSourceID) {
+static void caerDVSNoiseFilterReset(dvModuleData moduleData, int16_t resetCallSourceID) {
 	UNUSED_ARGUMENT(resetCallSourceID);
 
 	caerFilterDVSNoiseConfigSet(moduleData->moduleState, CAER_FILTER_DVS_RESET, true);

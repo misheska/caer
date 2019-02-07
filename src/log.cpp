@@ -1,6 +1,6 @@
 #include "log.h"
 
-#include "caer-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_io.h"
 
 #include <boost/filesystem.hpp>
 #include <fcntl.h>
@@ -13,21 +13,21 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
-static int CAER_LOG_FILE_FD = -1;
-static dvCfg::Node logNode  = nullptr;
+static int DV_LOG_FILE_FD  = -1;
+static dvCfg::Node logNode = nullptr;
 
-static void caerLogShutDownWriteBack(void);
-static void caerLogConfigLogger(const char *msg, bool fatal);
-static void caerLogMessagesToConfigTree(const char *msg, size_t msgLength);
-static void caerLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void logShutDownWriteBack(void);
+static void logConfigLogger(const char *msg, bool fatal);
+static void logMessagesToConfigTree(const char *msg, size_t msgLength);
+static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-void caerLogInit(void) {
-	logNode = dvCfg::Tree::globalTree().getNode("/caer/logger/");
+void dvLogInit(void) {
+	logNode = dvCfg::Tree::globalTree().getNode("/system/logger/");
 
 	// Ensure default log file and value are present.
 	char *userHome                       = portable_get_user_home_directory();
-	const std::string logFileDefaultPath = std::string(userHome) + "/" + CAER_LOG_FILE_NAME;
+	const std::string logFileDefaultPath = std::string(userHome) + "/" + DV_LOG_FILE_NAME;
 	free(userHome);
 
 	logNode.create<dvCfgType::STRING>("logFile", logFileDefaultPath, {2, PATH_MAX}, dvCfgFlags::NORMAL,
@@ -41,9 +41,9 @@ void caerLogInit(void) {
 
 	// Try to open the specified file and error out if not possible.
 	const std::string logFile = logNode.get<dvCfgType::STRING>("logFile");
-	CAER_LOG_FILE_FD          = open(logFile.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IWUSR | S_IRUSR | S_IRGRP);
+	DV_LOG_FILE_FD            = open(logFile.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IWUSR | S_IRUSR | S_IRGRP);
 
-	if (CAER_LOG_FILE_FD < 0) {
+	if (DV_LOG_FILE_FD < 0) {
 		// Must be able to open log file! _REQUIRED_
 		caerLog(CAER_LOG_EMERGENCY, "Logger", "Failed to open log file '%s'. Error: %d.", logFile.c_str(), errno);
 
@@ -54,26 +54,26 @@ void caerLogInit(void) {
 	int32_t logLevel = logNode.get<dvCfgType::INT>("logLevel");
 	caerLogLevelSet(static_cast<enum caer_log_level>(logLevel));
 
-	logNode.addAttributeListener(nullptr, &caerLogLevelListener);
+	logNode.addAttributeListener(nullptr, &logLevelListener);
 
 	// Switch log messages to log file and stderr.
-	caerLogFileDescriptorsSet(CAER_LOG_FILE_FD, STDERR_FILENO);
+	caerLogFileDescriptorsSet(DV_LOG_FILE_FD, STDERR_FILENO);
 
 	// Make sure log file gets flushed at exit time.
-	atexit(&caerLogShutDownWriteBack);
+	atexit(&logShutDownWriteBack);
 
 	// Send any log messages out via ConfigTree from now on.
-	caerLogCallbackSet(&caerLogMessagesToConfigTree);
+	caerLogCallbackSet(&logMessagesToConfigTree);
 
 	// Now that config is initialized (has to be!) and logging too, we can
 	// set the ConfigTree logger to use our internal logger too.
-	dvConfigTreeErrorLogCallbackSet(&caerLogConfigLogger);
+	dvConfigTreeErrorLogCallbackSet(&logConfigLogger);
 
 	// Log sub-system initialized fully and correctly, log this.
 	caerLog(CAER_LOG_DEBUG, "Logger", "Started with log file '%s', log-level %d.", logFile.c_str(), logLevel);
 }
 
-static void caerLogMessagesToConfigTree(const char *msg, size_t msgLength) {
+static void logMessagesToConfigTree(const char *msg, size_t msgLength) {
 	dvConfigAttributeValue logMessage;
 	logMessage.string = const_cast<char *>(msg);
 
@@ -86,7 +86,7 @@ static void caerLogMessagesToConfigTree(const char *msg, size_t msgLength) {
 	logNode.updateReadOnlyAttribute("lastLogMessage", dvCfgType::STRING, logMessage);
 }
 
-static void caerLogShutDownWriteBack(void) {
+static void logShutDownWriteBack(void) {
 	caerLog(CAER_LOG_DEBUG, "Logger", "Shutting down, flushing outputs.");
 
 	// Flush interactive outputs.
@@ -94,11 +94,11 @@ static void caerLogShutDownWriteBack(void) {
 	fflush(stderr);
 
 	// Ensure proper flushing and closing of the log file at shutdown.
-	portable_fsync(CAER_LOG_FILE_FD);
-	close(CAER_LOG_FILE_FD);
+	portable_fsync(DV_LOG_FILE_FD);
+	close(DV_LOG_FILE_FD);
 }
 
-static void caerLogConfigLogger(const char *msg, bool fatal) {
+static void logConfigLogger(const char *msg, bool fatal) {
 	if (fatal) {
 		throw std::runtime_error(msg);
 	}
@@ -107,7 +107,7 @@ static void caerLogConfigLogger(const char *msg, bool fatal) {
 	}
 }
 
-static void caerLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);

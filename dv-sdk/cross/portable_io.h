@@ -1,5 +1,5 @@
-#ifndef CAER_SDK_PORTABLE_IO_H_
-#define CAER_SDK_PORTABLE_IO_H_
+#ifndef DV_SDK_PORTABLE_IO_H_
+#define DV_SDK_PORTABLE_IO_H_
 
 #ifdef __cplusplus
 
@@ -66,4 +66,4 @@ char *portable_get_user_home_directory(void);
 }
 #endif
 
-#endif /* CAER_SDK_PORTABLE_IO_H_ */
+#endif /* DV_SDK_PORTABLE_IO_H_ */

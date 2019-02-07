@@ -10,9 +10,9 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
-static void caerUnixDaemonize(void);
+static void unixDaemonize(void);
 
-static void caerUnixDaemonize(void) {
+static void unixDaemonize(void) {
 	// Double fork to background, for more details take a look at:
 	// http://stackoverflow.com/questions/3095566/linux-daemonize
 	pid_t result = fork();
@@ -79,8 +79,8 @@ static void caerUnixDaemonize(void) {
 }
 #endif
 
-void caerServiceInit(void (*runner)(void)) {
-	auto systemNode = dv::Config::GLOBAL.getNode("/caer/");
+void dvServiceInit(void (*runner)(void)) {
+	auto systemNode = dv::Config::GLOBAL.getNode("/system/");
 
 	systemNode.create<dvCfgType::BOOL>(
 		"backgroundService", false, {}, dvCfgFlags::READ_ONLY, "Start program as a background service.");
@@ -93,7 +93,7 @@ void caerServiceInit(void (*runner)(void)) {
 		(*runner)();
 #else
 		// Unix: double fork to background.
-		caerUnixDaemonize();
+		unixDaemonize();
 
 		// Run main processing loop.
 		(*runner)();

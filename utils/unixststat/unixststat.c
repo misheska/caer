@@ -47,11 +47,11 @@ int main(int argc, char *argv[]) {
 	// First of all, parse the local path we need to connect to.
 	// That is the only parameter permitted at the moment.
 	// If none passed, attempt to connect to default local path.
-	const char *localSocket = "/tmp/caer.sock";
+	const char *localSocket = "/tmp/dv.sock";
 
 	if (argc != 1 && argc != 2) {
 		fprintf(stderr, "Incorrect argument number. Either pass none for default local socket"
-						"path of /tmp/caer.sock, or pass the absolute path to the socket.\n");
+						"path of /tmp/dv.sock, or pass the absolute path to the socket.\n");
 		return (EXIT_FAILURE);
 	}
 

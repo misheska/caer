@@ -7,7 +7,7 @@
 
 class ConfigServerConnection;
 
-void caerConfigServerHandleRequest(
+void dvConfigServerHandleRequest(
 	std::shared_ptr<ConfigServerConnection> client, std::unique_ptr<uint8_t[]> messageBuffer);
 
 #endif /* SRC_CONFIG_SERVER_CONFIG_SERVER_ACTIONS_H_ */

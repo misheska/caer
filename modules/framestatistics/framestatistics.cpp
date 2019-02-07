@@ -1,6 +1,6 @@
 #include <libcaercpp/events/frame.hpp>
 
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -17,13 +17,13 @@ struct caer_frame_statistics_state {
 typedef struct caer_frame_statistics_state *caerFrameStatisticsState;
 
 static void caerFrameStatisticsConfigInit(dvConfigNode moduleNode);
-static bool caerFrameStatisticsInit(caerModuleData moduleData);
+static bool caerFrameStatisticsInit(dvModuleData moduleData);
 static void caerFrameStatisticsRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void caerFrameStatisticsExit(caerModuleData moduleData);
-static void caerFrameStatisticsConfig(caerModuleData moduleData);
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerFrameStatisticsExit(dvModuleData moduleData);
+static void caerFrameStatisticsConfig(dvModuleData moduleData);
 
-static const struct caer_module_functions FrameStatisticsFunctions
+static const struct dvModuleFunctionsS FrameStatisticsFunctions
 	= {.moduleConfigInit = &caerFrameStatisticsConfigInit,
 		.moduleInit      = &caerFrameStatisticsInit,
 		.moduleRun       = &caerFrameStatisticsRun,
@@ -34,10 +34,10 @@ static const struct caer_module_functions FrameStatisticsFunctions
 static const struct caer_event_stream_in FrameStatisticsInputs[]
 	= {{.type = FRAME_EVENT, .number = 1, .readOnly = true}};
 
-static const struct caer_module_info FrameStatisticsInfo = {.version = 1,
+static const struct dvModuleInfoS FrameStatisticsInfo = {.version = 1,
 	.name                                                            = "FrameStatistics",
 	.description                                                     = "Display statistics on frames (histogram).",
-	.type                                                            = CAER_MODULE_OUTPUT,
+	.type                                                            = DV_MODULE_OUTPUT,
 	.memSize                                                         = sizeof(struct caer_frame_statistics_state),
 	.functions                                                       = &FrameStatisticsFunctions,
 	.inputStreamsSize                                                = CAER_EVENT_STREAM_IN_SIZE(FrameStatisticsInputs),
@@ -45,7 +45,7 @@ static const struct caer_module_info FrameStatisticsInfo = {.version = 1,
 	.outputStreamsSize                                               = 0,
 	.outputStreams                                                   = NULL};
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&FrameStatisticsInfo);
 }
 
@@ -61,12 +61,12 @@ static void caerFrameStatisticsConfigInit(dvConfigNode moduleNode) {
 		"windowPositionY", 20, {0, UINT16_MAX}, dvCfgFlags::NORMAL, "Position of window on screen (Y coordinate).");
 }
 
-static bool caerFrameStatisticsInit(caerModuleData moduleData) {
+static bool caerFrameStatisticsInit(dvModuleData moduleData) {
 	// Get configuration.
 	caerFrameStatisticsConfig(moduleData);
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 
 	cv::namedWindow(moduleData->moduleSubSystemString,
 		cv::WindowFlags::WINDOW_AUTOSIZE | cv::WindowFlags::WINDOW_KEEPRATIO | cv::WindowFlags::WINDOW_GUI_EXPANDED);
@@ -75,7 +75,7 @@ static bool caerFrameStatisticsInit(caerModuleData moduleData) {
 }
 
 static void caerFrameStatisticsRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(out);
 
 	caerFrameEventPacket inPacket
@@ -125,14 +125,14 @@ static void caerFrameStatisticsRun(
 	}
 }
 
-static void caerFrameStatisticsExit(caerModuleData moduleData) {
+static void caerFrameStatisticsExit(dvModuleData moduleData) {
 	cv::destroyWindow(moduleData->moduleSubSystemString);
 
 	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 }
 
-static void caerFrameStatisticsConfig(caerModuleData moduleData) {
+static void caerFrameStatisticsConfig(dvModuleData moduleData) {
 	caerFrameStatisticsState state = (caerFrameStatisticsState) moduleData->moduleState;
 	dvCfg::Node cfg(moduleData->moduleNode);
 

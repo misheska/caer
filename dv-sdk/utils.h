@@ -1,5 +1,5 @@
-#ifndef CAER_SDK_UTILS_H_
-#define CAER_SDK_UTILS_H_
+#ifndef DV_SDK_UTILS_H_
+#define DV_SDK_UTILS_H_
 
 // Common includes, useful for everyone.
 #include <libcaer/libcaer.h>
@@ -80,4 +80,4 @@ template<typename... T> using void_t = typename void_t_impl<T...>::type;
 
 #endif
 
-#endif /* CAER_SDK_UTILS_H_ */
+#endif /* DV_SDK_UTILS_H_ */

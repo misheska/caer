@@ -1,8 +1,8 @@
 #include "input_common.h"
 
-#include "caer-sdk/cross/portable_threads.h"
-#include "caer-sdk/cross/portable_time.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_threads.h"
+#include "dv-sdk/cross/portable_time.h"
+#include "dv-sdk/mainloop.h"
 
 #include "ext/net_rw.h"
 #include "ext/uthash/utlist.h"
@@ -102,7 +102,7 @@ static bool parseNetworkHeader(inputCommonState state) {
 
 	// Check header values.
 	if (networkHeader.magicNumber != AEDAT3_NETWORK_MAGIC_NUMBER) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "AEDAT 3.X magic number not found. Invalid network stream.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "AEDAT 3.X magic number not found. Invalid network stream.");
 		return (false);
 	}
 
@@ -117,13 +117,13 @@ static bool parseNetworkHeader(inputCommonState state) {
 	else {
 		// For stream based transports, this is always zero.
 		if (networkHeader.sequenceNumber != 0) {
-			caerModuleLog(state->parentModule, CAER_LOG_ERROR, "SequenceNumber is not zero. Invalid network stream.");
+			dvModuleLog(state->parentModule, CAER_LOG_ERROR, "SequenceNumber is not zero. Invalid network stream.");
 			return (false);
 		}
 	}
 
 	if (networkHeader.versionNumber != AEDAT3_NETWORK_VERSION) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Unsupported AEDAT version. Invalid network stream.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Unsupported AEDAT version. Invalid network stream.");
 		return (false);
 	}
 
@@ -270,7 +270,7 @@ static void parseSourceString(char *sourceString, inputCommonState state) {
 	}
 	else {
 		// Default fall-back of 640x480 (VGA).
-		caerModuleLog(state->parentModule, CAER_LOG_WARNING,
+		dvModuleLog(state->parentModule, CAER_LOG_WARNING,
 			"Impossible to determine display sizes from Source information/string. Falling back to 640x480 (VGA).");
 		dvsSizeX = apsSizeX = 640;
 		dvsSizeY = apsSizeY = 480;
@@ -402,14 +402,14 @@ static bool parseFileHeader(inputCommonState state) {
 						break;
 				}
 
-				caerModuleLog(state->parentModule, CAER_LOG_DEBUG, "Found AEDAT%" PRIi16 ".%" PRIi8 " version header.",
+				dvModuleLog(state->parentModule, CAER_LOG_DEBUG, "Found AEDAT%" PRIi16 ".%" PRIi8 " version header.",
 					state->header.majorVersion, state->header.minorVersion);
 			}
 			else {
 			noValidVersionHeader:
 				free(headerLine);
 
-				caerModuleLog(
+				dvModuleLog(
 					state->parentModule, CAER_LOG_ERROR, "No compliant AEDAT version header found. Invalid file.");
 				return (false);
 			}
@@ -441,20 +441,20 @@ static bool parseFileHeader(inputCommonState state) {
 						// No valid format found.
 						free(headerLine);
 
-						caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+						dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 							"No compliant Format type found. Format '%s' is invalid.", formatString);
 
 						return (false);
 					}
 				}
 
-				caerModuleLog(state->parentModule, CAER_LOG_DEBUG,
+				dvModuleLog(state->parentModule, CAER_LOG_DEBUG,
 					"Found Format header with value '%s', Format ID %" PRIi8 ".", formatString, state->header.formatID);
 			}
 			else {
 				free(headerLine);
 
-				caerModuleLog(state->parentModule, CAER_LOG_ERROR, "No compliant Format header found. Invalid file.");
+				dvModuleLog(state->parentModule, CAER_LOG_ERROR, "No compliant Format header found. Invalid file.");
 				return (false);
 			}
 		}
@@ -468,14 +468,14 @@ static bool parseFileHeader(inputCommonState state) {
 				// Parse source string to get needed sourceInfo parameters.
 				parseSourceString(sourceString, state);
 
-				caerModuleLog(state->parentModule, CAER_LOG_DEBUG,
+				dvModuleLog(state->parentModule, CAER_LOG_DEBUG,
 					"Found Source header with value '%s', Source ID %" PRIi16 ".", sourceString,
 					state->header.sourceID);
 			}
 			else {
 				free(headerLine);
 
-				caerModuleLog(state->parentModule, CAER_LOG_ERROR, "No compliant Source header found. Invalid file.");
+				dvModuleLog(state->parentModule, CAER_LOG_ERROR, "No compliant Source header found. Invalid file.");
 				return (false);
 			}
 		}
@@ -486,7 +486,7 @@ static bool parseFileHeader(inputCommonState state) {
 			if (caerStrEquals(headerLine, "#!END-HEADER\r\n")) {
 				endHeader = true;
 
-				caerModuleLog(state->parentModule, CAER_LOG_DEBUG, "Found END-HEADER header.");
+				dvModuleLog(state->parentModule, CAER_LOG_DEBUG, "Found END-HEADER header.");
 			}
 			else {
 				// Then other headers, like Start-Time.
@@ -494,7 +494,7 @@ static bool parseFileHeader(inputCommonState state) {
 					char startTimeString[1024 + 1];
 
 					if (sscanf(headerLine, "#Start-Time: %1024[^\r]s\n", startTimeString) == 1) {
-						caerModuleLog(
+						dvModuleLog(
 							state->parentModule, CAER_LOG_INFO, "Recording was taken on %s.", startTimeString);
 					}
 				}
@@ -525,7 +525,7 @@ static bool parseFileHeader(inputCommonState state) {
 				}
 				else {
 					headerLine[strlen(headerLine) - 2] = '\0'; // Shorten string to avoid printing ending \r\n.
-					caerModuleLog(state->parentModule, CAER_LOG_DEBUG, "Header line: '%s'.", headerLine);
+					dvModuleLog(state->parentModule, CAER_LOG_DEBUG, "Header line: '%s'.", headerLine);
 				}
 			}
 		}
@@ -578,7 +578,7 @@ static bool parseData(inputCommonState state) {
 			continue;
 		}
 
-		caerModuleLog(state->parentModule, CAER_LOG_DEBUG,
+		dvModuleLog(state->parentModule, CAER_LOG_DEBUG,
 			"New packet read - ID: %zu, Offset: %zu, Size: %zu, Events: %" PRIi32 ", Type: %" PRIi16
 			", StartTS: %" PRIi64 ", EndTS: %" PRIi64 ".",
 			state->packets.currPacketData->id, state->packets.currPacketData->offset,
@@ -635,7 +635,7 @@ static int aedat2GetPacket(inputCommonState state, int16_t chipID) {
 	UNUSED_ARGUMENT(chipID);
 
 	// TODO: AEDAT 2.0 not yet supported.
-	caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Reading AEDAT 2.0 data not yet supported.");
+	dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Reading AEDAT 2.0 data not yet supported.");
 	return (-1);
 }
 
@@ -724,7 +724,7 @@ static int aedat3GetPacket(inputCommonState state, bool isAEDAT30) {
 
 		// First we verify that the source ID remained unique (only one source per I/O module supported!).
 		if (state->header.sourceID != eventSource) {
-			caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+			dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 				"An input module can only handle packets from the same source! "
 				"A packet with source %" PRIi16
 				" was read, but this input module expects only packets from source %" PRIi16 ". "
@@ -746,7 +746,7 @@ static int aedat3GetPacket(inputCommonState state, bool isAEDAT30) {
 		// Allocate space for the full packet, so we can reassemble it (and decompress it later).
 		state->packets.currPacket = malloc(CAER_EVENT_PACKET_HEADER_SIZE + (size_t)(eventNumber * eventSize));
 		if (state->packets.currPacket == NULL) {
-			caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for new event packet.");
+			dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for new event packet.");
 			return (-1);
 		}
 
@@ -772,7 +772,7 @@ static int aedat3GetPacket(inputCommonState state, bool isAEDAT30) {
 			free(state->packets.currPacket);
 			state->packets.currPacket = NULL;
 
-			caerModuleLog(
+			dvModuleLog(
 				state->parentModule, CAER_LOG_ERROR, "Failed to allocate memory for new event packet meta-data.");
 			return (-1);
 		}
@@ -825,7 +825,7 @@ static int aedat3GetPacket(inputCommonState state, bool isAEDAT30) {
 				free(state->packets.currPacketData);
 				state->packets.currPacketData = NULL;
 
-				caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to decompress event packet.");
+				dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to decompress event packet.");
 				return (-2);
 			}
 		}
@@ -1046,7 +1046,7 @@ static bool decompressFramePNG(inputCommonState state, caerEventPacketHeader pac
 
 	// Check that we indeed parsed everything correctly.
 	if (currPacketOffset != packetSize) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 			"Failed to decompress frame event. "
 			"Size after event parsing and packet size don't match.");
 		return (false);
@@ -1070,7 +1070,7 @@ static bool decompressFramePNG(inputCommonState state, caerEventPacketHeader pac
 					caerFrameEventGetLengthX(frameEvent), caerFrameEventGetLengthY(frameEvent),
 					caerFrameEventGetChannelNumber(frameEvent))) {
 				// Failed to decompress PNG.
-				caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+				dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 					"Failed to decompress frame event. "
 					"PNG decompression failure.");
 				return (false);
@@ -1106,7 +1106,7 @@ static bool decompressTimestampSerialize(inputCommonState state, caerEventPacket
 	uint8_t *events = malloc((size_t)(eventNumber * eventSize));
 	if (events == NULL) {
 		// Memory allocation failure.
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 			"Failed to decode serialized timestamp. "
 			"Memory allocation failure.");
 		return (false);
@@ -1179,21 +1179,21 @@ static bool decompressTimestampSerialize(inputCommonState state, caerEventPacket
 
 	// Check we really recovered all events from compression.
 	if (currPacketOffset != packetSize) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 			"Failed to decode serialized timestamp. "
 			"Length of compressed packet and read data don't match.");
 		return (false);
 	}
 
 	if ((size_t)(eventNumber * eventSize) != recoveredEventsPosition) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 			"Failed to decode serialized timestamp. "
 			"Length of uncompressed packet and uncompressed data don't match.");
 		return (false);
 	}
 
 	if ((size_t) eventNumber != recoveredEventsNumber) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 			"Failed to decode serialized timestamp. "
 			"Number of expected and recovered events don't match.");
 		return (false);
@@ -1237,7 +1237,7 @@ static int inputReaderThread(void *stateArg) {
 
 	// Set thread priority to high. This may fail depending on your OS configuration.
 	if (!portable_thread_set_priority_highest()) {
-		caerModuleLog(state->parentModule, CAER_LOG_INFO,
+		dvModuleLog(state->parentModule, CAER_LOG_INFO,
 			"Failed to raise thread priority for Input Reader thread. You may experience lags and delays.");
 	}
 
@@ -1247,7 +1247,7 @@ static int inputReaderThread(void *stateArg) {
 			atomic_store(&state->bufferUpdate, false);
 
 			if (!newInputBuffer(state)) {
-				caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+				dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 					"Failed to allocate new input data buffer. Continue using old one.");
 			}
 		}
@@ -1261,11 +1261,11 @@ static int inputReaderThread(void *stateArg) {
 
 			// Distinguish EOF from errors based upon errno value.
 			if (result == 0) {
-				caerModuleLog(state->parentModule, CAER_LOG_INFO, "Reached End of File.");
+				dvModuleLog(state->parentModule, CAER_LOG_INFO, "Reached End of File.");
 				atomic_store(&state->inputReaderThreadState, EOF_REACHED); // EOF
 			}
 			else {
-				caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Error while reading data, error: %d.", errno);
+				dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Error while reading data, error: %d.", errno);
 				atomic_store(&state->inputReaderThreadState, ERROR_READ); // Error
 			}
 			break;
@@ -1275,7 +1275,7 @@ static int inputReaderThread(void *stateArg) {
 		// Parse header and setup header info structure.
 		if (!atomic_load_explicit(&state->header.isValidHeader, memory_order_relaxed) && !parseHeader(state)) {
 			// Header invalid, exit.
-			caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+			dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 				"Failed to parse header. Only AEDAT 2.X and 3.x compliant files are supported.");
 			atomic_store(&state->inputReaderThreadState, ERROR_HEADER); // Error in Header
 			break;
@@ -1284,7 +1284,7 @@ static int inputReaderThread(void *stateArg) {
 		// Parse event data now.
 		if (!parseData(state)) {
 			// Packets invalid, exit.
-			caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to parse event data.");
+			dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to parse event data.");
 			atomic_store(&state->inputReaderThreadState, ERROR_DATA); // Error in Data
 			break;
 		}
@@ -1355,7 +1355,7 @@ static bool addToPacketContainer(inputCommonState state, caerEventPacketHeader n
 		// the merge operation becomes a simple append operation.
 		caerEventPacketHeader mergedPacket = caerEventPacketAppend(*packet, newPacket);
 		if (mergedPacket == NULL) {
-			caerModuleLog(state->parentModule, CAER_LOG_ERROR,
+			dvModuleLog(state->parentModule, CAER_LOG_ERROR,
 				"%s: Failed to allocate memory for packet merge operation.", __func__);
 			return (false);
 		}
@@ -1453,7 +1453,7 @@ static caerEventPacketContainer generatePacketContainer(inputCommonState state, 
 		caerEventPacketHeader nextPacket
 			= malloc(CAER_EVENT_PACKET_HEADER_SIZE + (size_t)(currPacketEventSize * nextPacketEventNumber));
 		if (nextPacket == NULL) {
-			caerModuleLog(state->parentModule, CAER_LOG_CRITICAL,
+			dvModuleLog(state->parentModule, CAER_LOG_CRITICAL,
 				"Failed memory allocation for nextPacket. Discarding remaining data.");
 		}
 		else {
@@ -1473,7 +1473,7 @@ static caerEventPacketContainer generatePacketContainer(inputCommonState state, 
 			= realloc(*currPacket, CAER_EVENT_PACKET_HEADER_SIZE + (size_t)(currPacketEventSize * cutoffIndex));
 		if (currPacketResized == NULL) {
 			// This is unlikely to happen as we always shrink here!
-			caerModuleLog(state->parentModule, CAER_LOG_CRITICAL,
+			dvModuleLog(state->parentModule, CAER_LOG_CRITICAL,
 				"Failed memory allocation for currPacketResized. Discarding current data.");
 			free(*currPacket);
 		}
@@ -1585,7 +1585,7 @@ static void doTimeDelay(inputCommonState state) {
 		uint64_t diffMicroTime = diffNanoTime / 1000;
 
 		if (diffMicroTime >= timeDelay) {
-			caerModuleLog(state->parentModule, CAER_LOG_WARNING,
+			dvModuleLog(state->parentModule, CAER_LOG_WARNING,
 				"Impossible to meet timeDelay timing specification with current settings.");
 
 			// Don't delay any more by requesting time again, use old one.
@@ -1623,15 +1623,15 @@ retry:
 
 		caerEventPacketContainerFree(packetContainer);
 
-		caerModuleLog(
+		dvModuleLog(
 			state->parentModule, CAER_LOG_NOTICE, "Failed to put new packet container on transfer ring-buffer: full.");
 	}
 	else {
 		// Signal availability of new data to the mainloop on packet container commit.
 		atomic_fetch_add_explicit(&state->dataAvailableModule, 1, memory_order_release);
-		caerMainloopDataNotifyIncrease(NULL);
+		dvMainloopDataNotifyIncrease(NULL);
 
-		caerModuleLog(state->parentModule, CAER_LOG_DEBUG, "Submitted packet container successfully.");
+		dvModuleLog(state->parentModule, CAER_LOG_DEBUG, "Submitted packet container successfully.");
 	}
 }
 
@@ -1643,7 +1643,7 @@ static bool handleTSReset(inputCommonState state) {
 	// Allocate packet container just for this event.
 	caerEventPacketContainer tsResetContainer = caerEventPacketContainerAllocate(1);
 	if (tsResetContainer == NULL) {
-		caerModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to allocate tsReset event packet container.");
+		dvModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to allocate tsReset event packet container.");
 		return (false);
 	}
 
@@ -1651,7 +1651,7 @@ static bool handleTSReset(inputCommonState state) {
 	caerSpecialEventPacket tsResetPacket = caerSpecialEventPacketAllocate(
 		1, I16T(state->parentModule->moduleID), state->packetContainer.lastTimestampOverflow);
 	if (tsResetPacket == NULL) {
-		caerModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to allocate tsReset special event packet.");
+		dvModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to allocate tsReset special event packet.");
 		return (false);
 	}
 
@@ -1702,7 +1702,7 @@ static int inputAssemblerThread(void *stateArg) {
 
 	// Set thread priority to high. This may fail depending on your OS configuration.
 	if (!portable_thread_set_priority_highest()) {
-		caerModuleLog(state->parentModule, CAER_LOG_INFO,
+		dvModuleLog(state->parentModule, CAER_LOG_INFO,
 			"Failed to raise thread priority for Input Assembler thread. You may experience lags and delays.");
 	}
 
@@ -1752,7 +1752,7 @@ static int inputAssemblerThread(void *stateArg) {
 			// Discard non-compliant packets.
 			free(currPacket);
 
-			caerModuleLog(state->parentModule, CAER_LOG_NOTICE,
+			dvModuleLog(state->parentModule, CAER_LOG_NOTICE,
 				"Dropping packet due to incorrect timestamp order. "
 				"Order-relevant timestamp is %" PRIi64 ", but expected was at least %" PRIi64 ".",
 				currPacketData.startTimestamp, state->packetContainer.lastPacketTimestamp);
@@ -1781,10 +1781,10 @@ static int inputAssemblerThread(void *stateArg) {
 			&& (caerSpecialEventPacketFindValidEventByType((caerSpecialEventPacket) currPacket, TIMESTAMP_RESET)
 				   != NULL)) {
 			tsReset = true;
-			caerModuleLog(state->parentModule, CAER_LOG_INFO, "Timestamp Reset detected in stream.");
+			dvModuleLog(state->parentModule, CAER_LOG_INFO, "Timestamp Reset detected in stream.");
 
 			if (currPacketData.eventNumber != 1) {
-				caerModuleLog(state->parentModule, CAER_LOG_WARNING,
+				dvModuleLog(state->parentModule, CAER_LOG_WARNING,
 					"Timpestamp Reset detected, but it is not alone in its Special Event packet. "
 					"This may lead to issues and should never happen.");
 			}
@@ -1800,7 +1800,7 @@ static int inputAssemblerThread(void *stateArg) {
 			state->packetContainer.lastTimestampOverflow = caerEventPacketHeaderGetEventTSOverflow(currPacket);
 
 			tsOverflow = true;
-			caerModuleLog(state->parentModule, CAER_LOG_INFO, "Timestamp Overflow detected in stream.");
+			dvModuleLog(state->parentModule, CAER_LOG_INFO, "Timestamp Overflow detected in stream.");
 		}
 
 		// Now we have all the information and must do some merge and commit operations.
@@ -1865,7 +1865,7 @@ static int inputAssemblerThread(void *stateArg) {
 
 static const UT_icd ut_caerEventPacketHeader_icd = {sizeof(caerEventPacketHeader), NULL, NULL, NULL};
 
-bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkStream, bool isNetworkMessageBased) {
+bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStream, bool isNetworkMessageBased) {
 	inputCommonState state = moduleData->moduleState;
 
 	state->parentModule   = moduleData;
@@ -1873,7 +1873,7 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 
 	// Check for invalid file descriptors.
 	if (readFd < -1) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Invalid file descriptor.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Invalid file descriptor.");
 		return (false);
 	}
 
@@ -1918,13 +1918,13 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 	// Initialize transfer ring-buffers. ringBufferSize only changes here at init time!
 	state->transferRingPackets = caerRingBufferInit((size_t) ringSize);
 	if (state->transferRingPackets == NULL) {
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate packets transfer ring-buffer.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate packets transfer ring-buffer.");
 		return (false);
 	}
 
 	state->transferRingPacketContainers = caerRingBufferInit((size_t) ringSize);
 	if (state->transferRingPacketContainers == NULL) {
-		caerModuleLog(
+		dvModuleLog(
 			state->parentModule, CAER_LOG_ERROR, "Failed to allocate packet containers transfer ring-buffer.");
 		return (false);
 	}
@@ -1934,7 +1934,7 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 		caerRingBufferFree(state->transferRingPackets);
 		caerRingBufferFree(state->transferRingPacketContainers);
 
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate input data buffer.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate input data buffer.");
 		return (false);
 	}
 
@@ -1954,7 +1954,7 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 		caerRingBufferFree(state->transferRingPacketContainers);
 		free(state->dataBuffer);
 
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to start input assembler thread.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to start input assembler thread.");
 		return (false);
 	}
 
@@ -1968,11 +1968,11 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 
 		if ((errno = thrd_join(state->inputAssemblerThread, NULL)) != thrd_success) {
 			// This should never happen!
-			caerModuleLog(
+			dvModuleLog(
 				state->parentModule, CAER_LOG_CRITICAL, "Failed to join input assembler thread. Error: %d.", errno);
 		}
 
-		caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to start input reader thread.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to start input reader thread.");
 		return (false);
 	}
 
@@ -1988,17 +1988,17 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 
 			if ((errno = thrd_join(state->inputAssemblerThread, NULL)) != thrd_success) {
 				// This should never happen!
-				caerModuleLog(
+				dvModuleLog(
 					state->parentModule, CAER_LOG_CRITICAL, "Failed to join input assembler thread. Error: %d.", errno);
 			}
 
 			if ((errno = thrd_join(state->inputReaderThread, NULL)) != thrd_success) {
 				// This should never happen!
-				caerModuleLog(
+				dvModuleLog(
 					state->parentModule, CAER_LOG_CRITICAL, "Failed to join input reader thread. Error: %d.", errno);
 			}
 
-			caerModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to start input reader thread.");
+			dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to start input reader thread.");
 			return (false);
 		}
 	}
@@ -2009,7 +2009,7 @@ bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkSt
 	return (true);
 }
 
-void caerInputCommonExit(caerModuleData moduleData) {
+void caerInputCommonExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerInputCommonConfigListener);
 
@@ -2020,12 +2020,12 @@ void caerInputCommonExit(caerModuleData moduleData) {
 
 	if ((errno = thrd_join(state->inputReaderThread, NULL)) != thrd_success) {
 		// This should never happen!
-		caerModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to join input reader thread. Error: %d.", errno);
+		dvModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to join input reader thread. Error: %d.", errno);
 	}
 
 	if ((errno = thrd_join(state->inputAssemblerThread, NULL)) != thrd_success) {
 		// This should never happen!
-		caerModuleLog(
+		dvModuleLog(
 			state->parentModule, CAER_LOG_CRITICAL, "Failed to join input assembler thread. Error: %d.", errno);
 	}
 
@@ -2035,7 +2035,7 @@ void caerInputCommonExit(caerModuleData moduleData) {
 		caerEventPacketContainerFree(packetContainer);
 
 		// If we're here, then nobody will (or even can) consume this data afterwards.
-		caerMainloopDataNotifyDecrease(NULL);
+		dvMainloopDataNotifyDecrease(NULL);
 		atomic_fetch_sub_explicit(&state->dataAvailableModule, 1, memory_order_relaxed);
 	}
 
@@ -2044,7 +2044,7 @@ void caerInputCommonExit(caerModuleData moduleData) {
 	// Check we indeed removed all data and counters match this expectation.
 	if (atomic_load(&state->dataAvailableModule) != 0) {
 		// This should never happen!
-		caerModuleLog(state->parentModule, CAER_LOG_CRITICAL,
+		dvModuleLog(state->parentModule, CAER_LOG_CRITICAL,
 			"After cleanup, data is still available for consumption. Counter value: %" PRIu32 ".",
 			U32T(atomic_load(&state->dataAvailableModule)));
 	}
@@ -2094,7 +2094,7 @@ void caerInputCommonExit(caerModuleData moduleData) {
 	}
 }
 
-void caerInputCommonRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+void caerInputCommonRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(in);
 
 	inputCommonState state = moduleData->moduleState;
@@ -2104,7 +2104,7 @@ void caerInputCommonRun(caerModuleData moduleData, caerEventPacketContainer in, 
 	if (*out != NULL) {
 		// No special memory order for decrease, because the acquire load to even start running
 		// through a mainloop already synchronizes with the release store above.
-		caerMainloopDataNotifyDecrease(NULL);
+		dvMainloopDataNotifyDecrease(NULL);
 		atomic_fetch_sub_explicit(&state->dataAvailableModule, 1, memory_order_relaxed);
 
 		caerEventPacketHeaderConst special = caerEventPacketContainerFindEventPacketByTypeConst(*out, SPECIAL_EVENT);
@@ -2112,7 +2112,7 @@ void caerInputCommonRun(caerModuleData moduleData, caerEventPacketContainer in, 
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
 				   != NULL)) {
-			caerMainloopModuleResetOutputRevDeps(moduleData->moduleID);
+			dvMainloopModuleResetOutputRevDeps(moduleData->moduleID);
 		}
 	}
 }
@@ -2121,7 +2121,7 @@ static void caerInputCommonConfigListener(dvConfigNode node, void *userData, enu
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 	inputCommonState state    = moduleData->moduleState;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {

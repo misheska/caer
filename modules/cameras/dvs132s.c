@@ -5,15 +5,15 @@
 
 #include <libcaer/devices/dvs132s.h>
 
-#include <caer-sdk/cross/c11threads_posix.h>
-#include <caer-sdk/mainloop.h>
+#include <dv-sdk/cross/c11threads_posix.h>
+#include <dv-sdk/mainloop.h>
 
 static void caerInputDVS132SConfigInit(dvConfigNode moduleNode);
-static bool caerInputDVS132SInit(caerModuleData moduleData);
-static void caerInputDVS132SRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void caerInputDVS132SExit(caerModuleData moduleData);
+static bool caerInputDVS132SInit(dvModuleData moduleData);
+static void caerInputDVS132SRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerInputDVS132SExit(dvModuleData moduleData);
 
-static const struct caer_module_functions DVS132SFunctions = {
+static const struct dvModuleFunctionsS DVS132SFunctions = {
 	.moduleConfigInit = &caerInputDVS132SConfigInit,
 	.moduleInit       = &caerInputDVS132SInit,
 	.moduleRun        = &caerInputDVS132SRun,
@@ -28,11 +28,11 @@ static const struct caer_event_stream_out DVS132SOutputs[] = {
 	{.type = IMU6_EVENT},
 };
 
-static const struct caer_module_info DVS132SInfo = {
+static const struct dvModuleInfoS DVS132SInfo = {
 	.version           = 1,
 	.name              = "DVS132S",
 	.description       = "Connects to a DVS132S camera to get data.",
-	.type              = CAER_MODULE_INPUT,
+	.type              = DV_MODULE_INPUT,
 	.memSize           = 0,
 	.functions         = &DVS132SFunctions,
 	.inputStreams      = NULL,
@@ -41,34 +41,34 @@ static const struct caer_module_info DVS132SInfo = {
 	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(DVS132SOutputs),
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&DVS132SInfo);
 }
 
 static void moduleShutdownNotify(void *p);
 
-static void createDefaultBiasConfiguration(caerModuleData moduleData);
-static void createDefaultLogicConfiguration(caerModuleData moduleData, const struct caer_dvs132s_info *devInfo);
-static void createDefaultUSBConfiguration(caerModuleData moduleData);
-static void sendDefaultConfiguration(caerModuleData moduleData, const struct caer_dvs132s_info *devInfo);
+static void createDefaultBiasConfiguration(dvModuleData moduleData);
+static void createDefaultLogicConfiguration(dvModuleData moduleData, const struct caer_dvs132s_info *devInfo);
+static void createDefaultUSBConfiguration(dvModuleData moduleData);
+static void sendDefaultConfiguration(dvModuleData moduleData, const struct caer_dvs132s_info *devInfo);
 
-static void biasConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void biasConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void muxConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void muxConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void muxConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void dvsConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void dvsConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void imuConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void imuConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void imuConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void extInputConfigSend(dvConfigNode node, caerModuleData moduleData, const struct caer_dvs132s_info *devInfo);
+static void extInputConfigSend(dvConfigNode node, dvModuleData moduleData, const struct caer_dvs132s_info *devInfo);
 static void extInputConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void systemConfigSend(dvConfigNode node, caerModuleData moduleData);
-static void usbConfigSend(dvConfigNode node, caerModuleData moduleData);
+static void systemConfigSend(dvConfigNode node, dvModuleData moduleData);
+static void usbConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void usbConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 static void systemConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -107,8 +107,8 @@ static void caerInputDVS132SConfigInit(dvConfigNode moduleNode) {
 		"between data acquisition thread and mainloop.");
 }
 
-static bool caerInputDVS132SInit(caerModuleData moduleData) {
-	caerModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+static bool caerInputDVS132SInit(dvModuleData moduleData) {
+	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and
 	// module of exceptional shutdown cases (device pulled, ...).
@@ -186,7 +186,7 @@ static bool caerInputDVS132SInit(caerModuleData moduleData) {
 		devInfo.deviceUSBDeviceAddress);
 	subSystemString[subSystemStringLength] = '\0';
 
-	caerModuleSetSubSystemString(moduleData, subSystemString);
+	dvModuleSetLogString(moduleData, subSystemString);
 
 	// Ensure good defaults for data acquisition settings.
 	// No blocking behavior due to mainloop notification, and no auto-start of
@@ -204,8 +204,8 @@ static bool caerInputDVS132SInit(caerModuleData moduleData) {
 	createDefaultUSBConfiguration(moduleData);
 
 	// Start data acquisition.
-	bool ret = caerDeviceDataStart(moduleData->moduleState, &caerMainloopDataNotifyIncrease,
-		&caerMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
+	bool ret = caerDeviceDataStart(moduleData->moduleState, &dvMainloopDataNotifyIncrease,
+		&dvMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
 
 	if (!ret) {
 		// Failed to start data acquisition, close device and exit.
@@ -247,7 +247,7 @@ static bool caerInputDVS132SInit(caerModuleData moduleData) {
 	return (true);
 }
 
-static void caerInputDVS132SRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+static void caerInputDVS132SRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(in);
 
 	*out = caerDeviceDataGet(moduleData->moduleState);
@@ -259,7 +259,7 @@ static void caerInputDVS132SRun(caerModuleData moduleData, caerEventPacketContai
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
 				   != NULL)) {
-			caerMainloopModuleResetOutputRevDeps(moduleData->moduleID);
+			dvMainloopModuleResetOutputRevDeps(moduleData->moduleID);
 
 			// Update master/slave information.
 			struct caer_dvs132s_info devInfo = caerDVS132SInfoGet(moduleData->moduleState);
@@ -271,7 +271,7 @@ static void caerInputDVS132SRun(caerModuleData moduleData, caerEventPacketContai
 	}
 }
 
-static void caerInputDVS132SExit(caerModuleData moduleData) {
+static void caerInputDVS132SExit(dvModuleData moduleData) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
@@ -325,7 +325,7 @@ static void moduleShutdownNotify(void *p) {
 	dvConfigNodePutBool(moduleNode, "running", false);
 }
 
-static void createDefaultBiasConfiguration(caerModuleData moduleData) {
+static void createDefaultBiasConfiguration(dvModuleData moduleData) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
@@ -362,7 +362,7 @@ static void createDefaultBiasConfiguration(caerModuleData moduleData) {
 		"Bias ABufBn (in pAmp) - Diagnostic analog buffer strength.");
 }
 
-static void createDefaultLogicConfiguration(caerModuleData moduleData, const struct caer_dvs132s_info *devInfo) {
+static void createDefaultLogicConfiguration(dvModuleData moduleData, const struct caer_dvs132s_info *devInfo) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
@@ -479,7 +479,7 @@ static void createDefaultLogicConfiguration(caerModuleData moduleData, const str
 	}
 }
 
-static void createDefaultUSBConfiguration(caerModuleData moduleData) {
+static void createDefaultUSBConfiguration(dvModuleData moduleData) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
@@ -495,7 +495,7 @@ static void createDefaultUSBConfiguration(caerModuleData moduleData) {
 		usbNode, "BufferSize", 8192, 512, 32768, DVCFG_FLAGS_NORMAL, "Size in bytes of data buffers for USB transfers.");
 }
 
-static void sendDefaultConfiguration(caerModuleData moduleData, const struct caer_dvs132s_info *devInfo) {
+static void sendDefaultConfiguration(dvModuleData moduleData, const struct caer_dvs132s_info *devInfo) {
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
@@ -519,7 +519,7 @@ static void sendDefaultConfiguration(caerModuleData moduleData, const struct cae
 	extInputConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "externalInput/"), moduleData, devInfo);
 }
 
-static void biasConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void biasConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_BIAS, DVS132S_CONFIG_BIAS_PRBP,
 		caerBiasCoarseFine1024Generate(caerBiasCoarseFine1024FromCurrent(U32T(dvConfigNodeGetInt(node, "PrBp")))));
 
@@ -556,7 +556,7 @@ static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "PrBp")) {
@@ -620,7 +620,7 @@ static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 	}
 }
 
-static void muxConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void muxConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_TIMESTAMP_RESET,
 		dvConfigNodeGetBool(node, "TimestampReset"));
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_DROP_DVS_ON_TRANSFER_STALL,
@@ -639,7 +639,7 @@ static void muxConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "TimestampReset")) {
@@ -724,7 +724,7 @@ static inline void dvsColumnEnableParse(const char *columnEnableStr, caerDeviceH
 	caerDeviceConfigSet(cdh, DVS132S_CONFIG_DVS, DVS132S_CONFIG_DVS_COLUMN_ENABLE_51_TO_32, columnInt51To32);
 }
 
-static void dvsConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void dvsConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_DVS, DVS132S_CONFIG_DVS_WAIT_ON_TRANSFER_STALL,
 		dvConfigNodeGetBool(node, "WaitOnTransferStall"));
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_DVS, DVS132S_CONFIG_DVS_FILTER_AT_LEAST_2_UNSIGNED,
@@ -767,7 +767,7 @@ static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "WaitOnTransferStall")) {
@@ -817,7 +817,7 @@ static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	}
 }
 
-static void imuConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void imuConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_IMU, DVS132S_CONFIG_IMU_ACCEL_DATA_RATE,
 		U32T(dvConfigNodeGetInt(node, "AccelDataRate")));
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_IMU, DVS132S_CONFIG_IMU_ACCEL_FILTER,
@@ -843,7 +843,7 @@ static void imuConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "AccelDataRate")) {
@@ -885,7 +885,7 @@ static void imuConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	}
 }
 
-static void extInputConfigSend(dvConfigNode node, caerModuleData moduleData, const struct caer_dvs132s_info *devInfo) {
+static void extInputConfigSend(dvConfigNode node, dvModuleData moduleData, const struct caer_dvs132s_info *devInfo) {
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_EXTINPUT, DVS132S_CONFIG_EXTINPUT_DETECT_RISING_EDGES,
 		dvConfigNodeGetBool(node, "DetectRisingEdges"));
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_EXTINPUT, DVS132S_CONFIG_EXTINPUT_DETECT_FALLING_EDGES,
@@ -921,7 +921,7 @@ static void extInputConfigListener(dvConfigNode node, void *userData, enum dvCon
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "DetectRisingEdges")) {
@@ -975,7 +975,7 @@ static void extInputConfigListener(dvConfigNode node, void *userData, enum dvCon
 	}
 }
 
-static void usbConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void usbConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_USB, CAER_HOST_CONFIG_USB_BUFFER_NUMBER,
 		U32T(dvConfigNodeGetInt(node, "BufferNumber")));
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_USB, CAER_HOST_CONFIG_USB_BUFFER_SIZE,
@@ -991,7 +991,7 @@ static void usbConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "BufferNumber")) {
@@ -1013,7 +1013,7 @@ static void usbConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	}
 }
 
-static void systemConfigSend(dvConfigNode node, caerModuleData moduleData) {
+static void systemConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
 		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_PACKET_SIZE, U32T(dvConfigNodeGetInt(node, "PacketContainerMaxPacketSize")));
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
@@ -1028,7 +1028,7 @@ static void systemConfigListener(dvConfigNode node, void *userData, enum dvConfi
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "PacketContainerMaxPacketSize")) {
@@ -1046,7 +1046,7 @@ static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAtt
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	caerModuleData moduleData = userData;
+	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
 		caerDeviceConfigSet(

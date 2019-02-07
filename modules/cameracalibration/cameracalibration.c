@@ -1,8 +1,8 @@
 #include <libcaer/events/frame.h>
 #include <libcaer/events/polarity.h>
 
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/mainloop.h"
 
 #include "calibration_settings.h"
 #include "calibration_wrapper.h"
@@ -19,14 +19,14 @@ struct CameraCalibrationState_struct {
 typedef struct CameraCalibrationState_struct *CameraCalibrationState;
 
 static void caerCameraCalibrationConfigInit(dvConfigNode moduleNode);
-static bool caerCameraCalibrationInit(caerModuleData moduleData);
+static bool caerCameraCalibrationInit(dvModuleData moduleData);
 static void caerCameraCalibrationRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void caerCameraCalibrationConfig(caerModuleData moduleData);
-static void caerCameraCalibrationExit(caerModuleData moduleData);
-static void updateSettings(caerModuleData moduleData);
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerCameraCalibrationConfig(dvModuleData moduleData);
+static void caerCameraCalibrationExit(dvModuleData moduleData);
+static void updateSettings(dvModuleData moduleData);
 
-static const struct caer_module_functions CameraCalibrationFunctions
+static const struct dvModuleFunctionsS CameraCalibrationFunctions
 	= {.moduleConfigInit = &caerCameraCalibrationConfigInit,
 		.moduleInit      = &caerCameraCalibrationInit,
 		.moduleRun       = &caerCameraCalibrationRun,
@@ -37,11 +37,11 @@ static const struct caer_module_functions CameraCalibrationFunctions
 static const struct caer_event_stream_in CameraCalibrationInputs[]
 	= {{.type = POLARITY_EVENT, .number = 1, .readOnly = false}, {.type = FRAME_EVENT, .number = 1, .readOnly = false}};
 
-static const struct caer_module_info CameraCalibrationInfo = {
+static const struct dvModuleInfoS CameraCalibrationInfo = {
 	.version           = 1,
 	.name              = "CameraCalibration",
 	.description       = "Lens distortion calibration, for undistortion of both events and frames.",
-	.type              = CAER_MODULE_PROCESSOR,
+	.type              = DV_MODULE_PROCESSOR,
 	.memSize           = sizeof(struct CameraCalibrationState_struct),
 	.functions         = &CameraCalibrationFunctions,
 	.inputStreams      = CameraCalibrationInputs,
@@ -50,7 +50,7 @@ static const struct caer_module_info CameraCalibrationInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&CameraCalibrationInfo);
 }
 
@@ -90,21 +90,21 @@ static void caerCameraCalibrationConfigInit(dvConfigNode moduleNode) {
 		"at the cost of loosing some pixels.");
 }
 
-static bool caerCameraCalibrationInit(caerModuleData moduleData) {
+static bool caerCameraCalibrationInit(dvModuleData moduleData) {
 	// Both input packets (polarity and frame) must be from the same source, which
 	// means inputSize should be 1 here (one module from which both come). If it isn't,
 	// it means we connected the module wrongly.
-	size_t inputsSize = caerMainloopModuleGetInputDeps(moduleData->moduleID, NULL);
+	size_t inputsSize = dvMainloopModuleGetInputDeps(moduleData->moduleID, NULL);
 
 	if (inputsSize != 1) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR,
+		dvModuleLog(moduleData, CAER_LOG_ERROR,
 			"Polarity and Frame inputs come from two different sources. Both must be from the same source!");
 		return (false);
 	}
 
 	// Wait for input to be ready. All inputs, once they are up and running, will
 	// have a valid sourceInfo node to query, especially if dealing with data.
-	dvConfigNode sourceInfo = caerMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
+	dvConfigNode sourceInfo = dvMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
 	if (sourceInfo == NULL) {
 		return (false);
 	}
@@ -124,12 +124,12 @@ static bool caerCameraCalibrationInit(caerModuleData moduleData) {
 	}
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 
 	return (true);
 }
 
-static void updateSettings(caerModuleData moduleData) {
+static void updateSettings(dvModuleData moduleData) {
 	CameraCalibrationState state = moduleData->moduleState;
 
 	// Get current config settings.
@@ -161,7 +161,7 @@ static void updateSettings(caerModuleData moduleData) {
 		state->settings.calibrationPattern = CAMCALIB_ASYMMETRIC_CIRCLES_GRID;
 	}
 	else {
-		caerModuleLog(moduleData, CAER_LOG_ERROR,
+		dvModuleLog(moduleData, CAER_LOG_ERROR,
 			"Invalid calibration pattern defined. Select one of: 'chessboard', "
 			"'circlesGrid' or 'asymmetricCirclesGrid'. Defaulting to "
 			"'chessboard'.");
@@ -176,7 +176,7 @@ static void updateSettings(caerModuleData moduleData) {
 	state->settings.loadFileName = dvConfigNodeGetString(moduleData->moduleNode, "loadFileName");
 }
 
-static void caerCameraCalibrationConfig(caerModuleData moduleData) {
+static void caerCameraCalibrationConfig(dvModuleData moduleData) {
 	CameraCalibrationState state = moduleData->moduleState;
 
 	// Free filename strings, get reloaded in next step.
@@ -196,9 +196,9 @@ static void caerCameraCalibrationConfig(caerModuleData moduleData) {
 	state->calibrationLoaded    = false;
 }
 
-static void caerCameraCalibrationExit(caerModuleData moduleData) {
+static void caerCameraCalibrationExit(dvModuleData moduleData) {
 	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleConfigDefaultListener);
+	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 
 	CameraCalibrationState state = moduleData->moduleState;
 
@@ -209,7 +209,7 @@ static void caerCameraCalibrationExit(caerModuleData moduleData) {
 }
 
 static void caerCameraCalibrationRun(
-	caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(out);
 
 	caerPolarityEventPacket polarity
@@ -229,7 +229,7 @@ static void caerCameraCalibrationRun(
 			state->lastFrameTimestamp = currTimestamp;
 
 			bool foundPoint = calibration_findNewPoints(state->cpp_class, caerFrameIteratorElement);
-			caerModuleLog(moduleData, CAER_LOG_WARNING, "Searching for new point set, result = %d.", foundPoint);
+			dvModuleLog(moduleData, CAER_LOG_WARNING, "Searching for new point set, result = %d.", foundPoint);
 		}
 		CAER_FRAME_ITERATOR_VALID_END
 
@@ -241,7 +241,7 @@ static void caerCameraCalibrationRun(
 
 			double totalAvgError;
 			state->calibrationCompleted = calibration_runCalibrationAndSave(state->cpp_class, &totalAvgError);
-			caerModuleLog(moduleData, CAER_LOG_WARNING, "Executing calibration, result = %d, error = %f.",
+			dvModuleLog(moduleData, CAER_LOG_WARNING, "Executing calibration, result = %d, error = %f.",
 				state->calibrationCompleted, totalAvgError);
 		}
 	}

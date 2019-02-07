@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#define CAER_CONFIG_SERVER_MAX_INCOMING_SIZE (8 * 1024)
+#define DV_CONFIG_SERVER_MAX_INCOMING_SIZE (8 * 1024)
 
 class ConfigServer;
 
@@ -20,7 +20,7 @@ private:
 	flatbuffers::uoffset_t incomingMessageSize;
 
 public:
-	ConfigServerConnection(asioTCP::socket s, bool sslEnabled, asioSSL::context *sslContext, ConfigServer *server);
+	ConfigServerConnection(asioTCP::socket s, bool tlsEnabled, asioSSL::context *tlsContext, ConfigServer *server);
 	~ConfigServerConnection();
 
 	void start();

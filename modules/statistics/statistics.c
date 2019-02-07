@@ -1,13 +1,13 @@
 #include "statistics.h"
 
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
 
 static void statisticsModuleConfigInit(dvConfigNode moduleNode);
-static bool statisticsModuleInit(caerModuleData moduleData);
-static void statisticsModuleRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void statisticsModuleReset(caerModuleData moduleData, int16_t resetCallSourceID);
+static bool statisticsModuleInit(dvModuleData moduleData);
+static void statisticsModuleRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void statisticsModuleReset(dvModuleData moduleData, int16_t resetCallSourceID);
 
-static const struct caer_module_functions StatisticsFunctions = {
+static const struct dvModuleFunctionsS StatisticsFunctions = {
 	.moduleConfigInit = &statisticsModuleConfigInit,
 	.moduleInit       = &statisticsModuleInit,
 	.moduleRun        = &statisticsModuleRun,
@@ -22,11 +22,11 @@ static const struct caer_event_stream_in StatisticsInputs[] = {{
 	.readOnly = true,
 }};
 
-static const struct caer_module_info StatisticsInfo = {
+static const struct dvModuleInfoS StatisticsInfo = {
 	.version           = 1,
 	.name              = "Statistics",
 	.description       = "Display statistics on events.",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct caer_statistics_state),
 	.functions         = &StatisticsFunctions,
 	.inputStreams      = StatisticsInputs,
@@ -35,7 +35,7 @@ static const struct caer_module_info StatisticsInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&StatisticsInfo);
 }
 
@@ -53,7 +53,7 @@ static void statisticsModuleConfigInit(dvConfigNode moduleNode) {
 		"Maximum time difference (in µs) between consecutive packets.");
 }
 
-static bool statisticsModuleInit(caerModuleData moduleData) {
+static bool statisticsModuleInit(dvModuleData moduleData) {
 	caerStatisticsState state = moduleData->moduleState;
 
 	caerStatisticsInit(state);
@@ -64,7 +64,7 @@ static bool statisticsModuleInit(caerModuleData moduleData) {
 	return (true);
 }
 
-static void statisticsModuleRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+static void statisticsModuleRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	UNUSED_ARGUMENT(out);
 
 	// Interpret variable arguments (same as above in main function).
@@ -82,7 +82,7 @@ static void statisticsModuleRun(caerModuleData moduleData, caerEventPacketContai
 	}
 }
 
-static void statisticsModuleReset(caerModuleData moduleData, int16_t resetCallSourceID) {
+static void statisticsModuleReset(dvModuleData moduleData, int16_t resetCallSourceID) {
 	UNUSED_ARGUMENT(resetCallSourceID);
 
 	caerStatisticsState state = moduleData->moduleState;

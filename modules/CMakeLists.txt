@@ -1,8 +1,8 @@
-# Set full RPATH, modules are libraries for cAER
-SET(CMAKE_INSTALL_RPATH ${CAER_MODULES_DIR})
+# Set full RPATH, modules are libraries for dv-runtime
+SET(CMAKE_INSTALL_RPATH ${USER_LOCAL_PREFIX}/${DV_MODULES_DIR})
 
 # Add SDK library to default libs
-SET(CAER_LIBS ${CAER_LIBS} caersdk)
+SET(DV_LIBS ${DV_LIBS} dvsdk)
 
 ADD_SUBDIRECTORY(cameracalibration)
 ADD_SUBDIRECTORY(cameras)
