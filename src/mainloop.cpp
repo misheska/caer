@@ -28,10 +28,12 @@
 #endif
 
 #if BOOST_HAS_STACKTRACE
-#	include <boost/stacktrace.hpp>
+#define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED 1
+#include <boost/stacktrace.hpp>
 #elif defined(OS_LINUX)
 #	include <execinfo.h>
 #endif
+
 
 #define INTERNAL_XSTR(a) INTERNAL_STR(a)
 #define INTERNAL_STR(a) #a

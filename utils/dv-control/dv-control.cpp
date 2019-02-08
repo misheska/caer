@@ -849,7 +849,7 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 
 	// At this point we made a valid request and got back a full response.
 	boost::tokenizer<boost::char_separator<char>> children(
-		resp->value()->string_view(), boost::char_separator<char>("|"));
+			resp->value()->str(), boost::char_separator<char>("|"));
 
 	size_t lengthOfIncompletePart = (partialNodeString.length() - lastSlash);
 
@@ -898,7 +898,7 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 
 	// At this point we made a valid request and got back a full response.
 	boost::tokenizer<boost::char_separator<char>> attributes(
-		resp->value()->string_view(), boost::char_separator<char>("|"));
+		resp->value()->str(), boost::char_separator<char>("|"));
 
 	for (const auto &attr : attributes) {
 		if (partialKeyString == attr.substr(0, partialKeyString.length())) {
@@ -1023,7 +1023,7 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 
 	// If this is a boolean value, we can also add the inverse as a second completion.
 	if (type == dv::Config::AttributeType::BOOL) {
-		if (resp->value()->string_view() == "true") {
+		if (resp->value()->str() == "true") {
 			addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), "false", false, false);
 		}
 		else {
