@@ -254,10 +254,15 @@ void ConfigServer::acceptStart() {
 
 static struct {
 	ConfigUpdater updater;
-	ConfigServer server;
+	std::unique_ptr<ConfigServer> server;
 } globalConfigData;
 
 void dvConfigServerStart(void) {
+
+	if (!globalConfigData.server) {
+		globalConfigData.server = std::make_unique<ConfigServer>();
+	}
+
 	// Get the right configuration node first.
 	auto serverNode = dvCfg::GLOBAL.getNode("/system/server/");
 
@@ -288,7 +293,7 @@ void dvConfigServerStart(void) {
 
 	try {
 		// Start threads.
-		globalConfigData.server.threadStart();
+		globalConfigData.server->threadStart();
 
 		globalConfigData.updater.threadStart();
 	}
@@ -310,7 +315,7 @@ void dvConfigServerStop(void) {
 
 	try {
 		// Stop threads.
-		globalConfigData.server.threadStop();
+		globalConfigData.server->threadStop();
 
 		globalConfigData.updater.threadStop();
 	}
@@ -332,7 +337,7 @@ static void configServerRestartListener(dvConfigNode node, void *userData, enum 
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "restart")
 		&& changeValue.boolean) {
-		globalConfigData.server.serviceRestart();
+		globalConfigData.server->serviceRestart();
 	}
 }
 
@@ -341,7 +346,7 @@ static void configServerGlobalNodeChangeListener(
 	UNUSED_ARGUMENT(userData);
 	dvCfg::Node node(n);
 
-	if (globalConfigData.server.pushClientsPresent()) {
+	if (globalConfigData.server->pushClientsPresent()) {
 		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 		std::string nodePath(node.getPath());
@@ -357,7 +362,7 @@ static void configServerGlobalNodeChangeListener(
 		// change we're pushing comes from a listener firing in response to
 		// changes brought by a client via the config-server, the current
 		// client ID will be the one from that remote client.
-		msg.add_id(globalConfigData.server.getCurrentClientID());
+		msg.add_id(globalConfigData.server->getCurrentClientID());
 
 		msg.add_action(dv::ConfigAction::PUSH_MESSAGE_NODE);
 		msg.add_nodeEvents(static_cast<dv::ConfigNodeEvents>(event));
@@ -369,7 +374,7 @@ static void configServerGlobalNodeChangeListener(
 		// Write root node and message size.
 		dv::FinishSizePrefixedConfigActionDataBuffer(*msgBuild, msgRoot);
 
-		globalConfigData.server.pushMessageToClients(msgBuild);
+		globalConfigData.server->pushMessageToClients(msgBuild);
 	}
 }
 
@@ -379,7 +384,7 @@ static void configServerGlobalAttributeChangeListener(dvConfigNode n, void *user
 	UNUSED_ARGUMENT(userData);
 	dvCfg::Node node(n);
 
-	if (globalConfigData.server.pushClientsPresent()) {
+	if (globalConfigData.server->pushClientsPresent()) {
 		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 		auto type  = static_cast<dvCfg::AttributeType>(changeType);
@@ -405,7 +410,7 @@ static void configServerGlobalAttributeChangeListener(dvConfigNode n, void *user
 		// change we're pushing comes from a listener firing in response to
 		// changes brought by a client via the config-server, the current
 		// client ID will be the one from that remote client.
-		msg.add_id(globalConfigData.server.getCurrentClientID());
+		msg.add_id(globalConfigData.server->getCurrentClientID());
 		msg.add_action(dv::ConfigAction::PUSH_MESSAGE_ATTR);
 		msg.add_attrEvents(static_cast<dv::ConfigAttributeEvents>(event));
 		msg.add_node(nodeStr);
@@ -426,6 +431,6 @@ static void configServerGlobalAttributeChangeListener(dvConfigNode n, void *user
 		// Write root node and message size.
 		dv::FinishSizePrefixedConfigActionDataBuffer(*msgBuild, msgRoot);
 
-		globalConfigData.server.pushMessageToClients(msgBuild);
+		globalConfigData.server->pushMessageToClients(msgBuild);
 	}
 }
