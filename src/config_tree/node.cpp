@@ -146,9 +146,8 @@ public:
 	}
 
 	void createAttribute(const std::string &key, const dv_value &defaultValue, const dv_ranges &ranges, int flags,
-	        const std::string &description, bool isModifierKey) {
-
-        // Check key name string against allowed characters via regexp.
+		const std::string &description, bool isModifierKey) {
+		// Check key name string against allowed characters via regexp.
 		if (!std::regex_match(key, (isModifierKey ? dvModifierKeyRegexp : dvKeyRegexp))) {
 			boost::format errorMsg = boost::format("Invalid key name format: '%s'.") % key;
 			dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(), errorMsg.str());
@@ -253,9 +252,9 @@ public:
 		}
 	}
 
-    void createAttribute(const std::string &key, const dv_value &defaultValue, const dv_ranges &ranges, int flags,
-                         const std::string &description) {
-	    createAttribute(key, defaultValue, ranges, flags, description, false);
+	void createAttribute(const std::string &key, const dv_value &defaultValue, const dv_ranges &ranges, int flags,
+		const std::string &description) {
+		createAttribute(key, defaultValue, ranges, flags, description, false);
 	}
 
 	void removeAttribute(const std::string &key, enum dvConfigAttributeType type) {
@@ -820,8 +819,8 @@ void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *de
 }
 
 void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, int32_t minLength,
-                              int32_t maxLength, int flags, const char *description) {
-    dvConfigNodeCreateString(node, key, defaultValue, minLength, maxLength, flags, description, false);
+	int32_t maxLength, int flags, const char *description) {
+	dvConfigNodeCreateString(node, key, defaultValue, minLength, maxLength, flags, description, false);
 }
 
 bool dvConfigNodePutString(dvConfigNode node, const char *key, const char *value) {
@@ -1328,6 +1327,7 @@ void dvConfigNodeAttributeModifierListOptions(
 	if (allowMultipleSelections) {
 		fullKey += "Multi";
 	}
+
 	dvConfigNodeCreateString(node, fullKey.c_str(), listOptions, 1, INT32_MAX, DVCFG_FLAGS_READ_ONLY,
 		"Comma separated list of possible choices for attribute value.", true);
 }
