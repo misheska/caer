@@ -1306,6 +1306,12 @@ void dvConfigNodeAttributeModifierButton(dvConfigNode node, const char *key, con
 		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierButton", key, DVCFG_TYPE_BOOL);
 	}
 
+	std::string typeStr(type);
+	if (!typeStr.empty() && typeStr != "PLAY" && typeStr != "ONOFF" && typeStr != "EXECUTE") {
+		dvConfigNodeError("dvConfigNodeAttributeModifierButton", key, DVCFG_TYPE_BOOL,
+			"Unknown Button type; permitted are: <empty>, PLAY, ONOFF, EXECUTE.");
+	}
+
 	std::string fullKey(key);
 	fullKey = "_" + fullKey + "Button";
 
@@ -1332,19 +1338,37 @@ void dvConfigNodeAttributeModifierListOptions(
 		"Comma separated list of possible choices for attribute value.", true);
 }
 
-void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions) {
+void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *typeAndExtensions) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, DVCFG_TYPE_STRING)) {
 		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierFileChooser", key, DVCFG_TYPE_STRING);
 	}
 
+	std::string typeExt(typeAndExtensions);
+	auto sepPos = typeExt.find(':');
+
+	std::string typeStr;
+	if (sepPos == std::string::npos) {
+		// No colon, so only type.
+		typeStr = typeExt;
+	}
+	else {
+		// Colon, so first part is type.
+		typeStr = typeExt.substr(0, sepPos);
+	}
+
+	if (typeStr != "DIRECTORY" && typeStr != "LOAD" && typeStr != "SAVE") {
+		dvConfigNodeError("dvConfigNodeAttributeModifierFileChooser", key, DVCFG_TYPE_STRING,
+			"Unknown FileChooser type; permitted are: DIRECTORY, LOAD, SAVE.");
+	}
+
 	std::string fullKey(key);
 	fullKey = "_" + fullKey + "FileChooser";
 
-	dvConfigNodeCreateString(node, fullKey.c_str(), allowedExtensions, 1, INT32_MAX,
+	dvConfigNodeCreateString(node, fullKey.c_str(), typeAndExtensions, 1, INT32_MAX,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-		"Type of file chooser dialog plus comma separated list of allowed extensions.", true);
+		"Type of file chooser dialog plus optional comma separated list of allowed extensions.", true);
 }
 
 void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const char *unitInformation) {
