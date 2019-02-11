@@ -1327,6 +1327,12 @@ void dvConfigNodeAttributeModifierListOptions(
 		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierListOptions", key, DVCFG_TYPE_STRING);
 	}
 
+	std::string options(listOptions);
+	if (options.empty()) {
+		dvConfigNodeError(
+			"dvConfigNodeAttributeModifierListOptions", key, DVCFG_TYPE_STRING, "List options cannot be empty.");
+	}
+
 	std::string fullKey(key);
 	fullKey = "_" + fullKey + "ListOptions";
 
@@ -1377,6 +1383,12 @@ void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const
 	if (!node->attributeExists(key, DVCFG_TYPE_INT) && !node->attributeExists(key, DVCFG_TYPE_LONG)
 		&& !node->attributeExists(key, DVCFG_TYPE_FLOAT) && !node->attributeExists(key, DVCFG_TYPE_DOUBLE)) {
 		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierUnit", key, DVCFG_TYPE_INT);
+	}
+
+	std::string unitInfo(unitInformation);
+	if (unitInfo.empty()) {
+		dvConfigNodeError(
+			"dvConfigNodeAttributeModifierUnit", key, DVCFG_TYPE_INT, "Unit information cannot be empty.");
 	}
 
 	std::string fullKey(key);
