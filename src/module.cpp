@@ -33,6 +33,9 @@ void dvModuleConfigInit(dv::Config::Node moduleNode) {
 	moduleNode.create<dvCfgType::BOOL>("runAtStartup", true, {}, dvCfgFlags::NORMAL,
 		"Start this module when the mainloop starts."); // Allow for users to disable a module at start.
 
+	// Each module can set priority attributes for UI display. By default let's show 'logLevel'.
+	moduleNode.attributeModifierPriorityAttributes("logLevel");
+
 	// Call module's configInit function to create default static config.
 	const std::string moduleName = moduleNode.get<dvCfgType::STRING>("moduleLibrary");
 
