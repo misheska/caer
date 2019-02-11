@@ -115,7 +115,7 @@ public:
 };
 
 static const std::regex dvKeyRegexp("^[a-zA-Z][a-zA-Z-_\\d\\.]*$");
-static const std::regex dvModifierKeyRegexp("^_[a-zA-Z-_\\d\\.]*$");
+static const std::regex dvModifierKeyRegexp("^_[a-zA-Z][a-zA-Z-_\\d\\.]*$");
 
 // struct for C compatibility
 struct dv_config_node {
