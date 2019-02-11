@@ -22,3 +22,4 @@ core*
 *.cbp
 *.idea
 *.user
+*.pc
