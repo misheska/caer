@@ -1361,3 +1361,10 @@ void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const
 	dvConfigNodeCreateString(node, fullKey.c_str(), unitInformation, 1, INT32_MAX, DVCFG_FLAGS_READ_ONLY,
 		"Information about the units that apply to a numeric attribute (ms, Km, m, Kg, mg, ...).", true);
 }
+
+void dvConfigNodeAttributeModifierPriorityAttributes(dvConfigNode node, const char *priorityAttributes) {
+	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+
+	dvConfigNodeCreateString(node, "_priorityAttributes", priorityAttributes, 1, INT32_MAX, DVCFG_FLAGS_READ_ONLY,
+		"Comma separated list of attribute keys that should be prioritized regarding visualization in the UI.", true);
+}

@@ -594,12 +594,16 @@ public:
 		dvConfigNodeAttributeModifierListOptions(node, key.c_str(), listOptions.c_str(), allowMultipleSelections);
 	}
 
-	void attributeModifierFileChooser(const std::string &key, const std::string &allowedExtensions) {
-		dvConfigNodeAttributeModifierFileChooser(node, key.c_str(), allowedExtensions.c_str());
+	void attributeModifierFileChooser(const std::string &key, const std::string &typeAndExtensions) {
+		dvConfigNodeAttributeModifierFileChooser(node, key.c_str(), typeAndExtensions.c_str());
 	}
 
 	void attributeModifierUnit(const std::string &key, const std::string &unitInformation) {
 		dvConfigNodeAttributeModifierUnit(node, key.c_str(), unitInformation.c_str());
+	}
+
+	void attributeModifierPriorityAttributes(const std::string &priorityAttributes) {
+		dvConfigNodeAttributeModifierPriorityAttributes(node, priorityAttributes.c_str());
 	}
 
 	bool existsRelativeNode(const std::string &nodePath) const {
