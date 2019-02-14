@@ -380,7 +380,7 @@ public:
 
 static void dvConfigNodeDestroy(dvConfigNode node);
 static void dvConfigNodeRemoveSubTree(dvConfigNode node);
-static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string &childName);
+static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string childName);
 static void dvConfigNodeRemoveAllChildren(dvConfigNode node);
 
 #define XML_INDENT_SPACES 4
@@ -596,7 +596,7 @@ static void dvConfigNodeRemoveSubTree(dvConfigNode node) {
 
 // children, attributes, and listeners for the child to be removed
 // must be cleaned up prior to this call.
-static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string &childName) {
+static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string childName) {
 	std::unique_lock<std::shared_mutex> lock(node->traversal_lock);
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
