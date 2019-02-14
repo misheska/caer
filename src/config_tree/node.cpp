@@ -538,12 +538,6 @@ void dvConfigNodeRemoveAllAttributeListeners(dvConfigNode node) {
 void dvConfigNodeClearSubTree(dvConfigNode startNode, bool clearStartNode) {
 	std::lock_guard<std::recursive_mutex> lockNode(startNode->node_lock);
 
-	// Clear this node's attributes, if requested.
-	if (clearStartNode) {
-		dvConfigNodeRemoveAllAttributes(startNode);
-		dvConfigNodeRemoveAllAttributeListeners(startNode);
-	}
-
 	// Recurse down children and remove all attributes.
 	size_t numChildren;
 	dvConfigNode *children = dvConfigNodeGetChildren(startNode, &numChildren);
@@ -553,6 +547,12 @@ void dvConfigNodeClearSubTree(dvConfigNode startNode, bool clearStartNode) {
 	}
 
 	free(children);
+
+	// Clear this node's attributes, if requested.
+	if (clearStartNode) {
+		dvConfigNodeRemoveAllAttributes(startNode);
+		dvConfigNodeRemoveAllAttributeListeners(startNode);
+	}
 }
 
 // Eliminates this node and any children. Nobody can have a reference, or
