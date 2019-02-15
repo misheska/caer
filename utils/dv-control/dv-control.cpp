@@ -1021,7 +1021,7 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 
 	// If this is a boolean value, we can also add the inverse as a second completion.
 	if (type == dv::Config::AttributeType::BOOL) {
-		if (resp->value()->str() == "true") {
+		if (resp->value()->string_view() == "true") {
 			addCompletionSuffix(autoComplete, buf.c_str(), buf.length(), "false", false, false);
 		}
 		else {
