@@ -5,13 +5,13 @@
 #ifndef DV_CONFIG_HPP
 #define DV_CONFIG_HPP
 
-#include <string>
-#include <memory>
-#include <cmath>
-#include <boost/any.hpp>
 #include <dv-sdk/module.h>
 
+#include <boost/any.hpp>
+#include <cmath>
 #include <map>
+#include <memory>
+#include <string>
 
 namespace dv {
 
@@ -82,11 +82,9 @@ public:
 	_ConfigOption(const std::string &description_, _VariantType initValue_, const _ConfigAttributes<V> &attributes_) :
 		description(description_),
 		initValue(initValue_),
-        attributes(attributes_),
-		currentValue(initValue_)
-		{}
-
-
+		attributes(attributes_),
+		currentValue(initValue_) {
+	}
 };
 
 /**
@@ -97,7 +95,7 @@ public:
 class ConfigOption {
 private:
 	std::shared_ptr<void> configOption_;
-	ConfigVariant variant_ = ConfigVariant::NONE;
+	ConfigVariant variant_   = ConfigVariant::NONE;
 	bool dvConfigNodeCreated = false;
 
 	/**
@@ -132,7 +130,6 @@ private:
 public:
 	ConfigOption() = default;
 
-
 	/**
 	 * Returns the variant of this `ConfigOption`. The return value of this
 	 * function can be used to use as a
@@ -152,17 +149,16 @@ public:
 		return *(std::static_pointer_cast<_ConfigOption<V>>(configOption_));
 	}
 
-    /**
-     * Returns the current value of this config option. Needs a template paramenter
-     * of the type `dv::ConfigVariant::*` to determine what type of config parameter
-     * to return.
-     * @tparam V The config variant type
-     * @return A simple value (long, string etc) that is the current value of the config option
-     */
+	/**
+	 * Returns the current value of this config option. Needs a template paramenter
+	 * of the type `dv::ConfigVariant::*` to determine what type of config parameter
+	 * to return.
+	 * @tparam V The config variant type
+	 * @return A simple value (long, string etc) that is the current value of the config option
+	 */
 	template<ConfigVariant V> typename _ConfigVariantType<V>::type &getValue() const {
-		return (typename _ConfigVariantType<V>::type&)(getConfigObject<V>().currentValue);
+		return (typename _ConfigVariantType<V>::type &) (getConfigObject<V>().currentValue);
 	}
-
 
 	/**
 	 * Creates a dvConfig Attribute in the dv config tree for the object.
@@ -170,47 +166,47 @@ public:
 	 * @param key the key under which the new attribute should get stored
 	 * @param node The dvConfigNode under which the new attribute shall be created
 	 */
-	void createDvConfigNodeIfChanged(const std::string& key, dvConfigNode node) {
+	void createDvConfigNodeIfChanged(const std::string &key, dvConfigNode node) {
 		if (dvConfigNodeCreated) {
 			return;
 		}
 
 		switch (variant_) {
 			case ConfigVariant::BOOLEAN: {
-				auto& config_ = getConfigObject<ConfigVariant::BOOLEAN>();
-				dvConfigNodeCreateBool(node, key.c_str(), config_.initValue, DVCFG_FLAGS_NORMAL,
-									   config_.description.c_str());
+				auto &config_ = getConfigObject<ConfigVariant::BOOLEAN>();
+				dvConfigNodeCreateBool(
+					node, key.c_str(), config_.initValue, DVCFG_FLAGS_NORMAL, config_.description.c_str());
 				break;
 			}
 			case ConfigVariant::FRACTIONAL: {
-				auto& config_ = getConfigObject<ConfigVariant::FRACTIONAL>();
+				auto &config_ = getConfigObject<ConfigVariant::FRACTIONAL>();
 				dvConfigNodeCreateDouble(node, key.c_str(), config_.initValue, config_.attributes.min,
-										 config_.attributes.max, DVCFG_FLAGS_NORMAL, config_.description.c_str());
+					config_.attributes.max, DVCFG_FLAGS_NORMAL, config_.description.c_str());
 				break;
 			}
 			case ConfigVariant::INTEGER: {
-				auto& config_ = getConfigObject<ConfigVariant::INTEGER>();
+				auto &config_ = getConfigObject<ConfigVariant::INTEGER>();
 				dvConfigNodeCreateLong(node, key.c_str(), config_.initValue, config_.attributes.min,
-									   config_.attributes.max, DVCFG_FLAGS_NORMAL, config_.description.c_str());
-                break;
+					config_.attributes.max, DVCFG_FLAGS_NORMAL, config_.description.c_str());
+				break;
 			}
 			case ConfigVariant::STRING: {
-				auto& config_ = getConfigObject<ConfigVariant::STRING>();
-				dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, UINT32_MAX, DVCFG_FLAGS_NORMAL,
-										 config_.description.c_str());
+				auto &config_ = getConfigObject<ConfigVariant::STRING>();
+				dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, UINT32_MAX,
+					DVCFG_FLAGS_NORMAL, config_.description.c_str());
 				break;
 			}
 			case ConfigVariant::FILE: {
-				auto& config_ = getConfigObject<ConfigVariant::FILE>();
+				auto &config_ = getConfigObject<ConfigVariant::FILE>();
 				dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, PATH_MAX, DVCFG_FLAGS_NORMAL,
-										 config_.description.c_str());
+					config_.description.c_str());
 
 				std::string fileChooserAttribute
-						= (config_.attributes.mode == _FileDialogMode::OPEN)
+					= (config_.attributes.mode == _FileDialogMode::OPEN)
 						  ? "LOAD"
 						  : ((config_.attributes.mode == _FileDialogMode::SAVE) ? "SAVE" : "DIRECTORY");
 				dvConfigNodeAttributeModifierFileChooser(
-						node, key.c_str(), (fileChooserAttribute + ":" + config_.attributes.allowedExtensions).c_str());
+					node, key.c_str(), (fileChooserAttribute + ":" + config_.attributes.allowedExtensions).c_str());
 				break;
 			}
 			case ConfigVariant::NONE: {
@@ -220,36 +216,35 @@ public:
 		dvConfigNodeCreated = true;
 	}
 
-
 	/**
 	 * Updates the current value of the ConfigOption based on the value
 	 * that is present in the dv config tree.
 	 * @param key The key under which to find the value in the dv config tree.
 	 * @param node The node of the dv config treee under which the attribute is to be found.
 	 */
-	void updateValue (const std::string& key, dvConfigNode node) {
+	void updateValue(const std::string &key, dvConfigNode node) {
 		switch (variant_) {
 			case ConfigVariant::BOOLEAN: {
-				auto& config_ = getConfigObject<ConfigVariant::BOOLEAN>();
+				auto &config_        = getConfigObject<ConfigVariant::BOOLEAN>();
 				config_.currentValue = dvConfigNodeGetBool(node, key.c_str());
 			}
 			case ConfigVariant::FRACTIONAL: {
-				auto& config_ = getConfigObject<ConfigVariant::FRACTIONAL>();
+				auto &config_        = getConfigObject<ConfigVariant::FRACTIONAL>();
 				config_.currentValue = dvConfigNodeGetDouble(node, key.c_str());
 				break;
 			}
 			case ConfigVariant::INTEGER: {
-				auto& config_ = getConfigObject<ConfigVariant::INTEGER>();
+				auto &config_        = getConfigObject<ConfigVariant::INTEGER>();
 				config_.currentValue = dvConfigNodeGetLong(node, key.c_str());
 				break;
 			}
 			case ConfigVariant::STRING: {
-				auto& config_ = getConfigObject<ConfigVariant::STRING>();
-                config_.currentValue = dvConfigNodeGetString(node, key.c_str());
+				auto &config_        = getConfigObject<ConfigVariant::STRING>();
+				config_.currentValue = dvConfigNodeGetString(node, key.c_str());
 				break;
 			}
 			case ConfigVariant::FILE: {
-				auto& config_ = getConfigObject<ConfigVariant::FILE>();
+				auto &config_        = getConfigObject<ConfigVariant::FILE>();
 				config_.currentValue = dvConfigNodeGetString(node, key.c_str());
 				break;
 			}
@@ -424,33 +419,31 @@ public:
 	}
 };
 
-
 /**
  * A map of current config values at runtime. Extends std::map.
  * Type agnostic, enforces type only on accessing elements.
  */
 class RuntimeConfigMap : public std::map<std::string, ConfigOption> {
 public:
-
-    /**
-     * Returns the underlying `_ConfigOption` object for the given key. The
-     * config option provides access to parameters and default and current values.
-     * @tparam V The type of the config param. Type of `dv::ConfigVariant::`
-     * @param key The key of the config option to retrieve
-     * @return The underlying `_ConfigObject` of the config option. Gives access to parameters.
-     */
+	/**
+	 * Returns the underlying `_ConfigOption` object for the given key. The
+	 * config option provides access to parameters and default and current values.
+	 * @tparam V The type of the config param. Type of `dv::ConfigVariant::`
+	 * @param key The key of the config option to retrieve
+	 * @return The underlying `_ConfigObject` of the config option. Gives access to parameters.
+	 */
 	template<ConfigVariant V> _ConfigOption<V> const &getConfigObject(const std::string &key) {
 		return this->at(key).getConfigObject<V>();
 	}
 
-    /**
-     * Returns the current value of the config option with the given key. Needs a template paramenter
-     * of the type `dv::ConfigVariant::*` to determine what type of config parameter
-     * to return.
-     * @tparam V The config variant type
-     * @param key the key of the config option to look up
-     * @return A simple value (long, string etc) that is the current value of the config option
-     */
+	/**
+	 * Returns the current value of the config option with the given key. Needs a template paramenter
+	 * of the type `dv::ConfigVariant::*` to determine what type of config parameter
+	 * to return.
+	 * @tparam V The config variant type
+	 * @param key the key of the config option to look up
+	 * @return A simple value (long, string etc) that is the current value of the config option
+	 */
 	template<ConfigVariant V> const typename _ConfigVariantType<V>::type getValue(const std::string &key) {
 		return (typename _ConfigVariantType<V>::type)(getConfigObject<V>(key).currentValue);
 	}

@@ -1,13 +1,13 @@
 #include <utility>
 #ifndef DV_SDK_BASE_MODULE_HPP
-#define DV_SDK_BASE_MODULE_HPP
+#	define DV_SDK_BASE_MODULE_HPP
 
-#include <dv-sdk/module.h>
+#	include <dv-sdk/module.h>
 
-#include "log.hpp"
-#include "config.hpp"
+#	include "config.hpp"
+#	include "log.hpp"
 
-#include <map>
+#	include <map>
 
 namespace dv {
 
@@ -20,7 +20,7 @@ namespace dv {
 class BaseModule {
 private:
 	thread_local static dvModuleData __moduleData;
-	static std::function<void(std::map<std::string, ConfigOption>&)> __getDefaultConfig;
+	static std::function<void(std::map<std::string, ConfigOption> &)> __getDefaultConfig;
 
 public:
 	/**
@@ -38,7 +38,7 @@ public:
 		for (auto &entry : defaultConfig) {
 			auto &key    = entry.first;
 			auto &config = entry.second;
-            config.createDvConfigNodeIfChanged(key, node);
+			config.createDvConfigNodeIfChanged(key, node);
 		}
 	}
 
@@ -53,19 +53,19 @@ public:
 		__moduleData = _moduleData;
 	}
 
-    /**
-     * __INTERNAL USE ONLY__
-     * Sets the `__getDefaultConfig` static function to the user provided
-     * static function that generates the default config map.
-     * The reference to this function is used since there is no access
-     * to the child - subclass static functions possible from this class.
-     * The default config is both generated before instantiation in
-     * a call to `staticConfigInit` as well as in the constructor
-     * at runtime.
-     * @param _getDefaultConfig
-     */
-	static void __setGetDefaultConfig(std::function<void(std::map<std::string, ConfigOption>&)> _getDefaultConfig) {
-	    __getDefaultConfig = std::move(_getDefaultConfig);
+	/**
+	 * __INTERNAL USE ONLY__
+	 * Sets the `__getDefaultConfig` static function to the user provided
+	 * static function that generates the default config map.
+	 * The reference to this function is used since there is no access
+	 * to the child - subclass static functions possible from this class.
+	 * The default config is both generated before instantiation in
+	 * a call to `staticConfigInit` as well as in the constructor
+	 * at runtime.
+	 * @param _getDefaultConfig
+	 */
+	static void __setGetDefaultConfig(std::function<void(std::map<std::string, ConfigOption> &)> _getDefaultConfig) {
+		__getDefaultConfig = std::move(_getDefaultConfig);
 	}
 
 	/**
@@ -91,13 +91,13 @@ public:
 	 * and config are available at the time the subclass constructor is
 	 * called.
 	 */
-	BaseModule() :  moduleData(__moduleData), log(Logger(__moduleData)) {
-	    assert(__moduleData);
+	BaseModule() : moduleData(__moduleData), log(Logger(__moduleData)) {
+		assert(__moduleData);
 
-	    // initialize the config map with the default config
-        __getDefaultConfig(config);
-        // update the config values
-	    configUpdate(__moduleData->moduleNode);
+		// initialize the config map with the default config
+		__getDefaultConfig(config);
+		// update the config values
+		configUpdate(__moduleData->moduleNode);
 	}
 
 	/**
@@ -106,12 +106,12 @@ public:
 	 * @param node the dvConfig node to read the config from.
 	 */
 	void configUpdate(dvConfigNode node) {
-        for (auto &entry : config) {
-            auto &key    = entry.first;
-            auto &configOption = entry.second;
-            configOption.createDvConfigNodeIfChanged(key, node);
-            configOption.updateValue(key, node);
-        }
+		for (auto &entry : config) {
+			auto &key          = entry.first;
+			auto &configOption = entry.second;
+			configOption.createDvConfigNodeIfChanged(key, node);
+			configOption.updateValue(key, node);
+		}
 	}
 
 	/**
@@ -139,14 +139,14 @@ public:
 	virtual void run(const libcaer::events::EventPacketContainer &in) = 0;
 };
 
-    /**
-     * Instantiation of thread_local static moduleData pointer.
-     * This pointer is set prior to construction to allow the constructor
-     * to access relevant data.
-     */
-    thread_local dvModuleData BaseModule::__moduleData = nullptr;
+/**
+ * Instantiation of thread_local static moduleData pointer.
+ * This pointer is set prior to construction to allow the constructor
+ * to access relevant data.
+ */
+thread_local dvModuleData BaseModule::__moduleData = nullptr;
 
-    std::function<void(std::map<std::string, ConfigOption>&)> BaseModule::__getDefaultConfig = nullptr;
+std::function<void(std::map<std::string, ConfigOption> &)> BaseModule::__getDefaultConfig = nullptr;
 } // namespace dv
 
 #endif // DV_SDK_BASE_MODULE_HPP

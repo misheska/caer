@@ -141,7 +141,8 @@ public:
 	 * @param node The DV provided DvConfig node.
 	 */
 	static void configInit(dvConfigNode node) {
-		BaseModule::__setGetDefaultConfig(std::function<void(std::map<std::string, ConfigOption>&)>(T::getConfigOptions));
+		BaseModule::__setGetDefaultConfig(
+			std::function<void(std::map<std::string, ConfigOption> &)>(T::getConfigOptions));
 		BaseModule::staticConfigInit(node);
 	}
 
