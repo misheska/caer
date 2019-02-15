@@ -169,8 +169,9 @@ char *dvConfigNodeGetAttributeDescription(dvConfigNode node, const char *key, en
 void dvConfigNodeAttributeModifierButton(dvConfigNode node, const char *key, const char *type);
 void dvConfigNodeAttributeModifierListOptions(
 	dvConfigNode node, const char *key, const char *listOptions, bool allowMultipleSelections);
-void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions);
+void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *typeAndExtensions);
 void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const char *unitInformation);
+void dvConfigNodeAttributeModifierPriorityAttributes(dvConfigNode node, const char *priorityAttributes);
 
 bool dvConfigNodeExistsRelativeNode(dvConfigNode node, const char *nodePath);
 /**

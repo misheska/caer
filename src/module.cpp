@@ -59,6 +59,10 @@ void dvModuleConfigInit(dv::Config::Node moduleNode) {
 	}
 
 	dvModuleUnloadLibrary(mLoad.first);
+
+	// Each module can set priority attributes for UI display. By default let's show 'logLevel'.
+	// Called last to allow for configInit() function to create a different default first.
+	moduleNode.attributeModifierPriorityAttributes("logLevel");
 }
 
 void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size_t memSize, caerEventPacketContainer in,

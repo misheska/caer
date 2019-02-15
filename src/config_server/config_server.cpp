@@ -409,8 +409,15 @@ static void configServerGlobalAttributeChangeListener(dvConfigNode n, void *user
 		// If we're running in any other thread it will be 0 (system), if the
 		// change we're pushing comes from a listener firing in response to
 		// changes brought by a client via the config-server, the current
-		// client ID will be the one from that remote client.
-		msg.add_id(globalConfigData.server->getCurrentClientID());
+		// client ID will be the one from that remote client. The only exception
+		// to this are log messages, which are always considered system changes.
+		if ((type == dvCfgType::STRING) && caerStrEquals(changeKey, "lastLogMessage")
+			&& (node.getPath() == "/system/logger/")) {
+			msg.add_id(0);
+		}
+		else {
+			msg.add_id(globalConfigData.server->getCurrentClientID());
+		}
 		msg.add_action(dv::ConfigAction::PUSH_MESSAGE_ATTR);
 		msg.add_attrEvents(static_cast<dv::ConfigAttributeEvents>(event));
 		msg.add_node(nodeStr);

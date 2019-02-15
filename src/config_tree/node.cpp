@@ -114,7 +114,8 @@ public:
 	}
 };
 
-static const std::regex dvKeyRegexp("^[a-zA-Z-_\\d\\.]+$");
+static const std::regex dvKeyRegexp("^[a-zA-Z][a-zA-Z-_\\d\\.]*$");
+static const std::regex dvModifierKeyRegexp("^_[a-zA-Z][a-zA-Z-_\\d\\.]*$");
 
 // struct for C compatibility
 struct dv_config_node {
@@ -145,11 +146,10 @@ public:
 	}
 
 	void createAttribute(const std::string &key, const dv_value &defaultValue, const dv_ranges &ranges, int flags,
-		const std::string &description) {
+		const std::string &description, bool isModifierKey) {
 		// Check key name string against allowed characters via regexp.
-		if (!std::regex_match(key, dvKeyRegexp)) {
+		if (!std::regex_match(key, (isModifierKey ? dvModifierKeyRegexp : dvKeyRegexp))) {
 			boost::format errorMsg = boost::format("Invalid key name format: '%s'.") % key;
-
 			dvConfigNodeError("dvConfigNodeCreateAttribute", key, defaultValue.getType(), errorMsg.str());
 		}
 
@@ -250,6 +250,11 @@ public:
 			(*l.getListener())(this, l.getUserData(), attrEvents, key.c_str(), listenerAttr.getValue().getType(),
 				listenerAttr.getValue().toCUnion(true));
 		}
+	}
+
+	void createAttribute(const std::string &key, const dv_value &defaultValue, const dv_ranges &ranges, int flags,
+		const std::string &description) {
+		createAttribute(key, defaultValue, ranges, flags, description, false);
 	}
 
 	void removeAttribute(const std::string &key, enum dvConfigAttributeType type) {
@@ -375,7 +380,7 @@ public:
 
 static void dvConfigNodeDestroy(dvConfigNode node);
 static void dvConfigNodeRemoveSubTree(dvConfigNode node);
-static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string &childName);
+static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string childName);
 static void dvConfigNodeRemoveAllChildren(dvConfigNode node);
 
 #define XML_INDENT_SPACES 4
@@ -533,12 +538,6 @@ void dvConfigNodeRemoveAllAttributeListeners(dvConfigNode node) {
 void dvConfigNodeClearSubTree(dvConfigNode startNode, bool clearStartNode) {
 	std::lock_guard<std::recursive_mutex> lockNode(startNode->node_lock);
 
-	// Clear this node's attributes, if requested.
-	if (clearStartNode) {
-		dvConfigNodeRemoveAllAttributes(startNode);
-		dvConfigNodeRemoveAllAttributeListeners(startNode);
-	}
-
 	// Recurse down children and remove all attributes.
 	size_t numChildren;
 	dvConfigNode *children = dvConfigNodeGetChildren(startNode, &numChildren);
@@ -548,6 +547,12 @@ void dvConfigNodeClearSubTree(dvConfigNode startNode, bool clearStartNode) {
 	}
 
 	free(children);
+
+	// Clear this node's attributes, if requested.
+	if (clearStartNode) {
+		dvConfigNodeRemoveAllAttributes(startNode);
+		dvConfigNodeRemoveAllAttributeListeners(startNode);
+	}
 }
 
 // Eliminates this node and any children. Nobody can have a reference, or
@@ -591,7 +596,7 @@ static void dvConfigNodeRemoveSubTree(dvConfigNode node) {
 
 // children, attributes, and listeners for the child to be removed
 // must be cleaned up prior to this call.
-static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string &childName) {
+static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string childName) {
 	std::unique_lock<std::shared_mutex> lock(node->traversal_lock);
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
@@ -802,7 +807,7 @@ double dvConfigNodeGetDouble(dvConfigNode node, const char *key) {
 }
 
 void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, int32_t minLength,
-	int32_t maxLength, int flags, const char *description) {
+	int32_t maxLength, int flags, const char *description, bool isModifierKey) {
 	dv_value v;
 	v.emplace<std::string>(defaultValue);
 
@@ -810,7 +815,12 @@ void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *de
 	r.min.emplace<int32_t>(minLength);
 	r.max.emplace<int32_t>(maxLength);
 
-	node->createAttribute(key, v, r, flags, description);
+	node->createAttribute(key, v, r, flags, description, isModifierKey);
+}
+
+void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, int32_t minLength,
+	int32_t maxLength, int flags, const char *description) {
+	dvConfigNodeCreateString(node, key, defaultValue, minLength, maxLength, flags, description, false);
 }
 
 bool dvConfigNodePutString(dvConfigNode node, const char *key, const char *value) {
@@ -1104,47 +1114,48 @@ bool dvConfigNodeStringToAttributeConverter(
 		// Create never fails, it may exit the program, but not fail!
 		result = true;
 		dv_ranges ranges;
+		bool isModifierKey = key[0] == '_';
 
 		switch (type) {
 			case DVCFG_TYPE_BOOL:
 				// No ranges for bool.
 				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_INT:
 				ranges.min.emplace<int32_t>(INT32_MIN);
 				ranges.max.emplace<int32_t>(INT32_MAX);
 				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_LONG:
 				ranges.min.emplace<int64_t>(INT64_MIN);
 				ranges.max.emplace<int64_t>(INT64_MAX);
 				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_FLOAT:
 				ranges.min.emplace<float>(-FLT_MAX);
 				ranges.max.emplace<float>(FLT_MAX);
 				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_DOUBLE:
 				ranges.min.emplace<double>(-DBL_MAX);
 				ranges.max.emplace<double>(DBL_MAX);
 				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_STRING:
 				ranges.min.emplace<int32_t>(0);
 				ranges.max.emplace<int32_t>(INT32_MAX);
 				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.");
+					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_UNKNOWN:
@@ -1295,11 +1306,17 @@ void dvConfigNodeAttributeModifierButton(dvConfigNode node, const char *key, con
 		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierButton", key, DVCFG_TYPE_BOOL);
 	}
 
+	std::string typeStr(type);
+	if (!typeStr.empty() && typeStr != "PLAY" && typeStr != "ONOFF" && typeStr != "EXECUTE") {
+		dvConfigNodeError("dvConfigNodeAttributeModifierButton", key, DVCFG_TYPE_BOOL,
+			"Unknown Button type; permitted are: <empty>, PLAY, ONOFF, EXECUTE.");
+	}
+
 	std::string fullKey(key);
-	fullKey += "Button";
+	fullKey = "_" + fullKey + "Button";
 
 	dvConfigNodeCreateString(node, fullKey.c_str(), type, 0, INT32_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-		"Type of button to display (PLAY, EXECUTE, ...; can be empty).");
+		"Type of button to display (PLAY, EXECUTE, ...; can be empty).", true);
 }
 
 void dvConfigNodeAttributeModifierListOptions(
@@ -1310,30 +1327,54 @@ void dvConfigNodeAttributeModifierListOptions(
 		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierListOptions", key, DVCFG_TYPE_STRING);
 	}
 
+	std::string options(listOptions);
+	if (options.empty()) {
+		dvConfigNodeError(
+			"dvConfigNodeAttributeModifierListOptions", key, DVCFG_TYPE_STRING, "List options cannot be empty.");
+	}
+
 	std::string fullKey(key);
-	fullKey += "ListOptions";
+	fullKey = "_" + fullKey + "ListOptions";
 
 	if (allowMultipleSelections) {
 		fullKey += "Multi";
 	}
 
 	dvConfigNodeCreateString(node, fullKey.c_str(), listOptions, 1, INT32_MAX, DVCFG_FLAGS_READ_ONLY,
-		"Comma separated list of possible choices for attribute value.");
+		"Comma separated list of possible choices for attribute value.", true);
 }
 
-void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *allowedExtensions) {
+void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *typeAndExtensions) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, DVCFG_TYPE_STRING)) {
 		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierFileChooser", key, DVCFG_TYPE_STRING);
 	}
 
-	std::string fullKey(key);
-	fullKey += "FileChooser";
+	std::string typeExt(typeAndExtensions);
+	auto sepPos = typeExt.find(':');
 
-	dvConfigNodeCreateString(node, fullKey.c_str(), allowedExtensions, 1, INT32_MAX,
+	std::string typeStr;
+	if (sepPos == std::string::npos) {
+		// No colon, so only type.
+		typeStr = typeExt;
+	}
+	else {
+		// Colon, so first part is type.
+		typeStr = typeExt.substr(0, sepPos);
+	}
+
+	if (typeStr != "DIRECTORY" && typeStr != "LOAD" && typeStr != "SAVE") {
+		dvConfigNodeError("dvConfigNodeAttributeModifierFileChooser", key, DVCFG_TYPE_STRING,
+			"Unknown FileChooser type; permitted are: DIRECTORY, LOAD, SAVE.");
+	}
+
+	std::string fullKey(key);
+	fullKey = "_" + fullKey + "FileChooser";
+
+	dvConfigNodeCreateString(node, fullKey.c_str(), typeAndExtensions, 1, INT32_MAX,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-		"Type of file chooser dialog plus comma separated list of allowed extensions.");
+		"Type of file chooser dialog plus optional comma separated list of allowed extensions.", true);
 }
 
 void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const char *unitInformation) {
@@ -1344,9 +1385,22 @@ void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const
 		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierUnit", key, DVCFG_TYPE_INT);
 	}
 
+	std::string unitInfo(unitInformation);
+	if (unitInfo.empty()) {
+		dvConfigNodeError(
+			"dvConfigNodeAttributeModifierUnit", key, DVCFG_TYPE_INT, "Unit information cannot be empty.");
+	}
+
 	std::string fullKey(key);
-	fullKey += "Unit";
+	fullKey = "_" + fullKey + "Unit";
 
 	dvConfigNodeCreateString(node, fullKey.c_str(), unitInformation, 1, INT32_MAX, DVCFG_FLAGS_READ_ONLY,
-		"Information about the units that apply to a numeric attribute (ms, Km, m, Kg, mg, ...).");
+		"Information about the units that apply to a numeric attribute (ms, Km, m, Kg, mg, ...).", true);
+}
+
+void dvConfigNodeAttributeModifierPriorityAttributes(dvConfigNode node, const char *priorityAttributes) {
+	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+
+	dvConfigNodeCreateString(node, "_priorityAttributes", priorityAttributes, 0, INT32_MAX, DVCFG_FLAGS_READ_ONLY,
+		"Comma separated list of attributes to prioritize regarding visualization in the UI (can be empty).", true);
 }
