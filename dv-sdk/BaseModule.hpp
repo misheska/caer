@@ -1,13 +1,12 @@
-#include <utility>
 #ifndef DV_SDK_BASE_MODULE_HPP
-#	define DV_SDK_BASE_MODULE_HPP
+#define DV_SDK_BASE_MODULE_HPP
 
-#	include <dv-sdk/module.h>
+#include "config.hpp"
+#include "log.hpp"
+#include "module.h"
 
-#	include "config.hpp"
-#	include "log.hpp"
-
-#	include <map>
+#include <map>
+#include <utility>
 
 namespace dv {
 

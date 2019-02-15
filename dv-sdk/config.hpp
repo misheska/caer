@@ -1,13 +1,8 @@
-//
-// Created by najiji on 04.02.19.
-//
-
 #ifndef DV_CONFIG_HPP
 #define DV_CONFIG_HPP
 
-#include <dv-sdk/module.h>
+#include "module.h"
 
-#include <boost/any.hpp>
 #include <cmath>
 #include <map>
 #include <memory>

@@ -1,12 +1,11 @@
 #ifndef DV_SDK_MODULE_HPP
 #define DV_SDK_MODULE_HPP
 
-#include <dv-sdk/config/dvConfig.hpp>
-#include <dv-sdk/mainloop.h>
-#include <dv-sdk/module.h>
-
 #include "BaseModule.hpp"
+#include "config/dvConfig.hpp"
 #include "log.hpp"
+#include "mainloop.h"
+#include "module.h"
 #include "utils.h"
 
 #include <iostream>
