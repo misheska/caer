@@ -27,7 +27,7 @@ public:
 	 * which exists in this class as a static called `__getDefaultConfig`.
 	 * It generates the default config and creates the elements for the default
 	 * config in the dv config tree.
-	 * @param node The sshs node for which the config should be generated
+	 * @param node The dvConfig node for which the config should be generated
 	 */
 	static void staticConfigInit(dvConfigNode node) {
 		// read config options from static user provided function
