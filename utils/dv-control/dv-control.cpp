@@ -848,8 +848,7 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 	}
 
 	// At this point we made a valid request and got back a full response.
-	boost::tokenizer<boost::char_separator<char>> children(
-			resp->value()->str(), boost::char_separator<char>("|"));
+	boost::tokenizer<boost::char_separator<char>> children(resp->value()->str(), boost::char_separator<char>("|"));
 
 	size_t lengthOfIncompletePart = (partialNodeString.length() - lastSlash);
 
@@ -897,8 +896,7 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 	}
 
 	// At this point we made a valid request and got back a full response.
-	boost::tokenizer<boost::char_separator<char>> attributes(
-		resp->value()->str(), boost::char_separator<char>("|"));
+	boost::tokenizer<boost::char_separator<char>> attributes(resp->value()->str(), boost::char_separator<char>("|"));
 
 	for (const auto &attr : attributes) {
 		if (partialKeyString == attr.substr(0, partialKeyString.length())) {

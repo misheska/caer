@@ -258,7 +258,6 @@ static struct {
 } globalConfigData;
 
 void dvConfigServerStart(void) {
-
 	if (!globalConfigData.server) {
 		globalConfigData.server = std::make_unique<ConfigServer>();
 	}
