@@ -13,7 +13,6 @@ static const struct caer_event_stream_in OutputNetUDPInputs[] = {{.type = -1, .n
 
 static const struct dvModuleInfoS OutputNetUDPInfo = {
 	.version           = 1,
-	.name              = "NetUDPOutput",
 	.description       = "Send AEDAT 3 data out via UDP messages.",
 	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),

@@ -13,7 +13,6 @@ static const struct caer_event_stream_in OutputNetTCPInputs[] = {{.type = -1, .n
 
 static const struct dvModuleInfoS OutputNetTCPInfo = {
 	.version           = 1,
-	.name              = "NetTCPOutput",
 	.description       = "Send AEDAT 3 data out via a TCP connection (client mode).",
 	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),

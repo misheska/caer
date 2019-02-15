@@ -24,7 +24,6 @@ static const struct caer_event_stream_in StatisticsInputs[] = {{
 
 static const struct dvModuleInfoS StatisticsInfo = {
 	.version           = 1,
-	.name              = "Statistics",
 	.description       = "Display statistics on events.",
 	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct caer_statistics_state),

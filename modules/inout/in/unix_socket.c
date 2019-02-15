@@ -15,7 +15,6 @@ static const struct caer_event_stream_out InputUnixSocketOutputs[] = {{.type = -
 
 static const struct dvModuleInfoS InputUnixSocketInfo = {
 	.version           = 1,
-	.name              = "UnixSocketInput",
 	.description       = "Read AEDAT data from an existing Unix Socket.",
 	.type              = DV_MODULE_INPUT,
 	.memSize           = sizeof(struct input_common_state),

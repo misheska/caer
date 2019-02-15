@@ -118,7 +118,6 @@ typedef struct dvModuleFunctionsS const *dvModuleFunctions;
 
 struct dvModuleInfoS {
 	uint32_t version;
-	const char *name;
 	const char *description;
 	enum dvModuleType type;
 	size_t memSize;

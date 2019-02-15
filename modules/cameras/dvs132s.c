@@ -30,7 +30,6 @@ static const struct caer_event_stream_out DVS132SOutputs[] = {
 
 static const struct dvModuleInfoS DVS132SInfo = {
 	.version           = 1,
-	.name              = "DVS132S",
 	.description       = "Connects to a DVS132S camera to get data.",
 	.type              = DV_MODULE_INPUT,
 	.memSize           = 0,

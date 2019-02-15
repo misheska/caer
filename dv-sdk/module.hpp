@@ -24,17 +24,7 @@
 namespace dv {
 
 /**
- * Trait for the existence of a static getName method with const char* return value
- * @tparam T The class to be tested
- */
-template<typename T, typename = void> struct has_getName : std::false_type {};
-template<typename T>
-struct has_getName<T,
-	void_t<decltype(T::getName()), enable_if_t<std::is_same<decltype(T::getName()), const char *>::value>>>
-	: std::true_type {};
-
-/**
- * Trait for the existence of a static getName method with const char* return value
+ * Trait for the existence of a static getDescription method with const char* return value
  * @tparam T The class to be tested
  */
 template<typename T, typename = void> struct has_getDescription : std::false_type {};
@@ -115,8 +105,6 @@ const dvModuleType moduleType
 template<class T> class ModuleStatics {
 	/* Static assertions. Checks the existence of all required static members. */
 	static_assert(std::is_base_of<BaseModule, T>::value, "Your module does not inherit from dv::BaseModule.");
-	static_assert(has_getName<T>::value, "Your module does not specify a `static const char* getName()` function."
-										 "This function should return a string with the name of the module.");
 	static_assert(has_getDescription<T>::value,
 		"Your module does not specify a `static const char* getDescription()` function."
 		"This function should return a string with a description of the module.");
@@ -234,8 +222,8 @@ const dvModuleFunctionsS ModuleStatics<T>::functions = {&ModuleStatics<T>::confi
  * @tparam T The user defined module. Must inherit from `dv::BaseModule`
  */
 template<class T>
-const dvModuleInfoS ModuleStatics<T>::info = {1, T::getName(), T::getDescription(), moduleType<T>, sizeof(T),
-	&functions, numberOfInputStreams<T>, T::inputStreams, numberOfOutputStreams<T>, T::outputStreams};
+const dvModuleInfoS ModuleStatics<T>::info = {1, T::getDescription(), moduleType<T>, sizeof(T), &functions,
+	numberOfInputStreams<T>, T::inputStreams, numberOfOutputStreams<T>, T::outputStreams};
 
 } // namespace dv
 

@@ -33,7 +33,6 @@ static const struct caer_event_stream_in DVSNoiseFilterInputs[]
 
 static const struct dvModuleInfoS DVSNoiseFilterInfo = {
 	.version           = 1,
-	.name              = "DVSNoiseFilter",
 	.description       = "Filters out noise from DVS change events.",
 	.type              = DV_MODULE_PROCESSOR,
 	.memSize           = 0,

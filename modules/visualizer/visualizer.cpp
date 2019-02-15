@@ -91,25 +91,28 @@ static void handleEvents(dvModuleData moduleData);
 static void renderScreen(dvModuleData moduleData);
 static void renderThread(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS VisualizerFunctions = {.moduleConfigInit = &caerVisualizerConfigInit,
-	.moduleInit                                                                    = &caerVisualizerInit,
-	.moduleRun                                                                     = &caerVisualizerRun,
-	.moduleConfig                                                                  = nullptr,
-	.moduleExit                                                                    = &caerVisualizerExit,
-	.moduleReset                                                                   = &caerVisualizerReset};
+static const struct dvModuleFunctionsS VisualizerFunctions = {
+	.moduleConfigInit = &caerVisualizerConfigInit,
+	.moduleInit       = &caerVisualizerInit,
+	.moduleRun        = &caerVisualizerRun,
+	.moduleConfig     = nullptr,
+	.moduleExit       = &caerVisualizerExit,
+	.moduleReset      = &caerVisualizerReset,
+};
 
 static const struct caer_event_stream_in VisualizerInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct dvModuleInfoS VisualizerInfo = {.version = 1,
-	.name                                                       = "Visualizer",
-	.description                                                = "Visualize data in various ways.",
-	.type                                                       = DV_MODULE_OUTPUT,
-	.memSize                                                    = sizeof(struct caer_visualizer_state),
-	.functions                                                  = &VisualizerFunctions,
-	.inputStreamsSize                                           = CAER_EVENT_STREAM_IN_SIZE(VisualizerInputs),
-	.inputStreams                                               = VisualizerInputs,
-	.outputStreamsSize                                          = 0,
-	.outputStreams                                              = nullptr};
+static const struct dvModuleInfoS VisualizerInfo = {
+	.version           = 1,
+	.description       = "Visualize data in various ways.",
+	.type              = DV_MODULE_OUTPUT,
+	.memSize           = sizeof(struct caer_visualizer_state),
+	.functions         = &VisualizerFunctions,
+	.inputStreamsSize  = CAER_EVENT_STREAM_IN_SIZE(VisualizerInputs),
+	.inputStreams      = VisualizerInputs,
+	.outputStreamsSize = 0,
+	.outputStreams     = nullptr,
+};
 
 dvModuleInfo dvModuleGetInfo(void) {
 	return (&VisualizerInfo);

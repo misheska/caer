@@ -16,7 +16,6 @@ static const struct caer_event_stream_out DAVISRPiOutputs[]
 
 static const struct dvModuleInfoS DAVISRPiInfo = {
 	.version           = 1,
-	.name              = "DAVISRPi",
 	.description       = "Connects to a DAVIS Raspberry-Pi camera module to get data.",
 	.type              = DV_MODULE_INPUT,
 	.memSize           = 0,

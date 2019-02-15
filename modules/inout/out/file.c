@@ -22,7 +22,6 @@ static const struct caer_event_stream_in OutputFileInputs[] = {{.type = -1, .num
 
 static const struct dvModuleInfoS OutputFileInfo = {
 	.version           = 1,
-	.name              = "FileOutput",
 	.description       = "Write AEDAT 3 data out to a file.",
 	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),

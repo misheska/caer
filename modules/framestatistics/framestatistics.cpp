@@ -18,32 +18,33 @@ typedef struct caer_frame_statistics_state *caerFrameStatisticsState;
 
 static void caerFrameStatisticsConfigInit(dvConfigNode moduleNode);
 static bool caerFrameStatisticsInit(dvModuleData moduleData);
-static void caerFrameStatisticsRun(
-	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerFrameStatisticsRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 static void caerFrameStatisticsExit(dvModuleData moduleData);
 static void caerFrameStatisticsConfig(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS FrameStatisticsFunctions
-	= {.moduleConfigInit = &caerFrameStatisticsConfigInit,
-		.moduleInit      = &caerFrameStatisticsInit,
-		.moduleRun       = &caerFrameStatisticsRun,
-		.moduleConfig    = &caerFrameStatisticsConfig,
-		.moduleExit      = &caerFrameStatisticsExit,
-		.moduleReset     = NULL};
+static const struct dvModuleFunctionsS FrameStatisticsFunctions = {
+	.moduleConfigInit = &caerFrameStatisticsConfigInit,
+	.moduleInit       = &caerFrameStatisticsInit,
+	.moduleRun        = &caerFrameStatisticsRun,
+	.moduleConfig     = &caerFrameStatisticsConfig,
+	.moduleExit       = &caerFrameStatisticsExit,
+	.moduleReset      = NULL,
+};
 
 static const struct caer_event_stream_in FrameStatisticsInputs[]
 	= {{.type = FRAME_EVENT, .number = 1, .readOnly = true}};
 
-static const struct dvModuleInfoS FrameStatisticsInfo = {.version = 1,
-	.name                                                            = "FrameStatistics",
-	.description                                                     = "Display statistics on frames (histogram).",
-	.type                                                            = DV_MODULE_OUTPUT,
-	.memSize                                                         = sizeof(struct caer_frame_statistics_state),
-	.functions                                                       = &FrameStatisticsFunctions,
-	.inputStreamsSize                                                = CAER_EVENT_STREAM_IN_SIZE(FrameStatisticsInputs),
-	.inputStreams                                                    = FrameStatisticsInputs,
-	.outputStreamsSize                                               = 0,
-	.outputStreams                                                   = NULL};
+static const struct dvModuleInfoS FrameStatisticsInfo = {
+	.version           = 1,
+	.description       = "Display statistics on frames (histogram).",
+	.type              = DV_MODULE_OUTPUT,
+	.memSize           = sizeof(struct caer_frame_statistics_state),
+	.functions         = &FrameStatisticsFunctions,
+	.inputStreamsSize  = CAER_EVENT_STREAM_IN_SIZE(FrameStatisticsInputs),
+	.inputStreams      = FrameStatisticsInputs,
+	.outputStreamsSize = 0,
+	.outputStreams     = NULL,
+};
 
 dvModuleInfo dvModuleGetInfo(void) {
 	return (&FrameStatisticsInfo);

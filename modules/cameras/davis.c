@@ -18,7 +18,6 @@ static const struct caer_event_stream_out DAVISOutputs[]
 
 static const struct dvModuleInfoS DAVISInfo = {
 	.version           = 1,
-	.name              = "DAVIS",
 	.description       = "Connects to a DAVIS camera to get data.",
 	.type              = DV_MODULE_INPUT,
 	.memSize           = 0,

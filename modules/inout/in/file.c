@@ -17,7 +17,6 @@ static const struct caer_event_stream_out InputFileOutputs[] = {{.type = -1}};
 
 static const struct dvModuleInfoS InputFileInfo = {
 	.version           = 1,
-	.name              = "FileInput",
 	.description       = "Read AEDAT data from a file.",
 	.type              = DV_MODULE_INPUT,
 	.memSize           = sizeof(struct input_common_state),

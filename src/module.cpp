@@ -610,8 +610,6 @@ void dvUpdateModulesInformation() {
 		// Parse dvModuleInfo into ConfigTree.
 		moduleNode.create<dvCfgType::INT>("version", I32T(mLoad.second->version), {0, INT32_MAX},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module version.");
-		moduleNode.create<dvCfgType::STRING>(
-			"name", mLoad.second->name, {1, 256}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module name.");
 		moduleNode.create<dvCfgType::STRING>("description", mLoad.second->description, {1, 8192},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module description.");
 		moduleNode.create<dvCfgType::STRING>("type", dvModuleTypeToString(mLoad.second->type), {1, 64},

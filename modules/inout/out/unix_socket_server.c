@@ -17,7 +17,6 @@ static const struct caer_event_stream_in OutputUnixSocketServerInputs[]
 
 static const struct dvModuleInfoS OutputUnixSockeServertInfo = {
 	.version           = 1,
-	.name              = "UnixSocketServerOutput",
 	.description       = "Send AEDAT 3 data out through a Unix Socket to connected clients (server mode).",
 	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),

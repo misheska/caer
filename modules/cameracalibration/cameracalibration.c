@@ -39,7 +39,6 @@ static const struct caer_event_stream_in CameraCalibrationInputs[]
 
 static const struct dvModuleInfoS CameraCalibrationInfo = {
 	.version           = 1,
-	.name              = "CameraCalibration",
 	.description       = "Lens distortion calibration, for undistortion of both events and frames.",
 	.type              = DV_MODULE_PROCESSOR,
 	.memSize           = sizeof(struct CameraCalibrationState_struct),

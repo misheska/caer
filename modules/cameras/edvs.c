@@ -24,7 +24,6 @@ static const struct caer_event_stream_out EDVSOutputs[] = {{.type = SPECIAL_EVEN
 
 static const struct dvModuleInfoS EDVSInfo = {
 	.version           = 1,
-	.name              = "eDVS",
 	.description       = "Connects to an eDVS/minieDVS camera to get data.",
 	.type              = DV_MODULE_INPUT,
 	.memSize           = 0,

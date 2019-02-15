@@ -15,7 +15,6 @@ static const struct caer_event_stream_out InputNetTCPOutputs[] = {{.type = -1}};
 
 static const struct dvModuleInfoS InputNetTCPInfo = {
 	.version           = 1,
-	.name              = "NetTCPInput",
 	.description       = "Read AEDAT data from a TCP server.",
 	.type              = DV_MODULE_INPUT,
 	.memSize           = sizeof(struct input_common_state),

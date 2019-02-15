@@ -32,7 +32,6 @@ static const struct caer_event_stream_out FrameEnhancerOutputs[] = {{.type = FRA
 
 static const struct dvModuleInfoS FrameEnhancerInfo = {
 	.version = 1,
-	.name    = "FrameEnhancer",
 	.description
 	= "Applies contrast enhancement techniques to frames, or interpolates colors to get an RGB frame (demoisaicing).",
 	.type              = DV_MODULE_PROCESSOR,
