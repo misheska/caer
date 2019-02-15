@@ -28,6 +28,7 @@
 #endif
 
 #if BOOST_HAS_STACKTRACE
+#	define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED 1
 #	include <boost/stacktrace.hpp>
 #elif defined(OS_LINUX)
 #	include <execinfo.h>
