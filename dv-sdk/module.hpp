@@ -1,12 +1,11 @@
 #ifndef DV_SDK_MODULE_HPP
 #define DV_SDK_MODULE_HPP
 
-#include <dv-sdk/config/dvConfig.hpp>
-#include <dv-sdk/mainloop.h>
-#include <dv-sdk/module.h>
-
 #include "BaseModule.hpp"
+#include "config/dvConfig.hpp"
 #include "log.hpp"
+#include "mainloop.h"
+#include "module.h"
 #include "utils.h"
 
 #include <iostream>
@@ -141,7 +140,9 @@ public:
 	 * @param node The DV provided DvConfig node.
 	 */
 	static void configInit(dvConfigNode node) {
-		BaseModule::configInit<T>(node);
+		BaseModule::__setGetDefaultConfig(
+			std::function<void(std::map<std::string, ConfigOption> &)>(T::getConfigOptions));
+		BaseModule::staticConfigInit(node);
 	}
 
 	/**
@@ -156,6 +157,7 @@ public:
 			// set the moduleData pointer thread local static prior to construction.
 			BaseModule::__setStaticModuleData(moduleData);
 			new (moduleData->moduleState) T();
+			config(moduleData);
 			dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 		}
 		catch (const std::exception &e) {

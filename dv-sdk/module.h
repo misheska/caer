@@ -107,7 +107,7 @@ typedef struct dvModuleDataS *dvModuleData;
 
 struct dvModuleFunctionsS {
 	void (*const moduleConfigInit)(dvConfigNode moduleNode); // Can be NULL.
-	bool (*const moduleInit)(dvModuleData moduleData);     // Can be NULL.
+	bool (*const moduleInit)(dvModuleData moduleData);       // Can be NULL.
 	void (*const moduleRun)(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 	void (*const moduleConfig)(dvModuleData moduleData);                           // Can be NULL.
 	void (*const moduleExit)(dvModuleData moduleData);                             // Can be NULL.
@@ -135,8 +135,7 @@ typedef struct dvModuleInfoS const *dvModuleInfo;
 dvModuleInfo dvModuleGetInfo(void);
 
 // Functions available to call:
-void dvModuleLog(dvModuleData moduleData, enum caer_log_level logLevel, const char *format, ...)
-	ATTRIBUTE_FORMAT(3);
+void dvModuleLog(dvModuleData moduleData, enum caer_log_level logLevel, const char *format, ...) ATTRIBUTE_FORMAT(3);
 bool dvModuleSetLogString(dvModuleData moduleData, const char *subSystemString);
 void dvModuleDefaultConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
