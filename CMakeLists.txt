@@ -1,6 +1,19 @@
 # Init CMake (require at least version 2.8.12)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.12)
 
+# General build settings
+IF (NOT CMAKE_BUILD_TYPE)
+	SET(CMAKE_BUILD_TYPE "Release" CACHE STRING "Possible build types: None Debug Release RelWithDebInfo MinSizeRel")
+ENDIF()
+
+IF (NOT CMAKE_INSTALL_PREFIX)
+	IF (UNIX AND NOT APPLE)
+		SET(CMAKE_INSTALL_PREFIX "/usr" CACHE STRING "CMake default install prefix, set to /usr on Unix/Linux")
+	ELSE()
+		MESSAGE(FATAL_ERROR "CMAKE_INSTALL_PREFIX is not set")
+	ENDIF()
+ENDIF()
+
 # Project name and version
 PROJECT(dv-runtime C CXX)
 SET(PROJECT_VERSION_MAJOR 1)
