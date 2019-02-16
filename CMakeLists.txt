@@ -1,28 +1,12 @@
 # Init CMake (require at least version 2.8.12)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.12)
 
-# General build settings
-IF (NOT CMAKE_BUILD_TYPE)
-	SET(CMAKE_BUILD_TYPE "Release" CACHE STRING "Possible build types: None Debug Release RelWithDebInfo MinSizeRel")
-ENDIF()
-
-IF (NOT CMAKE_INSTALL_PREFIX AND UNIX AND NOT APPLE)
-	SET(CMAKE_INSTALL_PREFIX "/usr" CACHE STRING "CMake default install prefix, set to /usr on Unix/Linux")
-ENDIF()
-
 # Project name and version
 PROJECT(dv-runtime C CXX)
 SET(PROJECT_VERSION_MAJOR 1)
 SET(PROJECT_VERSION_MINOR 9)
 SET(PROJECT_VERSION_PATCH 9)
 SET(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
-
-# Compiler cache support
-FIND_PROGRAM(CCACHE_FOUND ccache)
-IF (CCACHE_FOUND)
-	SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-	SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-ENDIF()
 
 # Define installation paths
 INCLUDE(GNUInstallDirs)
@@ -37,19 +21,20 @@ SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 INCLUDE(caer-base)
 CAER_SETUP(TRUE)
 
-# Search for external libraries with pkg-config.
-INCLUDE(FindPkgConfig)
-
-# Basic device and threads support.
+# Required: threads.
 SET(DV_INCDIRS "${USER_LOCAL_INCDIRS}")
 SET(DV_LIBDIRS "${USER_LOCAL_LIBDIRS}")
+SET(DV_LIBS ${SYSTEM_THREAD_LIBS})
+
+# Search for external libraries with pkg-config.
+INCLUDE(FindPkgConfig)
 
 PKG_CHECK_MODULES(LIBCAER REQUIRED libcaer>=3.1.1)
 SET(DV_PKGCONFIG_REQUIRES_PRIVATE "libcaer >= 3.1.1")
 
 SET(DV_INCDIRS ${DV_INCDIRS} ${LIBCAER_INCLUDE_DIRS})
 SET(DV_LIBDIRS ${DV_LIBDIRS} ${LIBCAER_LIBRARY_DIRS})
-SET(DV_LIBS ${LIBCAER_LIBRARIES} ${SYSTEM_THREAD_LIBS})
+SET(DV_LIBS ${DV_LIBS} ${LIBCAER_LIBRARIES})
 
 # Boost support for C++
 FIND_PACKAGE(Boost 1.50 REQUIRED COMPONENTS system filesystem iostreams program_options)
@@ -107,3 +92,6 @@ ADD_SUBDIRECTORY(utils)
 CONFIGURE_FILE(libdvsdk.pc.in libdvsdk.pc @ONLY)
 
 INSTALL(FILES ${CMAKE_BINARY_DIR}/libdvsdk.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
+# Install CMake file for modules
+INSTALL(FILES dv-modules.cmake DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/dv)
