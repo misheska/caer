@@ -26,6 +26,7 @@ public:
 	void start();
 	void close();
 
+	std::recursive_mutex &ConfigServerConnection::getTransactionLock();
 	uint64_t getClientID();
 
 	void addPushClient();
