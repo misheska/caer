@@ -6,6 +6,7 @@
 #include <boost/version.hpp>
 #include <deque>
 #include <functional>
+#include <mutex>
 #include <utility>
 
 namespace asio    = boost::asio;
@@ -145,6 +146,8 @@ public:
 	 * void (const boost::system::error_code &, size_t)
 	 */
 	template<typename WriteHandler> void write(const asio::const_buffer &buf, WriteHandler &&wrHandler) {
+		std::lock_guard<std::recursive_mutex> lock(writeQueueLock);
+
 		bool writeInProgress = writesOutstanding();
 
 		writeQueue.emplace_back(buf, wrHandler);
@@ -155,15 +158,26 @@ public:
 	}
 
 	bool writesOutstanding() {
+		std::lock_guard<std::recursive_mutex> lock(writeQueueLock);
+
 		return (!writeQueue.empty());
+	}
+
+	std::recursive_mutex &writeTransactionLock() {
+		return (writeQueueLock);
 	}
 
 private:
 	std::deque<std::pair<asio::const_buffer, std::function<void(const boost::system::error_code &, size_t)>>>
 		writeQueue;
+	std::recursive_mutex writeQueueLock;
 
 	void orderedWrite() {
+		std::lock_guard<std::recursive_mutex> lock(writeQueueLock);
+
 		TCPTLSSocket::write(writeQueue.front().first, [this](const boost::system::error_code &error, size_t length) {
+			std::lock_guard<std::recursive_mutex> lockLambda(writeQueueLock);
+
 			writeQueue.front().second(error, length);
 
 			if (!error) {
