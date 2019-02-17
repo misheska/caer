@@ -31,13 +31,15 @@ static inline void sendMessage(std::shared_ptr<ConfigServerConnection> client, M
 	client->writeMessage(msgBuild);
 }
 
-static inline void sendError(std::shared_ptr<ConfigServerConnection> client, const std::string &errorMsg) {
-	sendMessage(client, [errorMsg](flatbuffers::FlatBufferBuilder *msgBuild) {
+static inline void sendError(
+	const std::string &errorMsg, std::shared_ptr<ConfigServerConnection> client, uint64_t receivedID) {
+	sendMessage(client, [errorMsg, receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 		auto valStr = msgBuild->CreateString(errorMsg);
 
 		dv::ConfigActionDataBuilder msg(*msgBuild);
 
 		msg.add_action(dv::ConfigAction::ERROR);
+		msg.add_id(receivedID);
 		msg.add_value(valStr);
 
 		return (msg.Finish());
@@ -47,37 +49,38 @@ static inline void sendError(std::shared_ptr<ConfigServerConnection> client, con
 		client->getClientID(), errorMsg.c_str());
 }
 
-static inline bool checkNodeExists(
-	dvCfg::Tree configStore, const std::string &node, std::shared_ptr<ConfigServerConnection> client) {
+static inline bool checkNodeExists(dvCfg::Tree configStore, const std::string &node,
+	std::shared_ptr<ConfigServerConnection> client, uint64_t receivedID) {
 	bool nodeExists = configStore.existsNode(node);
 
 	// Only allow operations on existing nodes, this is for remote
 	// control, so we only manipulate what's already there!
 	if (!nodeExists) {
 		// Send back error message to client.
-		sendError(client, "Node doesn't exist. Operations are only allowed on existing data.");
+		sendError("Node doesn't exist. Operations are only allowed on existing data.", client, receivedID);
 	}
 
 	return (nodeExists);
 }
 
 static inline bool checkAttributeExists(dvCfg::Node wantedNode, const std::string &key, dv::ConfigType type,
-	std::shared_ptr<ConfigServerConnection> client) {
+	std::shared_ptr<ConfigServerConnection> client, uint64_t receivedID) {
 	// Check if attribute exists. Only allow operations on existing attributes!
 	bool attrExists = wantedNode.existsAttribute(key, static_cast<dvCfgType>(type));
 
 	if (!attrExists) {
 		// Send back error message to client.
-		sendError(client, "Attribute of given type doesn't exist. Operations are only allowed on existing data.");
+		sendError(
+			"Attribute of given type doesn't exist. Operations are only allowed on existing data.", client, receivedID);
 	}
 
 	return (attrExists);
 }
 
 static inline const std::string getString(
-	const flatbuffers::String *str, std::shared_ptr<ConfigServerConnection> client) {
+	const flatbuffers::String *str, std::shared_ptr<ConfigServerConnection> client, uint64_t receivedID) {
 	if (str == nullptr) {
-		sendError(client, "Required string member missing.");
+		sendError("Required string member missing.", client, receivedID);
 		return (std::string());
 	}
 
@@ -89,6 +92,7 @@ void dvConfigServerHandleRequest(
 	auto message = dv::GetConfigActionData(messageBuffer.get());
 
 	dv::ConfigAction action = message->action();
+	uint64_t receivedID     = message->id(); // Get incoming ID to send back.
 
 	// TODO: better debug message.
 	logger::log(
@@ -99,7 +103,7 @@ void dvConfigServerHandleRequest(
 
 	switch (action) {
 		case dv::ConfigAction::NODE_EXISTS: {
-			const std::string node = getString(message->node(), client);
+			const std::string node = getString(message->node(), client, receivedID);
 			if (node.empty()) {
 				break;
 			}
@@ -108,12 +112,13 @@ void dvConfigServerHandleRequest(
 			bool result = configStore.existsNode(node);
 
 			// Send back result to client.
-			sendMessage(client, [result](flatbuffers::FlatBufferBuilder *msgBuild) {
+			sendMessage(client, [result, receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 				auto valStr = msgBuild->CreateString((result) ? ("true") : ("false"));
 
 				dv::ConfigActionDataBuilder msg(*msgBuild);
 
 				msg.add_action(dv::ConfigAction::NODE_EXISTS);
+				msg.add_id(receivedID);
 				msg.add_value(valStr);
 
 				return (msg.Finish());
@@ -123,8 +128,8 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::ATTR_EXISTS: {
-			const std::string node = getString(message->node(), client);
-			const std::string key  = getString(message->key(), client);
+			const std::string node = getString(message->node(), client, receivedID);
+			const std::string key  = getString(message->key(), client, receivedID);
 			if (node.empty() || key.empty()) {
 				break;
 			}
@@ -132,11 +137,11 @@ void dvConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				sendError(client, "Invalid type.");
+				sendError("Invalid type.", client, receivedID);
 				break;
 			}
 
-			if (!checkNodeExists(configStore, node, client)) {
+			if (!checkNodeExists(configStore, node, client, receivedID)) {
 				break;
 			}
 
@@ -147,12 +152,13 @@ void dvConfigServerHandleRequest(
 			bool result = wantedNode.existsAttribute(key, static_cast<dvCfgType>(type));
 
 			// Send back result to client.
-			sendMessage(client, [result](flatbuffers::FlatBufferBuilder *msgBuild) {
+			sendMessage(client, [result, receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 				auto valStr = msgBuild->CreateString((result) ? ("true") : ("false"));
 
 				dv::ConfigActionDataBuilder msg(*msgBuild);
 
 				msg.add_action(dv::ConfigAction::ATTR_EXISTS);
+				msg.add_id(receivedID);
 				msg.add_value(valStr);
 
 				return (msg.Finish());
@@ -162,12 +168,12 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_CHILDREN: {
-			const std::string node = getString(message->node(), client);
+			const std::string node = getString(message->node(), client, receivedID);
 			if (node.empty()) {
 				break;
 			}
 
-			if (!checkNodeExists(configStore, node, client)) {
+			if (!checkNodeExists(configStore, node, client, receivedID)) {
 				break;
 			}
 
@@ -180,7 +186,7 @@ void dvConfigServerHandleRequest(
 			// No children at all, return empty.
 			if (childNames.empty()) {
 				// Send back error message to client.
-				sendError(client, "Node has no children.");
+				sendError("Node has no children.", client, receivedID);
 				break;
 			}
 
@@ -188,12 +194,13 @@ void dvConfigServerHandleRequest(
 			// separated by a | character.
 			const std::string namesString = boost::algorithm::join(childNames, "|");
 
-			sendMessage(client, [namesString](flatbuffers::FlatBufferBuilder *msgBuild) {
+			sendMessage(client, [namesString, receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 				auto valStr = msgBuild->CreateString(namesString);
 
 				dv::ConfigActionDataBuilder msg(*msgBuild);
 
 				msg.add_action(dv::ConfigAction::GET_CHILDREN);
+				msg.add_id(receivedID);
 				msg.add_value(valStr);
 
 				return (msg.Finish());
@@ -203,12 +210,12 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_ATTRIBUTES: {
-			const std::string node = getString(message->node(), client);
+			const std::string node = getString(message->node(), client, receivedID);
 			if (node.empty()) {
 				break;
 			}
 
-			if (!checkNodeExists(configStore, node, client)) {
+			if (!checkNodeExists(configStore, node, client, receivedID)) {
 				break;
 			}
 
@@ -221,7 +228,7 @@ void dvConfigServerHandleRequest(
 			// No attributes at all, return empty.
 			if (attrKeys.empty()) {
 				// Send back error message to client.
-				sendError(client, "Node has no attributes.");
+				sendError("Node has no attributes.", client, receivedID);
 				break;
 			}
 
@@ -229,12 +236,13 @@ void dvConfigServerHandleRequest(
 			// separated by a | character.
 			const std::string attrKeysString = boost::algorithm::join(attrKeys, "|");
 
-			sendMessage(client, [attrKeysString](flatbuffers::FlatBufferBuilder *msgBuild) {
+			sendMessage(client, [attrKeysString, receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 				auto valStr = msgBuild->CreateString(attrKeysString);
 
 				dv::ConfigActionDataBuilder msg(*msgBuild);
 
 				msg.add_action(dv::ConfigAction::GET_ATTRIBUTES);
+				msg.add_id(receivedID);
 				msg.add_value(valStr);
 
 				return (msg.Finish());
@@ -244,13 +252,13 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_TYPE: {
-			const std::string node = getString(message->node(), client);
-			const std::string key  = getString(message->key(), client);
+			const std::string node = getString(message->node(), client, receivedID);
+			const std::string key  = getString(message->key(), client, receivedID);
 			if (node.empty() || key.empty()) {
 				break;
 			}
 
-			if (!checkNodeExists(configStore, node, client)) {
+			if (!checkNodeExists(configStore, node, client, receivedID)) {
 				break;
 			}
 
@@ -263,15 +271,16 @@ void dvConfigServerHandleRequest(
 			// No attributes for specified key, return empty.
 			if (attrType == dvCfgType::UNKNOWN) {
 				// Send back error message to client.
-				sendError(client, "Node has no attribute with specified key.");
+				sendError("Node has no attribute with specified key.", client, receivedID);
 				break;
 			}
 
 			// Send back type directly.
-			sendMessage(client, [attrType](flatbuffers::FlatBufferBuilder *msgBuild) {
+			sendMessage(client, [attrType, receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 				dv::ConfigActionDataBuilder msg(*msgBuild);
 
 				msg.add_action(dv::ConfigAction::GET_TYPE);
+				msg.add_id(receivedID);
 				msg.add_type(static_cast<dv::ConfigType>(attrType));
 
 				return (msg.Finish());
@@ -281,8 +290,8 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_RANGES: {
-			const std::string node = getString(message->node(), client);
-			const std::string key  = getString(message->key(), client);
+			const std::string node = getString(message->node(), client, receivedID);
+			const std::string key  = getString(message->key(), client, receivedID);
 			if (node.empty() || key.empty()) {
 				break;
 			}
@@ -290,18 +299,18 @@ void dvConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				sendError(client, "Invalid type.");
+				sendError("Invalid type.", client, receivedID);
 				break;
 			}
 
-			if (!checkNodeExists(configStore, node, client)) {
+			if (!checkNodeExists(configStore, node, client, receivedID)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
 			dvCfg::Node wantedNode = configStore.getNode(node);
 
-			if (!checkAttributeExists(wantedNode, key, type, client)) {
+			if (!checkAttributeExists(wantedNode, key, type, client, receivedID)) {
 				break;
 			}
 
@@ -310,12 +319,13 @@ void dvConfigServerHandleRequest(
 			const std::string rangesStr = dvCfg::Helper::rangesToStringConverter(static_cast<dvCfgType>(type), ranges);
 
 			// Send back ranges as strings.
-			sendMessage(client, [rangesStr](flatbuffers::FlatBufferBuilder *msgBuild) {
+			sendMessage(client, [rangesStr, receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 				auto valStr = msgBuild->CreateString(rangesStr);
 
 				dv::ConfigActionDataBuilder msg(*msgBuild);
 
 				msg.add_action(dv::ConfigAction::GET_RANGES);
+				msg.add_id(receivedID);
 				msg.add_ranges(valStr);
 
 				return (msg.Finish());
@@ -325,8 +335,8 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_FLAGS: {
-			const std::string node = getString(message->node(), client);
-			const std::string key  = getString(message->key(), client);
+			const std::string node = getString(message->node(), client, receivedID);
+			const std::string key  = getString(message->key(), client, receivedID);
 			if (node.empty() || key.empty()) {
 				break;
 			}
@@ -334,28 +344,29 @@ void dvConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				sendError(client, "Invalid type.");
+				sendError("Invalid type.", client, receivedID);
 				break;
 			}
 
-			if (!checkNodeExists(configStore, node, client)) {
+			if (!checkNodeExists(configStore, node, client, receivedID)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
 			dvCfg::Node wantedNode = configStore.getNode(node);
 
-			if (!checkAttributeExists(wantedNode, key, type, client)) {
+			if (!checkAttributeExists(wantedNode, key, type, client, receivedID)) {
 				break;
 			}
 
 			int flags = wantedNode.getAttributeFlags(key, static_cast<dvCfgType>(type));
 
 			// Send back flags directly.
-			sendMessage(client, [flags](flatbuffers::FlatBufferBuilder *msgBuild) {
+			sendMessage(client, [flags, receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 				dv::ConfigActionDataBuilder msg(*msgBuild);
 
 				msg.add_action(dv::ConfigAction::GET_FLAGS);
+				msg.add_id(receivedID);
 				msg.add_flags(flags);
 
 				return (msg.Finish());
@@ -365,8 +376,8 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_DESCRIPTION: {
-			const std::string node = getString(message->node(), client);
-			const std::string key  = getString(message->key(), client);
+			const std::string node = getString(message->node(), client, receivedID);
+			const std::string key  = getString(message->key(), client, receivedID);
 			if (node.empty() || key.empty()) {
 				break;
 			}
@@ -374,30 +385,31 @@ void dvConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				sendError(client, "Invalid type.");
+				sendError("Invalid type.", client, receivedID);
 				break;
 			}
 
-			if (!checkNodeExists(configStore, node, client)) {
+			if (!checkNodeExists(configStore, node, client, receivedID)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
 			dvCfg::Node wantedNode = configStore.getNode(node);
 
-			if (!checkAttributeExists(wantedNode, key, type, client)) {
+			if (!checkAttributeExists(wantedNode, key, type, client, receivedID)) {
 				break;
 			}
 
 			const std::string description = wantedNode.getAttributeDescription(key, static_cast<dvCfgType>(type));
 
 			// Send back flags directly.
-			sendMessage(client, [description](flatbuffers::FlatBufferBuilder *msgBuild) {
+			sendMessage(client, [description, receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 				auto valStr = msgBuild->CreateString(description);
 
 				dv::ConfigActionDataBuilder msg(*msgBuild);
 
 				msg.add_action(dv::ConfigAction::GET_DESCRIPTION);
+				msg.add_id(receivedID);
 				msg.add_description(valStr);
 
 				return (msg.Finish());
@@ -407,8 +419,8 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET: {
-			const std::string node = getString(message->node(), client);
-			const std::string key  = getString(message->key(), client);
+			const std::string node = getString(message->node(), client, receivedID);
+			const std::string key  = getString(message->key(), client, receivedID);
 			if (node.empty() || key.empty()) {
 				break;
 			}
@@ -416,18 +428,18 @@ void dvConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				sendError(client, "Invalid type.");
+				sendError("Invalid type.", client, receivedID);
 				break;
 			}
 
-			if (!checkNodeExists(configStore, node, client)) {
+			if (!checkNodeExists(configStore, node, client, receivedID)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
 			dvCfg::Node wantedNode = configStore.getNode(node);
 
-			if (!checkAttributeExists(wantedNode, key, type, client)) {
+			if (!checkAttributeExists(wantedNode, key, type, client, receivedID)) {
 				break;
 			}
 
@@ -439,12 +451,13 @@ void dvConfigServerHandleRequest(
 				free(result.string);
 			}
 
-			sendMessage(client, [resultStr](flatbuffers::FlatBufferBuilder *msgBuild) {
+			sendMessage(client, [resultStr, receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 				auto valStr = msgBuild->CreateString(resultStr);
 
 				dv::ConfigActionDataBuilder msg(*msgBuild);
 
 				msg.add_action(dv::ConfigAction::GET);
+				msg.add_id(receivedID);
 				msg.add_value(valStr);
 
 				return (msg.Finish());
@@ -454,9 +467,9 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::PUT: {
-			const std::string node  = getString(message->node(), client);
-			const std::string key   = getString(message->key(), client);
-			const std::string value = getString(message->value(), client);
+			const std::string node  = getString(message->node(), client, receivedID);
+			const std::string key   = getString(message->key(), client, receivedID);
+			const std::string value = getString(message->value(), client, receivedID);
 			if (node.empty() || key.empty() || value.empty()) {
 				break;
 			}
@@ -464,18 +477,18 @@ void dvConfigServerHandleRequest(
 			dv::ConfigType type = message->type();
 			if (type == dv::ConfigType::UNKNOWN) {
 				// Send back error message to client.
-				sendError(client, "Invalid type.");
+				sendError("Invalid type.", client, receivedID);
 				break;
 			}
 
-			if (!checkNodeExists(configStore, node, client)) {
+			if (!checkNodeExists(configStore, node, client, receivedID)) {
 				break;
 			}
 
 			// This cannot fail, since we know the node exists from above.
 			dvCfg::Node wantedNode = configStore.getNode(node);
 
-			if (!checkAttributeExists(wantedNode, key, type, client)) {
+			if (!checkAttributeExists(wantedNode, key, type, client, receivedID)) {
 				break;
 			}
 
@@ -493,27 +506,28 @@ void dvConfigServerHandleRequest(
 				if (!wantedNode.stringToAttributeConverter(key, typeStr, value)) {
 					// Send back correct error message to client.
 					if (errno == EINVAL) {
-						sendError(client, "Impossible to convert value according to type.");
+						sendError("Impossible to convert value according to type.", client, receivedID);
 					}
 					else if (errno == EPERM) {
-						sendError(client, "Cannot write to a read-only attribute.");
+						sendError("Cannot write to a read-only attribute.", client, receivedID);
 					}
 					else if (errno == ERANGE) {
-						sendError(client, "Value out of attribute range.");
+						sendError("Value out of attribute range.", client, receivedID);
 					}
 					else {
 						// Unknown error.
-						sendError(client, "Unknown error.");
+						sendError("Unknown error.", client, receivedID);
 					}
 
 					break;
 				}
 
 				// Send back confirmation to the client.
-				sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
+				sendMessage(client, [receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 					dv::ConfigActionDataBuilder msg(*msgBuild);
 
 					msg.add_action(dv::ConfigAction::PUT);
+					msg.add_id(receivedID);
 
 					return (msg.Finish());
 				});
@@ -523,30 +537,30 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::ADD_MODULE: {
-			const std::string moduleName    = getString(message->node(), client);
-			const std::string moduleLibrary = getString(message->key(), client);
+			const std::string moduleName    = getString(message->node(), client, receivedID);
+			const std::string moduleLibrary = getString(message->key(), client, receivedID);
 
 			if (moduleName.empty()) {
 				// Disallow empty strings.
-				sendError(client, "Name cannot be empty.");
+				sendError("Name cannot be empty.", client, receivedID);
 				break;
 			}
 
 			if (moduleLibrary.empty()) {
 				// Disallow empty strings.
-				sendError(client, "Library cannot be empty.");
+				sendError("Library cannot be empty.", client, receivedID);
 				break;
 			}
 
 			const std::regex moduleNameRegex("^[a-zA-Z-_\\d\\.]+$");
 
 			if (!std::regex_match(moduleName, moduleNameRegex)) {
-				sendError(client, "Name uses invalid characters.");
+				sendError("Name uses invalid characters.", client, receivedID);
 				break;
 			}
 
 			if (configStore.existsNode("/mainloop/" + moduleName + "/")) {
-				sendError(client, "Name is already in use.");
+				sendError("Name is already in use.", client, receivedID);
 				break;
 			}
 
@@ -558,7 +572,7 @@ void dvConfigServerHandleRequest(
 				modulesListOptions, boost::char_separator<char>(","));
 
 			if (!findBool(modulesList.begin(), modulesList.end(), moduleLibrary)) {
-				sendError(client, "Library does not exist.");
+				sendError("Library does not exist.", client, receivedID);
 				break;
 			}
 
@@ -625,10 +639,11 @@ void dvConfigServerHandleRequest(
 			dvModuleConfigInit(newModuleNode);
 
 			// Send back confirmation to the client.
-			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
+			sendMessage(client, [receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 				dv::ConfigActionDataBuilder msg(*msgBuild);
 
 				msg.add_action(dv::ConfigAction::ADD_MODULE);
+				msg.add_id(receivedID);
 
 				return (msg.Finish());
 			});
@@ -637,16 +652,16 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::REMOVE_MODULE: {
-			const std::string moduleName = getString(message->node(), client);
+			const std::string moduleName = getString(message->node(), client, receivedID);
 
 			if (moduleName.empty()) {
 				// Disallow empty strings.
-				sendError(client, "Name cannot be empty.");
+				sendError("Name cannot be empty.", client, receivedID);
 				break;
 			}
 
 			if (!configStore.existsNode("/mainloop/" + moduleName + "/")) {
-				sendError(client, "Name is not in use.");
+				sendError("Name is not in use.", client, receivedID);
 				break;
 			}
 
@@ -654,7 +669,7 @@ void dvConfigServerHandleRequest(
 			// destroy data the system is relying on.
 			bool isMainloopRunning = configStore.getNode("/mainloop/").get<dvCfgType::BOOL>("running");
 			if (isMainloopRunning) {
-				sendError(client, "Mainloop is running.");
+				sendError("Mainloop is running.", client, receivedID);
 				break;
 			}
 
@@ -662,10 +677,11 @@ void dvConfigServerHandleRequest(
 			configStore.getNode("/mainloop/" + moduleName + "/").removeNode();
 
 			// Send back confirmation to the client.
-			sendMessage(client, [](flatbuffers::FlatBufferBuilder *msgBuild) {
+			sendMessage(client, [receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
 				dv::ConfigActionDataBuilder msg(*msgBuild);
 
 				msg.add_action(dv::ConfigAction::REMOVE_MODULE);
+				msg.add_id(receivedID);
 
 				return (msg.Finish());
 			});
@@ -741,7 +757,7 @@ void dvConfigServerHandleRequest(
 
 		default: {
 			// Unknown action, send error back to client.
-			sendError(client, "Unknown action.");
+			sendError("Unknown action.", client, receivedID);
 
 			break;
 		}
