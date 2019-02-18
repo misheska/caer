@@ -517,6 +517,14 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::PUT: {
+			// Check type first, needed for value check.
+			dv::ConfigType type = message->type();
+			if (type == dv::ConfigType::UNKNOWN) {
+				// Send back error message to client.
+				sendError("Invalid type.", client, receivedID);
+				break;
+			}
+
 			std::string node;
 			std::string key;
 			std::string value;
@@ -524,16 +532,10 @@ void dvConfigServerHandleRequest(
 			try {
 				node  = getString(message->node(), client, receivedID);
 				key   = getString(message->key(), client, receivedID);
-				value = getString(message->value(), client, receivedID, true);
+				value = getString(
+					message->value(), client, receivedID, (type == dv::ConfigType::STRING) ? (true) : (false));
 			}
 			catch (const std::invalid_argument &) {
-				break;
-			}
-
-			dv::ConfigType type = message->type();
-			if (type == dv::ConfigType::UNKNOWN) {
-				// Send back error message to client.
-				sendError("Invalid type.", client, receivedID);
 				break;
 			}
 
