@@ -509,10 +509,6 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				std::cerr << "Error: missing type parameter." << std::endl;
 				return;
 			}
-			if (commandParts[CMD_PART_VALUE] == nullptr) {
-				std::cerr << "Error: missing value parameter." << std::endl;
-				return;
-			}
 			if (commandParts[CMD_PART_VALUE + 1] != nullptr) {
 				std::cerr << "Error: too many parameters for command." << std::endl;
 				return;
@@ -524,9 +520,18 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 				return;
 			}
 
+			// Support setting STRING parameters to empty string.
+			if (type != dv::Config::AttributeType::STRING) {
+				if (commandParts[CMD_PART_VALUE] == nullptr) {
+					std::cerr << "Error: missing value parameter." << std::endl;
+					return;
+				}
+			}
+
 			auto nodeOffset  = dataBufferSend.CreateString(commandParts[CMD_PART_NODE]);
 			auto keyOffset   = dataBufferSend.CreateString(commandParts[CMD_PART_KEY]);
-			auto valueOffset = dataBufferSend.CreateString(commandParts[CMD_PART_VALUE]);
+			auto valueOffset = dataBufferSend.CreateString(
+				(commandParts[CMD_PART_VALUE] != nullptr) ? (commandParts[CMD_PART_VALUE]) : (""));
 
 			msg = std::make_unique<dv::ConfigActionDataBuilder>(dataBufferSend);
 			msg->add_action(action);
