@@ -495,43 +495,34 @@ void dvConfigServerHandleRequest(
 			// Put given value into config node. Node, attr and type are already verified.
 			const std::string typeStr = dvCfg::Helper::typeToStringConverter(static_cast<dvCfgType>(type));
 
-			{
-				// Both the PUSH message that can originate from this change
-				// and the confirmation shall be treated as one atomic entity,
-				// the confirmation directly following the PUSH message.
-				// This is ensured by locking write access to the socket.
-				// TODO: deadlocks (does socket -> node, others do node -> socket).
-				std::lock_guard<std::recursive_mutex> lock(client->getTransactionLock());
-
-				if (!wantedNode.stringToAttributeConverter(key, typeStr, value)) {
-					// Send back correct error message to client.
-					if (errno == EINVAL) {
-						sendError("Impossible to convert value according to type.", client, receivedID);
-					}
-					else if (errno == EPERM) {
-						sendError("Cannot write to a read-only attribute.", client, receivedID);
-					}
-					else if (errno == ERANGE) {
-						sendError("Value out of attribute range.", client, receivedID);
-					}
-					else {
-						// Unknown error.
-						sendError("Unknown error.", client, receivedID);
-					}
-
-					break;
+			if (!wantedNode.stringToAttributeConverter(key, typeStr, value)) {
+				// Send back correct error message to client.
+				if (errno == EINVAL) {
+					sendError("Impossible to convert value according to type.", client, receivedID);
+				}
+				else if (errno == EPERM) {
+					sendError("Cannot write to a read-only attribute.", client, receivedID);
+				}
+				else if (errno == ERANGE) {
+					sendError("Value out of attribute range.", client, receivedID);
+				}
+				else {
+					// Unknown error.
+					sendError("Unknown error.", client, receivedID);
 				}
 
-				// Send back confirmation to the client.
-				sendMessage(client, [receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
-					dv::ConfigActionDataBuilder msg(*msgBuild);
-
-					msg.add_action(dv::ConfigAction::PUT);
-					msg.add_id(receivedID);
-
-					return (msg.Finish());
-				});
+				break;
 			}
+
+			// Send back confirmation to the client.
+			sendMessage(client, [receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
+				msg.add_action(dv::ConfigAction::PUT);
+				msg.add_id(receivedID);
+
+				return (msg.Finish());
+			});
 
 			break;
 		}

@@ -45,10 +45,6 @@ void ConfigServerConnection::close() {
 	socket.close();
 }
 
-std::recursive_mutex &ConfigServerConnection::getTransactionLock() {
-	return (socket.writeTransactionLock());
-}
-
 uint64_t ConfigServerConnection::getClientID() {
 	return (clientID);
 }
