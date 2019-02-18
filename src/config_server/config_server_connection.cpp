@@ -15,11 +15,15 @@ ConfigServerConnection::ConfigServerConnection(
 	socket(std::move(s), tlsEnabled, tlsContext) {
 	clientID = clientIDGenerator.fetch_add(1);
 
+	parent->setCurrentClientID(clientID);
+
 	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "New connection from client %lld (%s:%d).", clientID,
 		socket.remote_address().to_string().c_str(), socket.remote_port());
 }
 
 ConfigServerConnection::~ConfigServerConnection() {
+	parent->setCurrentClientID(clientID);
+
 	parent->removeClient(this);
 
 	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Closing connection from client %lld (%s:%d).", clientID,
@@ -50,10 +54,14 @@ uint64_t ConfigServerConnection::getClientID() {
 }
 
 void ConfigServerConnection::addPushClient() {
+	parent->setCurrentClientID(clientID);
+
 	parent->addPushClient(this);
 }
 
 void ConfigServerConnection::removePushClient() {
+	parent->setCurrentClientID(clientID);
+
 	parent->removePushClient(this);
 }
 
@@ -92,6 +100,8 @@ void ConfigServerConnection::readMessageSize() {
 				handleError(error, "Failed to read message size");
 			}
 			else {
+				parent->setCurrentClientID(clientID);
+
 				// Check for wrong (excessive) message length.
 				// Close connection by falling out of scope.
 				if (incomingMessageSize > DV_CONFIG_SERVER_MAX_INCOMING_SIZE) {
@@ -118,6 +128,12 @@ void ConfigServerConnection::readMessage() {
 				handleError(error, "Failed to read message");
 			}
 			else {
+				// Any changes coming as a result of clients doing something
+				// must originate as a result of a call to this function.
+				// So we set the client ID for the current thread to the
+				// current client value, so that any listeners will see it too.
+				parent->setCurrentClientID(clientID);
+
 				// Now we have the flatbuffer message and can verify it.
 				flatbuffers::Verifier verifyMessage(messageBuffer.get(), incomingMessageSize);
 
@@ -128,18 +144,14 @@ void ConfigServerConnection::readMessage() {
 					return;
 				}
 
-				// Any changes coming as a result of clients doing something
-				// must originate as a result of a call to this function.
-				// So we set the client ID for the current thread to the
-				// current client value, so that any listeners will see it too.
-				parent->setCurrentClientID(clientID);
-
 				dvConfigServerHandleRequest(self, std::move(messageBuffer));
 			}
 		});
 }
 
 void ConfigServerConnection::handleError(const boost::system::error_code &error, const char *message) {
+	parent->setCurrentClientID(clientID);
+
 	if (error == asio::error::eof) {
 		// Handle EOF separately.
 		logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Client %lld: connection closed.", clientID);
