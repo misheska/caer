@@ -19,12 +19,13 @@ static void caerFrameEnhancerRun(dvModuleData moduleData, caerEventPacketContain
 static void caerFrameEnhancerConfig(dvModuleData moduleData);
 static void caerFrameEnhancerExit(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS FrameEnhancerFunctions = {.moduleConfigInit = &caerFrameEnhancerConfigInit,
-	.moduleInit                                                                       = &caerFrameEnhancerInit,
-	.moduleRun                                                                        = &caerFrameEnhancerRun,
-	.moduleConfig                                                                     = &caerFrameEnhancerConfig,
-	.moduleExit                                                                       = &caerFrameEnhancerExit,
-	.moduleReset                                                                      = NULL};
+static const struct dvModuleFunctionsS FrameEnhancerFunctions = {
+	.moduleConfigInit = &caerFrameEnhancerConfigInit,
+	.moduleInit       = &caerFrameEnhancerInit,
+	.moduleRun        = &caerFrameEnhancerRun,
+	.moduleConfig     = &caerFrameEnhancerConfig,
+	.moduleExit       = &caerFrameEnhancerExit,
+};
 
 static const struct caer_event_stream_in FrameEnhancerInputs[] = {{.type = FRAME_EVENT, .number = 1, .readOnly = true}};
 // The output frame here is a _different_ frame than the above input!
@@ -63,15 +64,13 @@ static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode) {
 	dvConfigNodeAttributeModifierListOptions(
 		moduleNode, "contrastType", "opencv_normalization,opencv_histogram_equalization,opencv_clahe,standard", false);
 #else
-    dvConfigNodeCreateString(moduleNode, "demosaicType", "standard", 7, 8, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleNode, "demosaicType", "standard", 7, 8, DVCFG_FLAGS_NORMAL,
 		"Demoisaicing (color interpolation) algorithm to apply.");
-	dvConfigNodeAttributeModifierListOptions(
-		moduleNode, "demosaicType", "to_gray,standard", false);
+	dvConfigNodeAttributeModifierListOptions(moduleNode, "demosaicType", "to_gray,standard", false);
 
-	dvConfigNodeCreateString(moduleNode, "contrastType", "standard", 8, 8, DVCFG_FLAGS_NORMAL,
-		"Contrast enhancement algorithm to apply.");
-	dvConfigNodeAttributeModifierListOptions(
-		moduleNode, "contrastType", "standard", false);
+	dvConfigNodeCreateString(
+		moduleNode, "contrastType", "standard", 8, 8, DVCFG_FLAGS_NORMAL, "Contrast enhancement algorithm to apply.");
+	dvConfigNodeAttributeModifierListOptions(moduleNode, "contrastType", "standard", false);
 #endif
 }
 
@@ -91,8 +90,8 @@ static bool caerFrameEnhancerInit(dvModuleData moduleData) {
 		"Output frame width.");
 	dvConfigNodeCreateInt(sourceInfoNode, "frameSizeY", sizeY, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Output frame height.");
-	dvConfigNodeCreateInt(
-		sourceInfoNode, "dataSizeX", sizeX, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Output data width.");
+	dvConfigNodeCreateInt(sourceInfoNode, "dataSizeX", sizeX, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
+		"Output data width.");
 	dvConfigNodeCreateInt(sourceInfoNode, "dataSizeY", sizeY, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Output data height.");
 
@@ -106,8 +105,7 @@ static bool caerFrameEnhancerInit(dvModuleData moduleData) {
 	return (true);
 }
 
-static void caerFrameEnhancerRun(
-	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
+static void caerFrameEnhancerRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
 	caerFrameEventPacketConst inputFramePacket
 		= (caerFrameEventPacketConst) caerEventPacketContainerFindEventPacketByTypeConst(in, FRAME_EVENT);
 

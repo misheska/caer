@@ -5,7 +5,6 @@
 static void statisticsModuleConfigInit(dvConfigNode moduleNode);
 static bool statisticsModuleInit(dvModuleData moduleData);
 static void statisticsModuleRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void statisticsModuleReset(dvModuleData moduleData, int16_t resetCallSourceID);
 
 static const struct dvModuleFunctionsS StatisticsFunctions = {
 	.moduleConfigInit = &statisticsModuleConfigInit,
@@ -13,7 +12,6 @@ static const struct dvModuleFunctionsS StatisticsFunctions = {
 	.moduleRun        = &statisticsModuleRun,
 	.moduleConfig     = NULL,
 	.moduleExit       = NULL,
-	.moduleReset      = &statisticsModuleReset,
 };
 
 static const struct caer_event_stream_in StatisticsInputs[] = {{
@@ -79,12 +77,4 @@ static void statisticsModuleRun(dvModuleData moduleData, caerEventPacketContaine
 		dvConfigNodeUpdateReadOnlyAttribute(moduleData->moduleNode, "packetTSDiff", DVCFG_TYPE_LONG,
 			(union dvConfigAttributeValue){.ilong = state->currStatsPacketTSDiff});
 	}
-}
-
-static void statisticsModuleReset(dvModuleData moduleData, int16_t resetCallSourceID) {
-	UNUSED_ARGUMENT(resetCallSourceID);
-
-	caerStatisticsState state = moduleData->moduleState;
-
-	caerStatisticsReset(state);
 }

@@ -8,10 +8,12 @@
 
 static bool caerInputFileInit(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS InputFileFunctions = {.moduleInit = &caerInputFileInit,
-	.moduleRun                                                              = &caerInputCommonRun,
-	.moduleConfig                                                           = NULL,
-	.moduleExit                                                             = &caerInputCommonExit};
+static const struct dvModuleFunctionsS InputFileFunctions = {
+	.moduleInit   = &caerInputFileInit,
+	.moduleRun    = &caerInputCommonRun,
+	.moduleConfig = NULL,
+	.moduleExit   = &caerInputCommonExit,
+};
 
 static const struct caer_event_stream_out InputFileOutputs[] = {{.type = -1}};
 

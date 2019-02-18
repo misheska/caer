@@ -1,15 +1,19 @@
 #include "dv-sdk/mainloop.h"
+
 #include "input_common.h"
+
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 
 static bool caerInputNetTCPInit(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS InputNetTCPFunctions = {.moduleInit = &caerInputNetTCPInit,
-	.moduleRun                                                                = &caerInputCommonRun,
-	.moduleConfig                                                             = NULL,
-	.moduleExit                                                               = &caerInputCommonExit};
+static const struct dvModuleFunctionsS InputNetTCPFunctions = {
+	.moduleInit   = &caerInputNetTCPInit,
+	.moduleRun    = &caerInputCommonRun,
+	.moduleConfig = NULL,
+	.moduleExit   = &caerInputCommonExit,
+};
 
 static const struct caer_event_stream_out InputNetTCPOutputs[] = {{.type = -1}};
 
@@ -64,8 +68,7 @@ static bool caerInputNetTCPInit(dvModuleData moduleData) {
 	if (connect(sockFd, (struct sockaddr *) &tcpClient, sizeof(struct sockaddr_in)) != 0) {
 		close(sockFd);
 
-		dvModuleLog(moduleData, CAER_LOG_CRITICAL,
-			"Could not connect to remote TCP server %s:%" PRIu16 ". Error: %d.",
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not connect to remote TCP server %s:%" PRIu16 ". Error: %d.",
 			inet_ntop(AF_INET, &tcpClient.sin_addr, (char[INET_ADDRSTRLEN]){0x00}, INET_ADDRSTRLEN),
 			ntohs(tcpClient.sin_port), errno);
 		return (false);

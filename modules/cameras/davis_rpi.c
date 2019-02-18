@@ -4,12 +4,13 @@ static void caerInputDAVISRPiConfigInit(dvConfigNode moduleNode);
 static bool caerInputDAVISRPiInit(dvModuleData moduleData);
 static void caerInputDAVISRPiExit(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS DAVISRPiFunctions = {.moduleConfigInit = &caerInputDAVISRPiConfigInit,
-	.moduleInit                                                                  = &caerInputDAVISRPiInit,
-	.moduleRun                                                                   = &caerInputDAVISCommonRun,
-	.moduleConfig                                                                = NULL,
-	.moduleExit                                                                  = &caerInputDAVISRPiExit,
-	.moduleReset                                                                 = NULL};
+static const struct dvModuleFunctionsS DAVISRPiFunctions = {
+	.moduleConfigInit = &caerInputDAVISRPiConfigInit,
+	.moduleInit       = &caerInputDAVISRPiInit,
+	.moduleRun        = &caerInputDAVISCommonRun,
+	.moduleConfig     = NULL,
+	.moduleExit       = &caerInputDAVISRPiExit,
+};
 
 static const struct caer_event_stream_out DAVISRPiOutputs[]
 	= {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}, {.type = FRAME_EVENT}, {.type = IMU6_EVENT}};
@@ -75,7 +76,8 @@ static bool caerInputDAVISRPiInit(dvModuleData moduleData) {
 	}
 
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
+	dvConfigNode deviceConfigNode
+		= dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
 	dvConfigNode chipNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "chip/");
@@ -104,8 +106,8 @@ static bool caerInputDAVISRPiInit(dvModuleData moduleData) {
 
 	dvConfigNode biasNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "bias/");
 
-	size_t biasNodesLength = 0;
-	dvConfigNode *biasNodes    = dvConfigNodeGetChildren(biasNode, &biasNodesLength);
+	size_t biasNodesLength  = 0;
+	dvConfigNode *biasNodes = dvConfigNodeGetChildren(biasNode, &biasNodesLength);
 
 	if (biasNodes != NULL) {
 		for (size_t i = 0; i < biasNodesLength; i++) {
@@ -124,7 +126,8 @@ static bool caerInputDAVISRPiInit(dvModuleData moduleData) {
 static void caerInputDAVISRPiExit(dvModuleData moduleData) {
 	// Device related configuration has its own sub-node.
 	struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
-	dvConfigNode deviceConfigNode      = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
+	dvConfigNode deviceConfigNode
+		= dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
 
 	// Remove listener, which can reference invalid memory in userData.
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
@@ -155,8 +158,8 @@ static void caerInputDAVISRPiExit(dvModuleData moduleData) {
 
 	dvConfigNode biasNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "bias/");
 
-	size_t biasNodesLength = 0;
-	dvConfigNode *biasNodes    = dvConfigNodeGetChildren(biasNode, &biasNodesLength);
+	size_t biasNodesLength  = 0;
+	dvConfigNode *biasNodes = dvConfigNodeGetChildren(biasNode, &biasNodesLength);
 
 	if (biasNodes != NULL) {
 		for (size_t i = 0; i < biasNodesLength; i++) {
@@ -197,7 +200,8 @@ static void createDefaultAERConfiguration(dvModuleData moduleData, const char *n
 
 static void sendDefaultConfiguration(dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo->chipID, true));
+	dvConfigNode deviceConfigNode
+		= dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo->chipID, true));
 
 	// Send cAER configuration to libcaer and device.
 	biasConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "bias/"), moduleData, devInfo);

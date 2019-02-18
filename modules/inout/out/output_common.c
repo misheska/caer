@@ -1464,8 +1464,7 @@ bool caerOutputCommonInit(dvModuleData moduleData, int fileDescriptor, outputCom
 
 		if ((errno = thrd_join(state->compressorThread, NULL)) != thrd_success) {
 			// This should never happen!
-			dvModuleLog(
-				state->parentModule, CAER_LOG_CRITICAL, "Failed to join compressor thread. Error: %d.", errno);
+			dvModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to join compressor thread. Error: %d.", errno);
 		}
 
 		if (state->isNetworkStream) {
@@ -1575,7 +1574,7 @@ static void caerOutputCommonConfigListener(dvConfigNode node, void *userData, en
 	UNUSED_ARGUMENT(node);
 
 	dvModuleData moduleData = userData;
-	outputCommonState state   = moduleData->moduleState;
+	outputCommonState state = moduleData->moduleState;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "validOnly")) {

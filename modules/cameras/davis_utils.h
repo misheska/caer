@@ -220,8 +220,6 @@ static void caerInputDAVISCommonRun(
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
 				   != NULL)) {
-			dvMainloopModuleResetOutputRevDeps(moduleData->moduleID);
-
 			// Update master/slave information.
 			struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 
@@ -914,7 +912,7 @@ static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 	UNUSED_ARGUMENT(changeType);
 	UNUSED_ARGUMENT(changeValue);
 
-	dvModuleData moduleData      = userData;
+	dvModuleData moduleData        = userData;
 	struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
@@ -1358,7 +1356,7 @@ static void chipConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	dvModuleData moduleData      = userData;
+	dvModuleData moduleData        = userData;
 	struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {

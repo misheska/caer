@@ -6,12 +6,13 @@ static void caerInputDAVISConfigInit(dvConfigNode moduleNode);
 static bool caerInputDAVISInit(dvModuleData moduleData);
 static void caerInputDAVISExit(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS DAVISFunctions = {.moduleConfigInit = &caerInputDAVISConfigInit,
-	.moduleInit                                                               = &caerInputDAVISInit,
-	.moduleRun                                                                = &caerInputDAVISCommonRun,
-	.moduleConfig                                                             = NULL,
-	.moduleExit                                                               = &caerInputDAVISExit,
-	.moduleReset                                                              = NULL};
+static const struct dvModuleFunctionsS DAVISFunctions = {
+	.moduleConfigInit = &caerInputDAVISConfigInit,
+	.moduleInit       = &caerInputDAVISInit,
+	.moduleRun        = &caerInputDAVISCommonRun,
+	.moduleConfig     = NULL,
+	.moduleExit       = &caerInputDAVISExit,
+};
 
 static const struct caer_event_stream_out DAVISOutputs[]
 	= {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}, {.type = FRAME_EVENT}, {.type = IMU6_EVENT}};
@@ -43,8 +44,10 @@ static void caerInputDAVISConfigInit(dvConfigNode moduleNode) {
 	// USB port/bus/SN settings/restrictions.
 	// These can be used to force connection to one specific device at startup.
 	dvConfigNodeCreateInt(moduleNode, "busNumber", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB bus number restriction.");
-	dvConfigNodeCreateInt(moduleNode, "devAddress", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB device address restriction.");
-	dvConfigNodeCreateString(moduleNode, "serialNumber", "", 0, 8, DVCFG_FLAGS_NORMAL, "USB serial number restriction.");
+	dvConfigNodeCreateInt(
+		moduleNode, "devAddress", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB device address restriction.");
+	dvConfigNodeCreateString(
+		moduleNode, "serialNumber", "", 0, 8, DVCFG_FLAGS_NORMAL, "USB serial number restriction.");
 
 	// Add auto-restart setting.
 	dvConfigNodeCreateBool(
@@ -110,7 +113,8 @@ static bool caerInputDAVISInit(dvModuleData moduleData) {
 	}
 
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
+	dvConfigNode deviceConfigNode
+		= dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
 	dvConfigNode chipNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "chip/");
@@ -139,8 +143,8 @@ static bool caerInputDAVISInit(dvModuleData moduleData) {
 
 	dvConfigNode biasNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "bias/");
 
-	size_t biasNodesLength = 0;
-	dvConfigNode *biasNodes    = dvConfigNodeGetChildren(biasNode, &biasNodesLength);
+	size_t biasNodesLength  = 0;
+	dvConfigNode *biasNodes = dvConfigNodeGetChildren(biasNode, &biasNodesLength);
 
 	if (biasNodes != NULL) {
 		for (size_t i = 0; i < biasNodesLength; i++) {
@@ -159,7 +163,8 @@ static bool caerInputDAVISInit(dvModuleData moduleData) {
 static void caerInputDAVISExit(dvModuleData moduleData) {
 	// Device related configuration has its own sub-node.
 	struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
-	dvConfigNode deviceConfigNode      = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
+	dvConfigNode deviceConfigNode
+		= dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo.chipID, true));
 
 	// Remove listener, which can reference invalid memory in userData.
 	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &logLevelListener);
@@ -190,8 +195,8 @@ static void caerInputDAVISExit(dvModuleData moduleData) {
 
 	dvConfigNode biasNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "bias/");
 
-	size_t biasNodesLength = 0;
-	dvConfigNode *biasNodes    = dvConfigNodeGetChildren(biasNode, &biasNodesLength);
+	size_t biasNodesLength  = 0;
+	dvConfigNode *biasNodes = dvConfigNodeGetChildren(biasNode, &biasNodesLength);
 
 	if (biasNodes != NULL) {
 		for (size_t i = 0; i < biasNodesLength; i++) {
@@ -237,13 +242,14 @@ static void createDefaultUSBConfiguration(dvModuleData moduleData, const char *n
 		"Send early USB packets if this timeout is reached (in 125µs time-slices).");
 
 	dvConfigNodeCreateInt(usbNode, "BufferNumber", 8, 2, 128, DVCFG_FLAGS_NORMAL, "Number of USB transfers.");
-	dvConfigNodeCreateInt(
-		usbNode, "BufferSize", 8192, 512, 32768, DVCFG_FLAGS_NORMAL, "Size in bytes of data buffers for USB transfers.");
+	dvConfigNodeCreateInt(usbNode, "BufferSize", 8192, 512, 32768, DVCFG_FLAGS_NORMAL,
+		"Size in bytes of data buffers for USB transfers.");
 }
 
 static void sendDefaultConfiguration(dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	// Device related configuration has its own sub-node.
-	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo->chipID, true));
+	dvConfigNode deviceConfigNode
+		= dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo->chipID, true));
 
 	// Send cAER configuration to libcaer and device.
 	biasConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "bias/"), moduleData, devInfo);
@@ -265,7 +271,8 @@ static void usbConfigSend(dvConfigNode node, dvModuleData moduleData) {
 
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_USB, DAVIS_CONFIG_USB_EARLY_PACKET_DELAY,
 		U32T(dvConfigNodeGetInt(node, "EarlyPacketDelay")));
-	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_USB, DAVIS_CONFIG_USB_RUN, dvConfigNodeGetBool(node, "Run"));
+	caerDeviceConfigSet(
+		moduleData->moduleState, DAVIS_CONFIG_USB, DAVIS_CONFIG_USB_RUN, dvConfigNodeGetBool(node, "Run"));
 }
 
 static void usbConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,

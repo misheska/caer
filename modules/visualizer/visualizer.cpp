@@ -76,7 +76,6 @@ static void caerVisualizerConfigInit(dvConfigNode moduleNode);
 static bool caerVisualizerInit(dvModuleData moduleData);
 static void caerVisualizerExit(dvModuleData moduleData);
 static void caerVisualizerRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void caerVisualizerReset(dvModuleData moduleData, int16_t resetCallSourceID);
 static void caerVisualizerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 static void initSystemOnce(dvModuleData moduleData);
@@ -97,7 +96,6 @@ static const struct dvModuleFunctionsS VisualizerFunctions = {
 	.moduleRun        = &caerVisualizerRun,
 	.moduleConfig     = nullptr,
 	.moduleExit       = &caerVisualizerExit,
-	.moduleReset      = &caerVisualizerReset,
 };
 
 static const struct caer_event_stream_in VisualizerInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
@@ -304,16 +302,6 @@ static void caerVisualizerRun(dvModuleData moduleData, caerEventPacketContainer 
 
 	// Will always succeed because of full check above.
 	caerRingBufferPut(state->dataTransfer, containerCopy);
-}
-
-static void caerVisualizerReset(dvModuleData moduleData, int16_t resetCallSourceID) {
-	UNUSED_ARGUMENT(resetCallSourceID);
-
-	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
-
-	// Reset statistics and counters.
-	caerStatisticsStringReset(&state->packetStatistics);
-	state->packetSubsampleCount = 0;
 }
 
 static void caerVisualizerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,

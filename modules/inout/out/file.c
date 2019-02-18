@@ -12,11 +12,12 @@
 
 static bool caerOutputFileInit(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS OutputFileFunctions = {.moduleInit = &caerOutputFileInit,
-	.moduleRun                                                               = &caerOutputCommonRun,
-	.moduleConfig                                                            = NULL,
-	.moduleExit                                                              = &caerOutputCommonExit,
-	.moduleReset                                                             = &caerOutputCommonReset};
+static const struct dvModuleFunctionsS OutputFileFunctions = {
+	.moduleInit   = &caerOutputFileInit,
+	.moduleRun    = &caerOutputCommonRun,
+	.moduleConfig = NULL,
+	.moduleExit   = &caerOutputCommonExit,
+};
 
 static const struct caer_event_stream_in OutputFileInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
@@ -125,8 +126,8 @@ static bool caerOutputFileInit(dvModuleData moduleData) {
 
 	int fileFd = open(filePath, O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR | S_IRGRP);
 	if (fileFd < 0) {
-		dvModuleLog(moduleData, CAER_LOG_CRITICAL,
-			"Could not create or open output file '%s' for writing. Error: %d.", filePath, errno);
+		dvModuleLog(moduleData, CAER_LOG_CRITICAL, "Could not create or open output file '%s' for writing. Error: %d.",
+			filePath, errno);
 		free(filePath);
 
 		return (false);

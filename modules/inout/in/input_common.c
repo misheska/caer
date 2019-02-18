@@ -494,8 +494,7 @@ static bool parseFileHeader(inputCommonState state) {
 					char startTimeString[1024 + 1];
 
 					if (sscanf(headerLine, "#Start-Time: %1024[^\r]s\n", startTimeString) == 1) {
-						dvModuleLog(
-							state->parentModule, CAER_LOG_INFO, "Recording was taken on %s.", startTimeString);
+						dvModuleLog(state->parentModule, CAER_LOG_INFO, "Recording was taken on %s.", startTimeString);
 					}
 				}
 				else if (caerStrEqualsUpTo(headerLine, "#-Source ", 9)) {
@@ -1884,8 +1883,8 @@ bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStre
 	state->isNetworkMessageBased = isNetworkMessageBased;
 
 	// Add auto-restart setting.
-	dvConfigNodeCreateBool(
-		moduleData->moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL, "Automatically restart module after shutdown.");
+	dvConfigNodeCreateBool(moduleData->moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL,
+		"Automatically restart module after shutdown.");
 
 	// Handle configuration.
 	dvConfigNodeCreateBool(moduleData->moduleNode, "validOnly", false, DVCFG_FLAGS_NORMAL, "Only read valid events.");
@@ -1897,13 +1896,14 @@ bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStre
 	dvConfigNodeCreateInt(moduleData->moduleNode, "ringBufferSize", 128, 8, 1024, DVCFG_FLAGS_NORMAL,
 		"Size of EventPacketContainer and EventPacket queues, used for transfers between input threads and mainloop.");
 
-	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024, DVCFG_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024,
+		DVCFG_FLAGS_NORMAL,
 		"Maximum packet size in events, when any packet reaches this size, the EventPacketContainer is sent for "
 		"processing.");
-	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerInterval", 10000, 1, 120 * 1000 * 1000, DVCFG_FLAGS_NORMAL,
-		"Time interval in µs, each sent EventPacketContainer will span this interval.");
-	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerDelay", 10000, 1, 120 * 1000 * 1000, DVCFG_FLAGS_NORMAL,
-		"Time delay in µs between consecutive EventPacketContainers sent for processing.");
+	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerInterval", 10000, 1, 120 * 1000 * 1000,
+		DVCFG_FLAGS_NORMAL, "Time interval in µs, each sent EventPacketContainer will span this interval.");
+	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerDelay", 10000, 1, 120 * 1000 * 1000,
+		DVCFG_FLAGS_NORMAL, "Time delay in µs between consecutive EventPacketContainers sent for processing.");
 
 	atomic_store(&state->validOnly, dvConfigNodeGetBool(moduleData->moduleNode, "validOnly"));
 	atomic_store(&state->keepPackets, dvConfigNodeGetBool(moduleData->moduleNode, "keepPackets"));
@@ -1912,7 +1912,8 @@ bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStre
 
 	atomic_store(
 		&state->packetContainer.sizeSlice, dvConfigNodeGetInt(moduleData->moduleNode, "PacketContainerMaxPacketSize"));
-	atomic_store(&state->packetContainer.timeSlice, dvConfigNodeGetInt(moduleData->moduleNode, "PacketContainerInterval"));
+	atomic_store(
+		&state->packetContainer.timeSlice, dvConfigNodeGetInt(moduleData->moduleNode, "PacketContainerInterval"));
 	atomic_store(&state->packetContainer.timeDelay, dvConfigNodeGetInt(moduleData->moduleNode, "PacketContainerDelay"));
 
 	// Initialize transfer ring-buffers. ringBufferSize only changes here at init time!
@@ -1924,8 +1925,7 @@ bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStre
 
 	state->transferRingPacketContainers = caerRingBufferInit((size_t) ringSize);
 	if (state->transferRingPacketContainers == NULL) {
-		dvModuleLog(
-			state->parentModule, CAER_LOG_ERROR, "Failed to allocate packet containers transfer ring-buffer.");
+		dvModuleLog(state->parentModule, CAER_LOG_ERROR, "Failed to allocate packet containers transfer ring-buffer.");
 		return (false);
 	}
 
@@ -2025,8 +2025,7 @@ void caerInputCommonExit(dvModuleData moduleData) {
 
 	if ((errno = thrd_join(state->inputAssemblerThread, NULL)) != thrd_success) {
 		// This should never happen!
-		dvModuleLog(
-			state->parentModule, CAER_LOG_CRITICAL, "Failed to join input assembler thread. Error: %d.", errno);
+		dvModuleLog(state->parentModule, CAER_LOG_CRITICAL, "Failed to join input assembler thread. Error: %d.", errno);
 	}
 
 	// Now clean up the transfer ring-buffers and its contents.
@@ -2106,14 +2105,6 @@ void caerInputCommonRun(dvModuleData moduleData, caerEventPacketContainer in, ca
 		// through a mainloop already synchronizes with the release store above.
 		dvMainloopDataNotifyDecrease(NULL);
 		atomic_fetch_sub_explicit(&state->dataAvailableModule, 1, memory_order_relaxed);
-
-		caerEventPacketHeaderConst special = caerEventPacketContainerFindEventPacketByTypeConst(*out, SPECIAL_EVENT);
-
-		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
-			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
-				   != NULL)) {
-			dvMainloopModuleResetOutputRevDeps(moduleData->moduleID);
-		}
 	}
 }
 
@@ -2122,7 +2113,7 @@ static void caerInputCommonConfigListener(dvConfigNode node, void *userData, enu
 	UNUSED_ARGUMENT(node);
 
 	dvModuleData moduleData = userData;
-	inputCommonState state    = moduleData->moduleState;
+	inputCommonState state  = moduleData->moduleState;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
 		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "validOnly")) {

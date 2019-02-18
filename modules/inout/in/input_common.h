@@ -2,14 +2,17 @@
 #define INPUT_COMMON_H_
 
 #include <libcaer/ringbuffer.h>
+
 #include "dv-sdk/buffers.h"
 #include "dv-sdk/module.h"
+
 #include "../inout_common.h"
 #include "ext/uthash/utarray.h"
+
 #include <unistd.h>
 
 #ifdef HAVE_PTHREADS
-#include "dv-sdk/cross/c11threads_posix.h"
+#	include "dv-sdk/cross/c11threads_posix.h"
 #endif
 
 struct input_common_header_info {

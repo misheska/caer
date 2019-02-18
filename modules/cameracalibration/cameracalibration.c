@@ -26,13 +26,13 @@ static void caerCameraCalibrationConfig(dvModuleData moduleData);
 static void caerCameraCalibrationExit(dvModuleData moduleData);
 static void updateSettings(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS CameraCalibrationFunctions
-	= {.moduleConfigInit = &caerCameraCalibrationConfigInit,
-		.moduleInit      = &caerCameraCalibrationInit,
-		.moduleRun       = &caerCameraCalibrationRun,
-		.moduleConfig    = &caerCameraCalibrationConfig,
-		.moduleExit      = &caerCameraCalibrationExit,
-		.moduleReset     = NULL};
+static const struct dvModuleFunctionsS CameraCalibrationFunctions = {
+	.moduleConfigInit = &caerCameraCalibrationConfigInit,
+	.moduleInit       = &caerCameraCalibrationInit,
+	.moduleRun        = &caerCameraCalibrationRun,
+	.moduleConfig     = &caerCameraCalibrationConfig,
+	.moduleExit       = &caerCameraCalibrationExit,
+};
 
 static const struct caer_event_stream_in CameraCalibrationInputs[]
 	= {{.type = POLARITY_EVENT, .number = 1, .readOnly = false}, {.type = FRAME_EVENT, .number = 1, .readOnly = false}};
@@ -142,10 +142,11 @@ static void updateSettings(dvModuleData moduleData) {
 	state->settings.aspectRatio       = dvConfigNodeGetFloat(moduleData->moduleNode, "aspectRatio");
 	state->settings.assumeZeroTangentialDistortion
 		= dvConfigNodeGetBool(moduleData->moduleNode, "assumeZeroTangentialDistortion");
-	state->settings.fixPrincipalPointAtCenter = dvConfigNodeGetBool(moduleData->moduleNode, "fixPrincipalPointAtCenter");
-	state->settings.useFisheyeModel           = dvConfigNodeGetBool(moduleData->moduleNode, "useFisheyeModel");
-	state->settings.doUndistortion            = dvConfigNodeGetBool(moduleData->moduleNode, "doUndistortion");
-	state->settings.fitAllPixels              = dvConfigNodeGetBool(moduleData->moduleNode, "fitAllPixels");
+	state->settings.fixPrincipalPointAtCenter
+		= dvConfigNodeGetBool(moduleData->moduleNode, "fixPrincipalPointAtCenter");
+	state->settings.useFisheyeModel = dvConfigNodeGetBool(moduleData->moduleNode, "useFisheyeModel");
+	state->settings.doUndistortion  = dvConfigNodeGetBool(moduleData->moduleNode, "doUndistortion");
+	state->settings.fitAllPixels    = dvConfigNodeGetBool(moduleData->moduleNode, "fitAllPixels");
 
 	// Parse calibration pattern string.
 	char *calibPattern = dvConfigNodeGetString(moduleData->moduleNode, "calibrationPattern");

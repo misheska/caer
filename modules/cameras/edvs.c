@@ -13,12 +13,13 @@ static void caerInputEDVSRun(dvModuleData moduleData, caerEventPacketContainer i
 // All configuration is asynchronous through config listeners.
 static void caerInputEDVSExit(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS EDVSFunctions = {.moduleConfigInit = &caerInputEDVSConfigInit,
-	.moduleInit                                                              = &caerInputEDVSInit,
-	.moduleRun                                                               = &caerInputEDVSRun,
-	.moduleConfig                                                            = NULL,
-	.moduleExit                                                              = &caerInputEDVSExit,
-	.moduleReset                                                             = NULL};
+static const struct dvModuleFunctionsS EDVSFunctions = {
+	.moduleConfigInit = &caerInputEDVSConfigInit,
+	.moduleInit       = &caerInputEDVSInit,
+	.moduleRun        = &caerInputEDVSRun,
+	.moduleConfig     = NULL,
+	.moduleExit       = &caerInputEDVSExit,
+};
 
 static const struct caer_event_stream_out EDVSOutputs[] = {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}};
 
@@ -59,8 +60,8 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
 	// Serial port settings.
 	dvConfigNodeCreateString(
 		moduleNode, "serialPort", "/dev/ttyUSB0", 0, 128, DVCFG_FLAGS_NORMAL, "Serial port to connect to.");
-	dvConfigNodeCreateInt(moduleNode, "baudRate", CAER_HOST_CONFIG_SERIAL_BAUD_RATE_12M, 0, 20000000, DVCFG_FLAGS_NORMAL,
-		"Baud-rate for serial port.");
+	dvConfigNodeCreateInt(moduleNode, "baudRate", CAER_HOST_CONFIG_SERIAL_BAUD_RATE_12M, 0, 20000000,
+		DVCFG_FLAGS_NORMAL, "Baud-rate for serial port.");
 
 	// Add auto-restart setting.
 	dvConfigNodeCreateBool(
@@ -71,12 +72,14 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
 	dvConfigNodeCreateInt(biasNode, "cas", 1992, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Photoreceptor cascode.");
 	dvConfigNodeCreateInt(
 		biasNode, "injGnd", 1108364, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Differentiator switch level.");
-	dvConfigNodeCreateInt(biasNode, "reqPd", 16777215, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "AER request pull-down.");
+	dvConfigNodeCreateInt(
+		biasNode, "reqPd", 16777215, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "AER request pull-down.");
 	dvConfigNodeCreateInt(
 		biasNode, "puX", 8159221, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "2nd dimension AER static pull-up.");
 	dvConfigNodeCreateInt(
 		biasNode, "diffOff", 132, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "OFF threshold - lower to raise threshold.");
-	dvConfigNodeCreateInt(biasNode, "req", 309590, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "OFF request inverter bias.");
+	dvConfigNodeCreateInt(
+		biasNode, "req", 309590, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "OFF request inverter bias.");
 	dvConfigNodeCreateInt(biasNode, "refr", 969, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Refractory period.");
 	dvConfigNodeCreateInt(
 		biasNode, "puY", 16777215, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "1st dimension AER static pull-up.");
@@ -91,7 +94,7 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
 	dvConfigNode dvsNode = dvConfigNodeGetRelativeNode(moduleNode, "dvs/");
 	dvConfigNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Run DVS to get polarity events.");
 	dvConfigNodeCreateBool(dvsNode, "TimestampReset", false, DVCFG_FLAGS_NORMAL, "Reset timestamps to zero.");
-    dvConfigNodeAttributeModifierButton(dvsNode, "TimestampReset", "EXECUTE");
+	dvConfigNodeAttributeModifierButton(dvsNode, "TimestampReset", "EXECUTE");
 
 	// Serial communication buffer settings.
 	dvConfigNode serialNode = dvConfigNodeGetRelativeNode(moduleNode, "serial/");
@@ -236,17 +239,6 @@ static void caerInputEDVSRun(dvModuleData moduleData, caerEventPacketContainer i
 	UNUSED_ARGUMENT(in);
 
 	*out = caerDeviceDataGet(moduleData->moduleState);
-
-	if (*out != NULL) {
-		// Detect timestamp reset and call all reset functions for processors and outputs.
-		caerEventPacketHeader special = caerEventPacketContainerGetEventPacket(*out, SPECIAL_EVENT);
-
-		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
-			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
-				   != NULL)) {
-			dvMainloopModuleResetOutputRevDeps(moduleData->moduleID);
-		}
-	}
 }
 
 static void sendDefaultConfiguration(dvModuleData moduleData) {
@@ -351,7 +343,8 @@ static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 static void dvsConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, EDVS_CONFIG_DVS, EDVS_CONFIG_DVS_TIMESTAMP_RESET,
 		dvConfigNodeGetBool(node, "TimestampReset"));
-	caerDeviceConfigSet(moduleData->moduleState, EDVS_CONFIG_DVS, EDVS_CONFIG_DVS_RUN, dvConfigNodeGetBool(node, "Run"));
+	caerDeviceConfigSet(
+		moduleData->moduleState, EDVS_CONFIG_DVS, EDVS_CONFIG_DVS_RUN, dvConfigNodeGetBool(node, "Run"));
 }
 
 static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -392,7 +385,8 @@ static void serialConfigListener(dvConfigNode node, void *userData, enum dvConfi
 
 static void systemConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
-		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_PACKET_SIZE, U32T(dvConfigNodeGetInt(node, "PacketContainerMaxPacketSize")));
+		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_PACKET_SIZE,
+		U32T(dvConfigNodeGetInt(node, "PacketContainerMaxPacketSize")));
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
 		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL, U32T(dvConfigNodeGetInt(node, "PacketContainerInterval")));
 

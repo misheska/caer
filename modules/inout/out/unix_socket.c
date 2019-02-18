@@ -1,14 +1,16 @@
 #include "dv-sdk/cross/portable_io.h"
 #include "dv-sdk/mainloop.h"
+
 #include "output_common.h"
 
 static bool caerOutputUnixSocketInit(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS OutputUnixSocketFunctions = {.moduleInit = &caerOutputUnixSocketInit,
-	.moduleRun                                                                     = &caerOutputCommonRun,
-	.moduleConfig                                                                  = NULL,
-	.moduleExit                                                                    = &caerOutputCommonExit,
-	.moduleReset                                                                   = &caerOutputCommonReset};
+static const struct dvModuleFunctionsS OutputUnixSocketFunctions = {
+	.moduleInit   = &caerOutputUnixSocketInit,
+	.moduleRun    = &caerOutputCommonRun,
+	.moduleConfig = NULL,
+	.moduleExit   = &caerOutputCommonExit,
+};
 
 static const struct caer_event_stream_in OutputUnixSocketInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 

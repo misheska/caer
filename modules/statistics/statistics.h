@@ -1,10 +1,10 @@
 #ifndef STATISTICS_H_
 #define STATISTICS_H_
 
-#include "dv-sdk/utils.h"
-
 #include <libcaer/events/common.h>
+
 #include "dv-sdk/cross/portable_time.h"
+#include "dv-sdk/utils.h"
 
 #define DV_STATISTICS_STRING_EVT_TOTAL "Total events/second: %10" PRIu64
 #define DV_STATISTICS_STRING_EVT_VALID "Valid events/second: %10" PRIu64
@@ -138,12 +138,10 @@ static inline bool caerStatisticsUpdate(caerEventPacketHeaderConst packetHeader,
 static inline void caerStatisticsStringUpdate(
 	caerEventPacketHeaderConst packetHeader, caerStatisticsStringState state) {
 	if (caerStatisticsUpdate(packetHeader, &state->stats)) {
+		sprintf(state->currentStatisticsStringTotal, DV_STATISTICS_STRING_EVT_TOTAL, state->stats.currStatsEventsTotal);
+		sprintf(state->currentStatisticsStringValid, DV_STATISTICS_STRING_EVT_VALID, state->stats.currStatsEventsValid);
 		sprintf(
-			state->currentStatisticsStringTotal, DV_STATISTICS_STRING_EVT_TOTAL, state->stats.currStatsEventsTotal);
-		sprintf(
-			state->currentStatisticsStringValid, DV_STATISTICS_STRING_EVT_VALID, state->stats.currStatsEventsValid);
-		sprintf(state->currentStatisticsStringTSDiff, DV_STATISTICS_STRING_PKT_TSDIFF,
-			state->stats.currStatsPacketTSDiff);
+			state->currentStatisticsStringTSDiff, DV_STATISTICS_STRING_PKT_TSDIFF, state->stats.currStatsPacketTSDiff);
 	}
 }
 

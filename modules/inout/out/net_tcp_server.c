@@ -4,11 +4,12 @@
 
 static bool caerOutputNetTCPServerInit(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS OutputNetTCPServerFunctions = {.moduleInit = &caerOutputNetTCPServerInit,
-	.moduleRun                                                                       = &caerOutputCommonRun,
-	.moduleConfig                                                                    = NULL,
-	.moduleExit                                                                      = &caerOutputCommonExit,
-	.moduleReset                                                                     = &caerOutputCommonReset};
+static const struct dvModuleFunctionsS OutputNetTCPServerFunctions = {
+	.moduleInit   = &caerOutputNetTCPServerInit,
+	.moduleRun    = &caerOutputCommonRun,
+	.moduleConfig = NULL,
+	.moduleExit   = &caerOutputCommonExit,
+};
 
 static const struct caer_event_stream_in OutputNetTCPServerInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
@@ -103,8 +104,8 @@ static bool caerOutputNetTCPServerInit(dvModuleData moduleData) {
 	UV_RET_CHECK(retVal, moduleData->moduleSubSystemString, "uv_tcp_bind", libuvCloseLoopHandles(&streams->loop);
 				 uv_loop_close(&streams->loop); free(streams->address); free(streams); return (false));
 
-	retVal = uv_listen(
-		streams->server, dvConfigNodeGetInt(moduleData->moduleNode, "backlogSize"), &caerOutputCommonOnServerConnection);
+	retVal = uv_listen(streams->server, dvConfigNodeGetInt(moduleData->moduleNode, "backlogSize"),
+		&caerOutputCommonOnServerConnection);
 	UV_RET_CHECK(retVal, moduleData->moduleSubSystemString, "uv_listen", libuvCloseLoopHandles(&streams->loop);
 				 uv_loop_close(&streams->loop); free(streams->address); free(streams); return (false));
 

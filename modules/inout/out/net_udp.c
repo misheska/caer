@@ -1,13 +1,15 @@
 #include "dv-sdk/mainloop.h"
+
 #include "output_common.h"
 
 static bool caerOutputNetUDPInit(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS OutputNetUDPFunctions = {.moduleInit = &caerOutputNetUDPInit,
-	.moduleRun                                                                 = &caerOutputCommonRun,
-	.moduleConfig                                                              = NULL,
-	.moduleExit                                                                = &caerOutputCommonExit,
-	.moduleReset                                                               = &caerOutputCommonReset};
+static const struct dvModuleFunctionsS OutputNetUDPFunctions = {
+	.moduleInit   = &caerOutputNetUDPInit,
+	.moduleRun    = &caerOutputCommonRun,
+	.moduleConfig = NULL,
+	.moduleExit   = &caerOutputCommonExit,
+};
 
 static const struct caer_event_stream_in OutputNetUDPInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 

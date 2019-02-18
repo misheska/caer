@@ -99,23 +99,6 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 				return;
 			}
 		}
-
-		if (moduleData->doReset.load(std::memory_order_relaxed) != 0) {
-			int16_t resetCallSourceID = I16T(moduleData->doReset.exchange(0));
-
-			if (moduleFunctions->moduleReset != nullptr) {
-				// Call reset function. 'doReset' variable reset is done above.
-				try {
-					moduleFunctions->moduleReset(moduleData, resetCallSourceID);
-				}
-				catch (const std::exception &ex) {
-					libcaer::log::log(libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString,
-						"moduleReset(): '%s', disabling module.", ex.what());
-					moduleNode.put<dvCfgType::BOOL>("running", false);
-					return;
-				}
-			}
-		}
 	}
 	else if (moduleData->moduleStatus == DV_MODULE_STOPPED && running) {
 		// Check that all modules this module depends on are also running.
@@ -150,7 +133,6 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 		// forcing an update and/or reset right away in the first run of
 		// the module, which is unneeded and wasteful.
 		moduleData->configUpdate.store(0);
-		moduleData->doReset.store(0);
 
 		if (moduleFunctions->moduleInit != nullptr) {
 			try {

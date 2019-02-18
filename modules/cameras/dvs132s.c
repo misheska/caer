@@ -19,7 +19,6 @@ static const struct dvModuleFunctionsS DVS132SFunctions = {
 	.moduleRun        = &caerInputDVS132SRun,
 	.moduleConfig     = NULL,
 	.moduleExit       = &caerInputDVS132SExit,
-	.moduleReset      = NULL,
 };
 
 static const struct caer_event_stream_out DVS132SOutputs[] = {
@@ -75,15 +74,16 @@ static void systemConfigListener(dvConfigNode node, void *userData, enum dvConfi
 static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-static union dvConfigAttributeValue statisticsUpdater(
-	void *userData, const char *key, enum dvConfigAttributeType type);
+static union dvConfigAttributeValue statisticsUpdater(void *userData, const char *key, enum dvConfigAttributeType type);
 
 static void caerInputDVS132SConfigInit(dvConfigNode moduleNode) {
 	// USB port/bus/SN settings/restrictions.
 	// These can be used to force connection to one specific device at startup.
 	dvConfigNodeCreateInt(moduleNode, "busNumber", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB bus number restriction.");
-	dvConfigNodeCreateInt(moduleNode, "devAddress", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB device address restriction.");
-	dvConfigNodeCreateString(moduleNode, "serialNumber", "", 0, 8, DVCFG_FLAGS_NORMAL, "USB serial number restriction.");
+	dvConfigNodeCreateInt(
+		moduleNode, "devAddress", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB device address restriction.");
+	dvConfigNodeCreateString(
+		moduleNode, "serialNumber", "", 0, 8, DVCFG_FLAGS_NORMAL, "USB serial number restriction.");
 
 	// Add auto-restart setting.
 	dvConfigNodeCreateBool(
@@ -133,8 +133,8 @@ static bool caerInputDVS132SInit(dvModuleData moduleData) {
 
 	dvConfigNodeCreateInt(sourceInfoNode, "firmwareVersion", devInfo.firmwareVersion, devInfo.firmwareVersion,
 		devInfo.firmwareVersion, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device USB firmware version.");
-	dvConfigNodeCreateInt(sourceInfoNode, "logicVersion", devInfo.logicVersion, devInfo.logicVersion, devInfo.logicVersion,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device FPGA logic version.");
+	dvConfigNodeCreateInt(sourceInfoNode, "logicVersion", devInfo.logicVersion, devInfo.logicVersion,
+		devInfo.logicVersion, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device FPGA logic version.");
 	dvConfigNodeCreateInt(sourceInfoNode, "chipID", devInfo.chipID, devInfo.chipID, devInfo.chipID,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device chip identification number.");
 
@@ -147,7 +147,8 @@ static bool caerInputDVS132SInit(dvModuleData moduleData) {
 
 	// Extra features.
 	dvConfigNodeCreateBool(sourceInfoNode, "muxHasStatistics", devInfo.muxHasStatistics,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device supports FPGA Multiplexer statistics (USB event drops).");
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
+		"Device supports FPGA Multiplexer statistics (USB event drops).");
 	dvConfigNodeCreateBool(sourceInfoNode, "extInputHasGenerator", devInfo.extInputHasGenerator,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device supports generating pulses on output signal connector.");
 	dvConfigNodeCreateBool(sourceInfoNode, "dvsHasStatistics", devInfo.dvsHasStatistics,
@@ -258,8 +259,6 @@ static void caerInputDVS132SRun(dvModuleData moduleData, caerEventPacketContaine
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
 				   != NULL)) {
-			dvMainloopModuleResetOutputRevDeps(moduleData->moduleID);
-
 			// Update master/slave information.
 			struct caer_dvs132s_info devInfo = caerDVS132SInfoGet(moduleData->moduleState);
 
@@ -371,7 +370,7 @@ static void createDefaultLogicConfiguration(dvModuleData moduleData, const struc
 	dvConfigNodeCreateBool(muxNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable multiplexer state machine.");
 	dvConfigNodeCreateBool(muxNode, "TimestampRun", true, DVCFG_FLAGS_NORMAL, "Enable µs-timestamp generation.");
 	dvConfigNodeCreateBool(muxNode, "TimestampReset", false, DVCFG_FLAGS_NORMAL, "Reset timestamps to zero.");
-    dvConfigNodeAttributeModifierButton(muxNode, "TimestampReset", "EXECUTE");
+	dvConfigNodeAttributeModifierButton(muxNode, "TimestampReset", "EXECUTE");
 	dvConfigNodeCreateBool(muxNode, "RunChip", true, DVCFG_FLAGS_NORMAL, "Enable the chip's bias generator.");
 	dvConfigNodeCreateBool(
 		muxNode, "DropDVSOnTransferStall", false, DVCFG_FLAGS_NORMAL, "Drop Polarity events when USB FIFO is full.");
@@ -382,7 +381,8 @@ static void createDefaultLogicConfiguration(dvModuleData moduleData, const struc
 	dvConfigNode dvsNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "dvs/");
 
 	dvConfigNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable DVS (Polarity events).");
-	dvConfigNodeCreateBool(dvsNode, "WaitOnTransferStall", true, DVCFG_FLAGS_NORMAL, "On event FIFO full, pause readout.");
+	dvConfigNodeCreateBool(
+		dvsNode, "WaitOnTransferStall", true, DVCFG_FLAGS_NORMAL, "On event FIFO full, pause readout.");
 	dvConfigNodeCreateBool(dvsNode, "FilterAtLeast2Unsigned", false, DVCFG_FLAGS_NORMAL,
 		"Only read events from a group of four pixels if at least two are active, regardless of polarity.");
 	dvConfigNodeCreateBool(dvsNode, "FilterNotAll4Unsigned", false, DVCFG_FLAGS_NORMAL,
@@ -395,8 +395,8 @@ static void createDefaultLogicConfiguration(dvModuleData moduleData, const struc
 		dvsNode, "RestartTime", 100, 1, ((0x01 << 7) - 1), DVCFG_FLAGS_NORMAL, "Restart pulse length, in us.");
 	dvConfigNodeCreateInt(dvsNode, "CaptureInterval", 500, 1, ((0x01 << 21) - 1), DVCFG_FLAGS_NORMAL,
 		"Time interval between DVS readouts, in us.");
-	dvConfigNodeCreateString(dvsNode, "RowEnable", "111111111111111111111111111111111111111111111111111111111111111111", 66,
-		66, DVCFG_FLAGS_NORMAL, "Enable rows to be read-out (ROI filter).");
+	dvConfigNodeCreateString(dvsNode, "RowEnable", "111111111111111111111111111111111111111111111111111111111111111111",
+		66, 66, DVCFG_FLAGS_NORMAL, "Enable rows to be read-out (ROI filter).");
 	dvConfigNodeCreateString(dvsNode, "ColumnEnable", "1111111111111111111111111111111111111111111111111111", 52, 52,
 		DVCFG_FLAGS_NORMAL, "Enable columns to be read-out (ROI filter).");
 
@@ -406,7 +406,8 @@ static void createDefaultLogicConfiguration(dvModuleData moduleData, const struc
 	dvConfigNodeCreateBool(imuNode, "RunAccelerometer", true, DVCFG_FLAGS_NORMAL, "Enable accelerometer.");
 	dvConfigNodeCreateBool(imuNode, "RunGyroscope", true, DVCFG_FLAGS_NORMAL, "Enable gyroscope.");
 	dvConfigNodeCreateBool(imuNode, "RunTemperature", true, DVCFG_FLAGS_NORMAL, "Enable temperature sensor.");
-	dvConfigNodeCreateInt(imuNode, "AccelDataRate", 6, 0, 7, DVCFG_FLAGS_NORMAL, "Accelerometer bandwidth configuration.");
+	dvConfigNodeCreateInt(
+		imuNode, "AccelDataRate", 6, 0, 7, DVCFG_FLAGS_NORMAL, "Accelerometer bandwidth configuration.");
 	dvConfigNodeCreateInt(imuNode, "AccelFilter", 2, 0, 2, DVCFG_FLAGS_NORMAL, "Accelerometer filter configuration.");
 	dvConfigNodeCreateInt(imuNode, "AccelRange", 1, 0, 3, DVCFG_FLAGS_NORMAL, "Accelerometer range configuration.");
 	dvConfigNodeCreateInt(imuNode, "GyroDataRate", 5, 0, 7, DVCFG_FLAGS_NORMAL, "Gyroscope bandwidth configuration.");
@@ -421,14 +422,16 @@ static void createDefaultLogicConfiguration(dvModuleData moduleData, const struc
 		extNode, "DetectRisingEdges", false, DVCFG_FLAGS_NORMAL, "Emit special event if a rising edge is detected.");
 	dvConfigNodeCreateBool(
 		extNode, "DetectFallingEdges", false, DVCFG_FLAGS_NORMAL, "Emit special event if a falling edge is detected.");
-	dvConfigNodeCreateBool(extNode, "DetectPulses", true, DVCFG_FLAGS_NORMAL, "Emit special event if a pulse is detected.");
+	dvConfigNodeCreateBool(
+		extNode, "DetectPulses", true, DVCFG_FLAGS_NORMAL, "Emit special event if a pulse is detected.");
 	dvConfigNodeCreateBool(
 		extNode, "DetectPulsePolarity", true, DVCFG_FLAGS_NORMAL, "Polarity of the pulse to be detected.");
 	dvConfigNodeCreateInt(extNode, "DetectPulseLength", 10, 1, ((0x01 << 20) - 1), DVCFG_FLAGS_NORMAL,
 		"Minimal length of the pulse to be detected (in µs).");
 
 	if (devInfo->extInputHasGenerator) {
-		dvConfigNodeCreateBool(extNode, "RunGenerator", false, DVCFG_FLAGS_NORMAL, "Enable signal generator (PWM-like).");
+		dvConfigNodeCreateBool(
+			extNode, "RunGenerator", false, DVCFG_FLAGS_NORMAL, "Enable signal generator (PWM-like).");
 		dvConfigNodeCreateBool(
 			extNode, "GeneratePulsePolarity", true, DVCFG_FLAGS_NORMAL, "Polarity of the generated pulse.");
 		dvConfigNodeCreateInt(extNode, "GeneratePulseInterval", 10, 1, ((0x01 << 20) - 1), DVCFG_FLAGS_NORMAL,
@@ -445,13 +448,15 @@ static void createDefaultLogicConfiguration(dvModuleData moduleData, const struc
 	if (devInfo->muxHasStatistics) {
 		dvConfigNode statNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "statistics/");
 
-		dvConfigNodeCreateLong(statNode, "muxDroppedDVS", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-			"Number of dropped DVS events due to USB full.");
-		dvConfigNodeAttributeUpdaterAdd(statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeCreateLong(statNode, "muxDroppedDVS", 0, 0, INT64_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped DVS events due to USB full.");
+		dvConfigNodeAttributeUpdaterAdd(
+			statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
-		dvConfigNodeCreateLong(statNode, "muxDroppedExtInput", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-			"Number of dropped External Input events due to USB full.");
-		dvConfigNodeAttributeUpdaterAdd(statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeCreateLong(statNode, "muxDroppedExtInput", 0, 0, INT64_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped External Input events due to USB full.");
+		dvConfigNodeAttributeUpdaterAdd(
+			statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 	}
 
 	if (devInfo->dvsHasStatistics) {
@@ -467,9 +472,10 @@ static void createDefaultLogicConfiguration(dvModuleData moduleData, const struc
 		dvConfigNodeAttributeUpdaterAdd(
 			statNode, "dvsTransactionsSkipped", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
-		dvConfigNodeCreateLong(statNode, "dvsTransactionsAll", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-			"Number of dropped groups of events due to full buffers.");
-		dvConfigNodeAttributeUpdaterAdd(statNode, "dvsTransactionsAll", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+		dvConfigNodeCreateLong(statNode, "dvsTransactionsAll", 0, 0, INT64_MAX,
+			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped groups of events due to full buffers.");
+		dvConfigNodeAttributeUpdaterAdd(
+			statNode, "dvsTransactionsAll", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
 
 		dvConfigNodeCreateLong(statNode, "dvsTransactionsErrored", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of erroneous groups of events.");
@@ -490,8 +496,8 @@ static void createDefaultUSBConfiguration(dvModuleData moduleData) {
 		"Send early USB packets if this timeout is reached (in 125µs time-slices).");
 
 	dvConfigNodeCreateInt(usbNode, "BufferNumber", 8, 2, 128, DVCFG_FLAGS_NORMAL, "Number of USB transfers.");
-	dvConfigNodeCreateInt(
-		usbNode, "BufferSize", 8192, 512, 32768, DVCFG_FLAGS_NORMAL, "Size in bytes of data buffers for USB transfers.");
+	dvConfigNodeCreateInt(usbNode, "BufferSize", 8192, 512, 32768, DVCFG_FLAGS_NORMAL,
+		"Size in bytes of data buffers for USB transfers.");
 }
 
 static void sendDefaultConfiguration(dvModuleData moduleData, const struct caer_dvs132s_info *devInfo) {
@@ -547,8 +553,8 @@ static void biasConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_BIAS, DVS132S_CONFIG_BIAS_ONBN,
 		caerBiasCoarseFine1024Generate(caerBiasCoarseFine1024FromCurrent(U32T(dvConfigNodeGetInt(node, "OnBn")))));
 
-	caerDeviceConfigSet(
-		moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_RUN_CHIP, dvConfigNodeGetBool(node, "BiasEnable"));
+	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_RUN_CHIP,
+		dvConfigNodeGetBool(node, "BiasEnable"));
 }
 
 static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -1014,7 +1020,8 @@ static void usbConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 
 static void systemConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
-		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_PACKET_SIZE, U32T(dvConfigNodeGetInt(node, "PacketContainerMaxPacketSize")));
+		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_PACKET_SIZE,
+		U32T(dvConfigNodeGetInt(node, "PacketContainerMaxPacketSize")));
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
 		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL, U32T(dvConfigNodeGetInt(node, "PacketContainerInterval")));
 

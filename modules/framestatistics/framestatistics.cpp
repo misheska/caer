@@ -28,7 +28,6 @@ static const struct dvModuleFunctionsS FrameStatisticsFunctions = {
 	.moduleRun        = &caerFrameStatisticsRun,
 	.moduleConfig     = &caerFrameStatisticsConfig,
 	.moduleExit       = &caerFrameStatisticsExit,
-	.moduleReset      = NULL,
 };
 
 static const struct caer_event_stream_in FrameStatisticsInputs[]

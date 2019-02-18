@@ -13,12 +13,13 @@ static void caerInputDVS128Run(dvModuleData moduleData, caerEventPacketContainer
 // All configuration is asynchronous through config listeners.
 static void caerInputDVS128Exit(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS DVS128Functions = {.moduleConfigInit = &caerInputDVS128ConfigInit,
-	.moduleInit                                                                = &caerInputDVS128Init,
-	.moduleRun                                                                 = &caerInputDVS128Run,
-	.moduleConfig                                                              = NULL,
-	.moduleExit                                                                = &caerInputDVS128Exit,
-	.moduleReset                                                               = NULL};
+static const struct dvModuleFunctionsS DVS128Functions = {
+	.moduleConfigInit = &caerInputDVS128ConfigInit,
+	.moduleInit       = &caerInputDVS128Init,
+	.moduleRun        = &caerInputDVS128Run,
+	.moduleConfig     = NULL,
+	.moduleExit       = &caerInputDVS128Exit,
+};
 
 static const struct caer_event_stream_out DVS128Outputs[] = {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}};
 
@@ -59,8 +60,10 @@ static void caerInputDVS128ConfigInit(dvConfigNode moduleNode) {
 	// USB port/bus/SN settings/restrictions.
 	// These can be used to force connection to one specific device at startup.
 	dvConfigNodeCreateInt(moduleNode, "busNumber", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB bus number restriction.");
-	dvConfigNodeCreateInt(moduleNode, "devAddress", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB device address restriction.");
-	dvConfigNodeCreateString(moduleNode, "serialNumber", "", 0, 8, DVCFG_FLAGS_NORMAL, "USB serial number restriction.");
+	dvConfigNodeCreateInt(
+		moduleNode, "devAddress", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB device address restriction.");
+	dvConfigNodeCreateString(
+		moduleNode, "serialNumber", "", 0, 8, DVCFG_FLAGS_NORMAL, "USB serial number restriction.");
 
 	// Add auto-restart setting.
 	dvConfigNodeCreateBool(
@@ -71,12 +74,14 @@ static void caerInputDVS128ConfigInit(dvConfigNode moduleNode) {
 	dvConfigNodeCreateInt(biasNode, "cas", 1992, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Photoreceptor cascode.");
 	dvConfigNodeCreateInt(
 		biasNode, "injGnd", 1108364, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Differentiator switch level.");
-	dvConfigNodeCreateInt(biasNode, "reqPd", 16777215, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "AER request pull-down.");
+	dvConfigNodeCreateInt(
+		biasNode, "reqPd", 16777215, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "AER request pull-down.");
 	dvConfigNodeCreateInt(
 		biasNode, "puX", 8159221, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "2nd dimension AER static pull-up.");
 	dvConfigNodeCreateInt(
 		biasNode, "diffOff", 132, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "OFF threshold - lower to raise threshold.");
-	dvConfigNodeCreateInt(biasNode, "req", 309590, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "OFF request inverter bias.");
+	dvConfigNodeCreateInt(
+		biasNode, "req", 309590, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "OFF request inverter bias.");
 	dvConfigNodeCreateInt(biasNode, "refr", 969, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Refractory period.");
 	dvConfigNodeCreateInt(
 		biasNode, "puY", 16777215, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "1st dimension AER static pull-up.");
@@ -91,15 +96,15 @@ static void caerInputDVS128ConfigInit(dvConfigNode moduleNode) {
 	dvConfigNode dvsNode = dvConfigNodeGetRelativeNode(moduleNode, "dvs/");
 	dvConfigNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Run DVS to get polarity events.");
 	dvConfigNodeCreateBool(dvsNode, "TimestampReset", false, DVCFG_FLAGS_NORMAL, "Reset timestamps to zero.");
-    dvConfigNodeAttributeModifierButton(dvsNode, "TimestampReset", "EXECUTE");
+	dvConfigNodeAttributeModifierButton(dvsNode, "TimestampReset", "EXECUTE");
 	dvConfigNodeCreateBool(dvsNode, "ArrayReset", false, DVCFG_FLAGS_NORMAL, "Reset DVS pixel array.");
-    dvConfigNodeAttributeModifierButton(dvsNode, "ArrayReset", "EXECUTE");
+	dvConfigNodeAttributeModifierButton(dvsNode, "ArrayReset", "EXECUTE");
 
 	// USB buffer settings.
 	dvConfigNode usbNode = dvConfigNodeGetRelativeNode(moduleNode, "usb/");
 	dvConfigNodeCreateInt(usbNode, "BufferNumber", 8, 2, 128, DVCFG_FLAGS_NORMAL, "Number of USB transfers.");
-	dvConfigNodeCreateInt(
-		usbNode, "BufferSize", 4096, 512, 32768, DVCFG_FLAGS_NORMAL, "Size in bytes of data buffers for USB transfers.");
+	dvConfigNodeCreateInt(usbNode, "BufferSize", 4096, 512, 32768, DVCFG_FLAGS_NORMAL,
+		"Size in bytes of data buffers for USB transfers.");
 
 	dvConfigNode sysNode = dvConfigNodeGetRelativeNode(moduleNode, "system/");
 
@@ -140,8 +145,8 @@ static bool caerInputDVS128Init(dvModuleData moduleData) {
 
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 
-	dvConfigNodeCreateInt(sourceInfoNode, "logicVersion", devInfo.logicVersion, devInfo.logicVersion, devInfo.logicVersion,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device FPGA logic version.");
+	dvConfigNodeCreateInt(sourceInfoNode, "logicVersion", devInfo.logicVersion, devInfo.logicVersion,
+		devInfo.logicVersion, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device FPGA logic version.");
 	dvConfigNodeCreateBool(sourceInfoNode, "deviceIsMaster", devInfo.deviceIsMaster,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Timestamp synchronization support: device master status.");
 
@@ -269,8 +274,6 @@ static void caerInputDVS128Run(dvModuleData moduleData, caerEventPacketContainer
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
 				   != NULL)) {
-			dvMainloopModuleResetOutputRevDeps(moduleData->moduleID);
-
 			// Update master/slave information.
 			struct caer_dvs128_info devInfo = caerDVS128InfoGet(moduleData->moduleState);
 
@@ -299,22 +302,22 @@ static void moduleShutdownNotify(void *p) {
 static void biasConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(
 		moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_CAS, U32T(dvConfigNodeGetInt(node, "cas")));
-	caerDeviceConfigSet(
-		moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_INJGND, U32T(dvConfigNodeGetInt(node, "injGnd")));
+	caerDeviceConfigSet(moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_INJGND,
+		U32T(dvConfigNodeGetInt(node, "injGnd")));
 	caerDeviceConfigSet(
 		moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_REQPD, U32T(dvConfigNodeGetInt(node, "reqPd")));
 	caerDeviceConfigSet(
 		moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_PUX, U32T(dvConfigNodeGetInt(node, "puX")));
-	caerDeviceConfigSet(
-		moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_DIFFOFF, U32T(dvConfigNodeGetInt(node, "diffOff")));
+	caerDeviceConfigSet(moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_DIFFOFF,
+		U32T(dvConfigNodeGetInt(node, "diffOff")));
 	caerDeviceConfigSet(
 		moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_REQ, U32T(dvConfigNodeGetInt(node, "req")));
 	caerDeviceConfigSet(
 		moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_REFR, U32T(dvConfigNodeGetInt(node, "refr")));
 	caerDeviceConfigSet(
 		moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_PUY, U32T(dvConfigNodeGetInt(node, "puY")));
-	caerDeviceConfigSet(
-		moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_DIFFON, U32T(dvConfigNodeGetInt(node, "diffOn")));
+	caerDeviceConfigSet(moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_DIFFON,
+		U32T(dvConfigNodeGetInt(node, "diffOn")));
 	caerDeviceConfigSet(
 		moduleData->moduleState, DVS128_CONFIG_BIAS, DVS128_CONFIG_BIAS_DIFF, U32T(dvConfigNodeGetInt(node, "diff")));
 	caerDeviceConfigSet(
@@ -382,8 +385,8 @@ static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 }
 
 static void dvsConfigSend(dvConfigNode node, dvModuleData moduleData) {
-	caerDeviceConfigSet(
-		moduleData->moduleState, DVS128_CONFIG_DVS, DVS128_CONFIG_DVS_ARRAY_RESET, dvConfigNodeGetBool(node, "ArrayReset"));
+	caerDeviceConfigSet(moduleData->moduleState, DVS128_CONFIG_DVS, DVS128_CONFIG_DVS_ARRAY_RESET,
+		dvConfigNodeGetBool(node, "ArrayReset"));
 	caerDeviceConfigSet(moduleData->moduleState, DVS128_CONFIG_DVS, DVS128_CONFIG_DVS_TIMESTAMP_RESET,
 		dvConfigNodeGetBool(node, "TimestampReset"));
 	caerDeviceConfigSet(
@@ -438,7 +441,8 @@ static void usbConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 
 static void systemConfigSend(dvConfigNode node, dvModuleData moduleData) {
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
-		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_PACKET_SIZE, U32T(dvConfigNodeGetInt(node, "PacketContainerMaxPacketSize")));
+		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_PACKET_SIZE,
+		U32T(dvConfigNodeGetInt(node, "PacketContainerMaxPacketSize")));
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_PACKETS,
 		CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL, U32T(dvConfigNodeGetInt(node, "PacketContainerInterval")));
 

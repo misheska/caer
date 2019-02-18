@@ -23,7 +23,6 @@ enum dvModuleStatus dvMainloopModuleGetStatus(int16_t id);
 dvConfigNode dvMainloopModuleGetConfigNode(int16_t id);
 size_t dvMainloopModuleGetInputDeps(int16_t id, int16_t **inputDepIds);
 size_t dvMainloopModuleGetOutputRevDeps(int16_t id, int16_t **outputRevDepIds);
-size_t dvMainloopModuleResetOutputRevDeps(int16_t id);
 dvConfigNode dvMainloopModuleGetSourceNodeForInput(int16_t id, size_t inputNum);
 dvConfigNode dvMainloopModuleGetSourceInfoForInput(int16_t id, size_t inputNum);
 

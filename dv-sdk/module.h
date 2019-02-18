@@ -98,7 +98,6 @@ struct dvModuleDataS {
 	atomic_bool running;
 	atomic_uint_fast8_t moduleLogLevel;
 	atomic_uint_fast32_t configUpdate;
-	atomic_int_fast16_t doReset;
 	void *moduleState;
 	char *moduleSubSystemString;
 };
@@ -109,9 +108,8 @@ struct dvModuleFunctionsS {
 	void (*const moduleConfigInit)(dvConfigNode moduleNode); // Can be NULL.
 	bool (*const moduleInit)(dvModuleData moduleData);       // Can be NULL.
 	void (*const moduleRun)(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-	void (*const moduleConfig)(dvModuleData moduleData);                           // Can be NULL.
-	void (*const moduleExit)(dvModuleData moduleData);                             // Can be NULL.
-	void (*const moduleReset)(dvModuleData moduleData, int16_t resetCallSourceID); // Can be NULL.
+	void (*const moduleConfig)(dvModuleData moduleData); // Can be NULL.
+	void (*const moduleExit)(dvModuleData moduleData);   // Can be NULL.
 };
 
 typedef struct dvModuleFunctionsS const *dvModuleFunctions;

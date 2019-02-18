@@ -117,24 +117,6 @@ size_t dvMainloopModuleGetOutputRevDeps(int16_t id, int16_t **outputRevDepIds) {
 	return (outputModuleIds.size());
 }
 
-size_t dvMainloopModuleResetOutputRevDeps(int16_t id) {
-	// Find and reset all reverse dependencies of a particular module.
-	int16_t *outputRevDepIds;
-	size_t numRevDeps = dvMainloopModuleGetOutputRevDeps(id, &outputRevDepIds);
-
-	if (numRevDeps > 0) {
-		for (size_t i = 0; i < numRevDeps; i++) {
-			if (glMainloopDataPtr->modules.at(outputRevDepIds[i]).runtimeData->moduleStatus == DV_MODULE_RUNNING) {
-				glMainloopDataPtr->modules.at(outputRevDepIds[i]).runtimeData->doReset.store(id);
-			}
-		}
-
-		free(outputRevDepIds);
-	}
-
-	return (numRevDeps);
-}
-
 dvConfigNode dvMainloopModuleGetSourceNodeForInput(int16_t id, size_t inputNum) {
 	int16_t *inputModules;
 	size_t inputModulesNum = dvMainloopModuleGetInputDeps(id, &inputModules);
