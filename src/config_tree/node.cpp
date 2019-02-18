@@ -1401,6 +1401,6 @@ void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const
 void dvConfigNodeAttributeModifierPriorityAttributes(dvConfigNode node, const char *priorityAttributes) {
 	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
 
-	dvConfigNodeCreateString(node, "_priorityAttributes", priorityAttributes, 0, INT32_MAX, DVCFG_FLAGS_READ_ONLY,
+	dvConfigNodeCreateString(node, "_priorityAttributes", priorityAttributes, 0, INT32_MAX, DVCFG_FLAGS_NORMAL,
 		"Comma separated list of attributes to prioritize regarding visualization in the UI (can be empty).", true);
 }
