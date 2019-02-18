@@ -77,14 +77,22 @@ static inline bool checkAttributeExists(dvCfg::Node wantedNode, const std::strin
 	return (attrExists);
 }
 
-static inline const std::string getString(
-	const flatbuffers::String *str, std::shared_ptr<ConfigServerConnection> client, uint64_t receivedID) {
+static inline const std::string getString(const flatbuffers::String *str,
+	std::shared_ptr<ConfigServerConnection> client, uint64_t receivedID, bool allowEmptyString = false) {
+	// Check if member is not defined/missing.
 	if (str == nullptr) {
 		sendError("Required string member missing.", client, receivedID);
-		return (std::string());
+		throw std::invalid_argument("Required string member missing.");
 	}
 
-	return (str->str());
+	std::string s(str->string_view());
+
+	if (!allowEmptyString && s.empty()) {
+		sendError("String member empty.", client, receivedID);
+		throw std::invalid_argument("String member empty.");
+	}
+
+	return (s);
 }
 
 void dvConfigServerHandleRequest(
@@ -103,8 +111,12 @@ void dvConfigServerHandleRequest(
 
 	switch (action) {
 		case dv::ConfigAction::NODE_EXISTS: {
-			const std::string node = getString(message->node(), client, receivedID);
-			if (node.empty()) {
+			std::string node;
+
+			try {
+				node = getString(message->node(), client, receivedID);
+			}
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
@@ -128,9 +140,14 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::ATTR_EXISTS: {
-			const std::string node = getString(message->node(), client, receivedID);
-			const std::string key  = getString(message->key(), client, receivedID);
-			if (node.empty() || key.empty()) {
+			std::string node;
+			std::string key;
+
+			try {
+				node = getString(message->node(), client, receivedID);
+				key  = getString(message->key(), client, receivedID);
+			}
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
@@ -168,8 +185,12 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_CHILDREN: {
-			const std::string node = getString(message->node(), client, receivedID);
-			if (node.empty()) {
+			std::string node;
+
+			try {
+				node = getString(message->node(), client, receivedID);
+			}
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
@@ -210,8 +231,12 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_ATTRIBUTES: {
-			const std::string node = getString(message->node(), client, receivedID);
-			if (node.empty()) {
+			std::string node;
+
+			try {
+				node = getString(message->node(), client, receivedID);
+			}
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
@@ -252,9 +277,14 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_TYPE: {
-			const std::string node = getString(message->node(), client, receivedID);
-			const std::string key  = getString(message->key(), client, receivedID);
-			if (node.empty() || key.empty()) {
+			std::string node;
+			std::string key;
+
+			try {
+				node = getString(message->node(), client, receivedID);
+				key  = getString(message->key(), client, receivedID);
+			}
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
@@ -290,9 +320,14 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_RANGES: {
-			const std::string node = getString(message->node(), client, receivedID);
-			const std::string key  = getString(message->key(), client, receivedID);
-			if (node.empty() || key.empty()) {
+			std::string node;
+			std::string key;
+
+			try {
+				node = getString(message->node(), client, receivedID);
+				key  = getString(message->key(), client, receivedID);
+			}
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
@@ -335,9 +370,14 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_FLAGS: {
-			const std::string node = getString(message->node(), client, receivedID);
-			const std::string key  = getString(message->key(), client, receivedID);
-			if (node.empty() || key.empty()) {
+			std::string node;
+			std::string key;
+
+			try {
+				node = getString(message->node(), client, receivedID);
+				key  = getString(message->key(), client, receivedID);
+			}
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
@@ -376,9 +416,14 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET_DESCRIPTION: {
-			const std::string node = getString(message->node(), client, receivedID);
-			const std::string key  = getString(message->key(), client, receivedID);
-			if (node.empty() || key.empty()) {
+			std::string node;
+			std::string key;
+
+			try {
+				node = getString(message->node(), client, receivedID);
+				key  = getString(message->key(), client, receivedID);
+			}
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
@@ -419,9 +464,14 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::GET: {
-			const std::string node = getString(message->node(), client, receivedID);
-			const std::string key  = getString(message->key(), client, receivedID);
-			if (node.empty() || key.empty()) {
+			std::string node;
+			std::string key;
+
+			try {
+				node = getString(message->node(), client, receivedID);
+				key  = getString(message->key(), client, receivedID);
+			}
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
@@ -467,10 +517,16 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::PUT: {
-			const std::string node  = getString(message->node(), client, receivedID);
-			const std::string key   = getString(message->key(), client, receivedID);
-			const std::string value = getString(message->value(), client, receivedID);
-			if (node.empty() || key.empty() || value.empty()) {
+			std::string node;
+			std::string key;
+			std::string value;
+
+			try {
+				node  = getString(message->node(), client, receivedID);
+				key   = getString(message->key(), client, receivedID);
+				value = getString(message->value(), client, receivedID, true);
+			}
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
@@ -528,18 +584,14 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::ADD_MODULE: {
-			const std::string moduleName    = getString(message->node(), client, receivedID);
-			const std::string moduleLibrary = getString(message->key(), client, receivedID);
+			std::string moduleName;
+			std::string moduleLibrary;
 
-			if (moduleName.empty()) {
-				// Disallow empty strings.
-				sendError("Name cannot be empty.", client, receivedID);
-				break;
+			try {
+				moduleName    = getString(message->node(), client, receivedID);
+				moduleLibrary = getString(message->key(), client, receivedID);
 			}
-
-			if (moduleLibrary.empty()) {
-				// Disallow empty strings.
-				sendError("Library cannot be empty.", client, receivedID);
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
@@ -643,11 +695,12 @@ void dvConfigServerHandleRequest(
 		}
 
 		case dv::ConfigAction::REMOVE_MODULE: {
-			const std::string moduleName = getString(message->node(), client, receivedID);
+			std::string moduleName;
 
-			if (moduleName.empty()) {
-				// Disallow empty strings.
-				sendError("Name cannot be empty.", client, receivedID);
+			try {
+				moduleName = getString(message->node(), client, receivedID);
+			}
+			catch (const std::invalid_argument &) {
 				break;
 			}
 
