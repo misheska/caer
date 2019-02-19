@@ -1927,6 +1927,8 @@ static void updateModulesInformationListener(dvConfigNode node, void *userData, 
 		catch (const std::exception &ex) {
 			log(logLevel::CRITICAL, "Mainloop", "Failed to find any modules (error: '%s').", ex.what());
 		}
+
+		dvConfigNodePutBool(node, changeKey, false);
 	}
 }
 
@@ -1939,6 +1941,8 @@ static void writeConfigurationListener(dvConfigNode node, void *userData, enum d
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
 		&& caerStrEquals(changeKey, "writeConfiguration") && changeValue.boolean) {
 		dvConfigWriteBack();
+
+		dvConfigNodePutBool(node, changeKey, false);
 	}
 }
 
@@ -1952,6 +1956,8 @@ static void updateAvailableDevicesListener(dvConfigNode node, void *userData, en
 		&& caerStrEquals(changeKey, "updateAvailableDevices") && changeValue.boolean) {
 		// Get information on available devices, put it into ConfigTree.
 		dvUpdateAvailableDevices();
+
+		dvConfigNodePutBool(node, changeKey, false);
 	}
 }
 
