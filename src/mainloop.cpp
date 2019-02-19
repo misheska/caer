@@ -152,9 +152,6 @@ void dvMainloopRun(void) {
 	modulesNode.create<dvCfgType::STRING>("modulesSearchPath", modulesDefaultDir.string(), {1, 8 * PATH_MAX},
 		dvCfgFlags::NORMAL, "Directories to search loadable modules in, separated by '|'.");
 
-	modulesNode.create<dvCfgType::STRING>("modulesListOptions", "", {0, 10000},
-		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "List of loadable modules.");
-
 	modulesNode.create<dvCfgType::BOOL>("updateModulesInformation", false, {},
 		dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Update modules information.");
 	modulesNode.attributeModifierButton("updateModulesInformation", "EXECUTE");

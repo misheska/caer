@@ -507,6 +507,7 @@ void dvUpdateModulesInformation() {
 
 	// Clear out modules information.
 	modulesNode.clearSubTree(false);
+	modulesNode.removeSubTree();
 	glModuleData.modulePaths.clear();
 
 	// Search for available modules. Will be loaded as needed later.
@@ -638,20 +639,4 @@ void dvUpdateModulesInformation() {
 
 		iter++;
 	}
-
-	// Got all available modules, expose them as a sorted list.
-	std::vector<std::string> modulePathsSorted;
-	for (const auto &modulePath : glModuleData.modulePaths) {
-		modulePathsSorted.push_back(modulePath.stem().string());
-	}
-
-	std::sort(modulePathsSorted.begin(), modulePathsSorted.end());
-
-	std::string modulesList;
-	for (const auto &modulePath : modulePathsSorted) {
-		modulesList += (modulePath + ",");
-	}
-	modulesList.pop_back(); // Remove trailing comma.
-
-	modulesNode.updateReadOnly<dvCfgType::STRING>("modulesListOptions", modulesList);
 }

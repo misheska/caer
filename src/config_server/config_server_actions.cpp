@@ -610,11 +610,8 @@ void dvConfigServerHandleRequest(
 			}
 
 			// Check module library.
-			auto modulesSysNode                  = configStore.getNode("/system/modules/");
-			const std::string modulesListOptions = modulesSysNode.get<dvCfgType::STRING>("modulesListOptions");
-
-			boost::tokenizer<boost::char_separator<char>> modulesList(
-				modulesListOptions, boost::char_separator<char>(","));
+			auto modulesSysNode = configStore.getNode("/system/modules/");
+			auto modulesList    = modulesSysNode.getChildNames();
 
 			if (!findBool(modulesList.begin(), modulesList.end(), moduleLibrary)) {
 				sendError("Library does not exist.", client, receivedID);
