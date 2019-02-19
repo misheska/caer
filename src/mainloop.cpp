@@ -1,5 +1,7 @@
 #include "mainloop.h"
 
+#include <libcaercpp/devices/device_discover.hpp>
+
 #include "dv-sdk/cross/portable_io.h"
 
 #include "config.h"
@@ -46,6 +48,9 @@ using dvCfgFlags = dvCfg::AttributeFlags;
 // MAINLOOP DATA GLOBAL VARIABLE.
 static MainloopData glMainloopData;
 
+// Available devices list support.
+static std::recursive_mutex glAvailableDevicesLock;
+
 static int mainloopRunner();
 static void printDebugInformation();
 static void mainloopShutdownHandler(int signum);
@@ -58,6 +63,9 @@ static void updateModulesInformationListener(dvConfigNode node, void *userData, 
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 static void writeConfigurationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
+static void updateAvailableDevicesListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
+static void dvUpdateAvailableDevices();
 
 void dvMainloopRun(void) {
 	// Setup internal mainloop pointer for public support library.
@@ -143,6 +151,16 @@ void dvMainloopRun(void) {
 	signal(SIGPIPE, SIG_IGN);
 #endif
 
+	// Support device discovery.
+	auto devicesNode = dvCfg::GLOBAL.getNode("/system/devices/");
+
+	devicesNode.create<dvCfgType::BOOL>("updateAvailableDevices", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT,
+		"Update available devices list.");
+	devicesNode.attributeModifierButton("updateAvailableDevices", "EXECUTE");
+	devicesNode.addAttributeListener(nullptr, &updateAvailableDevicesListener);
+
+	dvUpdateAvailableDevices(); // Run once at startup.
+
 	// Initialize module related configuration.
 	auto modulesNode = dvCfg::GLOBAL.getNode("/system/modules/");
 
@@ -218,6 +236,7 @@ void dvMainloopRun(void) {
 	systemNode.removeAttributeListener(nullptr, &systemRunningListener);
 	modulesNode.removeAttributeListener(nullptr, &writeConfigurationListener);
 	modulesNode.removeAttributeListener(nullptr, &updateModulesInformationListener);
+	devicesNode.removeAttributeListener(nullptr, &updateAvailableDevicesListener);
 }
 
 /**
@@ -1920,5 +1939,162 @@ static void writeConfigurationListener(dvConfigNode node, void *userData, enum d
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
 		&& caerStrEquals(changeKey, "writeConfiguration") && changeValue.boolean) {
 		dvConfigWriteBack();
+	}
+}
+
+static void updateAvailableDevicesListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+	UNUSED_ARGUMENT(node);
+	UNUSED_ARGUMENT(userData);
+	UNUSED_ARGUMENT(changeValue);
+
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
+		&& caerStrEquals(changeKey, "updateAvailableDevices") && changeValue.boolean) {
+		// Get information on available devices, put it into ConfigTree.
+		dvUpdateAvailableDevices();
+	}
+}
+
+static void dvUpdateAvailableDevices() {
+	std::lock_guard<std::recursive_mutex> lock(glAvailableDevicesLock);
+
+	auto devicesNode = dvCfg::GLOBAL.getNode("/system/devices/");
+
+	// Clear out current available devices information.
+	devicesNode.clearSubTree(false);
+	devicesNode.removeSubTree();
+
+	const auto devices = libcaer::devices::discover::all();
+
+	for (const auto &dev : devices) {
+		switch (dev.deviceType) {
+			case CAER_DEVICE_DVS128: {
+				const struct caer_dvs128_info *info = &dev.deviceInfo.dvs128Info;
+
+				auto devNode = devicesNode.getRelativeNode("dvs128/");
+
+				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_dvs128", {1, 32},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
+
+				devNode.create<dvCfgType::INT>("USBBusNumber", info->deviceUSBBusNumber, {0, 255},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB bus number.");
+				devNode.create<dvCfgType::INT>("USBDeviceAddress", info->deviceUSBDeviceAddress, {0, 255},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB device address.");
+				devNode.create<dvCfgType::STRING>("SerialNumber", info->deviceSerialNumber, {0, 8},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB device serial number.");
+
+				devNode.create<dvCfgType::INT>("LogicVersion", info->logicVersion, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of FPGA logic.");
+				devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
+
+				devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
+				devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
+
+				break;
+			}
+
+			case CAER_DEVICE_DAVIS_FX2:
+			case CAER_DEVICE_DAVIS_FX3:
+			case CAER_DEVICE_DAVIS: {
+				const struct caer_davis_info *info = &dev.deviceInfo.davisInfo;
+
+				auto devNode = devicesNode.getRelativeNode("davis/");
+
+				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_davis", {1, 32},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
+
+				devNode.create<dvCfgType::INT>("USBBusNumber", info->deviceUSBBusNumber, {0, 255},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB bus number.");
+				devNode.create<dvCfgType::INT>("USBDeviceAddress", info->deviceUSBDeviceAddress, {0, 255},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB device address.");
+				devNode.create<dvCfgType::STRING>("SerialNumber", info->deviceSerialNumber, {0, 8},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB device serial number.");
+
+				devNode.create<dvCfgType::INT>("FirmwareVersion", info->firmwareVersion, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of device firmware.");
+				devNode.create<dvCfgType::INT>("LogicVersion", info->logicVersion, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of FPGA logic.");
+				devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
+
+				devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
+				devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
+
+				devNode.create<dvCfgType::INT>("APSSizeX", info->apsSizeX, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Frames X axis resolution.");
+				devNode.create<dvCfgType::INT>("APSSizeY", info->apsSizeY, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Frames Y axis resolution.");
+				devNode.create<dvCfgType::STRING>("ColorMode", (info->apsColorFilter == MONO) ? ("Mono") : ("Color"),
+					{4, 5}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Frames color mode.");
+
+				break;
+			}
+
+			case CAER_DEVICE_EDVS: {
+				const struct caer_edvs_info *info = &dev.deviceInfo.edvsInfo;
+
+				auto devNode = devicesNode.getRelativeNode("edvs/");
+
+				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_edvs", {1, 32},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
+
+				devNode.create<dvCfgType::INT>("SerialBaudRate", I32T(info->serialBaudRate), {1, INT32_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Serial device baud rate (in baud).");
+				devNode.create<dvCfgType::STRING>("SerialPortName", info->serialPortName, {1, 64},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT,
+					"Serial device port name (COM1, /dev/ttyUSB1, ...).");
+
+				devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
+
+				devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
+				devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
+
+				break;
+			}
+
+			case CAER_DEVICE_DVS132S: {
+				const struct caer_dvs132s_info *info = &dev.deviceInfo.dvs132sInfo;
+
+				auto devNode = devicesNode.getRelativeNode("dvs132s/");
+
+				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_dvs132s", {1, 32},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
+
+				devNode.create<dvCfgType::INT>("USBBusNumber", info->deviceUSBBusNumber, {0, 255},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB bus number.");
+				devNode.create<dvCfgType::INT>("USBDeviceAddress", info->deviceUSBDeviceAddress, {0, 255},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB device address.");
+				devNode.create<dvCfgType::STRING>("SerialNumber", info->deviceSerialNumber, {0, 8},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB device serial number.");
+
+				devNode.create<dvCfgType::INT>("FirmwareVersion", info->firmwareVersion, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of device firmware.");
+				devNode.create<dvCfgType::INT>("LogicVersion", info->logicVersion, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of FPGA logic.");
+				devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
+
+				devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
+				devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
+
+				break;
+			}
+
+			case CAER_DEVICE_DYNAPSE:
+			case CAER_DEVICE_DAVIS_RPI:
+			default:
+				// TODO: ignore for now.
+				break;
+		}
 	}
 }
