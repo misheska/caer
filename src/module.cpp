@@ -597,6 +597,8 @@ void dvUpdateModulesInformation() {
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module description.");
 		moduleNode.create<dvCfgType::STRING>("type", dvModuleTypeToString(mLoad.second->type), {1, 64},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module type.");
+		moduleNode.create<dvCfgType::STRING>(
+			"path", iter->string(), {1, PATH_MAX}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module file path.");
 
 		if (mLoad.second->inputStreamsSize > 0) {
 			auto inputStreamsNode = moduleNode.getRelativeNode("inputStreams/");
