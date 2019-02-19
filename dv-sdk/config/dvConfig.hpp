@@ -374,6 +374,15 @@ public:
 		dvConfigNodeRemoveNode(node);
 	}
 
+	/**
+	 * Careful, only use if no references exist to this node's children.
+	 * References are created by dvConfigTreeGetNode(), dvConfigNodeGetRelativeNode(),
+	 * dvConfigNodeGetParent() and dvConfigNodeGetChildren().
+	 */
+	void removeSubTree() {
+		dvConfigNodeRemoveSubTree(node);
+	}
+
 	void clearSubTree(bool clearThisNode) {
 		dvConfigNodeClearSubTree(node, clearThisNode);
 	}

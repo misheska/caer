@@ -379,7 +379,6 @@ public:
 };
 
 static void dvConfigNodeDestroy(dvConfigNode node);
-static void dvConfigNodeRemoveSubTree(dvConfigNode node);
 static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string childName);
 static void dvConfigNodeRemoveAllChildren(dvConfigNode node);
 
@@ -578,7 +577,9 @@ void dvConfigNodeRemoveNode(dvConfigNode node) {
 	}
 }
 
-static void dvConfigNodeRemoveSubTree(dvConfigNode node) {
+void dvConfigNodeRemoveSubTree(dvConfigNode node) {
+	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+
 	// Recurse down first, we remove from the bottom up.
 	size_t numChildren;
 	dvConfigNode *children = dvConfigNodeGetChildren(node, &numChildren);

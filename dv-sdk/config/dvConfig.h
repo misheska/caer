@@ -113,6 +113,12 @@ void dvConfigNodeRemoveAllAttributeListeners(dvConfigNode node);
  * dvConfigNodeGetParent() and dvConfigNodeGetChildren().
  */
 void dvConfigNodeRemoveNode(dvConfigNode node);
+/**
+ * Careful, only use if no references exist to this node's children.
+ * References are created by dvConfigTreeGetNode(), dvConfigNodeGetRelativeNode(),
+ * dvConfigNodeGetParent() and dvConfigNodeGetChildren().
+ */
+void dvConfigNodeRemoveSubTree(dvConfigNode node);
 void dvConfigNodeClearSubTree(dvConfigNode startNode, bool clearStartNode);
 
 void dvConfigNodeCreateAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
