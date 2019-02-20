@@ -33,11 +33,12 @@ enum class ConfigAction : int8_t {
   DUMP_TREE_NODE = 18,
   DUMP_TREE_ATTR = 19,
   GET_CLIENT_ID = 20,
+  IMPORT_ATTR = 21,
   MIN = ERROR,
-  MAX = GET_CLIENT_ID
+  MAX = IMPORT_ATTR
 };
 
-inline const ConfigAction (&EnumValuesConfigAction())[21] {
+inline const ConfigAction (&EnumValuesConfigAction())[22] {
   static const ConfigAction values[] = {
     ConfigAction::ERROR,
     ConfigAction::NODE_EXISTS,
@@ -59,7 +60,8 @@ inline const ConfigAction (&EnumValuesConfigAction())[21] {
     ConfigAction::DUMP_TREE,
     ConfigAction::DUMP_TREE_NODE,
     ConfigAction::DUMP_TREE_ATTR,
-    ConfigAction::GET_CLIENT_ID
+    ConfigAction::GET_CLIENT_ID,
+    ConfigAction::IMPORT_ATTR
   };
   return values;
 }
@@ -87,6 +89,7 @@ inline const char * const *EnumNamesConfigAction() {
     "DUMP_TREE_NODE",
     "DUMP_TREE_ATTR",
     "GET_CLIENT_ID",
+    "IMPORT_ATTR",
     nullptr
   };
   return names;
