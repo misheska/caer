@@ -164,7 +164,8 @@ bool dvConfigNodeExportSubTreeToXML(dvConfigNode node, int fd);
 bool dvConfigNodeImportNodeFromXML(dvConfigNode node, int fd, bool strict);
 bool dvConfigNodeImportSubTreeFromXML(dvConfigNode node, int fd, bool strict);
 
-bool dvConfigNodeStringToAttributeConverter(dvConfigNode node, const char *key, const char *type, const char *value);
+bool dvConfigNodeStringToAttributeConverter(
+	dvConfigNode node, const char *key, const char *type, const char *value, bool overrideReadOnly);
 const char **dvConfigNodeGetChildNames(dvConfigNode node, size_t *numNames);
 const char **dvConfigNodeGetAttributeKeys(dvConfigNode node, size_t *numKeys);
 enum dvConfigAttributeType dvConfigNodeGetAttributeType(dvConfigNode node, const char *key);

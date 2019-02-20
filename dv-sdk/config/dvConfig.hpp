@@ -509,8 +509,10 @@ public:
 		return (dvConfigNodeImportSubTreeFromXML(node, fd, strict));
 	}
 
-	bool stringToAttributeConverter(const std::string &key, const std::string &type, const std::string &value) {
-		return (dvConfigNodeStringToAttributeConverter(node, key.c_str(), type.c_str(), value.c_str()));
+	bool stringToAttributeConverter(
+		const std::string &key, const std::string &type, const std::string &value, bool overrideReadOnly = false) {
+		return (
+			dvConfigNodeStringToAttributeConverter(node, key.c_str(), type.c_str(), value.c_str(), overrideReadOnly));
 	}
 
 	std::vector<std::string> getChildNames() const {

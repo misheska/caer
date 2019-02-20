@@ -124,7 +124,7 @@ void dvConfigInit(int argc, char *argv[]) {
 			try {
 				auto node = dv::Config::GLOBAL.getNode(iter[0]);
 
-				if (!node.stringToAttributeConverter(iter[1], iter[2], iter[3])) {
+				if (!node.stringToAttributeConverter(iter[1], iter[2], iter[3], true)) {
 					std::cout << "Config: failed to convert attribute '" << iter[1] << "' of type '" << iter[2]
 							  << "' with value '" << iter[3] << "' on override." << std::endl;
 				}

@@ -1035,7 +1035,7 @@ static void dvConfigNodeConsumeXML(dvConfigNode node, const boost::property_tree
 		// Get the needed values.
 		const auto value = attr.get().get_value("");
 
-		if (!dvConfigNodeStringToAttributeConverter(node, key.c_str(), type.c_str(), value.c_str())) {
+		if (!dvConfigNodeStringToAttributeConverter(node, key.c_str(), type.c_str(), value.c_str(), true)) {
 			// Ignore read-only/range errors.
 			if (errno == EPERM || errno == ERANGE) {
 				continue;
@@ -1076,7 +1076,7 @@ static void dvConfigNodeConsumeXML(dvConfigNode node, const boost::property_tree
 
 // For more precise failure reason, look at errno.
 bool dvConfigNodeStringToAttributeConverter(
-	dvConfigNode node, const char *key, const char *typeStr, const char *valueStr) {
+	dvConfigNode node, const char *key, const char *typeStr, const char *valueStr, bool overrideReadOnly) {
 	// Parse the values according to type and put them in the node.
 	enum dvConfigAttributeType type;
 	type = dvConfigHelperCppStringToTypeConverter(typeStr);
@@ -1116,7 +1116,8 @@ bool dvConfigNodeStringToAttributeConverter(
 		bool result = false;
 
 		if (node->attributeExists(key, type)) {
-			result = node->putAttribute(key, value);
+			result = node->putAttribute(
+				key, value, (node->attributes[key].isFlagSet(DVCFG_FLAGS_READ_ONLY) && overrideReadOnly));
 		}
 		else {
 			// Create never fails, it may exit the program, but not fail!
