@@ -12,7 +12,7 @@ Linux, MacOS X or Windows (for Windows build instructions see README.Windows) <b
 gcc >= 5.2 or clang >= 3.6 <br />
 cmake >= 2.6 <br />
 Boost >= 1.50 (with system, filesystem, iostreams, program_options) <br />
-libcaer >= 2.9.9 <br />
+libcaer = 3.1.0 (currently ONLY libcaer 3.1.0)<br />
 Optional: tcmalloc >= 2.2 (faster memory allocation) <br />
 Optional: SFML >= 2.3.0 (visualizer module) <br />
 Optional: OpenCV >= 3.1 (cameracalibration, framestatistics modules) <br />
