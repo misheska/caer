@@ -21,8 +21,7 @@ enum ConfigAction : int8 {
 	DUMP_TREE          = 17,
 	DUMP_TREE_NODE     = 18,
 	DUMP_TREE_ATTR     = 19,
-	GET_CLIENT_ID      = 20,
-	IMPORT_ATTR        = 21
+	GET_CLIENT_ID      = 20
 }
 
 enum ConfigType : int8 {
