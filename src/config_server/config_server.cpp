@@ -337,6 +337,8 @@ static void configServerRestartListener(dvConfigNode node, void *userData, enum 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "restart")
 		&& changeValue.boolean) {
 		globalConfigData.server->serviceRestart();
+
+		dvConfigNodePutBool(node, changeKey, false);
 	}
 }
 

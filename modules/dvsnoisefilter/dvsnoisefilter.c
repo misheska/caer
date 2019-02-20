@@ -219,6 +219,9 @@ static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, en
 		// it directly. The usual Config mechanism doesn't work, as Get()
 		// would always return false.
 		caerFilterDVSNoiseConfigSet(state, CAER_FILTER_DVS_HOTPIXEL_LEARN, true);
+
+		// TODO: this should use AttributeUpdaters to keep track of the completion state.
+		dvConfigNodePutBool(node, changeKey, false);
 	}
 }
 

@@ -354,9 +354,11 @@ static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
-		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "TimestampReset")) {
+		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "TimestampReset") && changeValue.boolean) {
 			caerDeviceConfigSet(
 				moduleData->moduleState, EDVS_CONFIG_DVS, EDVS_CONFIG_DVS_TIMESTAMP_RESET, changeValue.boolean);
+
+			dvConfigNodePutBool(node, changeKey, false);
 		}
 		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "Run")) {
 			caerDeviceConfigSet(moduleData->moduleState, EDVS_CONFIG_DVS, EDVS_CONFIG_DVS_RUN, changeValue.boolean);

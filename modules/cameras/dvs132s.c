@@ -647,9 +647,11 @@ static void muxConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 	dvModuleData moduleData = userData;
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
-		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "TimestampReset")) {
+		if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "TimestampReset") && changeValue.boolean) {
 			caerDeviceConfigSet(
 				moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_TIMESTAMP_RESET, changeValue.boolean);
+
+			dvConfigNodePutBool(node, changeKey, false);
 		}
 		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "DropDVSOnTransferStall")) {
 			caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_MUX,
