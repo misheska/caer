@@ -1074,6 +1074,8 @@ static void dvConfigNodeConsumeXML(dvConfigNode node, const boost::property_tree
 // For more precise failure reason, look at errno.
 bool dvConfigNodeStringToAttributeConverter(
 	dvConfigNode node, const char *key, const char *typeStr, const char *valueStr) {
+	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+
 	// Parse the values according to type and put them in the node.
 	enum dvConfigAttributeType type;
 	type = dvConfigHelperCppStringToTypeConverter(typeStr);
