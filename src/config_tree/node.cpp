@@ -382,6 +382,9 @@ static void dvConfigNodeDestroy(dvConfigNode node);
 static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string childName);
 static void dvConfigNodeRemoveAllChildren(dvConfigNode node);
 
+static void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, int32_t minLength,
+	int32_t maxLength, int flags, const char *description, bool isModifierKey);
+
 #define XML_INDENT_SPACES 4
 
 static bool dvConfigNodeToXML(dvConfigNode node, int fd, bool recursive);
@@ -807,7 +810,7 @@ double dvConfigNodeGetDouble(dvConfigNode node, const char *key) {
 	return (std::get<double>(node->getAttribute(key, DVCFG_TYPE_DOUBLE)));
 }
 
-void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, int32_t minLength,
+static void dvConfigNodeCreateString(dvConfigNode node, const char *key, const char *defaultValue, int32_t minLength,
 	int32_t maxLength, int flags, const char *description, bool isModifierKey) {
 	dv_value v;
 	v.emplace<std::string>(defaultValue);
