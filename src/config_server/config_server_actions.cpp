@@ -585,6 +585,67 @@ void dvConfigServerHandleRequest(
 			break;
 		}
 
+		case dv::ConfigAction::IMPORT_ATTR: {
+			// Check type first, needed for value check.
+			dv::ConfigType type = message->type();
+			if (type == dv::ConfigType::UNKNOWN) {
+				// Send back error message to client.
+				sendError("Invalid type.", client, receivedID);
+				break;
+			}
+
+			std::string node;
+			std::string key;
+			std::string value;
+
+			try {
+				node  = getString(message->node(), client, receivedID);
+				key   = getString(message->key(), client, receivedID);
+				value = getString(
+					message->value(), client, receivedID, (type == dv::ConfigType::STRING) ? (true) : (false));
+			}
+			catch (const std::invalid_argument &) {
+				break;
+			}
+
+			// Create node, even if doesn't exist.
+			dvCfg::Node wantedNode = configStore.getNode(node);
+
+			// Put given value into config node. Node, attr and type are already verified.
+			const std::string typeStr = dvCfg::Helper::typeToStringConverter(static_cast<dvCfgType>(type));
+
+			if (!wantedNode.stringToAttributeConverter(key, typeStr, value)) {
+				// Send back correct error message to client.
+				if (errno == EINVAL) {
+					sendError("Impossible to convert value according to type.", client, receivedID);
+				}
+				else if (errno == EPERM) {
+					sendError("Cannot write to a read-only attribute.", client, receivedID);
+				}
+				else if (errno == ERANGE) {
+					sendError("Value out of attribute range.", client, receivedID);
+				}
+				else {
+					// Unknown error.
+					sendError("Unknown error.", client, receivedID);
+				}
+
+				break;
+			}
+
+			// Send back confirmation to the client.
+			sendMessage(client, [receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
+				dv::ConfigActionDataBuilder msg(*msgBuild);
+
+				msg.add_action(dv::ConfigAction::IMPORT_ATTR);
+				msg.add_id(receivedID);
+
+				return (msg.Finish());
+			});
+
+			break;
+		}
+
 		case dv::ConfigAction::ADD_MODULE: {
 			std::string moduleName;
 			std::string moduleLibrary;
