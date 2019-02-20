@@ -63,6 +63,7 @@ enum dvConfigAttributeFlags {
 	DVCFG_FLAGS_NORMAL    = 0,
 	DVCFG_FLAGS_READ_ONLY = 1,
 	DVCFG_FLAGS_NO_EXPORT = 2,
+	DVCFG_FLAGS_IMPORTED  = 4,
 };
 
 enum dvConfigNodeEvents {

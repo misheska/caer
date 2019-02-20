@@ -906,8 +906,8 @@ static boost::property_tree::ptree dvConfigNodeGenerateXML(dvConfigNode node, bo
 	// Then it's attributes (key:value pairs).
 	auto attrFirstIterator = content.begin();
 	for (const auto &attr : node->attributes) {
-		// If an attribute is marked NO_EXPORT, we skip it.
-		if (attr.second.isFlagSet(DVCFG_FLAGS_NO_EXPORT)) {
+		// If an attribute is marked NO_EXPORT or IMPORTED, we skip it.
+		if (attr.second.isFlagSet(DVCFG_FLAGS_NO_EXPORT) || attr.second.isFlagSet(DVCFG_FLAGS_IMPORTED)) {
 			continue;
 		}
 
@@ -1103,7 +1103,8 @@ bool dvConfigNodeStringToAttributeConverter(
 
 	// IFF attribute already exists, we update it using dvConfigNodePut(), else
 	// we create the attribute with maximum range and a default description.
-	// These XML-loaded attributes are also marked NO_EXPORT.
+	// These XML-loaded attributes are marked as IMPORTED and READ_ONLY, until
+	// another call to createAttribute() sets the flags properly for usage.
 	// This happens on XML load only. More restrictive ranges and flags can be
 	// enabled later by calling dvConfigNodeCreate*() again as needed.
 	bool result = false;
@@ -1120,43 +1121,43 @@ bool dvConfigNodeStringToAttributeConverter(
 		switch (type) {
 			case DVCFG_TYPE_BOOL:
 				// No ranges for bool.
-				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
+				node->createAttribute(key, value, ranges, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_IMPORTED,
+					"XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_INT:
 				ranges.min.emplace<int32_t>(INT32_MIN);
 				ranges.max.emplace<int32_t>(INT32_MAX);
-				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
+				node->createAttribute(key, value, ranges, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_IMPORTED,
+					"XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_LONG:
 				ranges.min.emplace<int64_t>(INT64_MIN);
 				ranges.max.emplace<int64_t>(INT64_MAX);
-				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
+				node->createAttribute(key, value, ranges, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_IMPORTED,
+					"XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_FLOAT:
 				ranges.min.emplace<float>(-FLT_MAX);
 				ranges.max.emplace<float>(FLT_MAX);
-				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
+				node->createAttribute(key, value, ranges, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_IMPORTED,
+					"XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_DOUBLE:
 				ranges.min.emplace<double>(-DBL_MAX);
 				ranges.max.emplace<double>(DBL_MAX);
-				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
+				node->createAttribute(key, value, ranges, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_IMPORTED,
+					"XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_STRING:
 				ranges.min.emplace<int32_t>(0);
 				ranges.max.emplace<int32_t>(INT32_MAX);
-				node->createAttribute(
-					key, value, ranges, DVCFG_FLAGS_NORMAL | DVCFG_FLAGS_NO_EXPORT, "XML loaded value.", isModifierKey);
+				node->createAttribute(key, value, ranges, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_IMPORTED,
+					"XML loaded value.", isModifierKey);
 				break;
 
 			case DVCFG_TYPE_UNKNOWN:

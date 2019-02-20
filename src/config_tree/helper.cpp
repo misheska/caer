@@ -165,6 +165,10 @@ char *dvConfigHelperFlagsToStringConverter(int flags) {
 		flagsStr += "|NO_EXPORT";
 	}
 
+	if (flags & DVCFG_FLAGS_IMPORTED) {
+		flagsStr += "|IMPORTED";
+	}
+
 	char *resultString = strdup(flagsStr.c_str());
 	dvConfigMemoryCheck(resultString, __func__);
 
@@ -184,6 +188,9 @@ int dvConfigHelperStringToFlagsConverter(const char *flagsString) {
 		}
 		else if (tok == "NO_EXPORT") {
 			flags |= DVCFG_FLAGS_NO_EXPORT;
+		}
+		else if (tok == "IMPORTED") {
+			flags |= DVCFG_FLAGS_IMPORTED;
 		}
 	}
 

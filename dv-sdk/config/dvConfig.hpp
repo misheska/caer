@@ -266,6 +266,7 @@ enum class AttributeFlags {
 	NORMAL    = DVCFG_FLAGS_NORMAL,
 	READ_ONLY = DVCFG_FLAGS_READ_ONLY,
 	NO_EXPORT = DVCFG_FLAGS_NO_EXPORT,
+	IMPORTED  = DVCFG_FLAGS_IMPORTED,
 };
 
 inline AttributeFlags operator|(AttributeFlags lhs, AttributeFlags rhs) {
