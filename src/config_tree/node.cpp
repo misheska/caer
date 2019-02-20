@@ -1117,7 +1117,7 @@ bool dvConfigNodeStringToAttributeConverter(
 
 		if (node->attributeExists(key, type)) {
 			result = node->putAttribute(
-				key, value, (node->attributes[key].isFlagSet(DVCFG_FLAGS_READ_ONLY) && overrideReadOnly));
+				key, value, (overrideReadOnly && node->attributes[key].isFlagSet(DVCFG_FLAGS_READ_ONLY)));
 		}
 		else {
 			// Create never fails, it may exit the program, but not fail!
