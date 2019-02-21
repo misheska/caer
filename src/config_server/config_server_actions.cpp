@@ -560,19 +560,25 @@ void dvConfigServerHandleRequest(
 				// Send back correct error message to client.
 				if (errno == EINVAL) {
 					sendError("Impossible to convert value according to type.", client, receivedID);
+					break;
 				}
 				else if (errno == EPERM) {
-					sendError("Cannot write to a read-only attribute.", client, receivedID);
+					// Suppress error message on initial import.
+					// It is supposed to not overwrite READ_ONLY attributes ever.
+					if (!import) {
+						sendError("Cannot write to a read-only attribute.", client, receivedID);
+						break;
+					}
 				}
 				else if (errno == ERANGE) {
 					sendError("Value out of attribute range.", client, receivedID);
+					break;
 				}
 				else {
 					// Unknown error.
 					sendError("Unknown error.", client, receivedID);
+					break;
 				}
-
-				break;
 			}
 
 			// Send back confirmation to the client.
