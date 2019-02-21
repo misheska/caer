@@ -262,6 +262,10 @@ void dvConfigServerStart(void) {
 		globalConfigData.server = std::make_unique<ConfigServer>();
 	}
 
+	// Ensure core nodes are always present.
+	dvCfg::GLOBAL.getNode("/system/");
+	dvCfg::GLOBAL.getNode("/mainloop/");
+
 	// Get the right configuration node first.
 	auto serverNode = dvCfg::GLOBAL.getNode("/system/server/");
 
