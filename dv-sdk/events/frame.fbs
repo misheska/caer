@@ -1,0 +1,12 @@
+table FrameEvent {
+	timestamp: int64;
+	xSize: int16;
+	ySize: int16;
+	pixels: [uint16];
+}
+
+table FramePacket {
+	events: [FrameEvent];
+}
+
+root_type FramePacket;

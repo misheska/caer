@@ -1,0 +1,12 @@
+struct PolarityEvent {
+	timestamp: int64;
+	xAddress: int16;
+	yAddress: int16;
+	polarity: bool;
+}
+
+table PolarityPacket {
+	events: [PolarityEvent];
+}
+
+root_type PolarityPacket;
