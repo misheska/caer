@@ -1,0 +1,63 @@
+enum FrameChannels : int8 {
+	/// Grayscale, one channel only.
+	GRAYSCALE = 1,
+	/// Red Green Blue, 3 color channels.
+	RGB = 3,
+	/// Red Green Blue Alpha, 3 color channels plus transparency.
+	RGBA = 4
+}
+
+enum FrameColorFilters : int8 {
+	/// No color filter present, all light passes.
+	MONO = 0,
+	/// Standard Bayer color filter, 1 red 2 green 1 blue. Variation 1.
+	RGBG = 1,
+	/// Standard Bayer color filter, 1 red 2 green 1 blue. Variation 2.
+	GRGB = 2,
+	/// Standard Bayer color filter, 1 red 2 green 1 blue. Variation 3.
+	GBGR = 3,
+	/// Standard Bayer color filter, 1 red 2 green 1 blue. Variation 4.
+	BGRG = 4,
+	/// Modified Bayer color filter, with white (pass all light) instead of extra green. Variation 1.
+	RGBW = 5,
+	/// Modified Bayer color filter, with white (pass all light) instead of extra green. Variation 2.
+	GRWB = 6,
+	/// Modified Bayer color filter, with white (pass all light) instead of extra green. Variation 3.
+	WBGR = 7,
+	/// Modified Bayer color filter, with white (pass all light) instead of extra green. Variation 4.
+	BWRG = 8
+}
+
+table Frame8 {
+	/// Central timestamp, corresponds to exposure midpoint.
+	timestamp: int64;
+	/// Start of Frame (SOF) timestamp.
+	timestampStartOfFrame: int64;
+	/// End of Frame (EOF) timestamp.
+	timestampEndOfFrame: int64;
+	/// Start of Exposure (SOE) timestamp.
+	timestampStartOfExposure: int64;
+	/// End of Exposure (EOE) timestamp.
+	timestampEndOfExposure: int64;
+	/// Color channels present in frame.
+	numChannels : FrameChannels = GRAYSCALE;
+	/// Original color filter on array.
+	origColorFilter: FrameColorFilters = MONO;
+	/// X axis length in pixels.
+	lengthX: int16;
+	/// Y axis length in pixels.
+	lengthY: int16;
+	/// X axis position (upper left offset) in pixels.
+	positionX: int16;
+	/// Y axis position (upper left offset) in pixels.
+	positionY: int16;
+	/// Pixel values, 8bit depth.
+	pixels: [uint8];
+}
+
+table Frame8Packet {
+	events: [Frame8];
+}
+
+root_type Frame8Packet;
+file_identifier "FRM8";

@@ -1,7 +1,7 @@
 struct PolarityEvent {
 	timestamp: int64;
-	xAddress: int16;
-	yAddress: int16;
+	addressX: int16;
+	addressY: int16;
 	polarity: bool;
 }
 
@@ -10,3 +10,4 @@ table PolarityPacket {
 }
 
 root_type PolarityPacket;
+file_identifier "POLA";
