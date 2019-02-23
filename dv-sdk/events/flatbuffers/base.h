@@ -1,5 +1,5 @@
 #ifndef FLATBUFFERS_BASE_H_
-#define FLATBUFFERS_BASE_H_
+#	define FLATBUFFERS_BASE_H_
 
 // clang-format off
 #if defined(FLATBUFFERS_MEMORY_LEAK_TRACKING) && \
