@@ -3,6 +3,7 @@
 #ifndef FLATBUFFERS_GENERATED_FRAME8_H_
 #define FLATBUFFERS_GENERATED_FRAME8_H_
 
+#include "cvector.hpp"
 #include "flatbuffers/flatbuffers.h"
 
 struct Frame8;
@@ -37,6 +38,8 @@ inline const char *const *EnumNamesFrameChannels() {
 }
 
 inline const char *EnumNameFrameChannels(FrameChannels e) {
+	if (e < FrameChannels::GRAYSCALE || e > FrameChannels::RGBA)
+		return "";
 	const size_t index = static_cast<int>(e) - static_cast<int>(FrameChannels::GRAYSCALE);
 	return EnumNamesFrameChannels()[index];
 }
@@ -78,6 +81,8 @@ inline const char *const *EnumNamesFrameColorFilters() {
 }
 
 inline const char *EnumNameFrameColorFilters(FrameColorFilters e) {
+	if (e < FrameColorFilters::MONO || e > FrameColorFilters::BWRG)
+		return "";
 	const size_t index = static_cast<int>(e);
 	return EnumNamesFrameColorFilters()[index];
 }
@@ -95,7 +100,7 @@ struct Frame8T : public flatbuffers::NativeTable {
 	int16_t lengthY;
 	int16_t positionX;
 	int16_t positionY;
-	std::vector<uint8_t> pixels;
+	dv::cvector<uint8_t> pixels;
 	Frame8T() :
 		timestamp(0),
 		timestampStartOfFrame(0),
@@ -116,7 +121,7 @@ struct Frame8 FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return Frame8TypeTable();
 	}
-	enum {
+	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
 		VT_TIMESTAMP                = 4,
 		VT_TIMESTAMPSTARTOFFRAME    = 6,
 		VT_TIMESTAMPENDOFFRAME      = 8,
@@ -271,9 +276,9 @@ inline flatbuffers::Offset<Frame8> CreateFrame8Direct(flatbuffers::FlatBufferBui
 	int64_t timestampEndOfExposure = 0, FrameChannels numChannels = FrameChannels::GRAYSCALE,
 	FrameColorFilters origColorFilter = FrameColorFilters::MONO, int16_t lengthX = 0, int16_t lengthY = 0,
 	int16_t positionX = 0, int16_t positionY = 0, const std::vector<uint8_t> *pixels = nullptr) {
+	auto pixels__ = pixels ? _fbb.CreateVector<uint8_t>(*pixels) : 0;
 	return CreateFrame8(_fbb, timestamp, timestampStartOfFrame, timestampEndOfFrame, timestampStartOfExposure,
-		timestampEndOfExposure, numChannels, origColorFilter, lengthX, lengthY, positionX, positionY,
-		pixels ? _fbb.CreateVector<uint8_t>(*pixels) : 0);
+		timestampEndOfExposure, numChannels, origColorFilter, lengthX, lengthY, positionX, positionY, pixels__);
 }
 
 flatbuffers::Offset<Frame8> CreateFrame8(flatbuffers::FlatBufferBuilder &_fbb, const Frame8T *_o,
@@ -281,7 +286,7 @@ flatbuffers::Offset<Frame8> CreateFrame8(flatbuffers::FlatBufferBuilder &_fbb, c
 
 struct Frame8PacketT : public flatbuffers::NativeTable {
 	typedef Frame8Packet TableType;
-	std::vector<std::unique_ptr<Frame8T>> events;
+	dv::cvector<std::unique_ptr<Frame8T>> events;
 	Frame8PacketT() {
 	}
 };
@@ -291,7 +296,7 @@ struct Frame8Packet FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return Frame8PacketTypeTable();
 	}
-	enum { VT_EVENTS = 4 };
+	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE { VT_EVENTS = 4 };
 	const flatbuffers::Vector<flatbuffers::Offset<Frame8>> *events() const {
 		return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<Frame8>> *>(VT_EVENTS);
 	}
@@ -331,7 +336,8 @@ inline flatbuffers::Offset<Frame8Packet> CreateFrame8Packet(flatbuffers::FlatBuf
 
 inline flatbuffers::Offset<Frame8Packet> CreateFrame8PacketDirect(
 	flatbuffers::FlatBufferBuilder &_fbb, const std::vector<flatbuffers::Offset<Frame8>> *events = nullptr) {
-	return CreateFrame8Packet(_fbb, events ? _fbb.CreateVector<flatbuffers::Offset<Frame8>>(*events) : 0);
+	auto events__ = events ? _fbb.CreateVector<flatbuffers::Offset<Frame8>>(*events) : 0;
+	return CreateFrame8Packet(_fbb, events__);
 }
 
 flatbuffers::Offset<Frame8Packet> CreateFrame8Packet(flatbuffers::FlatBufferBuilder &_fbb, const Frame8PacketT *_o,
@@ -427,7 +433,7 @@ inline flatbuffers::Offset<Frame8> CreateFrame8(
 	auto _lengthY                  = _o->lengthY;
 	auto _positionX                = _o->positionX;
 	auto _positionY                = _o->positionY;
-	auto _pixels                   = _o->pixels.size() ? _fbb.CreateVector(_o->pixels) : 0;
+	auto _pixels                   = _o->pixels.size() ? _fbb.CreateVector(_o->pixels.data(), _o->pixels.size()) : 0;
 	return CreateFrame8(_fbb, _timestamp, _timestampStartOfFrame, _timestampEndOfFrame, _timestampStartOfExposure,
 		_timestampEndOfExposure, _numChannels, _origColorFilter, _lengthX, _lengthY, _positionX, _positionY, _pixels);
 }
@@ -481,7 +487,7 @@ inline const flatbuffers::TypeTable *FrameChannelsTypeTable() {
 	static const flatbuffers::TypeCode type_codes[]
 		= {{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}};
 	static const flatbuffers::TypeFunction type_refs[] = {FrameChannelsTypeTable};
-	static const int32_t values[]                      = {1, 3, 4};
+	static const int64_t values[]                      = {1, 3, 4};
 	static const char *const names[]                   = {"GRAYSCALE", "RGB", "RGBA"};
 	static const flatbuffers::TypeTable tt = {flatbuffers::ST_ENUM, 3, type_codes, type_refs, values, names};
 	return &tt;

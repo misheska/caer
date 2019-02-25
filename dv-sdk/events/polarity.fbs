@@ -1,3 +1,7 @@
+native_include "cvector.hpp";
+
+file_identifier "POLA";
+
 struct PolarityEvent {
 	timestamp: int64;
 	addressX: int16;
@@ -10,4 +14,3 @@ table PolarityPacket {
 }
 
 root_type PolarityPacket;
-file_identifier "POLA";

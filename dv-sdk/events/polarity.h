@@ -3,6 +3,7 @@
 #ifndef FLATBUFFERS_GENERATED_POLARITY_H_
 #define FLATBUFFERS_GENERATED_POLARITY_H_
 
+#include "cvector.hpp"
 #include "flatbuffers/flatbuffers.h"
 
 struct PolarityEvent;
@@ -54,7 +55,7 @@ FLATBUFFERS_STRUCT_END(PolarityEvent, 16);
 
 struct PolarityPacketT : public flatbuffers::NativeTable {
 	typedef PolarityPacket TableType;
-	std::vector<PolarityEvent> events;
+	dv::cvector<PolarityEvent> events;
 	PolarityPacketT() {
 	}
 };
@@ -64,7 +65,7 @@ struct PolarityPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return PolarityPacketTypeTable();
 	}
-	enum { VT_EVENTS = 4 };
+	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE { VT_EVENTS = 4 };
 	const flatbuffers::Vector<const PolarityEvent *> *events() const {
 		return GetPointer<const flatbuffers::Vector<const PolarityEvent *> *>(VT_EVENTS);
 	}
@@ -104,7 +105,8 @@ inline flatbuffers::Offset<PolarityPacket> CreatePolarityPacket(
 
 inline flatbuffers::Offset<PolarityPacket> CreatePolarityPacketDirect(
 	flatbuffers::FlatBufferBuilder &_fbb, const std::vector<PolarityEvent> *events = nullptr) {
-	return CreatePolarityPacket(_fbb, events ? _fbb.CreateVectorOfStructs<PolarityEvent>(*events) : 0);
+	auto events__ = events ? _fbb.CreateVectorOfStructs<PolarityEvent>(*events) : 0;
+	return CreatePolarityPacket(_fbb, events__);
 }
 
 flatbuffers::Offset<PolarityPacket> CreatePolarityPacket(flatbuffers::FlatBufferBuilder &_fbb,
@@ -145,14 +147,14 @@ inline flatbuffers::Offset<PolarityPacket> CreatePolarityPacket(flatbuffers::Fla
 		const flatbuffers::rehasher_function_t *__rehasher;
 	} _va = {&_fbb, _o, _rehasher};
 	(void) _va;
-	auto _events = _o->events.size() ? _fbb.CreateVectorOfStructs(_o->events) : 0;
+	auto _events = _o->events.size() ? _fbb.CreateVectorOfStructs(_o->events.data(), _o->events.size()) : 0;
 	return CreatePolarityPacket(_fbb, _events);
 }
 
 inline const flatbuffers::TypeTable *PolarityEventTypeTable() {
 	static const flatbuffers::TypeCode type_codes[] = {{flatbuffers::ET_LONG, 0, -1}, {flatbuffers::ET_SHORT, 0, -1},
 		{flatbuffers::ET_SHORT, 0, -1}, {flatbuffers::ET_BOOL, 0, -1}};
-	static const int32_t values[]                   = {0, 8, 10, 12, 16};
+	static const int64_t values[]                   = {0, 8, 10, 12, 16};
 	static const char *const names[]                = {"timestamp", "addressX", "addressY", "polarity"};
 	static const flatbuffers::TypeTable tt          = {flatbuffers::ST_STRUCT, 4, type_codes, nullptr, values, names};
 	return &tt;

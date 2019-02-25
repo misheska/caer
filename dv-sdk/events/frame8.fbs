@@ -1,3 +1,7 @@
+native_include "cvector.hpp";
+
+file_identifier "FRM8";
+
 enum FrameChannels : int8 {
 	/// Grayscale, one channel only.
 	GRAYSCALE = 1,
@@ -60,4 +64,3 @@ table Frame8Packet {
 }
 
 root_type Frame8Packet;
-file_identifier "FRM8";
