@@ -69,10 +69,10 @@ IF (OS_WINDOWS)
 ENDIF()
 
 # boost.ASIO SSL needs OpenSSL too
+# Use -DOPENSSL_ROOT_DIR=x to select a specific installation.
 FIND_PACKAGE(OpenSSL REQUIRED)
 
 SET(DV_INCDIRS ${DV_INCDIRS} ${OPENSSL_INCLUDE_DIR})
-SET(DV_LIBDIRS ${DV_LIBDIRS} ${OPENSSL_LIBRARY_DIR})
 SET(DV_LIBS ${DV_LIBS} ${OPENSSL_LIBRARIES})
 
 # Add local directory to include and library paths
