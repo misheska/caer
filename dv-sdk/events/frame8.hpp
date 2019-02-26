@@ -286,7 +286,7 @@ flatbuffers::Offset<Frame8> CreateFrame8(flatbuffers::FlatBufferBuilder &_fbb, c
 
 struct Frame8PacketT : public flatbuffers::NativeTable {
 	typedef Frame8Packet TableType;
-	dv::cvector<std::unique_ptr<Frame8T>> events;
+	dv::cvector<Frame8T *> events;
 	Frame8PacketT() {
 	}
 };
@@ -452,7 +452,7 @@ inline void Frame8Packet::UnPackTo(Frame8PacketT *_o, const flatbuffers::resolve
 		if (_e) {
 			_o->events.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-				_o->events[_i] = std::unique_ptr<Frame8T>(_e->Get(_i)->UnPack(_resolver));
+				_o->events[_i] = (_e->Get(_i)->UnPack(_resolver));
 			}
 		}
 	};
@@ -476,7 +476,7 @@ inline flatbuffers::Offset<Frame8Packet> CreateFrame8Packet(
 	auto _events = _o->events.size()
 					   ? _fbb.CreateVector<flatbuffers::Offset<Frame8>>(_o->events.size(),
 							 [](size_t i, _VectorArgs *__va) {
-								 return CreateFrame8(*__va->__fbb, __va->__o->events[i].get(), __va->__rehasher);
+								 return CreateFrame8(*__va->__fbb, __va->__o->events[i], __va->__rehasher);
 							 },
 							 &_va)
 					   : 0;
@@ -559,9 +559,8 @@ inline void FinishSizePrefixedFrame8PacketBuffer(
 	fbb.FinishSizePrefixed(root, Frame8PacketIdentifier());
 }
 
-inline std::unique_ptr<Frame8PacketT> UnPackFrame8Packet(
-	const void *buf, const flatbuffers::resolver_function_t *res = nullptr) {
-	return std::unique_ptr<Frame8PacketT>(GetFrame8Packet(buf)->UnPack(res));
+inline Frame8PacketT *UnPackFrame8Packet(const void *buf, const flatbuffers::resolver_function_t *res = nullptr) {
+	return (GetFrame8Packet(buf)->UnPack(res));
 }
 
 #endif // FLATBUFFERS_GENERATED_FRAME8_H_
