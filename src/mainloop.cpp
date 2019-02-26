@@ -1982,7 +1982,10 @@ static void dvUpdateAvailableDevices() {
 			case CAER_DEVICE_DVS128: {
 				const struct caer_dvs128_info *info = &dev.deviceInfo.dvs128Info;
 
-				auto devNode = devicesNode.getRelativeNode("dvs128/");
+				auto nodeName
+					= boost::format("dvs128_%d-%d/") % info->deviceUSBBusNumber % info->deviceUSBDeviceAddress;
+
+				auto devNode = devicesNode.getRelativeNode(nodeName.str());
 
 				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_dvs128", {1, 32},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
@@ -2012,7 +2015,9 @@ static void dvUpdateAvailableDevices() {
 			case CAER_DEVICE_DAVIS: {
 				const struct caer_davis_info *info = &dev.deviceInfo.davisInfo;
 
-				auto devNode = devicesNode.getRelativeNode("davis/");
+				auto nodeName = boost::format("davis_%d-%d/") % info->deviceUSBBusNumber % info->deviceUSBDeviceAddress;
+
+				auto devNode = devicesNode.getRelativeNode(nodeName.str());
 
 				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_davis", {1, 32},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
@@ -2049,7 +2054,9 @@ static void dvUpdateAvailableDevices() {
 			case CAER_DEVICE_EDVS: {
 				const struct caer_edvs_info *info = &dev.deviceInfo.edvsInfo;
 
-				auto devNode = devicesNode.getRelativeNode("edvs/");
+				auto nodeName = boost::format("edvs_%s/") % info->serialPortName;
+
+				auto devNode = devicesNode.getRelativeNode(nodeName.str());
 
 				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_edvs", {1, 32},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
@@ -2074,7 +2081,10 @@ static void dvUpdateAvailableDevices() {
 			case CAER_DEVICE_DVS132S: {
 				const struct caer_dvs132s_info *info = &dev.deviceInfo.dvs132sInfo;
 
-				auto devNode = devicesNode.getRelativeNode("dvs132s/");
+				auto nodeName
+					= boost::format("dvs132s_%d-%d/") % info->deviceUSBBusNumber % info->deviceUSBDeviceAddress;
+
+				auto devNode = devicesNode.getRelativeNode(nodeName.str());
 
 				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_dvs132s", {1, 32},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
