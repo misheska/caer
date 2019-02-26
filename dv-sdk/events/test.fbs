@@ -1,0 +1,20 @@
+native_include "cvector.hpp";
+
+file_identifier "TEST";
+
+table Test {
+	timestamp: int64;
+	addressX: int16;
+	addressY: int16;
+	polarity: bool;
+	astr: string;
+	aboolvec: [bool];
+	aintvec: [int32];
+	astrvec: [string];
+}
+
+table TestPacket {
+	events: [Test];
+}
+
+root_type TestPacket;
