@@ -1,4 +1,5 @@
 native_include "cvector.hpp";
+native_include "cstring.hpp";
 
 file_identifier "TEST";
 
