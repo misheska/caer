@@ -162,7 +162,7 @@ public:
 	}
 
 	// Destructor.
-	~cvector() {
+	~cvector() noexcept {
 		// Destroy all values.
 		destroyValues(0, curr_size);
 
@@ -224,6 +224,10 @@ public:
 		}
 	}
 
+	// Initialize vector via initializer list {x, y, z}.
+	cvector(std::initializer_list<T> init_list) : cvector(init_list.begin(), init_list.end()) {
+	}
+
 	// Copy constructor.
 	cvector(const cvector &rhs) {
 		// Allocate memory for copy.
@@ -283,7 +287,7 @@ public:
 	}
 
 	// Move assignment.
-	cvector &operator=(cvector &&rhs) {
+	cvector &operator=(cvector &&rhs) noexcept {
 		assert(this != &rhs);
 
 		// Moved-from object must remain in a valid state. We can define
@@ -446,13 +450,13 @@ public:
 		curr_size++;
 	}
 
-	void pop_back() {
+	void pop_back() noexcept {
 		curr_size--;
 
 		destroyValue(curr_size);
 	}
 
-	void clear() {
+	void clear() noexcept {
 		destroyValues(0, curr_size);
 
 		curr_size = 0;

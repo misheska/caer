@@ -11,7 +11,18 @@
 namespace dv {
 
 class cstring {
+public:
+	cstring() {
+	}
 
+	cstring(const std::string &str) {
+	}
+
+	cstring &operator=(const std::string &str) {
+	}
+
+	size_t length() const {
+	}
 };
 
 } // namespace dv
