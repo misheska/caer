@@ -430,15 +430,7 @@ public:
 		}
 
 		// Capacity is bigger than size, so we shrink the allocation.
-		pointer new_data_ptr = realloc(data_ptr, curr_size * sizeof(T));
-		if (new_data_ptr == nullptr) {
-			// Failed.
-			throw std::bad_alloc();
-		}
-
-		// Succeeded, update ptr + capacity.
-		data_ptr = new_data_ptr;
-		max_size = curr_size;
+		reallocateMemory(curr_size);
 	}
 
 	reference operator[](signed_size_type index) {
@@ -669,16 +661,46 @@ private:
 			return; // Yes.
 		}
 
-		// No, realloc is needed.
-		pointer new_data_ptr = realloc(data_ptr, max_size * 2 * sizeof(T));
-		if (new_data_ptr == nullptr) {
-			// Failed.
-			throw std::bad_alloc();
+		// No, we must grow.
+		// Normally we try doubling the size, but we
+		// have to check if even that is enough.
+		reallocateMemory(((max_size * 2) > newSize) ? (max_size * 2) : (newSize));
+	}
+
+	void reallocateMemory(size_type newSize) {
+		pointer new_data_ptr;
+
+		if (std::is_pod_v<T>) {
+			// Type is POD, we can just use realloc.
+			new_data_ptr = realloc(data_ptr, newSize * sizeof(T));
+			if (new_data_ptr == nullptr) {
+				// Failed.
+				throw std::bad_alloc();
+			}
+		}
+		else {
+			// Type is not POD (C++ object), we cannot use realloc directly.
+			// So we malloc the new size, move objects over, and then free.
+			new_data_ptr = malloc(newSize * sizeof(T));
+			if (new_data_ptr == nullptr) {
+				// Failed.
+				throw std::bad_alloc();
+			}
+
+			// Move construct new memory and then destroy moved-from object.
+			for (size_type i = 0; i < curr_size; i++) {
+				new (&new_data_ptr[i]) T(std::move(data_ptr[i]));
+
+				data_ptr[i].~T();
+			}
+
+			// Free old memory. Objects have been cleaned up above.
+			free(data_ptr);
 		}
 
 		// Succeeded, update ptr + capacity.
 		data_ptr = new_data_ptr;
-		max_size *= 2;
+		max_size = newSize;
 	}
 
 	size_type getIndex(signed_size_type index) const {
