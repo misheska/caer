@@ -574,12 +574,13 @@ public:
 		// Careful: this can invalidate iterators!
 		// That's why we get the index above first.
 		ensureCapacity(curr_size + 1);
+		pos = cbegin() + idx;
 
 		// Default construct so we can move into this.
 		constructDefaultValue(curr_size);
 
 		// Move by one to make space.
-		auto iter = std::move_backward(cbegin() + idx, cend(), end() + 1);
+		std::move_backward(pos, cend(), cend() + 1);
 
 		// Destroy object at insertion index.
 		destroyValue(idx);
@@ -589,7 +590,7 @@ public:
 
 		curr_size++;
 
-		return (iter);
+		return (pos);
 	}
 
 	iterator insert(const_iterator pos, size_type count, const_reference value) {
@@ -602,12 +603,13 @@ public:
 		// Careful: this can invalidate iterators!
 		// That's why we get the index above first.
 		ensureCapacity(curr_size + count);
+		pos = cbegin() + idx;
 
 		// Default construct so we can move into this.
 		constructDefaultValues(curr_size, curr_size + count);
 
 		// Move by N to make space.
-		auto iter = std::move_backward(cbegin() + idx, cend(), end() + count);
+		std::move_backward(pos, cend(), cend() + count);
 
 		// Destroy objects at insertion index.
 		destroyValues(idx, idx + count);
@@ -619,7 +621,7 @@ public:
 
 		curr_size += count;
 
-		return (iter);
+		return (pos);
 	}
 
 	template<class InputIt> iterator insert(const_iterator pos, InputIt first, InputIt last) {
@@ -633,12 +635,13 @@ public:
 		// Careful: this can invalidate iterators!
 		// That's why we get the index above first.
 		ensureCapacity(curr_size + count);
+		pos = cbegin() + idx;
 
 		// Default construct so we can move into this.
 		constructDefaultValues(curr_size, curr_size + count);
 
 		// Move by N to make space.
-		auto iter = std::move_backward(cbegin() + idx, cend(), end() + count);
+		std::move_backward(pos, cend(), cend() + count);
 
 		// Destroy objects at insertion index.
 		destroyValues(idx, idx + count);
@@ -651,7 +654,7 @@ public:
 
 		curr_size += count;
 
-		return (iter);
+		return (pos);
 	}
 
 	iterator insert(const_iterator pos, std::initializer_list<T> init_list) {
