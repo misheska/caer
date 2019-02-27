@@ -153,35 +153,24 @@ public:
 	// Default constructor. Initialize empty vector with space for 128 elements.
 	cvector() {
 		curr_size = 0;
-		max_size  = 128;
-		data_ptr  = malloc(max_size * sizeof(T));
-		if (data_ptr == nullptr) {
-			// Failed.
-			throw std::bad_alloc();
-		}
+
+		allocateMemory(128);
 	}
 
 	// Destructor.
 	~cvector() noexcept {
 		// Destroy all values.
 		destroyValues(0, curr_size);
-
-		free(data_ptr);
-
 		curr_size = 0;
-		max_size  = 0;
-		data_ptr  = nullptr;
+
+		freeMemory();
 	}
 
 	// Initialize vector with N default constructed elements.
 	cvector(size_type count) {
 		curr_size = count;
-		max_size  = count;
-		data_ptr  = malloc(max_size * sizeof(T));
-		if (data_ptr == nullptr) {
-			// Failed.
-			throw std::bad_alloc();
-		}
+
+		allocateMemory(count);
 
 		// Default initialize values.
 		constructDefaultValues(0, curr_size);
@@ -190,12 +179,8 @@ public:
 	// Initialize vector with N copies of given value.
 	cvector(size_type count, const_reference value) {
 		curr_size = count;
-		max_size  = count;
-		data_ptr  = malloc(max_size * sizeof(T));
-		if (data_ptr == nullptr) {
-			// Failed.
-			throw std::bad_alloc();
-		}
+
+		allocateMemory(count);
 
 		// Initialize values to copy of X.
 		for (size_type i = 0; i < curr_size; i++) {
@@ -209,12 +194,8 @@ public:
 		auto count = std::distance(first, last);
 
 		curr_size = count;
-		max_size  = count;
-		data_ptr  = malloc(max_size * sizeof(T));
-		if (data_ptr == nullptr) {
-			// Failed.
-			throw std::bad_alloc();
-		}
+
+		allocateMemory(count);
 
 		// Initialize values to copy of range's values.
 		for (size_type i = 0; i < curr_size; i++) {
@@ -231,12 +212,7 @@ public:
 	// Copy constructor.
 	cvector(const cvector &rhs) {
 		// Allocate memory for copy.
-		max_size = rhs.curr_size;
-		data_ptr = malloc(max_size * sizeof(T));
-		if (data_ptr == nullptr) {
-			// Failed.
-			throw std::bad_alloc();
-		}
+		allocateMemory(rhs.curr_size);
 
 		// Full copy.
 		curr_size = rhs.curr_size;
@@ -251,11 +227,12 @@ public:
 	cvector &operator=(const cvector &rhs) {
 		// If both the same, do nothing.
 		if (this != &rhs) {
-			// Ensure space for new copied data.
-			ensureCapacity(rhs.curr_size);
-
 			// Destroy current data.
 			destroyValues(0, curr_size);
+			curr_size = 0;
+
+			// Ensure space for new copied data.
+			reallocateMemory(rhs.curr_size);
 
 			// Full copy.
 			curr_size = rhs.curr_size;
@@ -296,8 +273,9 @@ public:
 
 		// Destroy current data.
 		destroyValues(0, curr_size);
+		curr_size = 0;
 
-		free(data_ptr);
+		freeMemory();
 
 		// Move data here.
 		curr_size = rhs.curr_size;
@@ -714,32 +692,55 @@ private:
 		reallocateMemory(((max_size * 2) > newSize) ? (max_size * 2) : (newSize));
 	}
 
+	void allocateMemory(size_type size) {
+		data_ptr = nullptr;
+
+		if (size != 0) {
+			data_ptr = malloc(size * sizeof(T));
+			if (data_ptr == nullptr) {
+				// Failed.
+				throw std::bad_alloc();
+			}
+		}
+
+		max_size = size;
+	}
+
 	void reallocateMemory(size_type newSize) {
-		pointer new_data_ptr;
+		pointer new_data_ptr = nullptr;
 
 		if constexpr (std::is_pod_v<T>) {
 			// Type is POD, we can just use realloc.
-			new_data_ptr = realloc(data_ptr, newSize * sizeof(T));
-			if (new_data_ptr == nullptr) {
-				// Failed.
-				throw std::bad_alloc();
+			if (newSize != 0) {
+				new_data_ptr = realloc(data_ptr, newSize * sizeof(T));
+				if (new_data_ptr == nullptr) {
+					// Failed.
+					throw std::bad_alloc();
+				}
+			}
+			else {
+				// Like realloc(x, 0), but well-defined.
+				free(data_ptr);
 			}
 		}
 		else {
 			// Type is not POD (C++ object), we cannot use realloc directly.
 			// So we malloc the new size, move objects over, and then free.
-			new_data_ptr = malloc(newSize * sizeof(T));
-			if (new_data_ptr == nullptr) {
-				// Failed.
-				throw std::bad_alloc();
+			if (newSize != 0) {
+				new_data_ptr = malloc(newSize * sizeof(T));
+				if (new_data_ptr == nullptr) {
+					// Failed.
+					throw std::bad_alloc();
+				}
+
+				// Move construct new memory.
+				for (size_type i = 0; i < curr_size; i++) {
+					new (&new_data_ptr[i]) T(std::move(data_ptr[i]));
+				}
 			}
 
-			// Move construct new memory and then destroy moved-from object.
-			for (size_type i = 0; i < curr_size; i++) {
-				new (&new_data_ptr[i]) T(std::move(data_ptr[i]));
-
-				data_ptr[i].~T();
-			}
+			// Destroy old objects.
+			destroyValues(0, curr_size);
 
 			// Free old memory. Objects have been cleaned up above.
 			free(data_ptr);
@@ -748,6 +749,12 @@ private:
 		// Succeeded, update ptr + capacity.
 		data_ptr = new_data_ptr;
 		max_size = newSize;
+	}
+
+	void freeMemory() {
+		free(data_ptr);
+		data_ptr = nullptr;
+		max_size = 0;
 	}
 
 	size_type getIndex(signed_size_type index) const {
