@@ -654,9 +654,20 @@ public:
 		return (iter);
 	}
 
-	// Replace vector via initializer list {x, y, z}.
 	iterator insert(const_iterator pos, std::initializer_list<T> init_list) {
 		return (insert(pos, init_list.begin(), init_list.end()));
+	}
+
+	iterator erase(const_iterator pos) {
+		// TODO.
+	}
+
+	iterator erase(const_iterator first, const_iterator last) {
+		// TODO.
+	}
+
+	template<class... Args> iterator emplace(const_iterator pos, Args &&... args) {
+		// TODO: new (&data_ptr[idx]) T(std::forward<Args>(args)...);
 	}
 
 private:
