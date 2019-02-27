@@ -150,6 +150,7 @@ private:
 	pointer data_ptr;
 
 public:
+	// Default constructor. Initialize empty vector with space for 128 elements.
 	cvector() {
 		curr_size = 0;
 		max_size  = 128;
@@ -160,6 +161,7 @@ public:
 		}
 	}
 
+	// Destructor.
 	~cvector() {
 		// Destroy all values.
 		destroyValues(0, curr_size);
@@ -169,6 +171,57 @@ public:
 		curr_size = 0;
 		max_size  = 0;
 		data_ptr  = nullptr;
+	}
+
+	// Initialize vector with N default constructed elements.
+	cvector(size_type count) {
+		curr_size = count;
+		max_size  = count;
+		data_ptr  = malloc(max_size * sizeof(T));
+		if (data_ptr == nullptr) {
+			// Failed.
+			throw std::bad_alloc();
+		}
+
+		// Default initialize values.
+		constructDefaultValues(0, curr_size);
+	}
+
+	// Initialize vector with N copies of given value.
+	cvector(size_type count, const_reference value) {
+		curr_size = count;
+		max_size  = count;
+		data_ptr  = malloc(max_size * sizeof(T));
+		if (data_ptr == nullptr) {
+			// Failed.
+			throw std::bad_alloc();
+		}
+
+		// Initialize values to copy of X.
+		for (size_type i = 0; i < curr_size; i++) {
+			// Copy construct elements.
+			new (&data_ptr[i]) T(value);
+		}
+	}
+
+	// Initialize vector with elements from range.
+	template<class InputIt> cvector(InputIt first, InputIt last) {
+		auto count = std::distance(first, last);
+
+		curr_size = count;
+		max_size  = count;
+		data_ptr  = malloc(max_size * sizeof(T));
+		if (data_ptr == nullptr) {
+			// Failed.
+			throw std::bad_alloc();
+		}
+
+		// Initialize values to copy of range's values.
+		for (size_type i = 0; i < curr_size; i++) {
+			// Copy construct elements.
+			new (&data_ptr[i]) T(*first);
+			first++;
+		}
 	}
 
 	// Copy constructor.
