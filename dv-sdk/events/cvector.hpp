@@ -10,6 +10,125 @@
 
 namespace dv {
 
+template<class T> class cvectorIterator {
+public:
+	// Iterator traits.
+	using iterator_category = std::random_access_iterator_tag;
+	using value_type        = typename std::remove_cv_t<T>;
+	using pointer           = T *;
+	using reference         = T &;
+	using size_type         = size_t;
+	using difference_type   = ptrdiff_t;
+
+private:
+	pointer element_ptr;
+
+public:
+	// Constructors.
+	cvectorIterator() : element_ptr(nullptr) {
+	}
+
+	cvectorIterator(pointer _element_ptr) : element_ptr(_element_ptr) {
+	}
+
+	// Data access operators.
+	reference operator*() const noexcept {
+		return (*element_ptr);
+	}
+
+	pointer operator->() const noexcept {
+		return (element_ptr);
+	}
+
+	reference operator[](size_type index) const noexcept {
+		return (element_ptr[index]);
+	}
+
+	// Comparison operators.
+	bool operator==(const cvectorIterator &rhs) const noexcept {
+		return (element_ptr == rhs.element_ptr);
+	}
+
+	bool operator!=(const cvectorIterator &rhs) const noexcept {
+		return (element_ptr != rhs.element_ptr);
+	}
+
+	bool operator<(const cvectorIterator &rhs) const noexcept {
+		return (element_ptr < rhs.element_ptr);
+	}
+
+	bool operator>(const cvectorIterator &rhs) const noexcept {
+		return (element_ptr > rhs.element_ptr);
+	}
+
+	bool operator<=(const cvectorIterator &rhs) const noexcept {
+		return (element_ptr <= rhs.element_ptr);
+	}
+
+	bool operator>=(const cvectorIterator &rhs) const noexcept {
+		return (element_ptr >= rhs.element_ptr);
+	}
+
+	// Prefix increment.
+	cvectorIterator &operator++() noexcept {
+		element_ptr++;
+		return (*this);
+	}
+
+	// Postfix increment.
+	cvectorIterator operator++(int) noexcept {
+		return (cvectorIterator(element_ptr++));
+	}
+
+	// Prefix decrement.
+	cvectorIterator &operator--() noexcept {
+		element_ptr--;
+		return (*this);
+	}
+
+	// Postfix decrement.
+	cvectorIterator operator--(int) noexcept {
+		return (cvectorIterator(element_ptr--));
+	}
+
+	// Iter += N.
+	cvectorIterator &operator+=(size_type add) noexcept {
+		element_ptr += add;
+		return (*this);
+	}
+
+	// Iter + N.
+	cvectorIterator operator+(size_type add) const noexcept {
+		return (cvectorIterator(element_ptr + add));
+	}
+
+	// N + Iter. Must be friend as Iter is right-hand-side.
+	friend cvectorIterator operator+(size_type lhs, const cvectorIterator &rhs) noexcept {
+		return (cvectorIterator(rhs.element_ptr + lhs));
+	}
+
+	// Iter -= N.
+	cvectorIterator &operator-=(size_type sub) noexcept {
+		element_ptr -= sub;
+		return (*this);
+	}
+
+	// Iter - N. (N - Iter doesn't make sense!)
+	cvectorIterator operator-(size_type sub) const noexcept {
+		return (cvectorIterator(element_ptr - sub));
+	}
+
+	// Iter - Iter. (Iter + Iter doesn't make sense!)
+	difference_type operator-(const cvectorIterator &rhs) const noexcept {
+		return (element_ptr - rhs.element_ptr);
+	}
+
+	// Swap two iterators.
+	void swap(cvectorIterator &rhs) noexcept {
+		std::swap(element_ptr, rhs.element_ptr);
+	}
+};
+
 template<class T> class cvector {
 public:
 	// Container traits.
@@ -20,20 +139,25 @@ public:
 	using reference        = T &;
 	using const_reference  = const T &;
 	using size_type        = size_t;
+	using signed_size_type = ssize_t;
 	using difference_type  = ptrdiff_t;
 
 	static_assert(std::is_standard_layout_v<T>, "cvector type is not standard layout");
 
 private:
-	pointer data_ptr;
 	size_type curr_size;
 	size_type max_size;
+	pointer data_ptr;
 
 public:
 	cvector() {
 		curr_size = 0;
 		max_size  = 128;
 		data_ptr  = malloc(max_size * sizeof(T));
+		if (data_ptr == nullptr) {
+			// Failed.
+			throw std::bad_alloc();
+		}
 	}
 
 	~cvector() {
@@ -41,29 +165,136 @@ public:
 		destroyValues(0, curr_size);
 
 		free(data_ptr);
+
+		curr_size = 0;
+		max_size  = 0;
+		data_ptr  = nullptr;
 	}
 
-	pointer data() {
+	// Copy constructor.
+	cvector(const cvector &rhs) {
+		// Allocate memory for copy.
+		max_size = rhs.curr_size;
+		data_ptr = malloc(max_size * sizeof(T));
+		if (data_ptr == nullptr) {
+			// Failed.
+			throw std::bad_alloc();
+		}
+
+		// Full copy.
+		curr_size = rhs.curr_size;
+
+		for (size_type i = 0; i < curr_size; i++) {
+			// Copy construct elements.
+			new (&data_ptr[i]) T(rhs.data_ptr[i]);
+		}
+	}
+
+	// Copy assignment.
+	cvector &operator=(const cvector &rhs) {
+		// If both the same, do nothing.
+		if (this != &rhs) {
+			// Ensure space for new copied data.
+			ensureCapacity(rhs.curr_size);
+
+			// Destroy current data.
+			destroyValues(0, curr_size);
+
+			// Full copy.
+			curr_size = rhs.curr_size;
+
+			for (size_type i = 0; i < curr_size; i++) {
+				// Copy construct elements.
+				new (&data_ptr[i]) T(rhs.data_ptr[i]);
+			}
+		}
+
+		return (*this);
+	}
+
+	// Move constructor.
+	cvector(cvector &&rhs) noexcept {
+		// Moved-from object must remain in a valid state. We can define
+		// valid-state-after-move to be nothing allowed but a destructor
+		// call, which is what normally happens, and helps us a lot here.
+
+		// Move data here.
+		curr_size = rhs.curr_size;
+		max_size  = rhs.max_size;
+		data_ptr  = rhs.data_ptr;
+
+		// Reset old data (ready for destruction).
+		rhs.curr_size = 0;
+		rhs.max_size  = 0;
+		rhs.data_ptr  = nullptr;
+	}
+
+	// Move assignment.
+	cvector &operator=(cvector &&rhs) {
+		assert(this != &rhs);
+
+		// Moved-from object must remain in a valid state. We can define
+		// valid-state-after-move to be nothing allowed but a destructor
+		// call, which is what normally happens, and helps us a lot here.
+
+		// Destroy current data.
+		destroyValues(0, curr_size);
+
+		free(data_ptr);
+
+		// Move data here.
+		curr_size = rhs.curr_size;
+		max_size  = rhs.max_size;
+		data_ptr  = rhs.data_ptr;
+
+		// Reset old data (ready for destruction).
+		rhs.curr_size = 0;
+		rhs.max_size  = 0;
+		rhs.data_ptr  = nullptr;
+
+		return (*this);
+	}
+
+	// Comparison operators.
+	bool operator==(const cvector &rhs) const noexcept {
+		if (curr_size != rhs.curr_size) {
+			return (false);
+		}
+
+		for (size_type i = 0; i < curr_size; i++) {
+			if (data_ptr[i] != rhs.data_ptr[i]) {
+				return (false);
+			}
+		}
+
+		return (true);
+	}
+
+	bool operator!=(const cvector &rhs) const noexcept {
+		return (!operator==(rhs));
+	}
+
+	pointer data() noexcept {
 		return (data_ptr);
 	}
 
-	const_pointer data() const {
+	const_pointer data() const noexcept {
 		return (data_ptr);
 	}
 
-	size_type size() const {
+	size_type size() const noexcept {
 		return (curr_size);
 	}
 
-	size_type length() const {
+	size_type length() const noexcept {
 		return (size());
 	}
 
-	size_type capacity() const {
+	size_type capacity() const noexcept {
 		return (max_size);
 	}
 
-	bool empty() const {
+	bool empty() const noexcept {
 		return (curr_size == 0);
 	}
 
@@ -103,36 +334,36 @@ public:
 		max_size = curr_size;
 	}
 
-	reference operator[](size_type index) {
+	reference operator[](signed_size_type index) {
 		return (data_ptr[getIndex(index)]);
 	}
 
-	const_reference operator[](size_type index) const {
+	const_reference operator[](signed_size_type index) const {
 		return (data_ptr[getIndex(index)]);
 	}
 
-	reference at(size_type index) {
+	reference at(signed_size_type index) {
 		return (data_ptr[getIndex(index)]);
 	}
 
-	const_reference at(size_type index) const {
+	const_reference at(signed_size_type index) const {
 		return (data_ptr[getIndex(index)]);
 	}
 
 	reference front() {
-		return (data_ptr[getIndex(0)]);
+		return (at(0));
 	}
 
 	const_reference front() const {
-		return (data_ptr[getIndex(0)]);
+		return (at(0));
 	}
 
 	reference back() {
-		return (data_ptr[getIndex(-1)]);
+		return (at(-1));
 	}
 
 	const_reference back() const {
-		return (data_ptr[getIndex(-1)]);
+		return (at(-1));
 	}
 
 	void push_back(const_reference value) {
@@ -174,6 +405,88 @@ public:
 		curr_size = 0;
 	}
 
+	void swap(cvector &rhs) noexcept {
+		std::swap(curr_size, rhs.curr_size);
+		std::swap(max_size, rhs.max_size);
+		std::swap(data_ptr, rhs.data_ptr);
+	}
+
+	// Iterator support.
+	using iterator               = cvectorIterator<value_type>;
+	using const_iterator         = cvectorIterator<const_value_type>;
+	using reverse_iterator       = std::reverse_iterator<iterator>;
+	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+	iterator begin() noexcept {
+		// Empty container is a special case. front/back would throw.
+		if (empty()) {
+			return (iterator(data_ptr));
+		}
+
+		return (iterator(&front()));
+	}
+
+	iterator end() noexcept {
+		// Empty container is a special case. front/back would throw.
+		if (empty()) {
+			return (iterator(data_ptr));
+		}
+
+		// Pointer must be to element one past the end!
+		return (iterator((&back()) + 1));
+	}
+
+	const_iterator begin() const noexcept {
+		return (cbegin());
+	}
+
+	const_iterator end() const noexcept {
+		return (cend());
+	}
+
+	const_iterator cbegin() const noexcept {
+		// Empty container is a special case. front/back would throw.
+		if (empty()) {
+			return (const_iterator(data_ptr));
+		}
+
+		return (const_iterator(&front()));
+	}
+
+	const_iterator cend() const noexcept {
+		// Empty container is a special case. front/back would throw.
+		if (empty()) {
+			return (const_iterator(data_ptr));
+		}
+
+		// Pointer must be to element one past the end!
+		return (const_iterator((&back()) + 1));
+	}
+
+	reverse_iterator rbegin() noexcept {
+		return (reverse_iterator(end()));
+	}
+
+	reverse_iterator rend() noexcept {
+		return (reverse_iterator(begin()));
+	}
+
+	const_reverse_iterator rbegin() const noexcept {
+		return (crbegin());
+	}
+
+	const_reverse_iterator rend() const noexcept {
+		return (crend());
+	}
+
+	const_reverse_iterator crbegin() const noexcept {
+		return (const_reverse_iterator(cend()));
+	}
+
+	const_reverse_iterator crend() const noexcept {
+		return (const_reverse_iterator(cbegin()));
+	}
+
 private:
 	void constructDefaultValue(size_type index) {
 		new (&data_ptr[index]) T();
@@ -213,7 +526,7 @@ private:
 		max_size *= 2;
 	}
 
-	size_type getIndex(size_type index) const {
+	size_type getIndex(signed_size_type index) const {
 		// Support negative indexes to go from the last existing/defined element
 		// backwards (not from the capacity!).
 		if (index < 0) {
@@ -224,7 +537,7 @@ private:
 			throw std::out_of_range("Index out of range.");
 		}
 
-		return (index);
+		return (static_cast<size_type>(index));
 	}
 };
 
