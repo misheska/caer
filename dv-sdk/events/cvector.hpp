@@ -644,6 +644,43 @@ public:
 		return (iter);
 	}
 
+	template<class InputIt> iterator insert(const_iterator pos, InputIt first, InputIt last) {
+		auto count = std::distance(first, last);
+		if (count == 0) {
+			return (pos);
+		}
+
+		auto idx = std::distance(cbegin(), pos);
+
+		// Careful: this can invalidate iterators!
+		// That's why we get the index above first.
+		ensureCapacity(curr_size + count);
+
+		// Default construct so we can move into this.
+		constructDefaultValues(curr_size, curr_size + count);
+
+		// Move by N to make space.
+		auto iter = std::move_backward(cbegin() + idx, cend(), end() + count);
+
+		// Destroy objects at insertion index.
+		destroyValues(idx, idx + count);
+
+		// Copy construct new elements at insertion index from external range.
+		for (size_type i = idx; i < (idx + count); i++) {
+			new (&data_ptr[i]) T(*first);
+			first++;
+		}
+
+		curr_size += count;
+
+		return (iter);
+	}
+
+	// Replace vector via initializer list {x, y, z}.
+	iterator insert(const_iterator pos, std::initializer_list<T> init_list) {
+		return (insert(pos, init_list.begin(), init_list.end()));
+	}
+
 private:
 	void constructDefaultValue(size_type index) {
 		new (&data_ptr[index]) T();
