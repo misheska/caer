@@ -662,11 +662,36 @@ public:
 	}
 
 	iterator erase(const_iterator pos) {
-		// TODO.
+		// Move elements over, this will move assign into the
+		// to be erased element, effectively erasing it.
+		std::move(pos + 1, cend(), pos);
+
+		// Destroy object at end, this was moved from and is
+		// now waiting on destruction.
+		curr_size--;
+
+		destroyValue(curr_size);
+
+		return (pos);
 	}
 
 	iterator erase(const_iterator first, const_iterator last) {
-		// TODO.
+		auto count = std::distance(first, last);
+		if (count == 0) {
+			return (first);
+		}
+
+		// Move elements over, this will move assign into the
+		// to be erased element, effectively erasing it.
+		std::move(last, cend(), first);
+
+		// Destroy object at end, this was moved from and is
+		// now waiting on destruction.
+		curr_size -= count;
+
+		destroyValue(curr_size, curr_size + count);
+
+		return (first);
 	}
 
 	template<class... Args> iterator emplace(const_iterator pos, Args &&... args) {
