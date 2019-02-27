@@ -670,7 +670,7 @@ private:
 	void reallocateMemory(size_type newSize) {
 		pointer new_data_ptr;
 
-		if (std::is_pod_v<T>) {
+		if constexpr (std::is_pod_v<T>) {
 			// Type is POD, we can just use realloc.
 			new_data_ptr = realloc(data_ptr, newSize * sizeof(T));
 			if (new_data_ptr == nullptr) {
