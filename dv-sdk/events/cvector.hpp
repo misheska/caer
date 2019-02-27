@@ -587,27 +587,7 @@ public:
 	}
 
 	iterator insert(const_iterator pos, const_reference value) {
-		auto idx = std::distance(cbegin(), pos);
-
-		// Careful: this can invalidate iterators!
-		// That's why we get the index above first.
-		ensureCapacity(curr_size + 1);
-
-		// Default construct so we can move into this.
-		constructDefaultValue(curr_size);
-
-		// Move by one to make space.
-		auto iter = std::move_backward(cbegin() + idx, cend(), end() + 1);
-
-		// Destroy object at insertion index.
-		data_ptr[idx].~T();
-
-		// Copy construct new element at insertion index.
-		new (&data_ptr[idx]) T(value);
-
-		curr_size++;
-
-		return (iter);
+		return (insert(pos, 1, value));
 	}
 
 	iterator insert(const_iterator pos, T &&value) {
@@ -624,12 +604,42 @@ public:
 		auto iter = std::move_backward(cbegin() + idx, cend(), end() + 1);
 
 		// Destroy object at insertion index.
-		data_ptr[idx].~T();
+		destroyValue(idx);
 
 		// Move construct new element at insertion index.
 		new (&data_ptr[idx]) T(std::move(value));
 
 		curr_size++;
+
+		return (iter);
+	}
+
+	iterator insert(const_iterator pos, size_type count, const_reference value) {
+		if (count == 0) {
+			return (pos);
+		}
+
+		auto idx = std::distance(cbegin(), pos);
+
+		// Careful: this can invalidate iterators!
+		// That's why we get the index above first.
+		ensureCapacity(curr_size + count);
+
+		// Default construct so we can move into this.
+		constructDefaultValues(curr_size, curr_size + count);
+
+		// Move by N to make space.
+		auto iter = std::move_backward(cbegin() + idx, cend(), end() + count);
+
+		// Destroy objects at insertion index.
+		destroyValues(idx, idx + count);
+
+		// Copy construct new elements at insertion index.
+		for (size_type i = idx; i < (idx + count); i++) {
+			new (&data_ptr[i]) T(value);
+		}
+
+		curr_size += count;
 
 		return (iter);
 	}
