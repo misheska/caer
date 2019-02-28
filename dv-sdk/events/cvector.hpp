@@ -412,67 +412,67 @@ public:
 	}
 
 	reference operator[](int32_t index) {
-		return (data_ptr[getIndex(index)]);
+		return (at(index));
 	}
 
 	const_reference operator[](int32_t index) const {
-		return (data_ptr[getIndex(index)]);
+		return (at(index));
 	}
 
 	reference operator[](int64_t index) {
-		return (data_ptr[getIndex(index)]);
+		return (at(index));
 	}
 
 	const_reference operator[](int64_t index) const {
-		return (data_ptr[getIndex(index)]);
+		return (at(index));
 	}
 
 	reference operator[](uint32_t index) {
-		return (data_ptr[getIndex(index)]);
+		return (at(index));
 	}
 
 	const_reference operator[](uint32_t index) const {
-		return (data_ptr[getIndex(index)]);
+		return (at(index));
 	}
 
 	reference operator[](uint64_t index) {
-		return (data_ptr[getIndex(index)]);
+		return (at(index));
 	}
 
 	const_reference operator[](uint64_t index) const {
-		return (data_ptr[getIndex(index)]);
+		return (at(index));
 	}
 
 	reference at(int32_t index) {
-		return (data_ptr[getIndex(index)]);
+		return (data_ptr[getIndex(static_cast<signed_size_type>(index))]);
 	}
 
-	const_reference aa(int32_t index) const {
-		return (data_ptr[getIndex(index)]);
+	const_reference at(int32_t index) const {
+		return (data_ptr[getIndex(static_cast<signed_size_type>(index))]);
 	}
 
 	reference at(int64_t index) {
-		return (data_ptr[getIndex(index)]);
+		return (data_ptr[getIndex(static_cast<signed_size_type>(index))]);
 	}
 
 	const_reference at(int64_t index) const {
-		return (data_ptr[getIndex(index)]);
+		return (data_ptr[getIndex(static_cast<signed_size_type>(index))]);
 	}
 
 	reference at(uint32_t index) {
-		return (data_ptr[getIndex(index)]);
+		return (data_ptr[getIndex(static_cast<size_type>(index))]);
 	}
 
 	const_reference at(uint32_t index) const {
-		return (data_ptr[getIndex(index)]);
+		return (data_ptr[getIndex(static_cast<size_type>(index))]);
 	}
 
 	reference at(uint64_t index) {
-		return (data_ptr[getIndex(index)]);
+		return (data_ptr[getIndex(static_cast<size_type>(index))]);
 	}
 
 	const_reference at(uint64_t index) const {
-		return (data_ptr[getIndex(index)]);
+		return (data_ptr[getIndex(static_cast<size_type>(index))]);
 	}
 
 	reference front() {
