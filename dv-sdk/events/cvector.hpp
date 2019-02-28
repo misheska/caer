@@ -1,10 +1,12 @@
 #ifndef CVECTOR_HPP
 #define CVECTOR_HPP
 
+#include <algorithm>
 #include <cinttypes>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
 #include <stdexcept>
 #include <type_traits>
 
@@ -159,8 +161,8 @@ public:
 
 	// Destructor.
 	~cvector() noexcept {
-		// Destroy all values.
-		destroyValues(0, curr_size);
+		// Destroy all elements.
+		std::destroy_n(begin(), curr_size);
 		curr_size = 0;
 
 		freeMemory();
@@ -172,8 +174,8 @@ public:
 
 		allocateMemory(count);
 
-		// Default initialize values.
-		constructDefaultValues(0, curr_size);
+		// Default initialize elements.
+		std::uninitialized_default_construct_n(begin(), count);
 	}
 
 	// Initialize vector with N copies of given value.
@@ -182,11 +184,8 @@ public:
 
 		allocateMemory(count);
 
-		// Initialize values to copy of X.
-		for (size_type i = 0; i < curr_size; i++) {
-			// Copy construct elements.
-			new (&data_ptr[i]) T(value);
-		}
+		// Initialize elements to copy of value.
+		std::uninitialized_fill_n(begin(), count, value);
 	}
 
 	// Initialize vector with elements from range.
@@ -197,12 +196,8 @@ public:
 
 		allocateMemory(count);
 
-		// Initialize values to copy of range's values.
-		for (size_type i = 0; i < curr_size; i++) {
-			// Copy construct elements.
-			new (&data_ptr[i]) T(*first);
-			first++;
-		}
+		// Initialize elements to copy of range's values.
+		std::uninitialized_copy_n(first, count, begin());
 	}
 
 	// Initialize vector via initializer list {x, y, z}.
@@ -217,10 +212,7 @@ public:
 		// Full copy.
 		curr_size = rhs.curr_size;
 
-		for (size_type i = 0; i < curr_size; i++) {
-			// Copy construct elements.
-			new (&data_ptr[i]) T(rhs.data_ptr[i]);
-		}
+		std::uninitialized_copy_n(rhs.cbegin(), curr_size, begin());
 	}
 
 	// Copy assignment.
@@ -228,7 +220,7 @@ public:
 		// If both the same, do nothing.
 		if (this != &rhs) {
 			// Destroy current data.
-			destroyValues(0, curr_size);
+			std::destroy_n(begin(), curr_size);
 			curr_size = 0;
 
 			// Ensure space for new copied data.
@@ -237,10 +229,7 @@ public:
 			// Full copy.
 			curr_size = rhs.curr_size;
 
-			for (size_type i = 0; i < curr_size; i++) {
-				// Copy construct elements.
-				new (&data_ptr[i]) T(rhs.data_ptr[i]);
-			}
+			std::uninitialized_copy_n(rhs.cbegin(), curr_size, begin());
 		}
 
 		return (*this);
@@ -272,7 +261,7 @@ public:
 		// call, which is what normally happens, and helps us a lot here.
 
 		// Destroy current data.
-		destroyValues(0, curr_size);
+		std::destroy_n(begin(), curr_size);
 		curr_size = 0;
 
 		freeMemory();
@@ -292,17 +281,7 @@ public:
 
 	// Comparison operators.
 	bool operator==(const cvector &rhs) const noexcept {
-		if (curr_size != rhs.curr_size) {
-			return (false);
-		}
-
-		for (size_type i = 0; i < curr_size; i++) {
-			if (data_ptr[i] != rhs.data_ptr[i]) {
-				return (false);
-			}
-		}
-
-		return (true);
+		return (std::equal(cbegin(), cend(), rhs.cbegin(), rhs.cend()));
 	}
 
 	bool operator!=(const cvector &rhs) const noexcept {
@@ -313,27 +292,24 @@ public:
 	void assign(size_type count) {
 		ensureCapacity(count);
 
-		destroyValues(0, curr_size);
+		std::destroy_n(begin(), curr_size);
 
 		curr_size = count;
 
-		// Default initialize values.
-		constructDefaultValues(0, curr_size);
+		// Default initialize elements.
+		std::uninitialized_default_construct_n(begin(), count);
 	}
 
 	// Replace vector with N copies of given value.
 	void assign(size_type count, const_reference value) {
 		ensureCapacity(count);
 
-		destroyValues(0, curr_size);
+		std::destroy_n(begin(), curr_size);
 
 		curr_size = count;
 
-		// Initialize values to copy of X.
-		for (size_type i = 0; i < curr_size; i++) {
-			// Copy construct elements.
-			new (&data_ptr[i]) T(value);
-		}
+		// Initialize elements to copy of value.
+		std::uninitialized_fill_n(begin(), count, value);
 	}
 
 	// Replace vector with elements from range.
@@ -342,16 +318,12 @@ public:
 
 		ensureCapacity(count);
 
-		destroyValues(0, curr_size);
+		std::destroy_n(begin(), curr_size);
 
 		curr_size = count;
 
-		// Initialize values to copy of range's values.
-		for (size_type i = 0; i < curr_size; i++) {
-			// Copy construct elements.
-			new (&data_ptr[i]) T(*first);
-			first++;
-		}
+		// Initialize elements to copy of range's values.
+		std::uninitialized_copy_n(first, count, begin());
 	}
 
 	// Replace vector via initializer list {x, y, z}.
@@ -388,11 +360,11 @@ public:
 
 		if (newSize >= curr_size) {
 			// Construct new values on expansion.
-			constructDefaultValues(curr_size, newSize);
+			std::uninitialized_default_construct_n(end(), (newSize - curr_size));
 		}
 		else {
 			// Destroy on shrinking.
-			destroyValues(newSize, curr_size);
+			std::destroy_n(begin() + newSize, (curr_size - newSize));
 		}
 
 		curr_size = newSize;
@@ -521,11 +493,11 @@ public:
 	void pop_back() noexcept {
 		curr_size--;
 
-		destroyValue(curr_size);
+		std::destroy_n(end(), 1);
 	}
 
 	void clear() noexcept {
-		destroyValues(0, curr_size);
+		std::destroy_n(begin(), curr_size);
 
 		curr_size = 0;
 	}
@@ -617,21 +589,20 @@ public:
 	}
 
 	iterator insert(const_iterator pos, T &&value) {
+		// Careful: ensureCapacity() can invalidate iterators!
+		// That's why we get the index first and regenerate pos.
 		auto idx = std::distance(cbegin(), pos);
-
-		// Careful: this can invalidate iterators!
-		// That's why we get the index above first.
 		ensureCapacity(curr_size + 1);
 		pos = cbegin() + idx;
 
 		// Default construct so we can move into this.
-		constructDefaultValue(curr_size);
+		std::uninitialized_default_construct_n(end(), 1);
 
 		// Move by one to make space.
-		std::move_backward(pos, cend(), cend() + 1);
+		std::move_backward(pos, cend(), end() + 1);
 
-		// Destroy object at insertion index.
-		destroyValue(idx);
+		// Destroy object at insertion position.
+		std::destroy_n(pos, 1);
 
 		// Move construct new element at insertion index.
 		new (&data_ptr[idx]) T(std::move(value));
@@ -646,26 +617,23 @@ public:
 			return (pos);
 		}
 
+		// Careful: ensureCapacity() can invalidate iterators!
+		// That's why we get the index first and regenerate pos.
 		auto idx = std::distance(cbegin(), pos);
-
-		// Careful: this can invalidate iterators!
-		// That's why we get the index above first.
-		ensureCapacity(curr_size + count);
+		ensureCapacity(curr_size + 1);
 		pos = cbegin() + idx;
 
 		// Default construct so we can move into this.
-		constructDefaultValues(curr_size, curr_size + count);
+		std::uninitialized_default_construct_n(end(), count);
 
 		// Move by N to make space.
-		std::move_backward(pos, cend(), cend() + count);
+		std::move_backward(pos, cend(), end() + count);
 
-		// Destroy objects at insertion index.
-		destroyValues(idx, idx + count);
+		// Destroy objects at insertion position.
+		std::destroy_n(pos, count);
 
-		// Copy construct new elements at insertion index.
-		for (size_type i = idx; i < (idx + count); i++) {
-			new (&data_ptr[i]) T(value);
-		}
+		// Copy construct new elements at insertion position.
+		std::uninitialized_fill_n(pos, count, value);
 
 		curr_size += count;
 
@@ -678,27 +646,23 @@ public:
 			return (pos);
 		}
 
+		// Careful: ensureCapacity() can invalidate iterators!
+		// That's why we get the index first and regenerate pos.
 		auto idx = std::distance(cbegin(), pos);
-
-		// Careful: this can invalidate iterators!
-		// That's why we get the index above first.
-		ensureCapacity(curr_size + count);
+		ensureCapacity(curr_size + 1);
 		pos = cbegin() + idx;
 
 		// Default construct so we can move into this.
-		constructDefaultValues(curr_size, curr_size + count);
+		std::uninitialized_default_construct_n(end(), count);
 
 		// Move by N to make space.
-		std::move_backward(pos, cend(), cend() + count);
+		std::move_backward(pos, cend(), end() + count);
 
-		// Destroy objects at insertion index.
-		destroyValues(idx, idx + count);
+		// Destroy objects at insertion position.
+		std::destroy_n(pos, count);
 
-		// Copy construct new elements at insertion index from external range.
-		for (size_type i = idx; i < (idx + count); i++) {
-			new (&data_ptr[i]) T(*first);
-			first++;
-		}
+		// Copy construct new elements at insertion position from external range.
+		std::uninitialized_copy_n(first, count, pos);
 
 		curr_size += count;
 
@@ -718,7 +682,7 @@ public:
 		// now waiting on destruction.
 		curr_size--;
 
-		destroyValue(curr_size);
+		std::destroy_n(end(), 1);
 
 		return (pos);
 	}
@@ -733,31 +697,30 @@ public:
 		// to be erased element, effectively erasing it.
 		std::move(last, cend(), first);
 
-		// Destroy object at end, this was moved from and is
+		// Destroy objects at end, they were moved from and are
 		// now waiting on destruction.
 		curr_size -= count;
 
-		destroyValue(curr_size, curr_size + count);
+		std::destroy_n(end(), count);
 
 		return (first);
 	}
 
 	template<class... Args> iterator emplace(const_iterator pos, Args &&... args) {
+		// Careful: ensureCapacity() can invalidate iterators!
+		// That's why we get the index first and regenerate pos.
 		auto idx = std::distance(cbegin(), pos);
-
-		// Careful: this can invalidate iterators!
-		// That's why we get the index above first.
 		ensureCapacity(curr_size + 1);
 		pos = cbegin() + idx;
 
 		// Default construct so we can move into this.
-		constructDefaultValue(curr_size);
+		std::uninitialized_default_construct_n(end(), 1);
 
 		// Move by one to make space.
-		std::move_backward(pos, cend(), cend() + 1);
+		std::move_backward(pos, cend(), end() + 1);
 
-		// Destroy object at insertion index.
-		destroyValue(idx);
+		// Destroy object at insertion position.
+		std::destroy_n(pos, 1);
 
 		// Move construct new element at insertion index.
 		new (&data_ptr[idx]) T(std::forward<Args>(args)...);
@@ -768,26 +731,6 @@ public:
 	}
 
 private:
-	void constructDefaultValue(size_type index) {
-		new (&data_ptr[index]) T();
-	}
-
-	void constructDefaultValues(size_type begin, size_type end) {
-		for (size_type i = begin; i < end; i++) {
-			constructDefaultValue(i);
-		}
-	}
-
-	void destroyValue(size_type index) {
-		data_ptr[index].~T();
-	}
-
-	void destroyValues(size_type begin, size_type end) {
-		for (size_type i = begin; i < end; i++) {
-			destroyValue(i);
-		}
-	}
-
 	void ensureCapacity(size_type newSize) {
 		// Do we have enough space left?
 		if (newSize <= max_size) {
@@ -842,13 +785,11 @@ private:
 				}
 
 				// Move construct new memory.
-				for (size_type i = 0; i < curr_size; i++) {
-					new (&new_data_ptr[i]) T(std::move(data_ptr[i]));
-				}
+				std::uninitialized_move_n(begin(), curr_size, iterator(new_data_ptr));
 			}
 
 			// Destroy old objects.
-			destroyValues(0, curr_size);
+			std::destroy_n(begin(), curr_size);
 
 			// Free old memory. Objects have been cleaned up above.
 			free(data_ptr);
