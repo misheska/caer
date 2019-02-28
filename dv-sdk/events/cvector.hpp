@@ -695,7 +695,28 @@ public:
 	}
 
 	template<class... Args> iterator emplace(const_iterator pos, Args &&... args) {
-		// TODO: new (&data_ptr[idx]) T(std::forward<Args>(args)...);
+		auto idx = std::distance(cbegin(), pos);
+
+		// Careful: this can invalidate iterators!
+		// That's why we get the index above first.
+		ensureCapacity(curr_size + 1);
+		pos = cbegin() + idx;
+
+		// Default construct so we can move into this.
+		constructDefaultValue(curr_size);
+
+		// Move by one to make space.
+		std::move_backward(pos, cend(), cend() + 1);
+
+		// Destroy object at insertion index.
+		destroyValue(idx);
+
+		// Move construct new element at insertion index.
+		new (&data_ptr[idx]) T(std::forward<Args>(args)...);
+
+		curr_size++;
+
+		return (pos);
 	}
 
 private:
