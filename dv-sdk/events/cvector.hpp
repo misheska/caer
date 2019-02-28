@@ -411,19 +411,67 @@ public:
 		reallocateMemory(curr_size);
 	}
 
-	reference operator[](signed_size_type index) {
+	reference operator[](int32_t index) {
 		return (data_ptr[getIndex(index)]);
 	}
 
-	const_reference operator[](signed_size_type index) const {
+	const_reference operator[](int32_t index) const {
 		return (data_ptr[getIndex(index)]);
 	}
 
-	reference at(signed_size_type index) {
+	reference operator[](int64_t index) {
 		return (data_ptr[getIndex(index)]);
 	}
 
-	const_reference at(signed_size_type index) const {
+	const_reference operator[](int64_t index) const {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	reference operator[](uint32_t index) {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	const_reference operator[](uint32_t index) const {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	reference operator[](uint64_t index) {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	const_reference operator[](uint64_t index) const {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	reference at(int32_t index) {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	const_reference aa(int32_t index) const {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	reference at(int64_t index) {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	const_reference at(int64_t index) const {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	reference at(uint32_t index) {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	const_reference at(uint32_t index) const {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	reference at(uint64_t index) {
+		return (data_ptr[getIndex(index)]);
+	}
+
+	const_reference at(uint64_t index) const {
 		return (data_ptr[getIndex(index)]);
 	}
 
@@ -815,6 +863,14 @@ private:
 		free(data_ptr);
 		data_ptr = nullptr;
 		max_size = 0;
+	}
+
+	size_type getIndex(size_type index) const {
+		if (index >= curr_size) {
+			throw std::out_of_range("Index out of range.");
+		}
+
+		return (index);
 	}
 
 	size_type getIndex(signed_size_type index) const {
