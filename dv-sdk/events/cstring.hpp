@@ -156,10 +156,16 @@ public:
 	cstring(const std::string &str) {
 	}
 
-	cstring &operator=(const std::string &str) {
+	cstring(const char *str, uint32_t strLength) {
 	}
 
 	size_t length() const {
+	}
+
+	const char *c_str() const {
+	}
+
+	bool empty() const {
 	}
 };
 
