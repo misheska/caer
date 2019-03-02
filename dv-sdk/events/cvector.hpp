@@ -190,7 +190,12 @@ public:
 
 	// Initialize vector with elements from range.
 	template<class InputIt> cvector(InputIt first, InputIt last) {
-		auto count = std::distance(first, last);
+		auto difference = std::distance(first, last);
+		if (difference < 0) {
+			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
+		}
+
+		auto count = static_cast<size_type>(std::abs(difference));
 
 		curr_size = count;
 
@@ -314,7 +319,12 @@ public:
 
 	// Replace vector with elements from range.
 	template<class InputIt> void assign(InputIt first, InputIt last) {
-		auto count = std::distance(first, last);
+		auto difference = std::distance(first, last);
+		if (difference < 0) {
+			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
+		}
+
+		auto count = static_cast<size_type>(std::abs(difference));
 
 		ensureCapacity(count);
 
@@ -641,7 +651,12 @@ public:
 	}
 
 	template<class InputIt> iterator insert(const_iterator pos, InputIt first, InputIt last) {
-		auto count = std::distance(first, last);
+		auto difference = std::distance(first, last);
+		if (difference < 0) {
+			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
+		}
+
+		auto count = static_cast<size_type>(std::abs(difference));
 		if (count == 0) {
 			return (pos);
 		}
@@ -688,7 +703,12 @@ public:
 	}
 
 	iterator erase(const_iterator first, const_iterator last) {
-		auto count = std::distance(first, last);
+		auto difference = std::distance(first, last);
+		if (difference < 0) {
+			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
+		}
+
+		auto count = static_cast<size_type>(std::abs(difference));
 		if (count == 0) {
 			return (first);
 		}
