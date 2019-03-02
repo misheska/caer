@@ -462,10 +462,6 @@ public:
 		return (curr_size);
 	}
 
-	size_type length() const noexcept {
-		return (size());
-	}
-
 	size_type capacity() const noexcept {
 		return (maximum_size);
 	}
