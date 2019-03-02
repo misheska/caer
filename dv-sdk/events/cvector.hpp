@@ -10,6 +10,7 @@
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
+#include <vector>
 
 namespace dv {
 
@@ -144,7 +145,9 @@ public:
 	using size_type        = size_t;
 	using difference_type  = ptrdiff_t;
 
-	static_assert(std::is_standard_layout_v<T>, "cvector type is not standard layout");
+	static const size_type npos = static_cast<size_type>(-1);
+
+	static_assert(std::is_standard_layout_v<value_type>, "cvector type is not standard layout");
 
 private:
 	size_type curr_size;
@@ -166,6 +169,54 @@ public:
 		curr_size = 0;
 
 		freeMemory();
+	}
+
+	// Copy constructor.
+	cvector(const cvector &vec) : cvector(vec, 0) {
+	}
+
+	cvector(const cvector &vec, size_type pos) : cvector(vec, pos, npos) {
+	}
+
+	cvector(const cvector &vec, size_type pos, size_type count) : cvector(vec.data(), vec.size(), pos, count) {
+	}
+
+	cvector(const std::vector<value_type> &vec) : cvector(vec, 0) {
+	}
+
+	cvector(const std::vector<value_type> &vec, size_type pos) : cvector(vec, pos, npos) {
+	}
+
+	cvector(const std::vector<value_type> &vec, size_type pos, size_type count) :
+		cvector(vec.data(), vec.size(), pos, count) {
+	}
+
+	cvector(const_pointer vec, size_type vecLength) : cvector(vec, vecLength, 0) {
+	}
+
+	cvector(const_pointer vec, size_type vecLength, size_type pos) : cvector(vec, vecLength, pos, npos) {
+	}
+
+	// Lowest common denominator: a ptr and sizes. Most constructors call this.
+	cvector(const_pointer vec, size_type vecLength, size_type pos, size_type count) {
+		if (vec == nullptr) {
+			throw std::invalid_argument("vector resolves to nullptr.");
+		}
+
+		if (pos > vecLength) {
+			throw std::length_error("position bigger than vector length.");
+		}
+
+		// Ensure number of elements to copy is within range.
+		if (count > (vecLength - pos)) {
+			count = vecLength - pos;
+		}
+
+		curr_size = count;
+
+		allocateMemory(count);
+
+		std::uninitialized_copy_n(const_iterator(vec + pos), count, begin());
 	}
 
 	// Initialize vector with N default constructed elements.
@@ -206,38 +257,7 @@ public:
 	}
 
 	// Initialize vector via initializer list {x, y, z}.
-	cvector(std::initializer_list<T> init_list) : cvector(init_list.begin(), init_list.end()) {
-	}
-
-	// Copy constructor.
-	cvector(const cvector &rhs) {
-		// Allocate memory for copy.
-		allocateMemory(rhs.curr_size);
-
-		// Full copy.
-		curr_size = rhs.curr_size;
-
-		std::uninitialized_copy_n(rhs.cbegin(), curr_size, begin());
-	}
-
-	// Copy assignment.
-	cvector &operator=(const cvector &rhs) {
-		// If both the same, do nothing.
-		if (this != &rhs) {
-			// Destroy current data.
-			std::destroy_n(begin(), curr_size);
-			curr_size = 0;
-
-			// Ensure space for new copied data.
-			ensureCapacity(rhs.curr_size);
-
-			// Full copy.
-			curr_size = rhs.curr_size;
-
-			std::uninitialized_copy_n(rhs.cbegin(), curr_size, begin());
-		}
-
-		return (*this);
+	cvector(std::initializer_list<value_type> init_list) : cvector(init_list.begin(), init_list.end()) {
 	}
 
 	// Move constructor.
@@ -259,7 +279,48 @@ public:
 
 	// Move assignment.
 	cvector &operator=(cvector &&rhs) noexcept {
-		assert(this != &rhs);
+		assign(std::move(rhs));
+
+		return (*this);
+	}
+
+	// Copy assignment.
+	cvector &operator=(const cvector &rhs) {
+		assign(rhs);
+
+		return (*this);
+	}
+
+	// Extra assignment operators.
+	cvector &operator=(const std::vector<value_type> &rhs) {
+		assign(rhs);
+
+		return (*this);
+	}
+
+	cvector &operator=(const_reference value) {
+		assign(1, value);
+
+		return (*this);
+	}
+
+	cvector &operator=(std::initializer_list<value_type> rhs_list) {
+		assign(rhs_list);
+
+		return (*this);
+	}
+
+	// Comparison operators.
+	bool operator==(const cvector &rhs) const noexcept {
+		return (std::equal(cbegin(), cend(), rhs.cbegin(), rhs.cend()));
+	}
+
+	bool operator!=(const cvector &rhs) const noexcept {
+		return (!operator==(rhs));
+	}
+
+	void assign(cvector &&vec) noexcept {
+		assert(this != &vec);
 
 		// Moved-from object must remain in a valid state. We can define
 		// valid-state-after-move to be nothing allowed but a destructor
@@ -272,25 +333,73 @@ public:
 		freeMemory();
 
 		// Move data here.
-		curr_size    = rhs.curr_size;
-		maximum_size = rhs.maximum_size;
-		data_ptr     = rhs.data_ptr;
+		curr_size    = vec.curr_size;
+		maximum_size = vec.maximum_size;
+		data_ptr     = vec.data_ptr;
 
 		// Reset old data (ready for destruction).
-		rhs.curr_size    = 0;
-		rhs.maximum_size = 0;
-		rhs.data_ptr     = nullptr;
-
-		return (*this);
+		vec.curr_size    = 0;
+		vec.maximum_size = 0;
+		vec.data_ptr     = nullptr;
 	}
 
-	// Comparison operators.
-	bool operator==(const cvector &rhs) const noexcept {
-		return (std::equal(cbegin(), cend(), rhs.cbegin(), rhs.cend()));
+	void assign(const cvector &vec) {
+		// If both the same, do nothing.
+		if (this != &vec) {
+			assign(vec, 0);
+		}
 	}
 
-	bool operator!=(const cvector &rhs) const noexcept {
-		return (!operator==(rhs));
+	void assign(const cvector &vec, size_type pos) {
+		assign(vec, pos, npos);
+	}
+
+	void assign(const cvector &vec, size_type pos, size_type count) {
+		assign(vec.data(), vec.size(), pos, count);
+	}
+
+	void assign(const std::vector<value_type> &vec) {
+		assign(vec, 0);
+	}
+
+	void assign(const std::vector<value_type> &vec, size_type pos) {
+		assign(vec, pos, npos);
+	}
+
+	void assign(const std::vector<value_type> &vec, size_type pos, size_type count) {
+		assign(vec.data(), vec.size(), pos, count);
+	}
+
+	void assign(const_pointer vec, size_type vecLength) {
+		assign(vec, vecLength, 0);
+	}
+
+	void assign(const_pointer vec, size_type vecLength, size_type pos) {
+		assign(vec, vecLength, pos, npos);
+	}
+
+	// Lowest common denominator: a ptr and sizes. Most assignments call this.
+	void assign(const_pointer vec, size_type vecLength, size_type pos, size_type count) {
+		if (vec == nullptr) {
+			throw std::invalid_argument("vector resolves to nullptr.");
+		}
+
+		if (pos > vecLength) {
+			throw std::length_error("position bigger than vector length.");
+		}
+
+		// Ensure number of elements to copy is within range.
+		if (count > (vecLength - pos)) {
+			count = vecLength - pos;
+		}
+
+		ensureCapacity(count);
+
+		std::destroy_n(begin(), curr_size);
+
+		curr_size = count;
+
+		std::uninitialized_copy_n(const_iterator(vec + pos), count, begin());
 	}
 
 	// Replace vector with N default constructed elements.
@@ -337,7 +446,7 @@ public:
 	}
 
 	// Replace vector via initializer list {x, y, z}.
-	void assign(std::initializer_list<T> init_list) {
+	void assign(std::initializer_list<value_type> init_list) {
 		assign(init_list.begin(), init_list.end());
 	}
 
@@ -688,7 +797,7 @@ public:
 		return (pos);
 	}
 
-	iterator insert(const_iterator pos, std::initializer_list<T> init_list) {
+	iterator insert(const_iterator pos, std::initializer_list<value_type> init_list) {
 		return (insert(pos, init_list.begin(), init_list.end()));
 	}
 
@@ -774,7 +883,7 @@ private:
 		maximum_size = 0;
 
 		if (size > max_size()) {
-			throw std::length_error();
+			throw std::length_error("size exceeds max_size() limit.");
 		}
 
 		if (size != 0) {
@@ -790,12 +899,12 @@ private:
 
 	void reallocateMemory(size_type newSize) {
 		if (newSize > max_size()) {
-			throw std::length_error();
+			throw std::length_error("size exceeds max_size() limit.");
 		}
 
 		pointer new_data_ptr = nullptr;
 
-		if constexpr (std::is_pod_v<T>) {
+		if constexpr (std::is_pod_v<value_type>) {
 			// Type is POD, we can just use realloc.
 			if (newSize != 0) {
 				new_data_ptr = static_cast<pointer>(realloc(data_ptr, newSize * sizeof(T)));
