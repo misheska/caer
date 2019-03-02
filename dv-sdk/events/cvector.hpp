@@ -475,11 +475,15 @@ public:
 	}
 
 	void resize(size_type newSize) {
+		resize(newSize, value_type{});
+	}
+
+	void resize(size_type newSize, const_reference value) {
 		ensureCapacity(newSize);
 
 		if (newSize >= curr_size) {
 			// Construct new values on expansion.
-			std::uninitialized_default_construct_n(end(), (newSize - curr_size));
+			std::uninitialized_fill_n(end(), (newSize - curr_size), value);
 		}
 		else {
 			// Destroy on shrinking.
