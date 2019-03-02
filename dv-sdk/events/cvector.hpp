@@ -228,7 +228,7 @@ public:
 			curr_size = 0;
 
 			// Ensure space for new copied data.
-			reallocateMemory(rhs.curr_size);
+			ensureCapacity(rhs.curr_size);
 
 			// Full copy.
 			curr_size = rhs.curr_size;
