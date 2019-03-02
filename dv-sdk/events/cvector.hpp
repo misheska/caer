@@ -474,7 +474,7 @@ public:
 		return (static_cast<size_type>(std::numeric_limits<difference_type>::max()));
 	}
 
-	bool empty() const noexcept {
+	[[nodiscard]] bool empty() const noexcept {
 		return (curr_size == 0);
 	}
 
