@@ -141,7 +141,6 @@ public:
 	using reference        = T &;
 	using const_reference  = const T &;
 	using size_type        = size_t;
-	using signed_size_type = ssize_t;
 	using difference_type  = ptrdiff_t;
 
 	static_assert(std::is_standard_layout_v<T>, "cvector type is not standard layout");
@@ -430,19 +429,19 @@ public:
 	}
 
 	reference at(int32_t index) {
-		return (data_ptr[getIndex(static_cast<signed_size_type>(index))]);
+		return (data_ptr[getIndex(static_cast<difference_type>(index))]);
 	}
 
 	const_reference at(int32_t index) const {
-		return (data_ptr[getIndex(static_cast<signed_size_type>(index))]);
+		return (data_ptr[getIndex(static_cast<difference_type>(index))]);
 	}
 
 	reference at(int64_t index) {
-		return (data_ptr[getIndex(static_cast<signed_size_type>(index))]);
+		return (data_ptr[getIndex(static_cast<difference_type>(index))]);
 	}
 
 	const_reference at(int64_t index) const {
-		return (data_ptr[getIndex(static_cast<signed_size_type>(index))]);
+		return (data_ptr[getIndex(static_cast<difference_type>(index))]);
 	}
 
 	reference at(uint32_t index) {
@@ -849,11 +848,11 @@ private:
 		return (index);
 	}
 
-	size_type getIndex(signed_size_type index) const {
+	size_type getIndex(difference_type index) const {
 		// Support negative indexes to go from the last existing/defined element
 		// backwards (not from the capacity!).
 		if (index < 0) {
-			index = static_cast<int64_t>(curr_size) + index;
+			index = static_cast<difference_type>(curr_size) + index;
 		}
 
 		if (index < 0 || static_cast<size_type>(index) >= curr_size) {
