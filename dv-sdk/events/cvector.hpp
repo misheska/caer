@@ -838,10 +838,10 @@ private:
 		// Support negative indexes to go from the last existing/defined element
 		// backwards (not from the capacity!).
 		if (index < 0) {
-			index = curr_size + index;
+			index = static_cast<int64_t>(curr_size) + index;
 		}
 
-		if (index < 0 || index >= curr_size) {
+		if (index < 0 || static_cast<size_type>(index) >= curr_size) {
 			throw std::out_of_range("Index out of range.");
 		}
 
