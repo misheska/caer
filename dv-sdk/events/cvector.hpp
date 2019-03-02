@@ -148,7 +148,7 @@ public:
 
 private:
 	size_type curr_size;
-	size_type max_size;
+	size_type maximum_size;
 	pointer data_ptr;
 
 public:
@@ -247,14 +247,14 @@ public:
 		// call, which is what normally happens, and helps us a lot here.
 
 		// Move data here.
-		curr_size = rhs.curr_size;
-		max_size  = rhs.max_size;
-		data_ptr  = rhs.data_ptr;
+		curr_size    = rhs.curr_size;
+		maximum_size = rhs.maximum_size;
+		data_ptr     = rhs.data_ptr;
 
 		// Reset old data (ready for destruction).
-		rhs.curr_size = 0;
-		rhs.max_size  = 0;
-		rhs.data_ptr  = nullptr;
+		rhs.curr_size    = 0;
+		rhs.maximum_size = 0;
+		rhs.data_ptr     = nullptr;
 	}
 
 	// Move assignment.
@@ -272,14 +272,14 @@ public:
 		freeMemory();
 
 		// Move data here.
-		curr_size = rhs.curr_size;
-		max_size  = rhs.max_size;
-		data_ptr  = rhs.data_ptr;
+		curr_size    = rhs.curr_size;
+		maximum_size = rhs.maximum_size;
+		data_ptr     = rhs.data_ptr;
 
 		// Reset old data (ready for destruction).
-		rhs.curr_size = 0;
-		rhs.max_size  = 0;
-		rhs.data_ptr  = nullptr;
+		rhs.curr_size    = 0;
+		rhs.maximum_size = 0;
+		rhs.data_ptr     = nullptr;
 
 		return (*this);
 	}
@@ -358,7 +358,11 @@ public:
 	}
 
 	size_type capacity() const noexcept {
-		return (max_size);
+		return (maximum_size);
+	}
+
+	size_type max_size() const noexcept {
+		return (static_cast<size_type>(std::numeric_limits<difference_type>::max()));
 	}
 
 	bool empty() const noexcept {
@@ -385,7 +389,7 @@ public:
 	}
 
 	void shrink_to_fit() {
-		if (curr_size == max_size) {
+		if (curr_size == maximum_size) {
 			return; // Already smallest possible size.
 		}
 
@@ -514,7 +518,7 @@ public:
 
 	void swap(cvector &rhs) noexcept {
 		std::swap(curr_size, rhs.curr_size);
-		std::swap(max_size, rhs.max_size);
+		std::swap(maximum_size, rhs.maximum_size);
 		std::swap(data_ptr, rhs.data_ptr);
 	}
 
@@ -753,18 +757,25 @@ public:
 private:
 	void ensureCapacity(size_type newSize) {
 		// Do we have enough space left?
-		if (newSize <= max_size) {
+		if (newSize <= maximum_size) {
 			return; // Yes.
 		}
 
 		// No, we must grow.
 		// Normally we try doubling the size, but we
-		// have to check if even that is enough.
-		reallocateMemory(((max_size * 2) > newSize) ? (max_size * 2) : (newSize));
+		// have to check if even that is enough, and if
+		// doubling violates the max_size() constraint.
+		size_type double_max = maximum_size * 2;
+		reallocateMemory(((double_max > newSize) && (double_max <= max_size())) ? (double_max) : (newSize));
 	}
 
 	void allocateMemory(size_type size) {
-		data_ptr = nullptr;
+		data_ptr     = nullptr;
+		maximum_size = 0;
+
+		if (size > max_size()) {
+			throw std::bad_alloc();
+		}
 
 		if (size != 0) {
 			data_ptr = static_cast<pointer>(malloc(size * sizeof(T)));
@@ -772,12 +783,16 @@ private:
 				// Failed.
 				throw std::bad_alloc();
 			}
-		}
 
-		max_size = size;
+			maximum_size = size;
+		}
 	}
 
 	void reallocateMemory(size_type newSize) {
+		if (newSize > max_size()) {
+			throw std::bad_alloc();
+		}
+
 		pointer new_data_ptr = nullptr;
 
 		if constexpr (std::is_pod_v<T>) {
@@ -816,14 +831,14 @@ private:
 		}
 
 		// Succeeded, update ptr + capacity.
-		data_ptr = new_data_ptr;
-		max_size = newSize;
+		data_ptr     = new_data_ptr;
+		maximum_size = newSize;
 	}
 
 	void freeMemory() {
 		free(data_ptr);
-		data_ptr = nullptr;
-		max_size = 0;
+		data_ptr     = nullptr;
+		maximum_size = 0;
 	}
 
 	size_type getIndex(size_type index) const {
