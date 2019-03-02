@@ -2,6 +2,7 @@
 #define CVECTOR_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <cinttypes>
 #include <cstddef>
 #include <cstdint>
@@ -773,7 +774,7 @@ private:
 		maximum_size = 0;
 
 		if (size > max_size()) {
-			throw std::bad_alloc();
+			throw std::length_error();
 		}
 
 		if (size != 0) {
@@ -789,7 +790,7 @@ private:
 
 	void reallocateMemory(size_type newSize) {
 		if (newSize > max_size()) {
-			throw std::bad_alloc();
+			throw std::length_error();
 		}
 
 		pointer new_data_ptr = nullptr;
