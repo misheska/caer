@@ -1,137 +1,15 @@
 #ifndef CVECTOR_HPP
 #define CVECTOR_HPP
 
+#include "cptriterator.hpp"
+
 #include <algorithm>
 #include <cassert>
-#include <cinttypes>
-#include <cstddef>
-#include <cstdint>
-#include <cstdlib>
 #include <memory>
 #include <stdexcept>
-#include <type_traits>
 #include <vector>
 
 namespace dv {
-
-template<class T> class cvectorIterator {
-public:
-	// Iterator traits.
-	using iterator_category = std::random_access_iterator_tag;
-	using value_type        = typename std::remove_cv_t<T>;
-	using pointer           = T *;
-	using reference         = T &;
-	using size_type         = size_t;
-	using difference_type   = ptrdiff_t;
-
-private:
-	pointer element_ptr;
-
-public:
-	// Constructors.
-	cvectorIterator() : element_ptr(nullptr) {
-	}
-
-	cvectorIterator(pointer _element_ptr) : element_ptr(_element_ptr) {
-	}
-
-	// Data access operators.
-	reference operator*() const noexcept {
-		return (*element_ptr);
-	}
-
-	pointer operator->() const noexcept {
-		return (element_ptr);
-	}
-
-	reference operator[](size_type index) const noexcept {
-		return (element_ptr[index]);
-	}
-
-	// Comparison operators.
-	bool operator==(const cvectorIterator &rhs) const noexcept {
-		return (element_ptr == rhs.element_ptr);
-	}
-
-	bool operator!=(const cvectorIterator &rhs) const noexcept {
-		return (element_ptr != rhs.element_ptr);
-	}
-
-	bool operator<(const cvectorIterator &rhs) const noexcept {
-		return (element_ptr < rhs.element_ptr);
-	}
-
-	bool operator>(const cvectorIterator &rhs) const noexcept {
-		return (element_ptr > rhs.element_ptr);
-	}
-
-	bool operator<=(const cvectorIterator &rhs) const noexcept {
-		return (element_ptr <= rhs.element_ptr);
-	}
-
-	bool operator>=(const cvectorIterator &rhs) const noexcept {
-		return (element_ptr >= rhs.element_ptr);
-	}
-
-	// Prefix increment.
-	cvectorIterator &operator++() noexcept {
-		element_ptr++;
-		return (*this);
-	}
-
-	// Postfix increment.
-	cvectorIterator operator++(int) noexcept {
-		return (cvectorIterator(element_ptr++));
-	}
-
-	// Prefix decrement.
-	cvectorIterator &operator--() noexcept {
-		element_ptr--;
-		return (*this);
-	}
-
-	// Postfix decrement.
-	cvectorIterator operator--(int) noexcept {
-		return (cvectorIterator(element_ptr--));
-	}
-
-	// Iter += N.
-	cvectorIterator &operator+=(size_type add) noexcept {
-		element_ptr += add;
-		return (*this);
-	}
-
-	// Iter + N.
-	cvectorIterator operator+(size_type add) const noexcept {
-		return (cvectorIterator(element_ptr + add));
-	}
-
-	// N + Iter. Must be friend as Iter is right-hand-side.
-	friend cvectorIterator operator+(size_type lhs, const cvectorIterator &rhs) noexcept {
-		return (cvectorIterator(rhs.element_ptr + lhs));
-	}
-
-	// Iter -= N.
-	cvectorIterator &operator-=(size_type sub) noexcept {
-		element_ptr -= sub;
-		return (*this);
-	}
-
-	// Iter - N. (N - Iter doesn't make sense!)
-	cvectorIterator operator-(size_type sub) const noexcept {
-		return (cvectorIterator(element_ptr - sub));
-	}
-
-	// Iter - Iter. (Iter + Iter doesn't make sense!)
-	difference_type operator-(const cvectorIterator &rhs) const noexcept {
-		return (element_ptr - rhs.element_ptr);
-	}
-
-	// Swap two iterators.
-	void swap(cvectorIterator &rhs) noexcept {
-		std::swap(element_ptr, rhs.element_ptr);
-	}
-};
 
 template<class T> class cvector {
 public:
@@ -632,8 +510,8 @@ public:
 	}
 
 	// Iterator support.
-	using iterator               = cvectorIterator<value_type>;
-	using const_iterator         = cvectorIterator<const_value_type>;
+	using iterator               = cPtrIterator<value_type>;
+	using const_iterator         = cPtrIterator<const_value_type>;
 	using reverse_iterator       = std::reverse_iterator<iterator>;
 	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
