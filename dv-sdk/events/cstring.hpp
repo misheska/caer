@@ -13,21 +13,21 @@
 
 namespace dv {
 
-class cstring {
+template<class T> class basic_cstring {
 public:
 	// Container traits.
-	using value_type       = char;
-	using const_value_type = const char;
-	using pointer          = char *;
-	using const_pointer    = const char *;
-	using reference        = char &;
-	using const_reference  = const char &;
+	using value_type       = T;
+	using const_value_type = const T;
+	using pointer          = T *;
+	using const_pointer    = const T *;
+	using reference        = T &;
+	using const_reference  = const T &;
 	using size_type        = size_t;
 	using difference_type  = ptrdiff_t;
 
 	static const size_type npos = static_cast<size_type>(-1);
 
-	static_assert(std::is_pod_v<value_type>, "cstring type is not POD");
+	static_assert(std::is_pod_v<value_type>, "basic_cstring type is not POD");
 
 private:
 	size_type curr_size;
@@ -36,7 +36,7 @@ private:
 
 public:
 	// Default constructor. Initialize empty string with space for 64 characters.
-	cstring() {
+	basic_cstring() {
 		curr_size = 0;
 
 		allocateMemory(64);
@@ -44,26 +44,26 @@ public:
 	}
 
 	// Destructor.
-	~cstring() noexcept {
+	~basic_cstring() noexcept {
 		curr_size = 0;
 
 		freeMemory();
 	}
 
 	// Copy constructor.
-	cstring(const cstring &str, size_type pos = 0, size_type count = npos) :
-		cstring(str.c_str(), str.length(), pos, count) {
+	basic_cstring(const basic_cstring &str, size_type pos = 0, size_type count = npos) :
+		basic_cstring(str.c_str(), str.length(), pos, count) {
 	}
 
-	cstring(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) :
-		cstring(str.data(), str.size(), pos, count) {
+	basic_cstring(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) :
+		basic_cstring(str.data(), str.size(), pos, count) {
 	}
 
-	cstring(const_pointer str) : cstring(str, strlen(str)) {
+	basic_cstring(const_pointer str) : basic_cstring(str, strlen(str)) {
 	}
 
 	// Lowest common denominator: a ptr and sizes. Most constructors call this.
-	cstring(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
+	basic_cstring(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
 		if (str == nullptr) {
 			throw std::invalid_argument("string resolves to nullptr.");
 		}
@@ -86,7 +86,7 @@ public:
 	}
 
 	// Initialize string with N times the given character.
-	cstring(size_type count, value_type value) {
+	basic_cstring(size_type count, value_type value) {
 		curr_size = count;
 
 		allocateMemory(count);
@@ -97,7 +97,7 @@ public:
 	}
 
 	// Initialize string with characters from range.
-	template<class InputIt> cstring(InputIt first, InputIt last) {
+	template<class InputIt> basic_cstring(InputIt first, InputIt last) {
 		auto difference = std::distance(first, last);
 		if (difference < 0) {
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
@@ -115,11 +115,11 @@ public:
 	}
 
 	// Initialize vector via initializer list {x, y, z}.
-	cstring(std::initializer_list<value_type> init_list) : cstring(init_list.begin(), init_list.end()) {
+	basic_cstring(std::initializer_list<value_type> init_list) : basic_cstring(init_list.begin(), init_list.end()) {
 	}
 
 	// Move constructor.
-	cstring(cstring &&rhs) noexcept {
+	basic_cstring(basic_cstring &&rhs) noexcept {
 		// Moved-from object must remain in a valid state. We can define
 		// valid-state-after-move to be nothing allowed but a destructor
 		// call, which is what normally happens, and helps us a lot here.
@@ -136,38 +136,38 @@ public:
 	}
 
 	// Move assignment.
-	cstring &operator=(cstring &&rhs) noexcept {
+	basic_cstring &operator=(basic_cstring &&rhs) noexcept {
 		return (assign(std::move(rhs)));
 	}
 
 	// Copy assignment.
-	cstring &operator=(const cstring &rhs) {
+	basic_cstring &operator=(const basic_cstring &rhs) {
 		return (assign(rhs));
 	}
 
 	// Extra assignment operators.
-	cstring &operator=(std::basic_string_view<value_type> rhs) {
+	basic_cstring &operator=(std::basic_string_view<value_type> rhs) {
 		return (assign(rhs));
 	}
 
-	cstring &operator=(const_pointer rhs) {
+	basic_cstring &operator=(const_pointer rhs) {
 		return (assign(rhs));
 	}
 
-	cstring &operator=(value_type value) {
+	basic_cstring &operator=(value_type value) {
 		return (assign(1, value));
 	}
 
-	cstring &operator=(std::initializer_list<value_type> rhs_list) {
+	basic_cstring &operator=(std::initializer_list<value_type> rhs_list) {
 		return (assign(rhs_list));
 	}
 
 	// Comparison operators.
-	bool operator==(const cstring &rhs) const noexcept {
+	bool operator==(const basic_cstring &rhs) const noexcept {
 		return (std::equal(cbegin(), cend(), rhs.cbegin(), rhs.cend()));
 	}
 
-	bool operator!=(const cstring &rhs) const noexcept {
+	bool operator!=(const basic_cstring &rhs) const noexcept {
 		return (!operator==(rhs));
 	}
 
@@ -187,7 +187,7 @@ public:
 		return (!operator==(rhs));
 	}
 
-	cstring &assign(cstring &&str) noexcept {
+	basic_cstring &assign(basic_cstring &&str) noexcept {
 		assert(this != &str);
 
 		// Moved-from object must remain in a valid state. We can define
@@ -212,7 +212,7 @@ public:
 		return (*this);
 	}
 
-	cstring &assign(const cstring &str, size_type pos = 0, size_type count = npos) {
+	basic_cstring &assign(const basic_cstring &str, size_type pos = 0, size_type count = npos) {
 		// If operation would have no effect, do nothing.
 		if ((this == &str) && (pos == 0) && (count >= str.length())) {
 			return (*this);
@@ -221,16 +221,16 @@ public:
 		return (assign(str.c_str(), str.length(), pos, count));
 	}
 
-	cstring &assign(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) {
+	basic_cstring &assign(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) {
 		return (assign(str.data(), str.size(), pos, count));
 	}
 
-	cstring &assign(const_pointer str) {
+	basic_cstring &assign(const_pointer str) {
 		return (assign(str, strlen(str)));
 	}
 
 	// Lowest common denominator: a ptr and sizes. Most assignments call this.
-	cstring &assign(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
+	basic_cstring &assign(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
 		if (str == nullptr) {
 			throw std::invalid_argument("string resolves to nullptr.");
 		}
@@ -255,7 +255,7 @@ public:
 	}
 
 	// Replace string with N times the given character.
-	cstring &assign(size_type count, value_type value) {
+	basic_cstring &assign(size_type count, value_type value) {
 		ensureCapacity(count);
 
 		curr_size = count;
@@ -268,7 +268,7 @@ public:
 	}
 
 	// Replace string with characters from range.
-	template<class InputIt> cstring &assign(InputIt first, InputIt last) {
+	template<class InputIt> basic_cstring &assign(InputIt first, InputIt last) {
 		auto difference = std::distance(first, last);
 		if (difference < 0) {
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
@@ -288,7 +288,7 @@ public:
 	}
 
 	// Replace string via initializer list {x, y, z}.
-	cstring &assign(std::initializer_list<value_type> init_list) {
+	basic_cstring &assign(std::initializer_list<value_type> init_list) {
 		return (assign(init_list.begin(), init_list.end()));
 	}
 
@@ -461,7 +461,7 @@ public:
 		nullTerminate();
 	}
 
-	void swap(cstring &rhs) noexcept {
+	void swap(basic_cstring &rhs) noexcept {
 		std::swap(curr_size, rhs.curr_size);
 		std::swap(maximum_size, rhs.maximum_size);
 		std::swap(data_ptr, rhs.data_ptr);
@@ -643,20 +643,20 @@ public:
 		return (wrFirst);
 	}
 
-	cstring &append(const cstring &str, size_type pos = 0, size_type count = npos) {
+	basic_cstring &append(const basic_cstring &str, size_type pos = 0, size_type count = npos) {
 		return (append(str.c_str(), str.length(), pos, count));
 	}
 
-	cstring &append(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) {
+	basic_cstring &append(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) {
 		return (append(str.data(), str.size(), pos, count));
 	}
 
-	cstring &append(const_pointer str) {
+	basic_cstring &append(const_pointer str) {
 		return (append(str, strlen(str)));
 	}
 
 	// Lowest common denominator: a ptr and sizes.
-	cstring &append(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
+	basic_cstring &append(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
 		if (str == nullptr) {
 			throw std::invalid_argument("string resolves to nullptr.");
 		}
@@ -681,7 +681,7 @@ public:
 	}
 
 	// Enlarge string with N times the given character.
-	cstring &append(size_type count, value_type value) {
+	basic_cstring &append(size_type count, value_type value) {
 		ensureCapacity(curr_size + count);
 
 		curr_size += count;
@@ -694,7 +694,7 @@ public:
 	}
 
 	// Enlarge string with characters from range.
-	template<class InputIt> cstring &append(InputIt first, InputIt last) {
+	template<class InputIt> basic_cstring &append(InputIt first, InputIt last) {
 		auto difference = std::distance(first, last);
 		if (difference < 0) {
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
@@ -714,27 +714,27 @@ public:
 	}
 
 	// Enlarge string via initializer list {x, y, z}.
-	cstring &append(std::initializer_list<value_type> init_list) {
+	basic_cstring &append(std::initializer_list<value_type> init_list) {
 		return (append(init_list.begin(), init_list.end()));
 	}
 
-	cstring &operator+=(const cstring &rhs) {
+	basic_cstring &operator+=(const basic_cstring &rhs) {
 		return (append(rhs));
 	}
 
-	cstring &operator+=(std::basic_string_view<value_type> rhs) {
+	basic_cstring &operator+=(std::basic_string_view<value_type> rhs) {
 		return (append(rhs));
 	}
 
-	cstring &operator+=(const_pointer rhs) {
+	basic_cstring &operator+=(const_pointer rhs) {
 		return (append(rhs));
 	}
 
-	cstring &operator+=(value_type value) {
+	basic_cstring &operator+=(value_type value) {
 		return (append(1, value));
 	}
 
-	cstring &operator+=(std::initializer_list<value_type> rhs_list) {
+	basic_cstring &operator+=(std::initializer_list<value_type> rhs_list) {
 		return (append(rhs_list));
 	}
 
@@ -820,6 +820,24 @@ private:
 		return (static_cast<size_type>(index));
 	}
 };
+
+template<class T> inline bool operator==(std::basic_string_view<T> lhs, const basic_cstring<T> &rhs) noexcept {
+	return (rhs.operator==(lhs));
+}
+
+template<class T> inline bool operator!=(std::basic_string_view<T> lhs, const basic_cstring<T> &rhs) noexcept {
+	return (rhs.operator!=(lhs));
+}
+
+template<class T> inline bool operator==(const T *lhs, const basic_cstring<T> &rhs) noexcept {
+	return (rhs.operator==(lhs));
+}
+
+template<class T> inline bool operator!=(const T *lhs, const basic_cstring<T> &rhs) noexcept {
+	return (rhs.operator!=(lhs));
+}
+
+using cstring = basic_cstring<char>;
 
 } // namespace dv
 

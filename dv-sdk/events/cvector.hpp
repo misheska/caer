@@ -928,6 +928,14 @@ private:
 	}
 };
 
+template<class T> inline bool operator==(std::vector<T> lhs, const cvector<T> &rhs) noexcept {
+	return (rhs.operator==(lhs));
+}
+
+template<class T> inline bool operator!=(std::vector<T> lhs, const cvector<T> &rhs) noexcept {
+	return (rhs.operator!=(lhs));
+}
+
 } // namespace dv
 
 static_assert(std::is_standard_layout_v<dv::cvector<int>>, "cvector itself is not standard layout");
