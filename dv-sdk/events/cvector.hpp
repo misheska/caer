@@ -602,7 +602,8 @@ public:
 		// That's why we get the index first and regenerate pos.
 		auto idx = static_cast<size_type>(std::distance(cbegin(), pos));
 		ensureCapacity(curr_size + 1);
-		pos = cbegin() + idx;
+		pos        = cbegin() + idx;
+		auto wrPos = begin() + idx;
 
 		// Default construct so we can move into this.
 		std::uninitialized_default_construct_n(end(), 1);
@@ -611,26 +612,27 @@ public:
 		std::move_backward(pos, cend(), end() + 1);
 
 		// Destroy object at insertion position.
-		std::destroy_n(pos, 1);
+		std::destroy_n(wrPos, 1);
 
 		// Move construct new element at insertion index.
 		new (&data_ptr[idx]) value_type(std::move(value));
 
 		curr_size++;
 
-		return (pos);
+		return (wrPos);
 	}
 
 	iterator insert(const_iterator pos, size_type count, const_reference value) {
 		if (count == 0) {
-			return (pos);
+			return (iterator::fromConst(pos));
 		}
 
 		// Careful: ensureCapacity() can invalidate iterators!
 		// That's why we get the index first and regenerate pos.
 		auto idx = static_cast<size_type>(std::distance(cbegin(), pos));
 		ensureCapacity(curr_size + 1);
-		pos = cbegin() + idx;
+		pos        = cbegin() + idx;
+		auto wrPos = begin() + idx;
 
 		// Default construct so we can move into this.
 		std::uninitialized_default_construct_n(end(), count);
@@ -639,14 +641,14 @@ public:
 		std::move_backward(pos, cend(), end() + count);
 
 		// Destroy objects at insertion position.
-		std::destroy_n(pos, count);
+		std::destroy_n(wrPos, count);
 
 		// Copy construct new elements at insertion position.
-		std::uninitialized_fill_n(pos, count, value);
+		std::uninitialized_fill_n(wrPos, count, value);
 
 		curr_size += count;
 
-		return (pos);
+		return (wrPos);
 	}
 
 	template<class InputIt> iterator insert(const_iterator pos, InputIt first, InputIt last) {
@@ -657,14 +659,15 @@ public:
 
 		auto count = static_cast<size_type>(std::abs(difference));
 		if (count == 0) {
-			return (pos);
+			return (iterator::fromConst(pos));
 		}
 
 		// Careful: ensureCapacity() can invalidate iterators!
 		// That's why we get the index first and regenerate pos.
 		auto idx = static_cast<size_type>(std::distance(cbegin(), pos));
 		ensureCapacity(curr_size + 1);
-		pos = cbegin() + idx;
+		pos        = cbegin() + idx;
+		auto wrPos = begin() + idx;
 
 		// Default construct so we can move into this.
 		std::uninitialized_default_construct_n(end(), count);
@@ -673,14 +676,14 @@ public:
 		std::move_backward(pos, cend(), end() + count);
 
 		// Destroy objects at insertion position.
-		std::destroy_n(pos, count);
+		std::destroy_n(wrPos, count);
 
 		// Copy construct new elements at insertion position from external range.
-		std::uninitialized_copy_n(first, count, pos);
+		std::uninitialized_copy_n(first, count, wrPos);
 
 		curr_size += count;
 
-		return (pos);
+		return (wrPos);
 	}
 
 	iterator insert(const_iterator pos, std::initializer_list<value_type> init_list) {
@@ -690,7 +693,7 @@ public:
 	iterator erase(const_iterator pos) {
 		// Move elements over, this will move assign into the
 		// to be erased element, effectively erasing it.
-		std::move(pos + 1, cend(), pos);
+		std::move(pos + 1, cend(), iterator::fromConst(pos));
 
 		// Destroy object at end, this was moved from and is
 		// now waiting on destruction.
@@ -698,7 +701,7 @@ public:
 
 		std::destroy_n(end(), 1);
 
-		return (pos);
+		return (iterator::fromConst(pos));
 	}
 
 	iterator erase(const_iterator first, const_iterator last) {
@@ -709,12 +712,12 @@ public:
 
 		auto count = static_cast<size_type>(std::abs(difference));
 		if (count == 0) {
-			return (first);
+			return (iterator::fromConst(first));
 		}
 
 		// Move elements over, this will move assign into the
 		// to be erased element, effectively erasing it.
-		std::move(last, cend(), first);
+		std::move(last, cend(), iterator::fromConst(first));
 
 		// Destroy objects at end, they were moved from and are
 		// now waiting on destruction.
@@ -722,7 +725,7 @@ public:
 
 		std::destroy_n(end(), count);
 
-		return (first);
+		return (iterator::fromConst(first));
 	}
 
 	template<class... Args> iterator emplace(const_iterator pos, Args &&... args) {
@@ -730,7 +733,8 @@ public:
 		// That's why we get the index first and regenerate pos.
 		auto idx = static_cast<size_type>(std::distance(cbegin(), pos));
 		ensureCapacity(curr_size + 1);
-		pos = cbegin() + idx;
+		pos        = cbegin() + idx;
+		auto wrPos = begin() + idx;
 
 		// Default construct so we can move into this.
 		std::uninitialized_default_construct_n(end(), 1);
@@ -739,14 +743,14 @@ public:
 		std::move_backward(pos, cend(), end() + 1);
 
 		// Destroy object at insertion position.
-		std::destroy_n(pos, 1);
+		std::destroy_n(wrPos, 1);
 
 		// Move construct new element at insertion index.
 		new (&data_ptr[idx]) value_type(std::forward<Args>(args)...);
 
 		curr_size++;
 
-		return (pos);
+		return (wrPos);
 	}
 
 private:

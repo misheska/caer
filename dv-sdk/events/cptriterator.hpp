@@ -5,8 +5,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <type_traits>
 #include <iterator>
+#include <type_traits>
 
 namespace dv {
 
@@ -126,6 +126,10 @@ public:
 	// Swap two iterators.
 	void swap(cPtrIterator &rhs) noexcept {
 		std::swap(element_ptr, rhs.element_ptr);
+	}
+
+	static cPtrIterator fromConst(cPtrIterator<const value_type> iter) {
+		return (cPtrIterator(const_cast<pointer>(&*iter)));
 	}
 };
 
