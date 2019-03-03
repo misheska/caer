@@ -179,12 +179,28 @@ public:
 		return (!operator==(rhs));
 	}
 
+	friend bool operator==(std::basic_string_view<value_type> lhs, const basic_cstring &rhs) noexcept {
+		return (rhs.operator==(lhs));
+	}
+
+	friend bool operator!=(std::basic_string_view<value_type> lhs, const basic_cstring &rhs) noexcept {
+		return (rhs.operator!=(lhs));
+	}
+
 	bool operator==(const_pointer rhs) const noexcept {
 		return (std::equal(cbegin(), cend(), const_iterator(rhs), const_iterator(rhs + strlen(rhs))));
 	}
 
 	bool operator!=(const_pointer rhs) const noexcept {
 		return (!operator==(rhs));
+	}
+
+	friend bool operator==(const_pointer lhs, const basic_cstring &rhs) noexcept {
+		return (rhs.operator==(lhs));
+	}
+
+	friend bool operator!=(const_pointer lhs, const basic_cstring &rhs) noexcept {
+		return (rhs.operator!=(lhs));
 	}
 
 	basic_cstring &assign(basic_cstring &&str) noexcept {
@@ -820,22 +836,6 @@ private:
 		return (static_cast<size_type>(index));
 	}
 };
-
-template<class T> inline bool operator==(std::basic_string_view<T> lhs, const basic_cstring<T> &rhs) noexcept {
-	return (rhs.operator==(lhs));
-}
-
-template<class T> inline bool operator!=(std::basic_string_view<T> lhs, const basic_cstring<T> &rhs) noexcept {
-	return (rhs.operator!=(lhs));
-}
-
-template<class T> inline bool operator==(const T *lhs, const basic_cstring<T> &rhs) noexcept {
-	return (rhs.operator==(lhs));
-}
-
-template<class T> inline bool operator!=(const T *lhs, const basic_cstring<T> &rhs) noexcept {
-	return (rhs.operator!=(lhs));
-}
 
 using cstring = basic_cstring<char>;
 

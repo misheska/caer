@@ -178,6 +178,14 @@ public:
 		return (!operator==(rhs));
 	}
 
+	friend bool operator==(const std::vector<value_type> &lhs, const cvector &rhs) noexcept {
+		return (rhs.operator==(lhs));
+	}
+
+	friend bool operator!=(const std::vector<value_type> &lhs, const cvector &rhs) noexcept {
+		return (rhs.operator!=(lhs));
+	}
+
 	cvector &assign(cvector &&vec) noexcept {
 		assert(this != &vec);
 
@@ -927,14 +935,6 @@ private:
 		return (static_cast<size_type>(index));
 	}
 };
-
-template<class T> inline bool operator==(std::vector<T> lhs, const cvector<T> &rhs) noexcept {
-	return (rhs.operator==(lhs));
-}
-
-template<class T> inline bool operator!=(std::vector<T> lhs, const cvector<T> &rhs) noexcept {
-	return (rhs.operator!=(lhs));
-}
 
 } // namespace dv
 
