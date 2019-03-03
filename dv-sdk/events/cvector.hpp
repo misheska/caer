@@ -353,7 +353,7 @@ public:
 	}
 
 	void resize(size_type newSize) {
-		resize(newSize, value_type{});
+		resize(newSize, value_type());
 	}
 
 	void resize(size_type newSize, const_reference value) {
@@ -472,7 +472,7 @@ public:
 		ensureCapacity(curr_size + 1);
 
 		// Call copy constructor.
-		new (&data_ptr[curr_size]) value_type{value};
+		new (&data_ptr[curr_size]) value_type(value);
 
 		curr_size++;
 	}
@@ -481,7 +481,7 @@ public:
 		ensureCapacity(curr_size + 1);
 
 		// Call move constructor.
-		new (&data_ptr[curr_size]) value_type{std::move(value)};
+		new (&data_ptr[curr_size]) value_type(std::move(value));
 
 		curr_size++;
 	}
@@ -490,7 +490,7 @@ public:
 		ensureCapacity(curr_size + 1);
 
 		// Call constructor with forwarded arguments.
-		new (&data_ptr[curr_size]) value_type{std::forward<Args>(args)...};
+		new (&data_ptr[curr_size]) value_type(std::forward<Args>(args)...);
 
 		curr_size++;
 	}
@@ -614,7 +614,7 @@ public:
 		std::destroy_n(pos, 1);
 
 		// Move construct new element at insertion index.
-		new (&data_ptr[idx]) value_type{std::move(value)};
+		new (&data_ptr[idx]) value_type(std::move(value));
 
 		curr_size++;
 
@@ -742,7 +742,7 @@ public:
 		std::destroy_n(pos, 1);
 
 		// Move construct new element at insertion index.
-		new (&data_ptr[idx]) value_type{std::forward<Args>(args)...};
+		new (&data_ptr[idx]) value_type(std::forward<Args>(args)...);
 
 		curr_size++;
 
