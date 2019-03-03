@@ -722,16 +722,16 @@ public:
 		return (wrPos);
 	}
 
-	void append(const cvector &vec, size_type pos = 0, size_type count = npos) {
-		append(vec.data(), vec.size(), pos, count);
+	cvector &append(const cvector &vec, size_type pos = 0, size_type count = npos) {
+		return (append(vec.data(), vec.size(), pos, count));
 	}
 
-	void append(const std::vector<value_type> &vec, size_type pos = 0, size_type count = npos) {
-		append(vec.data(), vec.size(), pos, count);
+	cvector &append(const std::vector<value_type> &vec, size_type pos = 0, size_type count = npos) {
+		return (append(vec.data(), vec.size(), pos, count));
 	}
 
 	// Lowest common denominator: a ptr and sizes.
-	void append(const_pointer vec, size_type vecLength, size_type pos = 0, size_type count = npos) {
+	cvector &append(const_pointer vec, size_type vecLength, size_type pos = 0, size_type count = npos) {
 		if (vec == nullptr) {
 			throw std::invalid_argument("vector resolves to nullptr.");
 		}
@@ -750,30 +750,36 @@ public:
 		curr_size += count;
 
 		std::uninitialized_copy_n(const_iterator(vec + pos), count, end());
+
+		return (*this);
 	}
 
 	// Enlarge vector with N default constructed elements.
-	void append(size_type count) {
+	cvector &append(size_type count) {
 		ensureCapacity(curr_size + count);
 
 		curr_size += count;
 
 		// Default initialize elements.
 		std::uninitialized_default_construct_n(end(), count);
+
+		return (*this);
 	}
 
 	// Enlarge vector with N copies of given value.
-	void append(size_type count, const_reference value) {
+	cvector &append(size_type count, const_reference value) {
 		ensureCapacity(curr_size + count);
 
 		curr_size += count;
 
 		// Initialize elements to copy of value.
 		std::uninitialized_fill_n(end(), count, value);
+
+		return (*this);
 	}
 
 	// Enlarge vector with elements from range.
-	template<class InputIt> void append(InputIt first, InputIt last) {
+	template<class InputIt> cvector &append(InputIt first, InputIt last) {
 		auto difference = std::distance(first, last);
 		if (difference < 0) {
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
@@ -787,35 +793,29 @@ public:
 
 		// Initialize elements to copy of range's values.
 		std::uninitialized_copy_n(first, count, end());
+
+		return (*this);
 	}
 
 	// Enlarge vector via initializer list {x, y, z}.
-	void append(std::initializer_list<value_type> init_list) {
-		append(init_list.begin(), init_list.end());
+	cvector &append(std::initializer_list<value_type> init_list) {
+		return (append(init_list.begin(), init_list.end()));
 	}
 
 	cvector &operator+=(const cvector &rhs) {
-		append(rhs);
-
-		return (*this);
+		return (append(rhs));
 	}
 
 	cvector &operator+=(const std::vector<value_type> &rhs) {
-		append(rhs);
-
-		return (*this);
+		return (append(rhs));
 	}
 
 	cvector &operator+=(const_reference value) {
-		append(1, value);
-
-		return (*this);
+		return (append(1, value));
 	}
 
 	cvector &operator+=(std::initializer_list<value_type> rhs_list) {
-		append(rhs_list);
-
-		return (*this);
+		return (append(rhs_list));
 	}
 
 private:

@@ -647,20 +647,20 @@ public:
 		return (wrFirst);
 	}
 
-	void append(const cstring &str, size_type pos = 0, size_type count = npos) {
-		append(str.c_str(), str.length(), pos, count);
+	cstring &append(const cstring &str, size_type pos = 0, size_type count = npos) {
+		return (append(str.c_str(), str.length(), pos, count));
 	}
 
-	void append(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) {
-		append(str.data(), str.size(), pos, count);
+	cstring &append(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) {
+		return (append(str.data(), str.size(), pos, count));
 	}
 
-	void append(const_pointer str) {
-		append(str, strlen(str));
+	cstring &append(const_pointer str) {
+		return (append(str, strlen(str)));
 	}
 
 	// Lowest common denominator: a ptr and sizes.
-	void append(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
+	cstring &append(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
 		if (str == nullptr) {
 			throw std::invalid_argument("string resolves to nullptr.");
 		}
@@ -680,10 +680,12 @@ public:
 
 		std::copy_n(const_iterator(str + pos), count, end());
 		nullTerminate();
+
+		return (*this);
 	}
 
 	// Enlarge string with N times the given character.
-	void append(size_type count, value_type value) {
+	cstring &append(size_type count, value_type value) {
 		ensureCapacity(curr_size + count);
 
 		curr_size += count;
@@ -691,10 +693,12 @@ public:
 		// Initialize elements to copy of value.
 		std::fill_n(end(), count, value);
 		nullTerminate();
+
+		return (*this);
 	}
 
 	// Enlarge string with characters from range.
-	template<class InputIt> void append(InputIt first, InputIt last) {
+	template<class InputIt> cstring &append(InputIt first, InputIt last) {
 		auto difference = std::distance(first, last);
 		if (difference < 0) {
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
@@ -709,41 +713,33 @@ public:
 		// Initialize elements to copy of range's values.
 		std::copy_n(first, count, end());
 		nullTerminate();
+
+		return (*this);
 	}
 
 	// Enlarge string via initializer list {x, y, z}.
-	void append(std::initializer_list<value_type> init_list) {
-		append(init_list.begin(), init_list.end());
+	cstring &append(std::initializer_list<value_type> init_list) {
+		return (append(init_list.begin(), init_list.end()));
 	}
 
 	cstring &operator+=(const cstring &rhs) {
-		append(rhs);
-
-		return (*this);
+		return (append(rhs));
 	}
 
 	cstring &operator+=(std::basic_string_view<value_type> rhs) {
-		append(rhs);
-
-		return (*this);
+		return (append(rhs));
 	}
 
 	cstring &operator+=(const_pointer rhs) {
-		append(rhs);
-
-		return (*this);
+		return (append(rhs));
 	}
 
 	cstring &operator+=(value_type value) {
-		append(1, value);
-
-		return (*this);
+		return (append(1, value));
 	}
 
 	cstring &operator+=(std::initializer_list<value_type> rhs_list) {
-		append(rhs_list);
-
-		return (*this);
+		return (append(rhs_list));
 	}
 
 private:
