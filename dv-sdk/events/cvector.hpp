@@ -826,6 +826,58 @@ public:
 		return (append(rhs_list));
 	}
 
+	cvector operator+(const cvector &rhs) {
+		cvector sum;
+		sum.reserve(size() + rhs.size());
+
+		sum.assign(*this);
+		sum.append(rhs);
+
+		return (sum);
+	}
+
+	cvector operator+(const std::vector<value_type> &rhs) {
+		cvector sum;
+		sum.reserve(size() + rhs.size());
+
+		sum.assign(*this);
+		sum.append(rhs);
+
+		return (sum);
+	}
+
+	friend cvector operator+(const std::vector<value_type> &lhs, const cvector &rhs) {
+		return (rhs.operator+(lhs));
+	}
+
+	cvector operator+(const_reference value) {
+		cvector sum;
+		sum.reserve(size() + 1);
+
+		sum.assign(*this);
+		sum.append(1, value);
+
+		return (sum);
+	}
+
+	friend cvector operator+(const_reference value, const cvector &rhs) {
+		return (rhs.operator+(value));
+	}
+
+	cvector operator+(std::initializer_list<value_type> rhs_list) {
+		cvector sum;
+		sum.reserve(size() + rhs_list.size());
+
+		sum.assign(*this);
+		sum.append(rhs_list);
+
+		return (sum);
+	}
+
+	friend cvector operator+(std::initializer_list<value_type> lhs_list, const cvector &rhs) {
+		return (rhs.operator+(lhs_list));
+	}
+
 private:
 	void ensureCapacity(size_type newSize) {
 		// Do we have enough space left?

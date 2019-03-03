@@ -754,6 +754,74 @@ public:
 		return (append(rhs_list));
 	}
 
+	basic_cstring operator+(const basic_cstring &rhs) {
+		basic_cstring sum;
+		sum.reserve(size() + rhs.size());
+
+		sum.assign(*this);
+		sum.append(rhs);
+
+		return (sum);
+	}
+
+	basic_cstring operator+(std::basic_string_view<value_type> rhs) {
+		basic_cstring sum;
+		sum.reserve(size() + rhs.size());
+
+		sum.assign(*this);
+		sum.append(rhs);
+
+		return (sum);
+	}
+
+	friend basic_cstring operator+(std::basic_string_view<value_type> lhs, const basic_cstring &rhs) {
+		return (rhs.operator+(lhs));
+	}
+
+	basic_cstring operator+(const_pointer rhs) {
+		size_type strLength = strlen(rhs);
+
+		basic_cstring sum;
+		sum.reserve(size() + strLength);
+
+		sum.assign(*this);
+		sum.append(rhs, strLength);
+
+		return (sum);
+	}
+
+	friend basic_cstring operator+(const_pointer lhs, const basic_cstring &rhs) {
+		return (rhs.operator+(lhs));
+	}
+
+	basic_cstring operator+(value_type value) {
+		basic_cstring sum;
+		sum.reserve(size() + 1);
+
+		sum.assign(*this);
+		sum.append(1, value);
+
+		return (sum);
+	}
+
+	friend basic_cstring operator+(value_type value, const basic_cstring &rhs) {
+		return (rhs.operator+(value));
+	}
+
+	basic_cstring operator+(std::initializer_list<value_type> rhs_list) {
+		basic_cstring sum;
+		sum.reserve(size() + rhs_list.size());
+
+		sum.assign(*this);
+		sum.append(rhs_list);
+
+		return (sum);
+	}
+
+	friend basic_cstring operator+(std::initializer_list<value_type> lhs_list, const basic_cstring &rhs) {
+		return (rhs.operator+(lhs_list));
+	}
+
 private:
 	void nullTerminate() {
 		data_ptr[curr_size] = 0;
