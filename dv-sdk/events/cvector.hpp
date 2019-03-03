@@ -600,7 +600,7 @@ public:
 	iterator insert(const_iterator pos, T &&value) {
 		// Careful: ensureCapacity() can invalidate iterators!
 		// That's why we get the index first and regenerate pos.
-		auto idx = std::distance(cbegin(), pos);
+		auto idx = static_cast<size_type>(std::distance(cbegin(), pos));
 		ensureCapacity(curr_size + 1);
 		pos = cbegin() + idx;
 
@@ -628,7 +628,7 @@ public:
 
 		// Careful: ensureCapacity() can invalidate iterators!
 		// That's why we get the index first and regenerate pos.
-		auto idx = std::distance(cbegin(), pos);
+		auto idx = static_cast<size_type>(std::distance(cbegin(), pos));
 		ensureCapacity(curr_size + 1);
 		pos = cbegin() + idx;
 
@@ -662,7 +662,7 @@ public:
 
 		// Careful: ensureCapacity() can invalidate iterators!
 		// That's why we get the index first and regenerate pos.
-		auto idx = std::distance(cbegin(), pos);
+		auto idx = static_cast<size_type>(std::distance(cbegin(), pos));
 		ensureCapacity(curr_size + 1);
 		pos = cbegin() + idx;
 
@@ -728,7 +728,7 @@ public:
 	template<class... Args> iterator emplace(const_iterator pos, Args &&... args) {
 		// Careful: ensureCapacity() can invalidate iterators!
 		// That's why we get the index first and regenerate pos.
-		auto idx = std::distance(cbegin(), pos);
+		auto idx = static_cast<size_type>(std::distance(cbegin(), pos));
 		ensureCapacity(curr_size + 1);
 		pos = cbegin() + idx;
 
