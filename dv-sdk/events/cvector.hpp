@@ -50,33 +50,16 @@ public:
 	}
 
 	// Copy constructor.
-	cvector(const cvector &vec) : cvector(vec, 0) {
-	}
-
-	cvector(const cvector &vec, size_type pos) : cvector(vec, pos, npos) {
-	}
-
-	cvector(const cvector &vec, size_type pos, size_type count) : cvector(vec.data(), vec.size(), pos, count) {
-	}
-
-	cvector(const std::vector<value_type> &vec) : cvector(vec, 0) {
-	}
-
-	cvector(const std::vector<value_type> &vec, size_type pos) : cvector(vec, pos, npos) {
-	}
-
-	cvector(const std::vector<value_type> &vec, size_type pos, size_type count) :
+	cvector(const cvector &vec, size_type pos = 0, size_type count = npos) :
 		cvector(vec.data(), vec.size(), pos, count) {
 	}
 
-	cvector(const_pointer vec, size_type vecLength) : cvector(vec, vecLength, 0) {
-	}
-
-	cvector(const_pointer vec, size_type vecLength, size_type pos) : cvector(vec, vecLength, pos, npos) {
+	cvector(const std::vector<value_type> &vec, size_type pos = 0, size_type count = npos) :
+		cvector(vec.data(), vec.size(), pos, count) {
 	}
 
 	// Lowest common denominator: a ptr and sizes. Most constructors call this.
-	cvector(const_pointer vec, size_type vecLength, size_type pos, size_type count) {
+	cvector(const_pointer vec, size_type vecLength, size_type pos = 0, size_type count = npos) {
 		if (vec == nullptr) {
 			throw std::invalid_argument("vector resolves to nullptr.");
 		}
@@ -229,43 +212,21 @@ public:
 		vec.data_ptr     = nullptr;
 	}
 
-	void assign(const cvector &vec) {
-		// If both the same, do nothing.
-		if (this != &vec) {
-			assign(vec, 0);
+	void assign(const cvector &vec, size_type pos = 0, size_type count = npos) {
+		// If operation would have no effect, do nothing.
+		if ((this == &vec) && (pos == 0) && (count >= vec.size())) {
+			return;
 		}
-	}
 
-	void assign(const cvector &vec, size_type pos) {
-		assign(vec, pos, npos);
-	}
-
-	void assign(const cvector &vec, size_type pos, size_type count) {
 		assign(vec.data(), vec.size(), pos, count);
 	}
 
-	void assign(const std::vector<value_type> &vec) {
-		assign(vec, 0);
-	}
-
-	void assign(const std::vector<value_type> &vec, size_type pos) {
-		assign(vec, pos, npos);
-	}
-
-	void assign(const std::vector<value_type> &vec, size_type pos, size_type count) {
+	void assign(const std::vector<value_type> &vec, size_type pos = 0, size_type count = npos) {
 		assign(vec.data(), vec.size(), pos, count);
-	}
-
-	void assign(const_pointer vec, size_type vecLength) {
-		assign(vec, vecLength, 0);
-	}
-
-	void assign(const_pointer vec, size_type vecLength, size_type pos) {
-		assign(vec, vecLength, pos, npos);
 	}
 
 	// Lowest common denominator: a ptr and sizes. Most assignments call this.
-	void assign(const_pointer vec, size_type vecLength, size_type pos, size_type count) {
+	void assign(const_pointer vec, size_type vecLength, size_type pos = 0, size_type count = npos) {
 		if (vec == nullptr) {
 			throw std::invalid_argument("vector resolves to nullptr.");
 		}
@@ -761,40 +722,16 @@ public:
 		return (wrPos);
 	}
 
-	void append(const cvector &vec) {
-		append(vec, 0);
-	}
-
-	void append(const cvector &vec, size_type pos) {
-		append(vec, pos, npos);
-	}
-
-	void append(const cvector &vec, size_type pos, size_type count) {
+	void append(const cvector &vec, size_type pos = 0, size_type count = npos) {
 		append(vec.data(), vec.size(), pos, count);
 	}
 
-	void append(const std::vector<value_type> &vec) {
-		append(vec, 0);
-	}
-
-	void append(const std::vector<value_type> &vec, size_type pos) {
-		append(vec, pos, npos);
-	}
-
-	void append(const std::vector<value_type> &vec, size_type pos, size_type count) {
+	void append(const std::vector<value_type> &vec, size_type pos = 0, size_type count = npos) {
 		append(vec.data(), vec.size(), pos, count);
-	}
-
-	void append(const_pointer vec, size_type vecLength) {
-		append(vec, vecLength, 0);
-	}
-
-	void append(const_pointer vec, size_type vecLength, size_type pos) {
-		append(vec, vecLength, pos, npos);
 	}
 
 	// Lowest common denominator: a ptr and sizes.
-	void append(const_pointer vec, size_type vecLength, size_type pos, size_type count) {
+	void append(const_pointer vec, size_type vecLength, size_type pos = 0, size_type count = npos) {
 		if (vec == nullptr) {
 			throw std::invalid_argument("vector resolves to nullptr.");
 		}

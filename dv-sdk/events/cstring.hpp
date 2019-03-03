@@ -51,36 +51,19 @@ public:
 	}
 
 	// Copy constructor.
-	cstring(const cstring &str) : cstring(str, 0) {
+	cstring(const cstring &str, size_type pos = 0, size_type count = npos) :
+		cstring(str.c_str(), str.length(), pos, count) {
 	}
 
-	cstring(const cstring &str, size_type pos) : cstring(str, pos, npos) {
-	}
-
-	cstring(const cstring &str, size_type pos, size_type count) : cstring(str.c_str(), str.length(), pos, count) {
-	}
-
-	cstring(std::basic_string_view<value_type> str) : cstring(str, 0) {
-	}
-
-	cstring(std::basic_string_view<value_type> str, size_type pos) : cstring(str, pos, npos) {
-	}
-
-	cstring(std::basic_string_view<value_type> str, size_type pos, size_type count) :
+	cstring(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) :
 		cstring(str.data(), str.size(), pos, count) {
 	}
 
 	cstring(const_pointer str) : cstring(str, strlen(str)) {
 	}
 
-	cstring(const_pointer str, size_type strLength) : cstring(str, strLength, 0) {
-	}
-
-	cstring(const_pointer str, size_type strLength, size_type pos) : cstring(str, strLength, pos, npos) {
-	}
-
 	// Lowest common denominator: a ptr and sizes. Most constructors call this.
-	cstring(const_pointer str, size_type strLength, size_type pos, size_type count) {
+	cstring(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
 		if (str == nullptr) {
 			throw std::invalid_argument("string resolves to nullptr.");
 		}
@@ -239,30 +222,16 @@ public:
 		str.data_ptr     = nullptr;
 	}
 
-	void assign(const cstring &str) {
-		// If both the same, do nothing.
-		if (this != &str) {
-			assign(str, 0);
+	void assign(const cstring &str, size_type pos = 0, size_type count = npos) {
+		// If operation would have no effect, do nothing.
+		if ((this == &str) && (pos == 0) && (count >= str.length())) {
+			return;
 		}
-	}
 
-	void assign(const cstring &str, size_type pos) {
-		assign(str, pos, npos);
-	}
-
-	void assign(const cstring &str, size_type pos, size_type count) {
 		assign(str.c_str(), str.length(), pos, count);
 	}
 
-	void assign(std::basic_string_view<value_type> str) {
-		assign(str, 0);
-	}
-
-	void assign(std::basic_string_view<value_type> str, size_type pos) {
-		assign(str, pos, npos);
-	}
-
-	void assign(std::basic_string_view<value_type> str, size_type pos, size_type count) {
+	void assign(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) {
 		assign(str.data(), str.size(), pos, count);
 	}
 
@@ -270,16 +239,8 @@ public:
 		assign(str, strlen(str));
 	}
 
-	void assign(const_pointer str, size_type strLength) {
-		assign(str, strLength, 0);
-	}
-
-	void assign(const_pointer str, size_type strLength, size_type pos) {
-		assign(str, strLength, pos, npos);
-	}
-
 	// Lowest common denominator: a ptr and sizes. Most assignments call this.
-	void assign(const_pointer str, size_type strLength, size_type pos, size_type count) {
+	void assign(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
 		if (str == nullptr) {
 			throw std::invalid_argument("string resolves to nullptr.");
 		}
@@ -686,27 +647,11 @@ public:
 		return (wrFirst);
 	}
 
-	void append(const cstring &str) {
-		append(str, 0);
-	}
-
-	void append(const cstring &str, size_type pos) {
-		append(str, pos, npos);
-	}
-
-	void append(const cstring &str, size_type pos, size_type count) {
+	void append(const cstring &str, size_type pos = 0, size_type count = npos) {
 		append(str.c_str(), str.length(), pos, count);
 	}
 
-	void append(std::basic_string_view<value_type> str) {
-		append(str, 0);
-	}
-
-	void append(std::basic_string_view<value_type> str, size_type pos) {
-		append(str, pos, npos);
-	}
-
-	void append(std::basic_string_view<value_type> str, size_type pos, size_type count) {
+	void append(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) {
 		append(str.data(), str.size(), pos, count);
 	}
 
@@ -714,16 +659,8 @@ public:
 		append(str, strlen(str));
 	}
 
-	void append(const_pointer str, size_type strLength) {
-		append(str, strLength, 0);
-	}
-
-	void append(const_pointer str, size_type strLength, size_type pos) {
-		append(str, strLength, pos, npos);
-	}
-
 	// Lowest common denominator: a ptr and sizes.
-	void append(const_pointer str, size_type strLength, size_type pos, size_type count) {
+	void append(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
 		if (str == nullptr) {
 			throw std::invalid_argument("string resolves to nullptr.");
 		}
