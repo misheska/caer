@@ -120,7 +120,7 @@ public:
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
 		}
 
-		auto count = static_cast<size_type>(std::abs(difference));
+		auto count = static_cast<size_type>(difference);
 
 		curr_size = count;
 
@@ -319,7 +319,7 @@ public:
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
 		}
 
-		auto count = static_cast<size_type>(std::abs(difference));
+		auto count = static_cast<size_type>(difference);
 
 		ensureCapacity(count);
 
@@ -619,7 +619,7 @@ public:
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
 		}
 
-		auto count = static_cast<size_type>(std::abs(difference));
+		auto count = static_cast<size_type>(difference);
 		if (count == 0) {
 			return (iterator::fromConst(pos));
 		}
@@ -669,7 +669,7 @@ public:
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
 		}
 
-		auto count = static_cast<size_type>(std::abs(difference));
+		auto count = static_cast<size_type>(difference);
 		if (count == 0) {
 			return (wrFirst);
 		}
