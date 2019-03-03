@@ -495,7 +495,11 @@ public:
 		curr_size++;
 	}
 
-	void pop_back() noexcept {
+	void pop_back() {
+		if (empty()) {
+			throw std::out_of_range("vector is empty.");
+		}
+
 		curr_size--;
 
 		std::destroy_n(end(), 1);
