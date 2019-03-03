@@ -611,11 +611,10 @@ public:
 		// That's why we get the index first and regenerate pos.
 		auto idx = static_cast<size_type>(std::distance(cbegin(), pos));
 		ensureCapacity(curr_size + 1);
-		pos        = cbegin() + idx;
 		auto wrPos = begin() + idx;
 
 		// Move by N to make space.
-		std::move_backward(pos, cend(), end() + count);
+		std::move_backward(wrPos, end(), end() + count);
 
 		// Copy construct new elements at insertion position.
 		std::fill_n(wrPos, count, value);
@@ -641,11 +640,10 @@ public:
 		// That's why we get the index first and regenerate pos.
 		auto idx = static_cast<size_type>(std::distance(cbegin(), pos));
 		ensureCapacity(curr_size + 1);
-		pos        = cbegin() + idx;
 		auto wrPos = begin() + idx;
 
 		// Move by N to make space.
-		std::move_backward(pos, cend(), end() + count);
+		std::move_backward(wrPos, end(), end() + count);
 
 		// Copy construct new elements at insertion position from external range.
 		std::copy_n(first, count, wrPos);
@@ -661,19 +659,23 @@ public:
 	}
 
 	iterator erase(const_iterator pos) {
+		auto wrPos = iterator::fromConst(pos);
+
 		// Move elements over, this will move assign into the
 		// to be erased element, effectively erasing it.
-		std::move(pos + 1, cend(), iterator::fromConst(pos));
+		std::move(wrPos + 1, end(), wrPos);
 
 		// Destroy object at end, this was moved from and is
 		// now waiting on destruction.
 		curr_size--;
 		nullTerminate();
 
-		return (iterator::fromConst(pos));
+		return (wrPos);
 	}
 
 	iterator erase(const_iterator first, const_iterator last) {
+		auto wrFirst = iterator::fromConst(first);
+
 		auto difference = std::distance(first, last);
 		if (difference < 0) {
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
@@ -681,19 +683,19 @@ public:
 
 		auto count = static_cast<size_type>(std::abs(difference));
 		if (count == 0) {
-			return (iterator::fromConst(first));
+			return (wrFirst);
 		}
 
 		// Move elements over, this will move assign into the
 		// to be erased element, effectively erasing it.
-		std::move(last, cend(), iterator::fromConst(first));
+		std::move(iterator::fromConst(last), end(), wrFirst);
 
 		// Destroy objects at end, they were moved from and are
 		// now waiting on destruction.
 		curr_size -= count;
 		nullTerminate();
 
-		return (iterator::fromConst(first));
+		return (wrFirst);
 	}
 
 private:
