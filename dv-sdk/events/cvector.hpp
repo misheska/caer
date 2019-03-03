@@ -448,6 +448,10 @@ public:
 		return (data_ptr[getIndex(static_cast<size_type>(index))]);
 	}
 
+	explicit operator std::vector<value_type>() const {
+		return (std::vector<value_type>{cbegin(), cend()});
+	}
+
 	reference front() {
 		return (at(0));
 	}
