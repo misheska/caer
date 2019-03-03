@@ -60,23 +60,13 @@ public:
 	cstring(const cstring &str, size_type pos, size_type count) : cstring(str.c_str(), str.length(), pos, count) {
 	}
 
-	cstring(const std::basic_string<value_type> &str) : cstring(str, 0) {
+	cstring(std::basic_string_view<value_type> str) : cstring(str, 0) {
 	}
 
-	cstring(const std::basic_string<value_type> &str, size_type pos) : cstring(str, pos, npos) {
+	cstring(std::basic_string_view<value_type> str, size_type pos) : cstring(str, pos, npos) {
 	}
 
-	cstring(const std::basic_string<value_type> &str, size_type pos, size_type count) :
-		cstring(str.c_str(), str.length(), pos, count) {
-	}
-
-	cstring(const std::basic_string_view<value_type> &str) : cstring(str, 0) {
-	}
-
-	cstring(const std::basic_string_view<value_type> &str, size_type pos) : cstring(str, pos, npos) {
-	}
-
-	cstring(const std::basic_string_view<value_type> &str, size_type pos, size_type count) :
+	cstring(std::basic_string_view<value_type> str, size_type pos, size_type count) :
 		cstring(str.data(), str.size(), pos, count) {
 	}
 
@@ -177,13 +167,7 @@ public:
 	}
 
 	// Extra assignment operators.
-	cstring &operator=(const std::basic_string<value_type> &rhs) {
-		assign(rhs);
-
-		return (*this);
-	}
-
-	cstring &operator=(const std::basic_string_view<value_type> &rhs) {
+	cstring &operator=(std::basic_string_view<value_type> rhs) {
 		assign(rhs);
 
 		return (*this);
@@ -254,27 +238,15 @@ public:
 		assign(str.c_str(), str.length(), pos, count);
 	}
 
-	void assign(const std::basic_string<value_type> &str) {
+	void assign(std::basic_string_view<value_type> str) {
 		assign(str, 0);
 	}
 
-	void assign(const std::basic_string<value_type> &str, size_type pos) {
+	void assign(std::basic_string_view<value_type> str, size_type pos) {
 		assign(str, pos, npos);
 	}
 
-	void assign(const std::basic_string<value_type> &str, size_type pos, size_type count) {
-		assign(str.c_str(), str.length(), pos, count);
-	}
-
-	void assign(const std::basic_string_view<value_type> &str) {
-		assign(str, 0);
-	}
-
-	void assign(const std::basic_string_view<value_type> &str, size_type pos) {
-		assign(str, pos, npos);
-	}
-
-	void assign(const std::basic_string_view<value_type> &str, size_type pos, size_type count) {
+	void assign(std::basic_string_view<value_type> str, size_type pos, size_type count) {
 		assign(str.data(), str.size(), pos, count);
 	}
 
