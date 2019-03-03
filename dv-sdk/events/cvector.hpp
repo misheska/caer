@@ -197,6 +197,14 @@ public:
 		return (!operator==(rhs));
 	}
 
+	bool operator==(const std::vector<value_type> &rhs) const noexcept {
+		return (std::equal(cbegin(), cend(), rhs.cbegin(), rhs.cend()));
+	}
+
+	bool operator!=(const std::vector<value_type> &rhs) const noexcept {
+		return (!operator==(rhs));
+	}
+
 	void assign(cvector &&vec) noexcept {
 		assert(this != &vec);
 

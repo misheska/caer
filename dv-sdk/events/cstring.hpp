@@ -200,6 +200,22 @@ public:
 		return (!operator==(rhs));
 	}
 
+	bool operator==(std::basic_string_view<value_type> rhs) const noexcept {
+		return (std::equal(cbegin(), cend(), rhs.cbegin(), rhs.cend()));
+	}
+
+	bool operator!=(std::basic_string_view<value_type> rhs) const noexcept {
+		return (!operator==(rhs));
+	}
+
+	bool operator==(const_pointer rhs) const noexcept {
+		return (std::equal(cbegin(), cend(), const_iterator(rhs), const_iterator(rhs + strlen(rhs))));
+	}
+
+	bool operator!=(const_pointer rhs) const noexcept {
+		return (!operator==(rhs));
+	}
+
 	void assign(cstring &&str) noexcept {
 		assert(this != &str);
 
