@@ -137,41 +137,29 @@ public:
 
 	// Move assignment.
 	cstring &operator=(cstring &&rhs) noexcept {
-		assign(std::move(rhs));
-
-		return (*this);
+		return (assign(std::move(rhs)));
 	}
 
 	// Copy assignment.
 	cstring &operator=(const cstring &rhs) {
-		assign(rhs);
-
-		return (*this);
+		return (assign(rhs));
 	}
 
 	// Extra assignment operators.
 	cstring &operator=(std::basic_string_view<value_type> rhs) {
-		assign(rhs);
-
-		return (*this);
+		return (assign(rhs));
 	}
 
 	cstring &operator=(const_pointer rhs) {
-		assign(rhs);
-
-		return (*this);
+		return (assign(rhs));
 	}
 
 	cstring &operator=(value_type value) {
-		assign(1, value);
-
-		return (*this);
+		return (assign(1, value));
 	}
 
 	cstring &operator=(std::initializer_list<value_type> rhs_list) {
-		assign(rhs_list);
-
-		return (*this);
+		return (assign(rhs_list));
 	}
 
 	// Comparison operators.
@@ -199,7 +187,7 @@ public:
 		return (!operator==(rhs));
 	}
 
-	void assign(cstring &&str) noexcept {
+	cstring &assign(cstring &&str) noexcept {
 		assert(this != &str);
 
 		// Moved-from object must remain in a valid state. We can define
@@ -220,27 +208,29 @@ public:
 		str.curr_size    = 0;
 		str.maximum_size = 0;
 		str.data_ptr     = nullptr;
+
+		return (*this);
 	}
 
-	void assign(const cstring &str, size_type pos = 0, size_type count = npos) {
+	cstring &assign(const cstring &str, size_type pos = 0, size_type count = npos) {
 		// If operation would have no effect, do nothing.
 		if ((this == &str) && (pos == 0) && (count >= str.length())) {
-			return;
+			return (*this);
 		}
 
-		assign(str.c_str(), str.length(), pos, count);
+		return (assign(str.c_str(), str.length(), pos, count));
 	}
 
-	void assign(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) {
-		assign(str.data(), str.size(), pos, count);
+	cstring &assign(std::basic_string_view<value_type> str, size_type pos = 0, size_type count = npos) {
+		return (assign(str.data(), str.size(), pos, count));
 	}
 
-	void assign(const_pointer str) {
-		assign(str, strlen(str));
+	cstring &assign(const_pointer str) {
+		return (assign(str, strlen(str)));
 	}
 
 	// Lowest common denominator: a ptr and sizes. Most assignments call this.
-	void assign(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
+	cstring &assign(const_pointer str, size_type strLength, size_type pos = 0, size_type count = npos) {
 		if (str == nullptr) {
 			throw std::invalid_argument("string resolves to nullptr.");
 		}
@@ -260,10 +250,12 @@ public:
 
 		std::copy_n(const_iterator(str + pos), count, begin());
 		nullTerminate();
+
+		return (*this);
 	}
 
 	// Replace string with N times the given character.
-	void assign(size_type count, value_type value) {
+	cstring &assign(size_type count, value_type value) {
 		ensureCapacity(count);
 
 		curr_size = count;
@@ -271,10 +263,12 @@ public:
 		// Initialize elements to copy of value.
 		std::fill_n(begin(), count, value);
 		nullTerminate();
+
+		return (*this);
 	}
 
 	// Replace string with characters from range.
-	template<class InputIt> void assign(InputIt first, InputIt last) {
+	template<class InputIt> cstring &assign(InputIt first, InputIt last) {
 		auto difference = std::distance(first, last);
 		if (difference < 0) {
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
@@ -289,11 +283,13 @@ public:
 		// Initialize elements to copy of range's values.
 		std::copy_n(first, count, begin());
 		nullTerminate();
+
+		return (*this);
 	}
 
 	// Replace string via initializer list {x, y, z}.
-	void assign(std::initializer_list<value_type> init_list) {
-		assign(init_list.begin(), init_list.end());
+	cstring &assign(std::initializer_list<value_type> init_list) {
+		return (assign(init_list.begin(), init_list.end()));
 	}
 
 	pointer data() noexcept {

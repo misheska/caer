@@ -140,35 +140,25 @@ public:
 
 	// Move assignment.
 	cvector &operator=(cvector &&rhs) noexcept {
-		assign(std::move(rhs));
-
-		return (*this);
+		return (assign(std::move(rhs)));
 	}
 
 	// Copy assignment.
 	cvector &operator=(const cvector &rhs) {
-		assign(rhs);
-
-		return (*this);
+		return (assign(rhs));
 	}
 
 	// Extra assignment operators.
 	cvector &operator=(const std::vector<value_type> &rhs) {
-		assign(rhs);
-
-		return (*this);
+		return (assign(rhs));
 	}
 
 	cvector &operator=(const_reference value) {
-		assign(1, value);
-
-		return (*this);
+		return (assign(1, value));
 	}
 
 	cvector &operator=(std::initializer_list<value_type> rhs_list) {
-		assign(rhs_list);
-
-		return (*this);
+		return (assign(rhs_list));
 	}
 
 	// Comparison operators.
@@ -188,7 +178,7 @@ public:
 		return (!operator==(rhs));
 	}
 
-	void assign(cvector &&vec) noexcept {
+	cvector &assign(cvector &&vec) noexcept {
 		assert(this != &vec);
 
 		// Moved-from object must remain in a valid state. We can define
@@ -210,23 +200,25 @@ public:
 		vec.curr_size    = 0;
 		vec.maximum_size = 0;
 		vec.data_ptr     = nullptr;
+
+		return (*this);
 	}
 
-	void assign(const cvector &vec, size_type pos = 0, size_type count = npos) {
+	cvector &assign(const cvector &vec, size_type pos = 0, size_type count = npos) {
 		// If operation would have no effect, do nothing.
 		if ((this == &vec) && (pos == 0) && (count >= vec.size())) {
-			return;
+			return (*this);
 		}
 
-		assign(vec.data(), vec.size(), pos, count);
+		return (assign(vec.data(), vec.size(), pos, count));
 	}
 
-	void assign(const std::vector<value_type> &vec, size_type pos = 0, size_type count = npos) {
-		assign(vec.data(), vec.size(), pos, count);
+	cvector &assign(const std::vector<value_type> &vec, size_type pos = 0, size_type count = npos) {
+		return (assign(vec.data(), vec.size(), pos, count));
 	}
 
 	// Lowest common denominator: a ptr and sizes. Most assignments call this.
-	void assign(const_pointer vec, size_type vecLength, size_type pos = 0, size_type count = npos) {
+	cvector &assign(const_pointer vec, size_type vecLength, size_type pos = 0, size_type count = npos) {
 		if (vec == nullptr) {
 			throw std::invalid_argument("vector resolves to nullptr.");
 		}
@@ -247,10 +239,12 @@ public:
 		curr_size = count;
 
 		std::uninitialized_copy_n(const_iterator(vec + pos), count, begin());
+
+		return (*this);
 	}
 
 	// Replace vector with N default constructed elements.
-	void assign(size_type count) {
+	cvector &assign(size_type count) {
 		ensureCapacity(count);
 
 		std::destroy_n(begin(), curr_size);
@@ -259,10 +253,12 @@ public:
 
 		// Default initialize elements.
 		std::uninitialized_default_construct_n(begin(), count);
+
+		return (*this);
 	}
 
 	// Replace vector with N copies of given value.
-	void assign(size_type count, const_reference value) {
+	cvector &assign(size_type count, const_reference value) {
 		ensureCapacity(count);
 
 		std::destroy_n(begin(), curr_size);
@@ -271,10 +267,12 @@ public:
 
 		// Initialize elements to copy of value.
 		std::uninitialized_fill_n(begin(), count, value);
+
+		return (*this);
 	}
 
 	// Replace vector with elements from range.
-	template<class InputIt> void assign(InputIt first, InputIt last) {
+	template<class InputIt> cvector &assign(InputIt first, InputIt last) {
 		auto difference = std::distance(first, last);
 		if (difference < 0) {
 			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
@@ -290,11 +288,13 @@ public:
 
 		// Initialize elements to copy of range's values.
 		std::uninitialized_copy_n(first, count, begin());
+
+		return (*this);
 	}
 
 	// Replace vector via initializer list {x, y, z}.
-	void assign(std::initializer_list<value_type> init_list) {
-		assign(init_list.begin(), init_list.end());
+	cvector &assign(std::initializer_list<value_type> init_list) {
+		return (assign(init_list.begin(), init_list.end()));
 	}
 
 	pointer data() noexcept {
