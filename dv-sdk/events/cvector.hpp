@@ -761,6 +761,126 @@ public:
 		return (wrPos);
 	}
 
+	void append(const cvector &vec) {
+		append(vec, 0);
+	}
+
+	void append(const cvector &vec, size_type pos) {
+		append(vec, pos, npos);
+	}
+
+	void append(const cvector &vec, size_type pos, size_type count) {
+		append(vec.data(), vec.size(), pos, count);
+	}
+
+	void append(const std::vector<value_type> &vec) {
+		append(vec, 0);
+	}
+
+	void append(const std::vector<value_type> &vec, size_type pos) {
+		append(vec, pos, npos);
+	}
+
+	void append(const std::vector<value_type> &vec, size_type pos, size_type count) {
+		append(vec.data(), vec.size(), pos, count);
+	}
+
+	void append(const_pointer vec, size_type vecLength) {
+		append(vec, vecLength, 0);
+	}
+
+	void append(const_pointer vec, size_type vecLength, size_type pos) {
+		append(vec, vecLength, pos, npos);
+	}
+
+	// Lowest common denominator: a ptr and sizes.
+	void append(const_pointer vec, size_type vecLength, size_type pos, size_type count) {
+		if (vec == nullptr) {
+			throw std::invalid_argument("vector resolves to nullptr.");
+		}
+
+		if (pos > vecLength) {
+			throw std::length_error("position bigger than vector length.");
+		}
+
+		// Ensure number of elements to copy is within range.
+		if (count > (vecLength - pos)) {
+			count = vecLength - pos;
+		}
+
+		ensureCapacity(curr_size + count);
+
+		curr_size += count;
+
+		std::uninitialized_copy_n(const_iterator(vec + pos), count, end());
+	}
+
+	// Enlarge vector with N default constructed elements.
+	void append(size_type count) {
+		ensureCapacity(curr_size + count);
+
+		curr_size += count;
+
+		// Default initialize elements.
+		std::uninitialized_default_construct_n(end(), count);
+	}
+
+	// Enlarge vector with N copies of given value.
+	void append(size_type count, const_reference value) {
+		ensureCapacity(curr_size + count);
+
+		curr_size += count;
+
+		// Initialize elements to copy of value.
+		std::uninitialized_fill_n(end(), count, value);
+	}
+
+	// Enlarge vector with elements from range.
+	template<class InputIt> void append(InputIt first, InputIt last) {
+		auto difference = std::distance(first, last);
+		if (difference < 0) {
+			throw std::invalid_argument("Inverted iterators (last < first). This is never what you really want.");
+		}
+
+		auto count = static_cast<size_type>(difference);
+
+		ensureCapacity(curr_size + count);
+
+		curr_size += count;
+
+		// Initialize elements to copy of range's values.
+		std::uninitialized_copy_n(first, count, end());
+	}
+
+	// Enlarge vector via initializer list {x, y, z}.
+	void append(std::initializer_list<value_type> init_list) {
+		append(init_list.begin(), init_list.end());
+	}
+
+	cvector &operator+=(const cvector &rhs) {
+		append(rhs);
+
+		return (*this);
+	}
+
+	cvector &operator+=(const std::vector<value_type> &rhs) {
+		append(rhs);
+
+		return (*this);
+	}
+
+	cvector &operator+=(const_reference value) {
+		append(1, value);
+
+		return (*this);
+	}
+
+	cvector &operator+=(std::initializer_list<value_type> rhs_list) {
+		append(rhs_list);
+
+		return (*this);
+	}
+
 private:
 	void ensureCapacity(size_type newSize) {
 		// Do we have enough space left?
