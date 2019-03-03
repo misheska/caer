@@ -905,10 +905,16 @@ private:
 	}
 };
 
-using cstring = basic_cstring<char>;
+using cstring    = basic_cstring<char>;
+using cwstring   = basic_cstring<wchar_t>;
+using cu16string = basic_cstring<char16_t>;
+using cu32string = basic_cstring<char32_t>;
 
 } // namespace dv
 
 static_assert(std::is_standard_layout_v<dv::cstring>, "cstring is not standard layout");
+static_assert(std::is_standard_layout_v<dv::cwstring>, "cwstring is not standard layout");
+static_assert(std::is_standard_layout_v<dv::cu16string>, "cu16string is not standard layout");
+static_assert(std::is_standard_layout_v<dv::cu32string>, "cu32string is not standard layout");
 
 #endif // CSTRING_HPP
