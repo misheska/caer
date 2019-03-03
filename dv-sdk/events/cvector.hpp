@@ -597,7 +597,7 @@ public:
 		return (insert(pos, 1, value));
 	}
 
-	iterator insert(const_iterator pos, T &&value) {
+	iterator insert(const_iterator pos, value_type &&value) {
 		// Careful: ensureCapacity() can invalidate iterators!
 		// That's why we get the index first and regenerate pos.
 		auto idx = static_cast<size_type>(std::distance(cbegin(), pos));
@@ -777,7 +777,7 @@ private:
 		}
 
 		if (size != 0) {
-			data_ptr = static_cast<pointer>(malloc(size * sizeof(T)));
+			data_ptr = static_cast<pointer>(malloc(size * sizeof(value_type)));
 			if (data_ptr == nullptr) {
 				// Failed.
 				throw std::bad_alloc();
@@ -797,7 +797,7 @@ private:
 		if constexpr (std::is_pod_v<value_type>) {
 			// Type is POD, we can just use realloc.
 			if (newSize != 0) {
-				new_data_ptr = static_cast<pointer>(realloc(data_ptr, newSize * sizeof(T)));
+				new_data_ptr = static_cast<pointer>(realloc(data_ptr, newSize * sizeof(value_type)));
 				if (new_data_ptr == nullptr) {
 					// Failed.
 					throw std::bad_alloc();
@@ -812,7 +812,7 @@ private:
 			// Type is not POD (C++ object), we cannot use realloc directly.
 			// So we malloc the new size, move objects over, and then free.
 			if (newSize != 0) {
-				new_data_ptr = static_cast<pointer>(malloc(newSize * sizeof(T)));
+				new_data_ptr = static_cast<pointer>(malloc(newSize * sizeof(value_type)));
 				if (new_data_ptr == nullptr) {
 					// Failed.
 					throw std::bad_alloc();
