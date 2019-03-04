@@ -22,14 +22,14 @@ table Test {
 	aboolvec: [bool];
 	aintvec: [int32];
 	astrvec: [string];
-    ttab : TestTable;
-    tstru : TestStruct;
-    ttabvec : [TestTable];
-    tstruvec : [TestStruct];
+    ttab : TestTable (native_inline);
+    tstru : TestStruct (native_inline);
+    ttabvec : [TestTable] (native_inline);
+    tstruvec : [TestStruct] (native_inline);
 }
 
 table TestPacket {
-	events: [Test];
+	events: [Test] (native_inline);
 }
 
 root_type TestPacket;

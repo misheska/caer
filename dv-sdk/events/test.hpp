@@ -131,9 +131,9 @@ struct TestT : public flatbuffers::NativeTable {
 	dv::cvector<bool> aboolvec;
 	dv::cvector<int32_t> aintvec;
 	dv::cvector<dv::cstring> astrvec;
-	TestTableT *ttab;
-	TestStruct *tstru;
-	dv::cvector<TestTableT *> ttabvec;
+	TestTableT ttab;
+	TestStruct tstru;
+	dv::cvector<TestTableT> ttabvec;
 	dv::cvector<TestStruct> tstruvec;
 	TestT() : timestamp(0), addressX(0), addressY(0), polarity(false) {
 	}
@@ -309,7 +309,7 @@ flatbuffers::Offset<Test> CreateTest(
 
 struct TestPacketT : public flatbuffers::NativeTable {
 	typedef TestPacket TableType;
-	dv::cvector<TestT *> events;
+	dv::cvector<TestT> events;
 	TestPacketT() {
 	}
 };
@@ -466,19 +466,19 @@ inline void Test::UnPackTo(TestT *_o, const flatbuffers::resolver_function_t *_r
 	{
 		auto _e = ttab();
 		if (_e)
-			_o->ttab = (_e->UnPack(_resolver));
+			_e->UnPackTo(&_o->ttab, _resolver);
 	};
 	{
 		auto _e = tstru();
 		if (_e)
-			_o->tstru = (new TestStruct(*_e));
+			_o->tstru = *_e;
 	};
 	{
 		auto _e = ttabvec();
 		if (_e) {
 			_o->ttabvec.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-				_o->ttabvec[_i] = (_e->Get(_i)->UnPack(_resolver));
+				_e->Get(_i)->UnPackTo(&_o->ttabvec[_i], _resolver);
 			}
 		}
 	};
@@ -522,12 +522,12 @@ inline flatbuffers::Offset<Test> CreateTest(
 			  ? _fbb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(_o->astrvec.size(),
 					[](size_t i, _VectorArgs *__va) { return __va->__fbb->CreateString(__va->__o->astrvec[i]); }, &_va)
 			  : 0;
-	auto _ttab    = _o->ttab ? CreateTestTable(_fbb, _o->ttab, _rehasher) : 0;
-	auto _tstru   = _o->tstru ? _o->tstru : 0;
+	auto _ttab    = CreateTestTable(_fbb, &_o->ttab, _rehasher);
+	auto _tstru   = &_o->tstru;
 	auto _ttabvec = _o->ttabvec.size()
 						? _fbb.CreateVector<flatbuffers::Offset<TestTable>>(_o->ttabvec.size(),
 							  [](size_t i, _VectorArgs *__va) {
-								  return CreateTestTable(*__va->__fbb, __va->__o->ttabvec[i], __va->__rehasher);
+								  return CreateTestTable(*__va->__fbb, &__va->__o->ttabvec[i], __va->__rehasher);
 							  },
 							  &_va)
 						: 0;
@@ -550,7 +550,7 @@ inline void TestPacket::UnPackTo(TestPacketT *_o, const flatbuffers::resolver_fu
 		if (_e) {
 			_o->events.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-				_o->events[_i] = (_e->Get(_i)->UnPack(_resolver));
+				_e->Get(_i)->UnPackTo(&_o->events[_i], _resolver);
 			}
 		}
 	};
@@ -573,7 +573,7 @@ inline flatbuffers::Offset<TestPacket> CreateTestPacket(
 	(void) _va;
 	auto _events = _o->events.size() ? _fbb.CreateVector<flatbuffers::Offset<Test>>(_o->events.size(),
 										   [](size_t i, _VectorArgs *__va) {
-											   return CreateTest(*__va->__fbb, __va->__o->events[i], __va->__rehasher);
+											   return CreateTest(*__va->__fbb, &__va->__o->events[i], __va->__rehasher);
 										   },
 										   &_va)
 									 : 0;
