@@ -6,9 +6,11 @@
 #include <fcntl.h>
 #include <sys/types.h>
 
+static void caerInputFileConfigInit(dvConfigNode configNode);
 static bool caerInputFileInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS InputFileFunctions = {
+		.moduleConfigInit = &caerInputFileConfigInit,
 	.moduleInit   = &caerInputFileInit,
 	.moduleRun    = &caerInputCommonRun,
 	.moduleConfig = NULL,
@@ -33,10 +35,14 @@ dvModuleInfo dvModuleGetInfo(void) {
 	return (&InputFileInfo);
 }
 
-static bool caerInputFileInit(dvModuleData moduleData) {
+static void caerInputFileConfigInit(dvConfigNode moduleNode) {
 	dvConfigNodeCreateString(
-		moduleData->moduleNode, "filePath", "", 0, PATH_MAX, DVCFG_FLAGS_NORMAL, "File path for reading input data.");
-	dvConfigNodeAttributeModifierFileChooser(moduleData->moduleNode, "filePath", "LOAD:aedat");
+			moduleNode, "filePath", "", 0, PATH_MAX, DVCFG_FLAGS_NORMAL, "File path for reading input data.");
+	dvConfigNodeAttributeModifierFileChooser(moduleNode, "filePath", "LOAD:aedat");
+	dvConfigNodeAttributeModifierPriorityAttributes(moduleNode, "filePath");
+}
+
+static bool caerInputFileInit(dvModuleData moduleData) {
 
 	char *filePath = dvConfigNodeGetString(moduleData->moduleNode, "filePath");
 
