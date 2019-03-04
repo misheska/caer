@@ -10,7 +10,7 @@ struct PolarityEvent {
 }
 
 table PolarityPacket {
-	events: [PolarityEvent];
+	events: [PolarityEvent] (native_inline);
 }
 
 root_type PolarityPacket;

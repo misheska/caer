@@ -60,7 +60,7 @@ table Frame8 {
 }
 
 table Frame8Packet {
-	events: [Frame8];
+	events: [Frame8] (native_inline);
 }
 
 root_type Frame8Packet;
