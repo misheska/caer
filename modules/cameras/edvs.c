@@ -69,6 +69,9 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
 
 	// Set default biases, from EDVSFast.xml settings.
 	dvConfigNode biasNode = dvConfigNodeGetRelativeNode(moduleNode, "bias/");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(biasNode, "diff,diffOn,diffOff");
+
 	dvConfigNodeCreateInt(biasNode, "cas", 1992, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Photoreceptor cascode.");
 	dvConfigNodeCreateInt(
 		biasNode, "injGnd", 1108364, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Differentiator switch level.");
@@ -92,16 +95,24 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
 
 	// DVS settings.
 	dvConfigNode dvsNode = dvConfigNodeGetRelativeNode(moduleNode, "dvs/");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(dvsNode, "Run,TimestampReset");
+
 	dvConfigNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Run DVS to get polarity events.");
 	dvConfigNodeCreateBool(dvsNode, "TimestampReset", false, DVCFG_FLAGS_NORMAL, "Reset timestamps to zero.");
 	dvConfigNodeAttributeModifierButton(dvsNode, "TimestampReset", "EXECUTE");
 
 	// Serial communication buffer settings.
 	dvConfigNode serialNode = dvConfigNodeGetRelativeNode(moduleNode, "serial/");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(serialNode, "");
+
 	dvConfigNodeCreateInt(serialNode, "ReadSize", 1024, 128, 32768, DVCFG_FLAGS_NORMAL,
 		"Size in bytes of data buffer for serial port read operations.");
 
 	dvConfigNode sysNode = dvConfigNodeGetRelativeNode(moduleNode, "system/");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(sysNode, "PacketContainerInterval");
 
 	// Packet settings (size (in events) and time interval (in µs)).
 	dvConfigNodeCreateInt(sysNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024, DVCFG_FLAGS_NORMAL,

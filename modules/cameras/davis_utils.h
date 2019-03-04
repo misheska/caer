@@ -371,6 +371,8 @@ static void createDefaultBiasConfiguration(dvModuleData moduleData, const char *
 	// Chip configuration shift register.
 	dvConfigNode chipNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "chip/");
 
+	dvConfigNodeAttributeModifierPriorityAttributes(chipNode, "");
+
 	dvConfigNodeCreateInt(chipNode, "DigitalMux0", 0, 0, 15, DVCFG_FLAGS_NORMAL, "Digital debug multiplexer 0.");
 	dvConfigNodeCreateInt(chipNode, "DigitalMux1", 0, 0, 15, DVCFG_FLAGS_NORMAL, "Digital debug multiplexer 1.");
 	dvConfigNodeCreateInt(chipNode, "DigitalMux2", 0, 0, 15, DVCFG_FLAGS_NORMAL, "Digital debug multiplexer 2.");
@@ -437,6 +439,8 @@ static void createDefaultLogicConfiguration(
 	// Subsystem 0: Multiplexer
 	dvConfigNode muxNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "multiplexer/");
 
+	dvConfigNodeAttributeModifierPriorityAttributes(muxNode, "TimestampReset");
+
 	dvConfigNodeCreateBool(muxNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable multiplexer state machine.");
 	dvConfigNodeCreateBool(muxNode, "TimestampRun", true, DVCFG_FLAGS_NORMAL, "Enable µs-timestamp generation.");
 	dvConfigNodeCreateBool(muxNode, "TimestampReset", false, DVCFG_FLAGS_NORMAL, "Reset timestamps to zero.");
@@ -449,6 +453,8 @@ static void createDefaultLogicConfiguration(
 
 	// Subsystem 1: DVS AER
 	dvConfigNode dvsNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "dvs/");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(dvsNode, "Run");
 
 	dvConfigNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable DVS (Polarity events).");
 	dvConfigNodeCreateBool(dvsNode, "WaitOnTransferStall", false, DVCFG_FLAGS_NORMAL,
@@ -534,6 +540,8 @@ static void createDefaultLogicConfiguration(
 	// Subsystem 2: APS ADC
 	dvConfigNode apsNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "aps/");
 
+	dvConfigNodeAttributeModifierPriorityAttributes(apsNode, "Run,GlobalShutter,AutoExposure,Exposure,FrameInterval");
+
 	dvConfigNodeCreateBool(apsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable APS (Frame events).");
 	dvConfigNodeCreateBool(apsNode, "WaitOnTransferStall", true, DVCFG_FLAGS_NORMAL,
 		"On event FIFO full, pause and wait for free space. This ensures no APS pixels are dropped.");
@@ -592,6 +600,8 @@ static void createDefaultLogicConfiguration(
 	if (devInfo->imuType != 0) {
 		dvConfigNode imuNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "imu/");
 
+		dvConfigNodeAttributeModifierPriorityAttributes(imuNode, "");
+
 		dvConfigNodeCreateBool(imuNode, "RunAccel", true, DVCFG_FLAGS_NORMAL, "Enable IMU accelerometer.");
 		dvConfigNodeCreateBool(imuNode, "RunGyro", true, DVCFG_FLAGS_NORMAL, "Enable IMU gyroscope.");
 		dvConfigNodeCreateBool(imuNode, "RunTemp", true, DVCFG_FLAGS_NORMAL, "Enable IMU temperature sensor.");
@@ -618,6 +628,8 @@ static void createDefaultLogicConfiguration(
 
 	// Subsystem 4: External Input
 	dvConfigNode extNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "externalInput/");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(extNode, "");
 
 	dvConfigNodeCreateBool(extNode, "RunDetector", false, DVCFG_FLAGS_NORMAL, "Enable signal detector 0.");
 	dvConfigNodeCreateBool(
@@ -650,6 +662,8 @@ static void createDefaultLogicConfiguration(
 	if (devInfo->muxHasStatistics) {
 		dvConfigNode statNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "statistics/");
 
+		dvConfigNodeAttributeModifierPriorityAttributes(statNode, "muxDroppedDVS");
+
 		dvConfigNodeCreateLong(statNode, "muxDroppedExtInput", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped External Input events due to USB full.");
 		dvConfigNodeAttributeUpdaterAdd(
@@ -663,6 +677,8 @@ static void createDefaultLogicConfiguration(
 
 	if (devInfo->dvsHasStatistics) {
 		dvConfigNode statNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "statistics/");
+
+		dvConfigNodeAttributeModifierPriorityAttributes(statNode, "");
 
 		dvConfigNodeCreateLong(statNode, "dvsEventsRow", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 			"Number of row events handled.");

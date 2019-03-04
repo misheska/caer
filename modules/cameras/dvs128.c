@@ -71,6 +71,9 @@ static void caerInputDVS128ConfigInit(dvConfigNode moduleNode) {
 
 	// Set default biases, from DVS128Fast.xml settings.
 	dvConfigNode biasNode = dvConfigNodeGetRelativeNode(moduleNode, "bias/");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(biasNode, "diff,diffOn,diffOff");
+
 	dvConfigNodeCreateInt(biasNode, "cas", 1992, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Photoreceptor cascode.");
 	dvConfigNodeCreateInt(
 		biasNode, "injGnd", 1108364, 0, (0x01 << 24) - 1, DVCFG_FLAGS_NORMAL, "Differentiator switch level.");
@@ -94,6 +97,9 @@ static void caerInputDVS128ConfigInit(dvConfigNode moduleNode) {
 
 	// DVS settings.
 	dvConfigNode dvsNode = dvConfigNodeGetRelativeNode(moduleNode, "dvs/");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(dvsNode, "Run,TimestampReset");
+
 	dvConfigNodeCreateBool(dvsNode, "Run", true, DVCFG_FLAGS_NORMAL, "Run DVS to get polarity events.");
 	dvConfigNodeCreateBool(dvsNode, "TimestampReset", false, DVCFG_FLAGS_NORMAL, "Reset timestamps to zero.");
 	dvConfigNodeAttributeModifierButton(dvsNode, "TimestampReset", "EXECUTE");
@@ -102,11 +108,16 @@ static void caerInputDVS128ConfigInit(dvConfigNode moduleNode) {
 
 	// USB buffer settings.
 	dvConfigNode usbNode = dvConfigNodeGetRelativeNode(moduleNode, "usb/");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(usbNode, "");
+
 	dvConfigNodeCreateInt(usbNode, "BufferNumber", 8, 2, 128, DVCFG_FLAGS_NORMAL, "Number of USB transfers.");
 	dvConfigNodeCreateInt(usbNode, "BufferSize", 4096, 512, 32768, DVCFG_FLAGS_NORMAL,
 		"Size in bytes of data buffers for USB transfers.");
 
 	dvConfigNode sysNode = dvConfigNodeGetRelativeNode(moduleNode, "system/");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(sysNode, "PacketContainerInterval");
 
 	// Packet settings (size (in events) and time interval (in µs)).
 	dvConfigNodeCreateInt(sysNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024, DVCFG_FLAGS_NORMAL,
