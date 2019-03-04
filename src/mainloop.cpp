@@ -2015,7 +2015,7 @@ static void dvUpdateAvailableDevices() {
 			case CAER_DEVICE_DAVIS: {
 				const struct caer_davis_info *info = &dev.deviceInfo.davisInfo;
 
-				auto nodeName = boost::format("davis_%d-%d/") % info->deviceUSBBusNumber % info->deviceUSBDeviceAddress;
+				auto nodeName = (boost::format("davis_%d-%d/") % ((int)info->deviceUSBBusNumber) % ((int)info->deviceUSBDeviceAddress));
 
 				auto devNode = devicesNode.getRelativeNode(nodeName.str());
 
