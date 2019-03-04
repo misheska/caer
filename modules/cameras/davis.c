@@ -236,6 +236,9 @@ static void createDefaultUSBConfiguration(dvModuleData moduleData, const char *n
 
 	// Subsystem 9: FX2/3 USB Configuration and USB buffer settings.
 	dvConfigNode usbNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "usb/");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(usbNode, "");
+
 	dvConfigNodeCreateBool(
 		usbNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable the USB state machine (FPGA to USB data exchange).");
 	dvConfigNodeCreateInt(usbNode, "EarlyPacketDelay", 8, 1, 8000, DVCFG_FLAGS_NORMAL,

@@ -1982,10 +1982,18 @@ static void dvUpdateAvailableDevices() {
 			case CAER_DEVICE_DVS128: {
 				const struct caer_dvs128_info *info = &dev.deviceInfo.dvs128Info;
 
-				auto devNode = devicesNode.getRelativeNode("dvs128/");
+				auto nodeName = boost::format("dvs128_%d-%d/") % static_cast<int>(info->deviceUSBBusNumber)
+								% static_cast<int>(info->deviceUSBDeviceAddress);
+
+				auto devNode = devicesNode.getRelativeNode(nodeName.str());
 
 				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_dvs128", {1, 32},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
+
+				devNode.create<dvCfgType::BOOL>("OpenError", dev.deviceErrorOpen, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device cannot be opened (already in use).");
+				devNode.create<dvCfgType::BOOL>("VersionError", dev.deviceErrorVersion, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device has old firmware/logic versions.");
 
 				devNode.create<dvCfgType::INT>("USBBusNumber", info->deviceUSBBusNumber, {0, 255},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB bus number.");
@@ -2012,10 +2020,18 @@ static void dvUpdateAvailableDevices() {
 			case CAER_DEVICE_DAVIS: {
 				const struct caer_davis_info *info = &dev.deviceInfo.davisInfo;
 
-				auto devNode = devicesNode.getRelativeNode("davis/");
+				auto nodeName = boost::format("davis_%d-%d/") % static_cast<int>(info->deviceUSBBusNumber)
+								% static_cast<int>(info->deviceUSBDeviceAddress);
+
+				auto devNode = devicesNode.getRelativeNode(nodeName.str());
 
 				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_davis", {1, 32},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
+
+				devNode.create<dvCfgType::BOOL>("OpenError", dev.deviceErrorOpen, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device cannot be opened (already in use).");
+				devNode.create<dvCfgType::BOOL>("VersionError", dev.deviceErrorVersion, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device has old firmware/logic versions.");
 
 				devNode.create<dvCfgType::INT>("USBBusNumber", info->deviceUSBBusNumber, {0, 255},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB bus number.");
@@ -2049,10 +2065,17 @@ static void dvUpdateAvailableDevices() {
 			case CAER_DEVICE_EDVS: {
 				const struct caer_edvs_info *info = &dev.deviceInfo.edvsInfo;
 
-				auto devNode = devicesNode.getRelativeNode("edvs/");
+				auto nodeName = boost::format("edvs_%s/") % info->serialPortName;
+
+				auto devNode = devicesNode.getRelativeNode(nodeName.str());
 
 				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_edvs", {1, 32},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
+
+				devNode.create<dvCfgType::BOOL>("OpenError", dev.deviceErrorOpen, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device cannot be opened (already in use).");
+				devNode.create<dvCfgType::BOOL>("VersionError", dev.deviceErrorVersion, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device has old firmware/logic versions.");
 
 				devNode.create<dvCfgType::INT>("SerialBaudRate", I32T(info->serialBaudRate), {1, INT32_MAX},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Serial device baud rate (in baud).");
@@ -2074,10 +2097,18 @@ static void dvUpdateAvailableDevices() {
 			case CAER_DEVICE_DVS132S: {
 				const struct caer_dvs132s_info *info = &dev.deviceInfo.dvs132sInfo;
 
-				auto devNode = devicesNode.getRelativeNode("dvs132s/");
+				auto nodeName = boost::format("dvs132s_%d-%d/") % static_cast<int>(info->deviceUSBBusNumber)
+								% static_cast<int>(info->deviceUSBDeviceAddress);
+
+				auto devNode = devicesNode.getRelativeNode(nodeName.str());
 
 				devNode.create<dvCfgType::STRING>("OpenWithModule", "dv_dvs132s", {1, 32},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Open device with specified module.");
+
+				devNode.create<dvCfgType::BOOL>("OpenError", dev.deviceErrorOpen, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device cannot be opened (already in use).");
+				devNode.create<dvCfgType::BOOL>("VersionError", dev.deviceErrorVersion, {},
+					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device has old firmware/logic versions.");
 
 				devNode.create<dvCfgType::INT>("USBBusNumber", info->deviceUSBBusNumber, {0, 255},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB bus number.");
