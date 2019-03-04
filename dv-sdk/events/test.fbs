@@ -3,6 +3,16 @@ native_include "cstring.hpp";
 
 file_identifier "TEST";
 
+struct TestStruct {
+   num: int32;
+   valid: bool;
+}
+
+table TestTable {
+    length: float;
+    node: string;
+}
+
 table Test {
 	timestamp: int64;
 	addressX: int16;
@@ -12,6 +22,10 @@ table Test {
 	aboolvec: [bool];
 	aintvec: [int32];
 	astrvec: [string];
+    ttab : TestTable;
+    tstru : TestStruct;
+    ttabvec : [TestTable];
+    tstruvec : [TestStruct];
 }
 
 table TestPacket {
