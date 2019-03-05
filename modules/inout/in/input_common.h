@@ -175,6 +175,7 @@ struct input_common_state {
 
 typedef struct input_common_state *inputCommonState;
 
+void caerInputCommonConfigInit(dvConfigNode configNode);
 bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStream, bool isNetworkMessageBased);
 void caerInputCommonExit(dvModuleData moduleData);
 void caerInputCommonRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);

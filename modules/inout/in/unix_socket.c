@@ -6,9 +6,11 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+static void caerInputUnixSocketConfigInit(dvConfigNode moduleNode);
 static bool caerInputUnixSocketInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS InputUnixSocketFunctions = {
+		.moduleConfigInit = &caerInputUnixSocketConfigInit,
 	.moduleInit   = &caerInputUnixSocketInit,
 	.moduleRun    = &caerInputCommonRun,
 	.moduleConfig = NULL,
@@ -33,12 +35,16 @@ dvModuleInfo dvModuleGetInfo(void) {
 	return (&InputUnixSocketInfo);
 }
 
-static bool caerInputUnixSocketInit(dvModuleData moduleData) {
+static void caerInputUnixSocketConfigInit(dvConfigNode moduleNode) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
-	dvConfigNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
-		"Unix Socket path for reading input data.");
+	dvConfigNodeCreateString(moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
+							 "Unix Socket path for reading input data.");
 
+	caerInputCommonConfigInit(moduleNode);
+}
+
+static bool caerInputUnixSocketInit(dvModuleData moduleData) {
 	// Open an existing Unix local socket at a known path, where we'll write to.
 	int sockFd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockFd < 0) {

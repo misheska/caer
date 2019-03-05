@@ -1864,6 +1864,32 @@ static int inputAssemblerThread(void *stateArg) {
 
 static const UT_icd ut_caerEventPacketHeader_icd = {sizeof(caerEventPacketHeader), NULL, NULL, NULL};
 
+void caerInputCommonConfigInit(dvConfigNode configNode) {
+	// Add auto-restart setting.
+	dvConfigNodeCreateBool(configNode, "autoRestart", true, DVCFG_FLAGS_NORMAL,
+						   "Automatically restart module after shutdown.");
+
+	// Handle configuration.
+	dvConfigNodeCreateBool(configNode, "validOnly", false, DVCFG_FLAGS_NORMAL, "Only read valid events.");
+	dvConfigNodeCreateBool(configNode, "keepPackets", false, DVCFG_FLAGS_NORMAL,
+						   "Ensure all packets are kept (stall input if transfer-buffer full).");
+	dvConfigNodeCreateBool(configNode, "pause", false, DVCFG_FLAGS_NORMAL, "Pause the event stream.");
+	dvConfigNodeCreateInt(configNode, "bufferSize", 65536, 512, 512 * 1024, DVCFG_FLAGS_NORMAL,
+						  "Size of read data buffer in bytes.");
+	dvConfigNodeCreateInt(configNode, "ringBufferSize", 128, 8, 1024, DVCFG_FLAGS_NORMAL,
+						  "Size of EventPacketContainer and EventPacket queues, used for transfers between input threads and mainloop.");
+
+	dvConfigNodeCreateInt(configNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024,
+						  DVCFG_FLAGS_NORMAL,
+						  "Maximum packet size in events, when any packet reaches this size, the EventPacketContainer is sent for "
+						  "processing.");
+	dvConfigNodeCreateInt(configNode, "PacketContainerInterval", 10000, 1, 120 * 1000 * 1000,
+						  DVCFG_FLAGS_NORMAL, "Time interval in µs, each sent EventPacketContainer will span this interval.");
+	dvConfigNodeCreateInt(configNode, "PacketContainerDelay", 10000, 1, 120 * 1000 * 1000,
+						  DVCFG_FLAGS_NORMAL, "Time delay in µs between consecutive EventPacketContainers sent for processing.");
+
+}
+
 bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStream, bool isNetworkMessageBased) {
 	inputCommonState state = moduleData->moduleState;
 
@@ -1881,29 +1907,6 @@ bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStre
 	// Store network/file, message-based or not information.
 	state->isNetworkStream       = isNetworkStream;
 	state->isNetworkMessageBased = isNetworkMessageBased;
-
-	// Add auto-restart setting.
-	dvConfigNodeCreateBool(moduleData->moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL,
-		"Automatically restart module after shutdown.");
-
-	// Handle configuration.
-	dvConfigNodeCreateBool(moduleData->moduleNode, "validOnly", false, DVCFG_FLAGS_NORMAL, "Only read valid events.");
-	dvConfigNodeCreateBool(moduleData->moduleNode, "keepPackets", false, DVCFG_FLAGS_NORMAL,
-		"Ensure all packets are kept (stall input if transfer-buffer full).");
-	dvConfigNodeCreateBool(moduleData->moduleNode, "pause", false, DVCFG_FLAGS_NORMAL, "Pause the event stream.");
-	dvConfigNodeCreateInt(moduleData->moduleNode, "bufferSize", 65536, 512, 512 * 1024, DVCFG_FLAGS_NORMAL,
-		"Size of read data buffer in bytes.");
-	dvConfigNodeCreateInt(moduleData->moduleNode, "ringBufferSize", 128, 8, 1024, DVCFG_FLAGS_NORMAL,
-		"Size of EventPacketContainer and EventPacket queues, used for transfers between input threads and mainloop.");
-
-	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024,
-		DVCFG_FLAGS_NORMAL,
-		"Maximum packet size in events, when any packet reaches this size, the EventPacketContainer is sent for "
-		"processing.");
-	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerInterval", 10000, 1, 120 * 1000 * 1000,
-		DVCFG_FLAGS_NORMAL, "Time interval in µs, each sent EventPacketContainer will span this interval.");
-	dvConfigNodeCreateInt(moduleData->moduleNode, "PacketContainerDelay", 10000, 1, 120 * 1000 * 1000,
-		DVCFG_FLAGS_NORMAL, "Time delay in µs between consecutive EventPacketContainers sent for processing.");
 
 	atomic_store(&state->validOnly, dvConfigNodeGetBool(moduleData->moduleNode, "validOnly"));
 	atomic_store(&state->keepPackets, dvConfigNodeGetBool(moduleData->moduleNode, "keepPackets"));
