@@ -220,7 +220,7 @@ typedef union dvConfigAttributeValue (*dvConfigAttributeUpdater)(
 	void *userData, const char *key, enum dvConfigAttributeType type);
 
 void dvConfigNodeAttributeUpdaterAdd(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
-	dvConfigAttributeUpdater updater, void *updaterUserData);
+	dvConfigAttributeUpdater updater, void *updaterUserData, bool runOnce);
 void dvConfigNodeAttributeUpdaterRemove(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
 	dvConfigAttributeUpdater updater, void *updaterUserData);
 void dvConfigNodeAttributeUpdaterRemoveAll(dvConfigNode node);
