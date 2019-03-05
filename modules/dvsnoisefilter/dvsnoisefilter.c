@@ -148,12 +148,12 @@ static bool caerDVSNoiseFilterInit(dvModuleData moduleData) {
 	caerFilterDVSNoiseConfigSet(
 		moduleData->moduleState, CAER_FILTER_DVS_LOG_LEVEL, atomic_load(&moduleData->moduleLogLevel));
 
-	dvConfigNodeAttributeUpdaterAdd(
-		moduleData->moduleNode, "hotPixelFiltered", DVCFG_TYPE_LONG, &updateHotPixelFiltered, moduleData->moduleState);
+	dvConfigNodeAttributeUpdaterAdd(moduleData->moduleNode, "hotPixelFiltered", DVCFG_TYPE_LONG,
+		&updateHotPixelFiltered, moduleData->moduleState, false);
 	dvConfigNodeAttributeUpdaterAdd(moduleData->moduleNode, "backgroundActivityFiltered", DVCFG_TYPE_LONG,
-		&updateBackgroundActivityFiltered, moduleData->moduleState);
+		&updateBackgroundActivityFiltered, moduleData->moduleState, false);
 	dvConfigNodeAttributeUpdaterAdd(moduleData->moduleNode, "refractoryPeriodFiltered", DVCFG_TYPE_LONG,
-		&updateRefractoryPeriodFiltered, moduleData->moduleState);
+		&updateRefractoryPeriodFiltered, moduleData->moduleState, false);
 
 	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
 	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);

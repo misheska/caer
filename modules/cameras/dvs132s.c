@@ -451,12 +451,12 @@ static void createDefaultLogicConfiguration(dvModuleData moduleData, const struc
 		dvConfigNodeCreateLong(statNode, "muxDroppedDVS", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped DVS events due to USB full.");
 		dvConfigNodeAttributeUpdaterAdd(
-			statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 
 		dvConfigNodeCreateLong(statNode, "muxDroppedExtInput", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped External Input events due to USB full.");
 		dvConfigNodeAttributeUpdaterAdd(
-			statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 	}
 
 	if (devInfo->dvsHasStatistics) {
@@ -465,22 +465,22 @@ static void createDefaultLogicConfiguration(dvModuleData moduleData, const struc
 		dvConfigNodeCreateLong(statNode, "dvsTransactionsSuccess", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of groups of events received successfully.");
 		dvConfigNodeAttributeUpdaterAdd(
-			statNode, "dvsTransactionsSuccess", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			statNode, "dvsTransactionsSuccess", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 
 		dvConfigNodeCreateLong(statNode, "dvsTransactionsSkipped", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped groups of events due to full buffers.");
 		dvConfigNodeAttributeUpdaterAdd(
-			statNode, "dvsTransactionsSkipped", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			statNode, "dvsTransactionsSkipped", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 
 		dvConfigNodeCreateLong(statNode, "dvsTransactionsAll", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped groups of events due to full buffers.");
 		dvConfigNodeAttributeUpdaterAdd(
-			statNode, "dvsTransactionsAll", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			statNode, "dvsTransactionsAll", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 
 		dvConfigNodeCreateLong(statNode, "dvsTransactionsErrored", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of erroneous groups of events.");
 		dvConfigNodeAttributeUpdaterAdd(
-			statNode, "dvsTransactionsErrored", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			statNode, "dvsTransactionsErrored", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 	}
 }
 

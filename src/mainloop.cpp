@@ -1962,7 +1962,13 @@ static void updateAvailableDevicesListener(dvConfigNode node, void *userData, en
 		// Get information on available devices, put it into ConfigTree.
 		dvUpdateAvailableDevices();
 
-		dvConfigNodePutBool(node, changeKey, false);
+		dvConfigNodeAttributeUpdaterAdd(node, changeKey, DVCFG_TYPE_BOOL,
+			[](void *, const char *, enum dvConfigAttributeType) {
+				dvConfigAttributeValue val;
+				val.boolean = false;
+				return (val);
+			},
+			nullptr, true);
 	}
 }
 

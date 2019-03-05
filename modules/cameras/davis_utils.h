@@ -566,7 +566,8 @@ static void createDefaultLogicConfiguration(
 	// Initialize exposure in backend (libcaer), so that value is synchronized with it.
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE,
 		U32T(dvConfigNodeGetInt(apsNode, "Exposure")));
-	dvConfigNodeAttributeUpdaterAdd(apsNode, "Exposure", DVCFG_TYPE_INT, &apsExposureUpdater, moduleData->moduleState);
+	dvConfigNodeAttributeUpdaterAdd(
+		apsNode, "Exposure", DVCFG_TYPE_INT, &apsExposureUpdater, moduleData->moduleState, false);
 
 	dvConfigNodeCreateInt(
 		apsNode, "FrameInterval", 40000, 0, (0x01 << 23) - 1, DVCFG_FLAGS_NORMAL, "Set time between frames (in µs).");
@@ -667,12 +668,12 @@ static void createDefaultLogicConfiguration(
 		dvConfigNodeCreateLong(statNode, "muxDroppedExtInput", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped External Input events due to USB full.");
 		dvConfigNodeAttributeUpdaterAdd(
-			statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			statNode, "muxDroppedExtInput", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 
 		dvConfigNodeCreateLong(statNode, "muxDroppedDVS", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped DVS events due to USB full.");
 		dvConfigNodeAttributeUpdaterAdd(
-			statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			statNode, "muxDroppedDVS", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 	}
 
 	if (devInfo->dvsHasStatistics) {
@@ -683,23 +684,23 @@ static void createDefaultLogicConfiguration(
 		dvConfigNodeCreateLong(statNode, "dvsEventsRow", 0, 0, INT64_MAX, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 			"Number of row events handled.");
 		dvConfigNodeAttributeUpdaterAdd(
-			statNode, "dvsEventsRow", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			statNode, "dvsEventsRow", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 
 		dvConfigNodeCreateLong(statNode, "dvsEventsColumn", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of column events handled.");
 		dvConfigNodeAttributeUpdaterAdd(
-			statNode, "dvsEventsColumn", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			statNode, "dvsEventsColumn", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 
 		dvConfigNodeCreateLong(statNode, "dvsEventsDropped", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped events (groups of events).");
 		dvConfigNodeAttributeUpdaterAdd(
-			statNode, "dvsEventsDropped", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+			statNode, "dvsEventsDropped", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 
 		if (devInfo->dvsHasPixelFilter) {
 			dvConfigNodeCreateLong(statNode, "dvsFilteredPixel", 0, 0, INT64_MAX,
 				DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of events filtered out by the Pixel Filter.");
 			dvConfigNodeAttributeUpdaterAdd(
-				statNode, "dvsFilteredPixel", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+				statNode, "dvsFilteredPixel", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 		}
 
 		if (devInfo->dvsHasBackgroundActivityFilter) {
@@ -707,13 +708,13 @@ static void createDefaultLogicConfiguration(
 				DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 				"Number of events filtered out by the Background Activity Filter.");
 			dvConfigNodeAttributeUpdaterAdd(
-				statNode, "dvsFilteredBA", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+				statNode, "dvsFilteredBA", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 
 			dvConfigNodeCreateLong(statNode, "dvsFilteredRefractory", 0, 0, INT64_MAX,
 				DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 				"Number of events filtered out by the Refractory Period Filter.");
 			dvConfigNodeAttributeUpdaterAdd(
-				statNode, "dvsFilteredRefractory", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState);
+				statNode, "dvsFilteredRefractory", DVCFG_TYPE_LONG, &statisticsUpdater, moduleData->moduleState, false);
 		}
 	}
 }
