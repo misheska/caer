@@ -2008,15 +2008,17 @@ static void dvUpdateAvailableDevices() {
 				devNode.create<dvCfgType::STRING>("SerialNumber", info->deviceSerialNumber, {0, 8},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB device serial number.");
 
-				devNode.create<dvCfgType::INT>("LogicVersion", info->logicVersion, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of FPGA logic.");
-				devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
+				if (!dev.deviceErrorOpen && !dev.deviceErrorVersion) {
+					devNode.create<dvCfgType::INT>("LogicVersion", info->logicVersion, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of FPGA logic.");
+					devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
 
-				devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
-				devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
+					devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
+					devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
+				}
 
 				break;
 			}
@@ -2046,24 +2048,27 @@ static void dvUpdateAvailableDevices() {
 				devNode.create<dvCfgType::STRING>("SerialNumber", info->deviceSerialNumber, {0, 8},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB device serial number.");
 
-				devNode.create<dvCfgType::INT>("FirmwareVersion", info->firmwareVersion, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of device firmware.");
-				devNode.create<dvCfgType::INT>("LogicVersion", info->logicVersion, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of FPGA logic.");
-				devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
+				if (!dev.deviceErrorOpen && !dev.deviceErrorVersion) {
+					devNode.create<dvCfgType::INT>("FirmwareVersion", info->firmwareVersion, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of device firmware.");
+					devNode.create<dvCfgType::INT>("LogicVersion", info->logicVersion, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of FPGA logic.");
+					devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
 
-				devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
-				devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
+					devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
+					devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
 
-				devNode.create<dvCfgType::INT>("APSSizeX", info->apsSizeX, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Frames X axis resolution.");
-				devNode.create<dvCfgType::INT>("APSSizeY", info->apsSizeY, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Frames Y axis resolution.");
-				devNode.create<dvCfgType::STRING>("ColorMode", (info->apsColorFilter == MONO) ? ("Mono") : ("Color"),
-					{4, 5}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Frames color mode.");
+					devNode.create<dvCfgType::INT>("APSSizeX", info->apsSizeX, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Frames X axis resolution.");
+					devNode.create<dvCfgType::INT>("APSSizeY", info->apsSizeY, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Frames Y axis resolution.");
+					devNode.create<dvCfgType::STRING>("ColorMode",
+						(info->apsColorFilter == MONO) ? ("Mono") : ("Color"), {4, 5},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Frames color mode.");
+				}
 
 				break;
 			}
@@ -2083,19 +2088,21 @@ static void dvUpdateAvailableDevices() {
 				devNode.create<dvCfgType::BOOL>("VersionError", dev.deviceErrorVersion, {},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device has old firmware/logic versions.");
 
-				devNode.create<dvCfgType::INT>("SerialBaudRate", I32T(info->serialBaudRate), {1, INT32_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Serial device baud rate (in baud).");
-				devNode.create<dvCfgType::STRING>("SerialPortName", info->serialPortName, {1, 64},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT,
-					"Serial device port name (COM1, /dev/ttyUSB1, ...).");
+				if (!dev.deviceErrorOpen && !dev.deviceErrorVersion) {
+					devNode.create<dvCfgType::INT>("SerialBaudRate", I32T(info->serialBaudRate), {1, INT32_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Serial device baud rate (in baud).");
+					devNode.create<dvCfgType::STRING>("SerialPortName", info->serialPortName, {1, 64},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT,
+						"Serial device port name (COM1, /dev/ttyUSB1, ...).");
 
-				devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
+					devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
 
-				devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
-				devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
+					devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
+					devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
+				}
 
 				break;
 			}
@@ -2123,17 +2130,19 @@ static void dvUpdateAvailableDevices() {
 				devNode.create<dvCfgType::STRING>("SerialNumber", info->deviceSerialNumber, {0, 8},
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB device serial number.");
 
-				devNode.create<dvCfgType::INT>("FirmwareVersion", info->firmwareVersion, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of device firmware.");
-				devNode.create<dvCfgType::INT>("LogicVersion", info->logicVersion, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of FPGA logic.");
-				devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
+				if (!dev.deviceErrorOpen && !dev.deviceErrorVersion) {
+					devNode.create<dvCfgType::INT>("FirmwareVersion", info->firmwareVersion, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of device firmware.");
+					devNode.create<dvCfgType::INT>("LogicVersion", info->logicVersion, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of FPGA logic.");
+					devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
 
-				devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
-				devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
-					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
+					devNode.create<dvCfgType::INT>("DVSSizeX", info->dvsSizeX, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS X axis resolution.");
+					devNode.create<dvCfgType::INT>("DVSSizeY", info->dvsSizeY, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "DVS Y axis resolution.");
+				}
 
 				break;
 			}
