@@ -415,13 +415,13 @@ static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 			caerDeviceConfigSet(
 				moduleData->moduleState, DVS128_CONFIG_DVS, DVS128_CONFIG_DVS_ARRAY_RESET, changeValue.boolean);
 
-			dvConfigNodePutBool(node, changeKey, false);
+			dvConfigNodeAttributeButtonReset(node, changeKey);
 		}
 		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "TimestampReset") && changeValue.boolean) {
 			caerDeviceConfigSet(
 				moduleData->moduleState, DVS128_CONFIG_DVS, DVS128_CONFIG_DVS_TIMESTAMP_RESET, changeValue.boolean);
 
-			dvConfigNodePutBool(node, changeKey, false);
+			dvConfigNodeAttributeButtonReset(node, changeKey);
 		}
 		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "Run")) {
 			caerDeviceConfigSet(moduleData->moduleState, DVS128_CONFIG_DVS, DVS128_CONFIG_DVS_RUN, changeValue.boolean);

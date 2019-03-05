@@ -1919,9 +1919,7 @@ static void mainloopRunningListener(dvConfigNode node, void *userData, enum dvCo
 
 static void updateModulesInformationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
-	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
-	UNUSED_ARGUMENT(changeValue);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
 		&& caerStrEquals(changeKey, "updateModulesInformation") && changeValue.boolean) {
@@ -1933,42 +1931,32 @@ static void updateModulesInformationListener(dvConfigNode node, void *userData, 
 			log(logLevel::CRITICAL, "Mainloop", "Failed to find any modules (error: '%s').", ex.what());
 		}
 
-		dvConfigNodePutBool(node, changeKey, false);
+		dvConfigNodeAttributeButtonReset(node, changeKey);
 	}
 }
 
 static void writeConfigurationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
-	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
-	UNUSED_ARGUMENT(changeValue);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
 		&& caerStrEquals(changeKey, "writeConfiguration") && changeValue.boolean) {
 		dvConfigWriteBack();
 
-		dvConfigNodePutBool(node, changeKey, false);
+		dvConfigNodeAttributeButtonReset(node, changeKey);
 	}
 }
 
 static void updateAvailableDevicesListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
-	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
-	UNUSED_ARGUMENT(changeValue);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
 		&& caerStrEquals(changeKey, "updateAvailableDevices") && changeValue.boolean) {
 		// Get information on available devices, put it into ConfigTree.
 		dvUpdateAvailableDevices();
 
-		dvConfigNodeAttributeUpdaterAdd(node, changeKey, DVCFG_TYPE_BOOL,
-			[](void *, const char *, enum dvConfigAttributeType) {
-				dvConfigAttributeValue val;
-				val.boolean = false;
-				return (val);
-			},
-			nullptr, true);
+		dvConfigNodeAttributeButtonReset(node, changeKey);
 	}
 }
 

@@ -207,7 +207,6 @@ static void caerDVSNoiseFilterConfig(dvModuleData moduleData) {
 
 static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
-	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(changeValue);
 
 	caerFilterDVSNoise state = userData;
@@ -221,7 +220,7 @@ static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, en
 		caerFilterDVSNoiseConfigSet(state, CAER_FILTER_DVS_HOTPIXEL_LEARN, true);
 
 		// TODO: this should use AttributeUpdaters to keep track of the completion state.
-		dvConfigNodePutBool(node, changeKey, false);
+		dvConfigNodeAttributeButtonReset(node, changeKey);
 	}
 }
 

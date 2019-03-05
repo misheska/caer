@@ -1512,7 +1512,7 @@ static void muxConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 			caerDeviceConfigSet(
 				moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_TIMESTAMP_RESET, changeValue.boolean);
 
-			dvConfigNodePutBool(node, changeKey, false);
+			dvConfigNodeAttributeButtonReset(node, changeKey);
 		}
 		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "DropExtInputOnTransferStall")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_MUX,
@@ -1705,7 +1705,7 @@ static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_PIXEL_AUTO_TRAIN,
 				changeValue.boolean);
 
-			dvConfigNodePutBool(node, changeKey, false);
+			dvConfigNodeAttributeButtonReset(node, changeKey);
 		}
 		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "FilterBackgroundActivity")) {
 			caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_DVS, DAVIS_CONFIG_DVS_FILTER_BACKGROUND_ACTIVITY,
@@ -1898,7 +1898,7 @@ static void apsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 			caerDeviceConfigSet(
 				moduleData->moduleState, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_SNAPSHOT, changeValue.boolean);
 
-			dvConfigNodePutBool(node, changeKey, false);
+			dvConfigNodeAttributeButtonReset(node, changeKey);
 		}
 		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "AutoExposure")) {
 			caerDeviceConfigSet(
