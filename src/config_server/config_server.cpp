@@ -335,14 +335,13 @@ void dvConfigServerStop(void) {
 
 static void configServerRestartListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
-	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(userData);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "restart")
 		&& changeValue.boolean) {
 		globalConfigData.server->serviceRestart();
 
-		dvConfigNodePutBool(node, changeKey, false);
+		dvConfigNodeAttributeButtonReset(node, changeKey);
 	}
 }
 

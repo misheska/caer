@@ -14,15 +14,17 @@ private:
 	enum dvConfigAttributeType type;
 	dvConfigAttributeUpdater updater;
 	void *userData;
+	bool runOnce;
 
 public:
 	dv_attribute_updater(dvConfigNode _node, const std::string &_key, enum dvConfigAttributeType _type,
-		dvConfigAttributeUpdater _updater, void *_userData) :
+		dvConfigAttributeUpdater _updater, void *_userData, bool _runOnce) :
 		node(_node),
 		key(_key),
 		type(_type),
 		updater(_updater),
-		userData(_userData) {
+		userData(_userData),
+		runOnce(_runOnce) {
 	}
 
 	dvConfigNode getNode() const noexcept {
@@ -45,10 +47,14 @@ public:
 		return (userData);
 	}
 
+	bool getRunOnce() const noexcept {
+		return (runOnce);
+	}
+
 	// Comparison operators.
 	bool operator==(const dv_attribute_updater &rhs) const noexcept {
 		return ((node == rhs.node) && (key == rhs.key) && (type == rhs.type) && (updater == rhs.updater)
-				&& (userData == rhs.userData));
+				&& (userData == rhs.userData) && (runOnce == rhs.runOnce));
 	}
 
 	bool operator!=(const dv_attribute_updater &rhs) const noexcept {
@@ -275,8 +281,8 @@ dvConfigNode dvConfigNodeGetRelativeNode(dvConfigNode node, const char *nodePath
 }
 
 void dvConfigNodeAttributeUpdaterAdd(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
-	dvConfigAttributeUpdater updater, void *updaterUserData) {
-	dv_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
+	dvConfigAttributeUpdater updater, void *updaterUserData, bool runOnce) {
+	dv_attribute_updater attrUpdater(node, key, type, updater, updaterUserData, runOnce);
 
 	dvConfigTree tree = dvConfigNodeGetGlobal(node);
 	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
@@ -294,7 +300,7 @@ void dvConfigNodeAttributeUpdaterAdd(dvConfigNode node, const char *key, enum dv
 
 void dvConfigNodeAttributeUpdaterRemove(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
 	dvConfigAttributeUpdater updater, void *updaterUserData) {
-	dv_attribute_updater attrUpdater(node, key, type, updater, updaterUserData);
+	dv_attribute_updater attrUpdater(node, key, type, updater, updaterUserData, false);
 
 	dvConfigTree tree = dvConfigNodeGetGlobal(node);
 	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
@@ -324,11 +330,19 @@ bool dvConfigTreeAttributeUpdaterRun(dvConfigTree tree) {
 
 	bool allSuccess = true;
 
-	for (const auto &up : tree->attributeUpdaters) {
-		union dvConfigAttributeValue newValue = (*up.getUpdater())(up.getUserData(), up.getKey().c_str(), up.getType());
+	for (auto up = tree->attributeUpdaters.begin(); up != tree->attributeUpdaters.end();) {
+		union dvConfigAttributeValue newValue
+			= (*up->getUpdater())(up->getUserData(), up->getKey().c_str(), up->getType());
 
-		if (!dvConfigNodePutAttribute(up.getNode(), up.getKey().c_str(), up.getType(), newValue)) {
+		if (!dvConfigNodePutAttribute(up->getNode(), up->getKey().c_str(), up->getType(), newValue)) {
 			allSuccess = false;
+		}
+
+		if (up->getRunOnce()) {
+			up = tree->attributeUpdaters.erase(up);
+		}
+		else {
+			up++;
 		}
 	}
 

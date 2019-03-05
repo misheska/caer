@@ -369,7 +369,7 @@ static void dvsConfigListener(dvConfigNode node, void *userData, enum dvConfigAt
 			caerDeviceConfigSet(
 				moduleData->moduleState, EDVS_CONFIG_DVS, EDVS_CONFIG_DVS_TIMESTAMP_RESET, changeValue.boolean);
 
-			dvConfigNodePutBool(node, changeKey, false);
+			dvConfigNodeAttributeButtonReset(node, changeKey);
 		}
 		else if (changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "Run")) {
 			caerDeviceConfigSet(moduleData->moduleState, EDVS_CONFIG_DVS, EDVS_CONFIG_DVS_RUN, changeValue.boolean);

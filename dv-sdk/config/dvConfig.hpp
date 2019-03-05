@@ -618,6 +618,10 @@ public:
 		dvConfigNodeAttributeModifierPriorityAttributes(node, priorityAttributes.c_str());
 	}
 
+	void attributeButtonReset(const std::string &key) {
+		dvConfigNodeAttributeButtonReset(node, key.c_str());
+	}
+
 	bool existsRelativeNode(const std::string &nodePath) const {
 		return (dvConfigNodeExistsRelativeNode(node, nodePath.c_str()));
 	}
@@ -638,10 +642,10 @@ public:
 		return (relativeNode);
 	}
 
-	void attributeUpdaterAdd(
-		const std::string &key, AttributeType type, dvConfigAttributeUpdater updater, void *updaterUserData) {
+	void attributeUpdaterAdd(const std::string &key, AttributeType type, dvConfigAttributeUpdater updater,
+		void *updaterUserData, bool runOnce = false) {
 		dvConfigNodeAttributeUpdaterAdd(
-			node, key.c_str(), static_cast<enum dvConfigAttributeType>(type), updater, updaterUserData);
+			node, key.c_str(), static_cast<enum dvConfigAttributeType>(type), updater, updaterUserData, runOnce);
 	}
 
 	void attributeUpdaterRemove(

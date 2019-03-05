@@ -180,6 +180,7 @@ void dvConfigNodeAttributeModifierListOptions(
 void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *typeAndExtensions);
 void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const char *unitInformation);
 void dvConfigNodeAttributeModifierPriorityAttributes(dvConfigNode node, const char *priorityAttributes);
+void dvConfigNodeAttributeButtonReset(dvConfigNode node, const char *key);
 
 bool dvConfigNodeExistsRelativeNode(dvConfigNode node, const char *nodePath);
 /**
@@ -220,7 +221,7 @@ typedef union dvConfigAttributeValue (*dvConfigAttributeUpdater)(
 	void *userData, const char *key, enum dvConfigAttributeType type);
 
 void dvConfigNodeAttributeUpdaterAdd(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
-	dvConfigAttributeUpdater updater, void *updaterUserData);
+	dvConfigAttributeUpdater updater, void *updaterUserData, bool runOnce);
 void dvConfigNodeAttributeUpdaterRemove(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
 	dvConfigAttributeUpdater updater, void *updaterUserData);
 void dvConfigNodeAttributeUpdaterRemoveAll(dvConfigNode node);
