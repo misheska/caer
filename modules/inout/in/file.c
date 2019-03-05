@@ -40,6 +40,8 @@ static void caerInputFileConfigInit(dvConfigNode moduleNode) {
 			moduleNode, "filePath", "", 0, PATH_MAX, DVCFG_FLAGS_NORMAL, "File path for reading input data.");
 	dvConfigNodeAttributeModifierFileChooser(moduleNode, "filePath", "LOAD:aedat");
 	dvConfigNodeAttributeModifierPriorityAttributes(moduleNode, "filePath");
+
+    caerInputCommonConfigInit(moduleNode);
 }
 
 static bool caerInputFileInit(dvModuleData moduleData) {
