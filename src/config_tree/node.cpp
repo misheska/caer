@@ -1414,3 +1414,13 @@ void dvConfigNodeAttributeModifierPriorityAttributes(dvConfigNode node, const ch
 	dvConfigNodeCreateString(node, "_priorityAttributes", priorityAttributes, 0, INT32_MAX, DVCFG_FLAGS_NORMAL,
 		"Comma separated list of attributes to prioritize regarding visualization in the UI (can be empty).", true);
 }
+
+void dvConfigNodeAttributeButtonReset(dvConfigNode node, const char *key) {
+	dvConfigNodeAttributeUpdaterAdd(node, key, DVCFG_TYPE_BOOL,
+		[](void *, const char *, enum dvConfigAttributeType) {
+			dvConfigAttributeValue val;
+			val.boolean = false;
+			return (val);
+		},
+		nullptr, true);
+}

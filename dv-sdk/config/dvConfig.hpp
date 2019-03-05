@@ -618,6 +618,10 @@ public:
 		dvConfigNodeAttributeModifierPriorityAttributes(node, priorityAttributes.c_str());
 	}
 
+	void attributeButtonReset(const std::string &key) {
+		dvConfigNodeAttributeButtonReset(node, key.c_str());
+	}
+
 	bool existsRelativeNode(const std::string &nodePath) const {
 		return (dvConfigNodeExistsRelativeNode(node, nodePath.c_str()));
 	}
