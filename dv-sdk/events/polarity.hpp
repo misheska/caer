@@ -201,8 +201,9 @@ inline void FinishSizePrefixedPolarityPacketBuffer(
 	fbb.FinishSizePrefixed(root, PolarityPacketIdentifier());
 }
 
-inline PolarityPacketT *UnPackPolarityPacket(const void *buf, const flatbuffers::resolver_function_t *res = nullptr) {
-	return (GetPolarityPacket(buf)->UnPack(res));
+inline std::unique_ptr<PolarityPacketT> UnPackPolarityPacket(
+	const void *buf, const flatbuffers::resolver_function_t *res = nullptr) {
+	return std::unique_ptr<PolarityPacketT>(GetPolarityPacket(buf)->UnPack(res));
 }
 
 #endif // FLATBUFFERS_GENERATED_POLARITY_H_

@@ -559,8 +559,9 @@ inline void FinishSizePrefixedFrame8PacketBuffer(
 	fbb.FinishSizePrefixed(root, Frame8PacketIdentifier());
 }
 
-inline Frame8PacketT *UnPackFrame8Packet(const void *buf, const flatbuffers::resolver_function_t *res = nullptr) {
-	return (GetFrame8Packet(buf)->UnPack(res));
+inline std::unique_ptr<Frame8PacketT> UnPackFrame8Packet(
+	const void *buf, const flatbuffers::resolver_function_t *res = nullptr) {
+	return std::unique_ptr<Frame8PacketT>(GetFrame8Packet(buf)->UnPack(res));
 }
 
 #endif // FLATBUFFERS_GENERATED_FRAME8_H_

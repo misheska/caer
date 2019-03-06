@@ -309,7 +309,7 @@ flatbuffers::Offset<Test> CreateTest(
 
 struct TestPacketT : public flatbuffers::NativeTable {
 	typedef TestPacket TableType;
-	dv::cvector<TestT> events;
+	dv::cvector<std::unique_ptr<TestT>> events;
 	TestPacketT() {
 	}
 };
@@ -550,7 +550,7 @@ inline void TestPacket::UnPackTo(TestPacketT *_o, const flatbuffers::resolver_fu
 		if (_e) {
 			_o->events.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-				_e->Get(_i)->UnPackTo(&_o->events[_i], _resolver);
+				_o->events[_i] = std::unique_ptr<TestT>(_e->Get(_i)->UnPack(_resolver));
 			}
 		}
 	};
@@ -571,12 +571,13 @@ inline flatbuffers::Offset<TestPacket> CreateTestPacket(
 		const flatbuffers::rehasher_function_t *__rehasher;
 	} _va = {&_fbb, _o, _rehasher};
 	(void) _va;
-	auto _events = _o->events.size() ? _fbb.CreateVector<flatbuffers::Offset<Test>>(_o->events.size(),
-										   [](size_t i, _VectorArgs *__va) {
-											   return CreateTest(*__va->__fbb, &__va->__o->events[i], __va->__rehasher);
-										   },
-										   &_va)
-									 : 0;
+	auto _events = _o->events.size()
+					   ? _fbb.CreateVector<flatbuffers::Offset<Test>>(_o->events.size(),
+							 [](size_t i, _VectorArgs *__va) {
+								 return CreateTest(*__va->__fbb, __va->__o->events[i].get(), __va->__rehasher);
+							 },
+							 &_va)
+					   : 0;
 	return CreateTestPacket(_fbb, _events);
 }
 
@@ -649,8 +650,9 @@ inline void FinishSizePrefixedTestPacketBuffer(
 	fbb.FinishSizePrefixed(root, TestPacketIdentifier());
 }
 
-inline TestPacketT *UnPackTestPacket(const void *buf, const flatbuffers::resolver_function_t *res = nullptr) {
-	return (GetTestPacket(buf)->UnPack(res));
+inline std::unique_ptr<TestPacketT> UnPackTestPacket(
+	const void *buf, const flatbuffers::resolver_function_t *res = nullptr) {
+	return std::unique_ptr<TestPacketT>(GetTestPacket(buf)->UnPack(res));
 }
 
 #endif // FLATBUFFERS_GENERATED_TEST_H_

@@ -29,7 +29,7 @@ table Test {
 }
 
 table TestPacket {
-	events: [Test] (native_inline);
+	events: [Test];
 }
 
 root_type TestPacket;
