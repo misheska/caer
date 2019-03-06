@@ -150,6 +150,11 @@ static bool caerInputEDVSInit(dvModuleData moduleData) {
 
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 
+	dvConfigNodeCreateString(sourceInfoNode, "serialPort", devInfo.serialPortName, 0, 128,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device connected serial port.");
+	dvConfigNodeCreateInt(sourceInfoNode, "baudRate", I32T(devInfo.serialBaudRate), 0, 20000000,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device connected serial port baud-rate.");
+
 	dvConfigNodeCreateBool(sourceInfoNode, "deviceIsMaster", devInfo.deviceIsMaster,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Timestamp synchronization support: device master status.");
 
