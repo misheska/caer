@@ -130,6 +130,13 @@ static void caerInputDAVISCommonInit(dvModuleData moduleData, struct caer_davis_
 	// Put global source information into config.
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 
+	dvConfigNodeCreateString(sourceInfoNode, "serialNumber", devInfo->deviceSerialNumber, 0, 8,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device serial number.");
+	dvConfigNodeCreateInt(sourceInfoNode, "usbBusNumber", devInfo->deviceUSBBusNumber, 0, 255,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device USB bus number.");
+	dvConfigNodeCreateInt(sourceInfoNode, "usbDeviceAddress", devInfo->deviceUSBDeviceAddress, 0, 255,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device USB device address.");
+
 	dvConfigNodeCreateInt(sourceInfoNode, "firmwareVersion", devInfo->firmwareVersion, devInfo->firmwareVersion,
 		devInfo->firmwareVersion, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device firmware version.");
 	dvConfigNodeCreateInt(sourceInfoNode, "logicVersion", devInfo->logicVersion, devInfo->logicVersion,
