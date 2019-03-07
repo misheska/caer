@@ -10,6 +10,8 @@ namespace dv {
 struct ConfigActionData;
 struct ConfigActionDataT;
 
+inline const flatbuffers::TypeTable *ConfigActionDataTypeTable();
+
 enum class ConfigAction : int8_t {
 	ERROR              = 0,
 	NODE_EXISTS        = 1,
@@ -56,6 +58,8 @@ inline const char *const *EnumNamesConfigAction() {
 }
 
 inline const char *EnumNameConfigAction(ConfigAction e) {
+	if (e < ConfigAction::ERROR || e > ConfigAction::GET_CLIENT_ID)
+		return "";
 	const size_t index = static_cast<int>(e);
 	return EnumNamesConfigAction()[index];
 }
@@ -84,6 +88,8 @@ inline const char *const *EnumNamesConfigType() {
 }
 
 inline const char *EnumNameConfigType(ConfigType e) {
+	if (e < ConfigType::UNKNOWN || e > ConfigType::STRING)
+		return "";
 	const size_t index = static_cast<int>(e) - static_cast<int>(ConfigType::UNKNOWN);
 	return EnumNamesConfigType()[index];
 }
@@ -101,6 +107,8 @@ inline const char *const *EnumNamesConfigNodeEvents() {
 }
 
 inline const char *EnumNameConfigNodeEvents(ConfigNodeEvents e) {
+	if (e < ConfigNodeEvents::NODE_ADDED || e > ConfigNodeEvents::NODE_REMOVED)
+		return "";
 	const size_t index = static_cast<int>(e);
 	return EnumNamesConfigNodeEvents()[index];
 }
@@ -128,6 +136,8 @@ inline const char *const *EnumNamesConfigAttributeEvents() {
 }
 
 inline const char *EnumNameConfigAttributeEvents(ConfigAttributeEvents e) {
+	if (e < ConfigAttributeEvents::ATTRIBUTE_ADDED || e > ConfigAttributeEvents::ATTRIBUTE_MODIFIED_CREATE)
+		return "";
 	const size_t index = static_cast<int>(e);
 	return EnumNamesConfigAttributeEvents()[index];
 }
@@ -157,7 +167,10 @@ struct ConfigActionDataT : public flatbuffers::NativeTable {
 
 struct ConfigActionData FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef ConfigActionDataT NativeTableType;
-	enum {
+	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
+		return ConfigActionDataTypeTable();
+	}
+	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
 		VT_ACTION      = 4,
 		VT_NODEEVENTS  = 6,
 		VT_ATTREVENTS  = 8,
@@ -293,9 +306,13 @@ inline flatbuffers::Offset<ConfigActionData> CreateConfigActionDataDirect(flatbu
 	ConfigAttributeEvents attrEvents = ConfigAttributeEvents::ATTRIBUTE_ADDED, uint64_t id = 0,
 	const char *node = nullptr, const char *key = nullptr, ConfigType type = ConfigType::UNKNOWN,
 	const char *value = nullptr, const char *ranges = nullptr, int32_t flags = 0, const char *description = nullptr) {
-	return dv::CreateConfigActionData(_fbb, action, nodeEvents, attrEvents, id, node ? _fbb.CreateString(node) : 0,
-		key ? _fbb.CreateString(key) : 0, type, value ? _fbb.CreateString(value) : 0,
-		ranges ? _fbb.CreateString(ranges) : 0, flags, description ? _fbb.CreateString(description) : 0);
+	auto node__        = node ? _fbb.CreateString(node) : 0;
+	auto key__         = key ? _fbb.CreateString(key) : 0;
+	auto value__       = value ? _fbb.CreateString(value) : 0;
+	auto ranges__      = ranges ? _fbb.CreateString(ranges) : 0;
+	auto description__ = description ? _fbb.CreateString(description) : 0;
+	return dv::CreateConfigActionData(
+		_fbb, action, nodeEvents, attrEvents, id, node__, key__, type, value__, ranges__, flags, description__);
 }
 
 flatbuffers::Offset<ConfigActionData> CreateConfigActionData(flatbuffers::FlatBufferBuilder &_fbb,
@@ -389,6 +406,66 @@ inline flatbuffers::Offset<ConfigActionData> CreateConfigActionData(flatbuffers:
 	auto _description = _o->description.empty() ? 0 : _fbb.CreateString(_o->description);
 	return dv::CreateConfigActionData(
 		_fbb, _action, _nodeEvents, _attrEvents, _id, _node, _key, _type, _value, _ranges, _flags, _description);
+}
+
+inline const flatbuffers::TypeTable *ConfigActionTypeTable() {
+	static const flatbuffers::TypeCode type_codes[]
+		= {{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0},
+			{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0},
+			{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0},
+			{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0},
+			{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0},
+			{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0},
+			{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}};
+	static const flatbuffers::TypeFunction type_refs[] = {ConfigActionTypeTable};
+	static const char *const names[]       = {"ERROR", "NODE_EXISTS", "ATTR_EXISTS", "GET_CHILDREN", "GET_ATTRIBUTES",
+        "GET_TYPE", "GET_RANGES", "GET_FLAGS", "GET_DESCRIPTION", "GET", "PUT", "ADD_MODULE", "REMOVE_MODULE",
+        "ADD_PUSH_CLIENT", "REMOVE_PUSH_CLIENT", "PUSH_MESSAGE_NODE", "PUSH_MESSAGE_ATTR", "DUMP_TREE",
+        "DUMP_TREE_NODE", "DUMP_TREE_ATTR", "GET_CLIENT_ID"};
+	static const flatbuffers::TypeTable tt = {flatbuffers::ST_ENUM, 21, type_codes, type_refs, nullptr, names};
+	return &tt;
+}
+
+inline const flatbuffers::TypeTable *ConfigTypeTypeTable() {
+	static const flatbuffers::TypeCode type_codes[]    = {{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0},
+        {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0},
+        {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}};
+	static const flatbuffers::TypeFunction type_refs[] = {ConfigTypeTypeTable};
+	static const int64_t values[]                      = {-1, 0, 1, 2, 3, 4, 5};
+	static const char *const names[]       = {"UNKNOWN", "BOOL", "INT", "LONG", "FLOAT", "DOUBLE", "STRING"};
+	static const flatbuffers::TypeTable tt = {flatbuffers::ST_ENUM, 7, type_codes, type_refs, values, names};
+	return &tt;
+}
+
+inline const flatbuffers::TypeTable *ConfigNodeEventsTypeTable() {
+	static const flatbuffers::TypeCode type_codes[]    = {{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}};
+	static const flatbuffers::TypeFunction type_refs[] = {ConfigNodeEventsTypeTable};
+	static const char *const names[]                   = {"NODE_ADDED", "NODE_REMOVED"};
+	static const flatbuffers::TypeTable tt = {flatbuffers::ST_ENUM, 2, type_codes, type_refs, nullptr, names};
+	return &tt;
+}
+
+inline const flatbuffers::TypeTable *ConfigAttributeEventsTypeTable() {
+	static const flatbuffers::TypeCode type_codes[]    = {{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0},
+        {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}};
+	static const flatbuffers::TypeFunction type_refs[] = {ConfigAttributeEventsTypeTable};
+	static const char *const names[]
+		= {"ATTRIBUTE_ADDED", "ATTRIBUTE_MODIFIED", "ATTRIBUTE_REMOVED", "ATTRIBUTE_MODIFIED_CREATE"};
+	static const flatbuffers::TypeTable tt = {flatbuffers::ST_ENUM, 4, type_codes, type_refs, nullptr, names};
+	return &tt;
+}
+
+inline const flatbuffers::TypeTable *ConfigActionDataTypeTable() {
+	static const flatbuffers::TypeCode type_codes[] = {{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 1},
+		{flatbuffers::ET_CHAR, 0, 2}, {flatbuffers::ET_ULONG, 0, -1}, {flatbuffers::ET_STRING, 0, -1},
+		{flatbuffers::ET_STRING, 0, -1}, {flatbuffers::ET_CHAR, 0, 3}, {flatbuffers::ET_STRING, 0, -1},
+		{flatbuffers::ET_STRING, 0, -1}, {flatbuffers::ET_INT, 0, -1}, {flatbuffers::ET_STRING, 0, -1}};
+	static const flatbuffers::TypeFunction type_refs[]
+		= {ConfigActionTypeTable, ConfigNodeEventsTypeTable, ConfigAttributeEventsTypeTable, ConfigTypeTypeTable};
+	static const char *const names[] = {
+		"action", "nodeEvents", "attrEvents", "id", "node", "key", "type", "value", "ranges", "flags", "description"};
+	static const flatbuffers::TypeTable tt = {flatbuffers::ST_TABLE, 11, type_codes, type_refs, nullptr, names};
+	return &tt;
 }
 
 inline const dv::ConfigActionData *GetConfigActionData(const void *buf) {
