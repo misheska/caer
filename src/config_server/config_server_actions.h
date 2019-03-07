@@ -1,7 +1,7 @@
 #ifndef SRC_CONFIG_SERVER_CONFIG_SERVER_ACTIONS_H_
 #define SRC_CONFIG_SERVER_CONFIG_SERVER_ACTIONS_H_
 
-#include "dv_config_action_data.h"
+#include "dv_config_action_data.hpp"
 
 #include <memory>
 
