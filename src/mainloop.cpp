@@ -201,7 +201,7 @@ void dvMainloopRun(void) {
 	glMainloopData.configNode.addAttributeListener(nullptr, &mainloopRunningListener);
 
 	glMainloopData.configNode.create<dvCfgType::BOOL>(
-		"runState", false, {}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Mainloop running state.");
+		"isRunning", false, {}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Mainloop running state.");
 
 	while (glMainloopData.systemRunning.load()) {
 		if (!glMainloopData.running.load()) {
@@ -1773,7 +1773,7 @@ static int mainloopRunner() {
 	}
 
 	log(logLevel::INFO, "Mainloop", "Started successfully.");
-	glMainloopData.configNode.updateReadOnly<dvCfgType::BOOL>("runState", true);
+	glMainloopData.configNode.updateReadOnly<dvCfgType::BOOL>("isRunning", true);
 
 	// Run modules once right away to give possibility of initializing and
 	// getting some initial data (dataAvailable > 0).
@@ -1829,7 +1829,7 @@ static int mainloopRunner() {
 	dvConfigWriteBack();
 
 	log(logLevel::INFO, "Mainloop", "Terminated successfully.");
-	glMainloopData.configNode.updateReadOnly<dvCfgType::BOOL>("runState", false);
+	glMainloopData.configNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
 
 	return (EXIT_SUCCESS);
 }
