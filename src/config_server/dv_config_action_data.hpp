@@ -3,7 +3,7 @@
 #ifndef FLATBUFFERS_GENERATED_DVCONFIGACTIONDATA_DV_H_
 #define FLATBUFFERS_GENERATED_DVCONFIGACTIONDATA_DV_H_
 
-#include "flatbuffers/flatbuffers.h"
+#include "dv-sdk/events/flatbuffers/flatbuffers.h"
 
 namespace dv {
 
