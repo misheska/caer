@@ -9,7 +9,7 @@ INCLUDE_DIRECTORIES(${OUTPUT_INCDIRS})
 LINK_DIRECTORIES(${OUTPUT_LIBDIRS})
 
 # FILE
-ADD_LIBRARY(output_file SHARED output_common.c file.c)
+ADD_LIBRARY(output_file SHARED dv_output.hpp output_common.c file.c)
 
 SET_TARGET_PROPERTIES(output_file
 	PROPERTIES
