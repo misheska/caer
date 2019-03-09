@@ -75,6 +75,8 @@ struct PolarityPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	}
 	PolarityPacketT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
 	void UnPackTo(PolarityPacketT *_o, const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+	static void UnPackToFrom(
+		PolarityPacketT *_o, const PolarityPacket *_fb, const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<PolarityPacket> Pack(flatbuffers::FlatBufferBuilder &_fbb, const PolarityPacketT *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 };
@@ -119,10 +121,16 @@ inline PolarityPacketT *PolarityPacket::UnPack(const flatbuffers::resolver_funct
 }
 
 inline void PolarityPacket::UnPackTo(PolarityPacketT *_o, const flatbuffers::resolver_function_t *_resolver) const {
+	UnPackToFrom(_o, this, _resolver);
+}
+
+inline void PolarityPacket::UnPackToFrom(
+	PolarityPacketT *_o, const PolarityPacket *_fb, const flatbuffers::resolver_function_t *_resolver) {
 	(void) _o;
+	(void) _fb;
 	(void) _resolver;
 	{
-		auto _e = events();
+		auto _e = _fb->events();
 		if (_e) {
 			_o->events.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {

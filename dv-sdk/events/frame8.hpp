@@ -306,6 +306,8 @@ struct Frame8Packet FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	}
 	Frame8PacketT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
 	void UnPackTo(Frame8PacketT *_o, const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+	static void UnPackToFrom(
+		Frame8PacketT *_o, const Frame8Packet *_fb, const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<Frame8Packet> Pack(flatbuffers::FlatBufferBuilder &_fbb, const Frame8PacketT *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 };
@@ -445,10 +447,16 @@ inline Frame8PacketT *Frame8Packet::UnPack(const flatbuffers::resolver_function_
 }
 
 inline void Frame8Packet::UnPackTo(Frame8PacketT *_o, const flatbuffers::resolver_function_t *_resolver) const {
+	UnPackToFrom(_o, this, _resolver);
+}
+
+inline void Frame8Packet::UnPackToFrom(
+	Frame8PacketT *_o, const Frame8Packet *_fb, const flatbuffers::resolver_function_t *_resolver) {
 	(void) _o;
+	(void) _fb;
 	(void) _resolver;
 	{
-		auto _e = events();
+		auto _e = _fb->events();
 		if (_e) {
 			_o->events.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
