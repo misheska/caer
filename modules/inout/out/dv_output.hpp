@@ -6,47 +6,56 @@
 
 #include "dv-sdk/utils.h"
 
-#include <fstream>
-
-using PackFuncPtr = flatbuffers::Offset<void> (*)(
-	flatbuffers::FlatBufferBuilder &, const void *, const flatbuffers::rehasher_function_t *);
-using UnpackFuncPtr = void *(*) (const flatbuffers::resolver_function_t *);
-
-struct dvType {
-	std::string identifier;
-	PackFuncPtr pack;
-	UnpackFuncPtr unpack;
+struct arraydef {
+    char id[4];
+    void *ptr;
+    size_t size;
 };
 
-dvType supportedTypes[2] = {
-	{"POLA", &PolarityPacket::Pack, &PolarityPacket::UnPack},
-	{"FRM8", &Frame8Packet::Pack, &Frame8Packet::UnPack},
-};
+struct dvOutputStatistics {
+    uint64_t packetsNumber;
+    uint64_t packetsSize;
+    uint64_t dataWritten;
 
-enum class OutputTypes {
-	NETWORK_TCP,
-	NETWORK_UDP,
-	LOCAL_PIPE,
-	LOCAL_FILE,
+    dvOutputStatistics() : packetsNumber(0), packetsSize(0), dataWritten(0) {
+    }
 };
 
 class dvOutput {
 private:
-	int fileIO;
-	/// Track first packet container's lowest event timestamp that was sent out.
-	int64_t firstTimestamp;
-	/// Track last packet container's highest event timestamp that was sent out.
-	int64_t lastTimestamp;
-	/// The file for file writing.
-	std::ofstream file;
-	/// Output module statistics collection.
-	struct output_common_statistics {
-		uint64_t packetsNumber;
-		uint64_t dataWritten;
-	};
+    /// FlatBuffer builder.
+    flatbuffers::FlatBufferBuilder builder;
+    /// Apply compression.
+    bool compression;
+    /// Compression type flags.
+    uint32_t compressionFlags;
+    /// Output module statistics collection.
+    struct dvOutputStatistics;
 
 public:
-	dvOutput(OutputTypes type);
+    dvOutput() : builder(16 * 1024), compression(false), compressionFlags(0) {
+    }
+
+    void setCompression(bool compress) {
+        compression = compress;
+    }
+
+    bool getCompression() {
+        return (compression);
+    }
+
+    void setCompressionFlags(uint32_t compressFlags) {
+        compressionFlags = compressFlags;
+    }
+
+    uint32_t getCompressionFlags() {
+        return (compressionFlags);
+    }
+
+    struct arraydef processPacket(struct arraydef packet) {
+        // Construct serialized flatbuffer packet.
+        builder.Clear();
+    }
 };
 
 #endif // DV_OUTPUT_HPP
