@@ -6,6 +6,8 @@
 
 #include "dv-sdk/utils.h"
 
+#include "src/mainloop.h"
+
 struct arraydef {
 	uint32_t typeId;
 	void *ptr;
@@ -53,8 +55,28 @@ public:
 	}
 
 	struct arraydef processPacket(struct arraydef packet) {
+		const auto typeInfo = getTypeSystem().getTypeInfo(packet.typeId);
+
 		// Construct serialized flatbuffer packet.
 		builder.Clear();
+
+		auto offset = (*typeInfo.pack)(&builder, packet.ptr);
+
+		builder.FinishSizePrefixed(flatbuffers::Offset<void>(offset), typeInfo.identifier);
+
+		uint8_t *data   = builder.GetBufferPointer();
+		size_t dataSize = builder.GetSize();
+
+		if (compression) {
+			// TODO: compression.
+		}
+
+		struct arraydef ret;
+		ret.typeId = packet.typeId;
+		ret.ptr    = data;
+		ret.size   = dataSize;
+
+		return (ret);
 	}
 };
 
