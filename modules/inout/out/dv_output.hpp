@@ -7,55 +7,55 @@
 #include "dv-sdk/utils.h"
 
 struct arraydef {
-    char id[4];
-    void *ptr;
-    size_t size;
+	uint32_t typeId;
+	void *ptr;
+	size_t size;
 };
 
 struct dvOutputStatistics {
-    uint64_t packetsNumber;
-    uint64_t packetsSize;
-    uint64_t dataWritten;
+	uint64_t packetsNumber;
+	uint64_t packetsSize;
+	uint64_t dataWritten;
 
-    dvOutputStatistics() : packetsNumber(0), packetsSize(0), dataWritten(0) {
-    }
+	dvOutputStatistics() : packetsNumber(0), packetsSize(0), dataWritten(0) {
+	}
 };
 
 class dvOutput {
 private:
-    /// FlatBuffer builder.
-    flatbuffers::FlatBufferBuilder builder;
-    /// Apply compression.
-    bool compression;
-    /// Compression type flags.
-    uint32_t compressionFlags;
-    /// Output module statistics collection.
-    struct dvOutputStatistics;
+	/// FlatBuffer builder.
+	flatbuffers::FlatBufferBuilder builder;
+	/// Apply compression.
+	bool compression;
+	/// Compression type flags.
+	uint32_t compressionFlags;
+	/// Output module statistics collection.
+	struct dvOutputStatistics;
 
 public:
-    dvOutput() : builder(16 * 1024), compression(false), compressionFlags(0) {
-    }
+	dvOutput() : builder(16 * 1024), compression(false), compressionFlags(0) {
+	}
 
-    void setCompression(bool compress) {
-        compression = compress;
-    }
+	void setCompression(bool compress) {
+		compression = compress;
+	}
 
-    bool getCompression() {
-        return (compression);
-    }
+	bool getCompression() {
+		return (compression);
+	}
 
-    void setCompressionFlags(uint32_t compressFlags) {
-        compressionFlags = compressFlags;
-    }
+	void setCompressionFlags(uint32_t compressFlags) {
+		compressionFlags = compressFlags;
+	}
 
-    uint32_t getCompressionFlags() {
-        return (compressionFlags);
-    }
+	uint32_t getCompressionFlags() {
+		return (compressionFlags);
+	}
 
-    struct arraydef processPacket(struct arraydef packet) {
-        // Construct serialized flatbuffer packet.
-        builder.Clear();
-    }
+	struct arraydef processPacket(struct arraydef packet) {
+		// Construct serialized flatbuffer packet.
+		builder.Clear();
+	}
 };
 
 #endif // DV_OUTPUT_HPP
