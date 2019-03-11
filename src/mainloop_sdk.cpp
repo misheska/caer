@@ -1,5 +1,7 @@
 #include "mainloop.h"
 
+#include <boost/format.hpp>
+
 static MainloopData *glMainloopDataPtr;
 
 void dvMainloopSDKLibInit(MainloopData *setMainloopPtr) {
@@ -205,4 +207,32 @@ dvConfigNode dvMainloopGetSourceInfo(int16_t sourceID) {
 	}
 
 	return (dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/"));
+}
+
+bool dvTypesRegisterType(const dvType t) {
+	try {
+		glMainloopDataPtr->typeSystem.registerType(t);
+	}
+	catch (const std::invalid_argument &ex) {
+		boost::format msg = boost::format("Failed to register type %s: %s") % t.identifier % ex.what();
+		caerLog(CAER_LOG_ERROR, "Types", msg.str().c_str());
+
+		return (false);
+	}
+
+	return (true);
+}
+
+bool dvTypesUnregisterType(const dvType t) {
+	try {
+		glMainloopDataPtr->typeSystem.unregisterType(t);
+	}
+	catch (const std::invalid_argument &ex) {
+		boost::format msg = boost::format("Failed to unregister type %s: %s") % t.identifier % ex.what();
+		caerLog(CAER_LOG_ERROR, "Types", msg.str().c_str());
+
+		return (false);
+	}
+
+	return (true);
 }

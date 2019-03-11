@@ -3,7 +3,6 @@
 #include "dv-sdk/events/frame8.hpp"
 #include "dv-sdk/events/polarity.hpp"
 
-#include <boost/format.hpp>
 #include <stdexcept>
 
 namespace dv::Types {
@@ -32,10 +31,7 @@ void TypeSystem::registerType(const Type t) {
 	// equal or fully compatible.
 	if (findIfBool(
 			systemTypes.cbegin(), systemTypes.cend(), [&t](const Type &sysType) { return (t.id == sysType.id); })) {
-		boost::format msg = boost::format("Failed to register type %s, already a system type.") % t.identifier;
-
-		caerLog(CAER_LOG_ERROR, "Types", msg.str().c_str());
-		throw std::invalid_argument(msg.str().c_str());
+		throw std::invalid_argument("Already present as system type.");
 	}
 
 	// Not a system type. Add to list.
@@ -47,10 +43,7 @@ void TypeSystem::unregisterType(const Type t) {
 
 	if (userTypes.count(t.id) == 0) {
 		// Non existing type, error!
-		boost::format msg = boost::format("Failed to unregister type %s, type does not exist.") % t.identifier;
-
-		caerLog(CAER_LOG_ERROR, "Types", msg.str().c_str());
-		throw std::invalid_argument(msg.str().c_str());
+		throw std::invalid_argument("Type does not exist.");
 	}
 
 	auto &vec = userTypes[t.id];
@@ -66,13 +59,13 @@ void TypeSystem::unregisterType(const Type t) {
 	}
 }
 
-Type TypeSystem::getTypeInfo(const char *tIdentifier) {
+Type TypeSystem::getTypeInfo(const char *tIdentifier) const {
 	uint32_t id = *(reinterpret_cast<const uint32_t *>(tIdentifier));
 
 	return (getTypeInfo(id));
 }
 
-Type TypeSystem::getTypeInfo(uint32_t tId) {
+Type TypeSystem::getTypeInfo(uint32_t tId) const {
 	std::lock_guard<std::recursive_mutex> lock(typesLock);
 
 	// Search for type, first in system then user types.
@@ -85,7 +78,7 @@ Type TypeSystem::getTypeInfo(uint32_t tId) {
 	}
 
 	if (userTypes.count(tId) > 0) {
-		return (userTypes[tId].at(0));
+		return (userTypes.at(tId).at(0));
 	}
 
 	// Not fund.

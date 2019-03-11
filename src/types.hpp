@@ -13,7 +13,7 @@ class TypeSystem {
 private:
 	std::vector<Type> systemTypes;
 	std::map<uint32_t, std::vector<Type>> userTypes;
-	std::recursive_mutex typesLock;
+	mutable std::recursive_mutex typesLock;
 
 public:
 	TypeSystem();
@@ -21,8 +21,8 @@ public:
 	void registerType(const Type t);
 	void unregisterType(const Type t);
 
-	Type getTypeInfo(const char *tIdentifier);
-	Type getTypeInfo(uint32_t tId);
+	Type getTypeInfo(const char *tIdentifier) const;
+	Type getTypeInfo(uint32_t tId) const;
 };
 
 } // namespace dv::Types
