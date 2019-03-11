@@ -8,14 +8,6 @@
 
 namespace dv::Types {
 
-template<typename FBType, typename ObjectAPIType>
-flatbuffers::uoffset_t Packer(flatbuffers::FlatBufferBuilder *toBuffer, const void *fromObject) {
-	return (FBType::Pack(*toBuffer, static_cast<const ObjectAPIType *>(fromObject), nullptr).o);
-}
-template<typename FBType, typename ObjectAPIType> void Unpacker(void *toObject, const void *fromBuffer) {
-	FBType::UnPackToFrom(static_cast<ObjectAPIType *>(toObject), static_cast<const FBType *>(fromBuffer), nullptr);
-}
-
 TypeSystem::TypeSystem() {
 	// Initialize system types. These are always available due to
 	// being compiled into the core.

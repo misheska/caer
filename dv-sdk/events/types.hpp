@@ -10,6 +10,14 @@ namespace dv::Types {
 using PackFuncPtr   = flatbuffers::uoffset_t (*)(flatbuffers::FlatBufferBuilder *toBuffer, const void *fromObject);
 using UnpackFuncPtr = void (*)(void *toObject, const void *fromBuffer);
 
+template<typename FBType, typename ObjectAPIType>
+static flatbuffers::uoffset_t Packer(flatbuffers::FlatBufferBuilder *toBuffer, const void *fromObject) {
+	return (FBType::Pack(*toBuffer, static_cast<const ObjectAPIType *>(fromObject), nullptr).o);
+}
+template<typename FBType, typename ObjectAPIType> static void Unpacker(void *toObject, const void *fromBuffer) {
+	FBType::UnPackToFrom(static_cast<ObjectAPIType *>(toObject), static_cast<const FBType *>(fromBuffer), nullptr);
+}
+
 struct Type {
 	uint32_t id;
 	char identifier[5];
