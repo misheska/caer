@@ -21,7 +21,7 @@ TARGET_LINK_LIBRARIES(output_file ${OUTPUT_LIBS})
 INSTALL(TARGETS output_file DESTINATION ${DV_MODULES_DIR})
 
 # NET_TCP_SERVER
-ADD_LIBRARY(output_net_tcp_server SHARED output_common.c net_tcp_server.c)
+ADD_LIBRARY(output_net_tcp_server SHARED output_common.c net_tcp_server.cpp)
 
 SET_TARGET_PROPERTIES(output_net_tcp_server
 	PROPERTIES
