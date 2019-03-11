@@ -88,6 +88,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 				catch (const std::exception &ex) {
 					libcaer::log::log(libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString,
 						"moduleConfig(): '%s', disabling module.", ex.what());
+
 					moduleNode.put<dvCfgType::BOOL>("running", false);
 					return;
 				}
@@ -101,6 +102,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 			catch (const std::exception &ex) {
 				libcaer::log::log(libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString,
 					"moduleRun(): '%s', disabling module.", ex.what());
+
 				moduleNode.put<dvCfgType::BOOL>("running", false);
 				return;
 			}
@@ -115,6 +117,8 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 			for (size_t i = 0; i < neededModulesSize; i++) {
 				if (dvMainloopModuleGetStatus(neededModules[i]) != DV_MODULE_RUNNING) {
 					free(neededModules);
+
+					moduleNode.put<dvCfgType::BOOL>("running", false);
 					return;
 				}
 			}
@@ -126,6 +130,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 		if (memSize != 0) {
 			moduleData->moduleState = calloc(1, memSize);
 			if (moduleData->moduleState == nullptr) {
+				moduleNode.put<dvCfgType::BOOL>("running", false);
 				return;
 			}
 		}
@@ -156,6 +161,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 				}
 				moduleData->moduleState = nullptr;
 
+				moduleNode.put<dvCfgType::BOOL>("running", false);
 				return;
 			}
 		}
