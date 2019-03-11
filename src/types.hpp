@@ -3,8 +3,6 @@
 
 #include "dv-sdk/events/types.hpp"
 
-#include "dv-sdk/utils.h"
-
 #include <array>
 #include <map>
 #include <mutex>

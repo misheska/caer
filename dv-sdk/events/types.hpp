@@ -1,7 +1,9 @@
-#ifndef TYPES_HPP
-#define TYPES_HPP
+#ifndef DV_SDK_TYPES_HPP
+#define DV_SDK_TYPES_HPP
 
-#	include "dv-sdk/events/flatbuffers/flatbuffers.h"
+#include "dv-sdk/events/flatbuffers/flatbuffers.h"
+
+#include "dv-sdk/utils.h"
 
 namespace dv::Types {
 
@@ -30,5 +32,4 @@ struct Type {
 
 } // namespace dv::Types
 
-
-#endif // TYPES_HPP
+#endif // DV_SDK_TYPES_HPP
