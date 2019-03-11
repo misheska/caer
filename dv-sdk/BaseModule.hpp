@@ -99,6 +99,8 @@ public:
 		configUpdate(__moduleData->moduleNode);
 	}
 
+	virtual ~BaseModule();
+
 	/**
 	 * Method that updates the configs in the map as soon as some config
 	 * change.
@@ -128,7 +130,7 @@ public:
 			auto in_ = libcaer::events::EventPacketContainer(in, false);
 			run(in_);
 		}
-	};
+	}
 
 	/**
 	 * Virtual function to be implemented by the user.
