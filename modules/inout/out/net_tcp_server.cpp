@@ -90,7 +90,67 @@ public:
 		clients.erase(std::remove(clients.begin(), clients.end(), client), clients.end());
 	}
 
-	static void *convertToAedat4(int16_t type, caerEventPacketHeaderConst packet) {
+	static void *convertToAedat4(int16_t type, const libcaer::events::EventPacket *oldPacket) {
+		switch (type) {
+			case POLARITY_EVENT: {
+				auto newPacket = new PolarityPacketT();
+
+				auto oldPacketPolarity = dynamic_cast<const libcaer::events::PolarityEventPacket *>(oldPacket);
+
+				for (const auto &evt : *oldPacketPolarity) {
+					if (!evt.isValid()) {
+						continue;
+					}
+
+					newPacket->events.emplace_back(
+						evt.getTimestamp64(*oldPacketPolarity), evt.getX(), evt.getY(), evt.getPolarity());
+				}
+
+				return (newPacket);
+				break;
+			}
+
+			case FRAME_EVENT: {
+				auto newPacket = new Frame8PacketT();
+
+				auto oldPacketFrame = dynamic_cast<const libcaer::events::FrameEventPacket *>(oldPacket);
+
+				for (const auto &evt : *oldPacketFrame) {
+					if (!evt.isValid()) {
+						continue;
+					}
+
+					Frame8T newFrame{};
+
+					newFrame.timestamp                = evt.getTimestamp64(*oldPacketFrame);
+					newFrame.timestampStartOfFrame    = evt.getTSStartOfFrame64(*oldPacketFrame);
+					newFrame.timestampStartOfExposure = evt.getTSStartOfExposure64(*oldPacketFrame);
+					newFrame.timestampEndOfExposure   = evt.getTSEndOfExposure64(*oldPacketFrame);
+					newFrame.timestampEndOfFrame      = evt.getTSEndOfFrame64(*oldPacketFrame);
+
+					newFrame.origColorFilter = static_cast<FrameColorFilters>(evt.getColorFilter());
+					newFrame.numChannels     = static_cast<FrameChannels>(evt.getChannelNumber());
+
+					newFrame.lengthX   = static_cast<int16_t>(evt.getLengthX());
+					newFrame.lengthY   = static_cast<int16_t>(evt.getLengthY());
+					newFrame.positionX = static_cast<int16_t>(evt.getPositionX());
+					newFrame.positionY = static_cast<int16_t>(evt.getPositionY());
+
+					for (size_t px = 0; px < evt.getPixelsMaxIndex(); px++) {
+						newFrame.pixels.push_back(static_cast<uint8_t>(evt.getPixelArrayUnsafe()[px] >> 8));
+					}
+
+					newPacket->events.emplace_back(newFrame);
+				}
+
+				return (newPacket);
+				break;
+			}
+
+			default:
+				return (nullptr);
+				break;
+		}
 	}
 
 	void run(const libcaer::events::EventPacketContainer &in) {
@@ -101,12 +161,12 @@ public:
 				if (pkt->getEventType() == POLARITY_EVENT) {
 					inData.typeId = *(reinterpret_cast<const uint32_t *>(PolarityPacketIdentifier()));
 					inData.size   = static_cast<size_t>(pkt->getEventValid());
-					inData.ptr    = convertToAedat4(POLARITY_EVENT, pkt->getHeaderPointer());
+					inData.ptr    = convertToAedat4(POLARITY_EVENT, pkt.get());
 				}
 				else if (pkt->getEventType() == FRAME_EVENT) {
 					inData.typeId = *(reinterpret_cast<const uint32_t *>(Frame8PacketIdentifier()));
 					inData.size   = static_cast<size_t>(pkt->getEventValid());
-					inData.ptr    = convertToAedat4(FRAME_EVENT, pkt->getHeaderPointer());
+					inData.ptr    = convertToAedat4(FRAME_EVENT, pkt.get());
 				}
 				else {
 					// Skip unknown packet.
