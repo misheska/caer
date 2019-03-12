@@ -17,7 +17,7 @@ private:
 	uint8_t keepAliveReadSpace;
 
 public:
-	Connection(asioTCP::socket s, NetTCPServer *server);
+	Connection(asioTCP::socket s, bool tlsEnabled, asioSSL::context *tlsContext, NetTCPServer *server);
 	~Connection();
 
 	void start();
@@ -34,6 +34,9 @@ private:
 	asio::io_service ioService;
 	asioTCP::acceptor acceptor;
 	asioTCP::socket acceptorNewSocket;
+	asioSSL::context tlsContext;
+	bool tlsEnabled;
+
 	std::vector<Connection *> clients;
 	dvOutput output;
 
@@ -54,7 +57,11 @@ public:
 			= dv::ConfigOption::integerOption("Maximum number of concurrent active connections.", 10, 1, 128);
 	}
 
-	NetTCPServer() : acceptor(ioService), acceptorNewSocket(ioService) {
+	NetTCPServer() :
+		acceptor(ioService),
+		acceptorNewSocket(ioService),
+		tlsContext(asioSSL::context::tlsv12_server),
+		tlsEnabled(false) {
 		// Configure acceptor.
 		auto endpoint
 			= asioTCP::endpoint(asioIP::address::from_string(config["ipAddress"].getValue<dv::ConfigVariant::STRING>()),
@@ -152,7 +159,7 @@ private:
 				}
 			}
 			else {
-				auto client = std::make_shared<Connection>(std::move(acceptorNewSocket), this);
+				auto client = std::make_shared<Connection>(std::move(acceptorNewSocket), tlsEnabled, &tlsContext, this);
 
 				clients.push_back(client.get());
 
@@ -254,7 +261,10 @@ private:
 	}
 };
 
-Connection::Connection(asioTCP::socket s, NetTCPServer *server) : parent(server), socket(std::move(s), false, nullptr) {
+Connection::Connection(asioTCP::socket s, bool tlsEnabled, asioSSL::context *tlsContext, NetTCPServer *server) :
+	parent(server),
+	socket(std::move(s), tlsEnabled, tlsContext),
+	keepAliveReadSpace(0) {
 	logger::log(logger::logLevel::INFO, "TCP OUTPUT", "New connection from client %s:%d.",
 		socket.remote_address().to_string().c_str(), socket.remote_port());
 }
