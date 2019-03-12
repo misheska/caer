@@ -34,6 +34,7 @@ private:
 	asioTCP::acceptor acceptor;
 	asioTCP::socket acceptorNewSocket;
 	std::vector<Connection *> clients;
+	dvOutput output;
 
 public:
 	static constexpr caer_event_stream_in inputStreams[]  = {{-1, -1, true}};
@@ -72,18 +73,59 @@ public:
 	}
 
 	~NetTCPServer() {
+		acceptor.close();
+
 		for (const auto client : clients) {
 			client->close();
 		}
 
-		clients.clear();
+		// Wait for all clients to go away.
+		while (!clients.empty()) {
+			ioService.poll();
+			ioService.restart();
+		}
 	}
 
 	void removeClient(Connection *client) {
 		clients.erase(std::remove(clients.begin(), clients.end(), client), clients.end());
 	}
 
+	static void *convertToAedat4(int16_t type, caerEventPacketHeaderConst packet) {
+	}
+
 	void run(const libcaer::events::EventPacketContainer &in) {
+		if (!in.empty()) {
+			for (const auto &pkt : in) {
+				struct arraydef inData;
+
+				if (pkt->getEventType() == POLARITY_EVENT) {
+					inData.typeId = *(reinterpret_cast<const uint32_t *>(PolarityPacketIdentifier()));
+					inData.size   = static_cast<size_t>(pkt->getEventValid());
+					inData.ptr    = convertToAedat4(POLARITY_EVENT, pkt->getHeaderPointer());
+				}
+				else if (pkt->getEventType() == FRAME_EVENT) {
+					inData.typeId = *(reinterpret_cast<const uint32_t *>(Frame8PacketIdentifier()));
+					inData.size   = static_cast<size_t>(pkt->getEventValid());
+					inData.ptr    = convertToAedat4(FRAME_EVENT, pkt->getHeaderPointer());
+				}
+				else {
+					// Skip unknown packet.
+					continue;
+				}
+
+				// outData.size is in bytes, not elements.
+				auto outData = output.processPacket(inData);
+
+				auto outBuffer = std::make_shared<asio::const_buffer>(outData.ptr, outData.size);
+
+				for (const auto client : clients) {
+					client->writeBuffer(outBuffer);
+				}
+			}
+		}
+
+		ioService.poll();
+		ioService.restart();
 	}
 
 private:
@@ -92,7 +134,8 @@ private:
 			if (error) {
 				// Ignore cancel error, normal on shutdown.
 				if (error != asio::error::operation_aborted) {
-					// TODO: error handling.
+					logger::log(logger::logLevel::ERROR, "TCP OUTPUT", "Failed to accept connection. Error: %s (%d).",
+						error.message().c_str(), error.value());
 				}
 			}
 			else {
@@ -176,4 +219,4 @@ void Connection::handleError(const boost::system::error_code &error, const char 
 	}
 }
 
-registerModuleClass(NetTCPServer);
+registerModuleClass(NetTCPServer)

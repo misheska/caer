@@ -1,3 +1,15 @@
+# NET_TCP_SERVER
+ADD_LIBRARY(output_net_tcp_server SHARED net_tcp_server.cpp)
+
+SET_TARGET_PROPERTIES(output_net_tcp_server
+	PROPERTIES
+	PREFIX "dv_"
+)
+
+TARGET_LINK_LIBRARIES(output_net_tcp_server ${DV_LIBS})
+
+INSTALL(TARGETS output_net_tcp_server DESTINATION ${DV_MODULES_DIR})
+
 # TODO: Currently use libuv for output support.
 PKG_CHECK_MODULES(LIBUV REQUIRED libuv>=1.7.5)
 
@@ -19,18 +31,6 @@ SET_TARGET_PROPERTIES(output_file
 TARGET_LINK_LIBRARIES(output_file ${OUTPUT_LIBS})
 
 INSTALL(TARGETS output_file DESTINATION ${DV_MODULES_DIR})
-
-# NET_TCP_SERVER
-ADD_LIBRARY(output_net_tcp_server SHARED output_common.c net_tcp_server.cpp)
-
-SET_TARGET_PROPERTIES(output_net_tcp_server
-	PROPERTIES
-	PREFIX "dv_"
-)
-
-TARGET_LINK_LIBRARIES(output_net_tcp_server ${OUTPUT_LIBS})
-
-INSTALL(TARGETS output_net_tcp_server DESTINATION ${DV_MODULES_DIR})
 
 # NET_TCP_CLIENT
 ADD_LIBRARY(output_net_tcp_client SHARED output_common.c net_tcp.c)
