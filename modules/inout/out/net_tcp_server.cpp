@@ -84,7 +84,11 @@ public:
 		// Wait for all clients to go away.
 		while (!clients.empty()) {
 			ioService.poll();
+#if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 66
 			ioService.restart();
+#else
+			ioService.reset();
+#endif
 		}
 	}
 
@@ -124,7 +128,11 @@ public:
 		}
 
 		ioService.poll();
+#if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 66
 		ioService.restart();
+#else
+		ioService.reset();
+#endif
 	}
 
 private:
