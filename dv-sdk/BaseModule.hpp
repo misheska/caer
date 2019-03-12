@@ -99,7 +99,8 @@ public:
 		configUpdate(__moduleData->moduleNode);
 	}
 
-	virtual ~BaseModule();
+	virtual ~BaseModule() {
+	}
 
 	/**
 	 * Method that updates the configs in the map as soon as some config
