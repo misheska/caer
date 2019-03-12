@@ -59,7 +59,6 @@ public:
 			= asioTCP::endpoint(asioIP::address::from_string(config["ipAddress"].getValue<dv::ConfigVariant::STRING>()),
 				U16T(config["portNumber"].getValue<dv::ConfigVariant::INTEGER>()));
 
-		// TODO: this can fail if port already in use!
 		acceptor.open(endpoint.protocol());
 		acceptor.set_option(asioTCP::socket::reuse_address(true));
 		acceptor.bind(endpoint);
