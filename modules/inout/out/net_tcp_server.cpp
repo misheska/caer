@@ -71,7 +71,13 @@ public:
 			dvConfigNodePutLong(moduleData->moduleNode, "portNumber", local.port());
 		}
 
+		logger::log(logger::logLevel::INFO, "TCP OUTPUT", "Output server ready on %s:%d.",
+			config["ipAddress"].getValue<dv::ConfigVariant::STRING>().c_str(),
+			config["portNumber"].getValue<dv::ConfigVariant::INTEGER>());
+
 		makeSourceInfo(moduleData->moduleNode);
+
+		acceptStart();
 	}
 
 	~NetTCPServer() {
