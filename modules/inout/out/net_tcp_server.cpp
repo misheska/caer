@@ -1,3 +1,4 @@
+#include "dv-sdk/config/dvConfig.hpp"
 #include "dv-sdk/module.hpp"
 
 #include "dv_output.hpp"
@@ -69,6 +70,8 @@ public:
 			const auto local = acceptor.local_endpoint();
 			dvConfigNodePutLong(moduleData->moduleNode, "portNumber", local.port());
 		}
+
+		makeSourceInfo(moduleData->moduleNode);
 	}
 
 	~NetTCPServer() {
@@ -87,6 +90,90 @@ public:
 
 	void removeClient(Connection *client) {
 		clients.erase(std::remove(clients.begin(), clients.end(), client), clients.end());
+	}
+
+	void run(const libcaer::events::EventPacketContainer &in) {
+		if (!in.empty()) {
+			for (const auto &pkt : in) {
+				struct arraydef inData;
+
+				if (pkt->getEventType() == POLARITY_EVENT) {
+					inData.typeId = *(reinterpret_cast<const uint32_t *>(PolarityPacketIdentifier()));
+					inData.size   = static_cast<size_t>(pkt->getEventValid());
+					inData.ptr    = convertToAedat4(POLARITY_EVENT, pkt.get());
+				}
+				else if (pkt->getEventType() == FRAME_EVENT) {
+					inData.typeId = *(reinterpret_cast<const uint32_t *>(Frame8PacketIdentifier()));
+					inData.size   = static_cast<size_t>(pkt->getEventValid());
+					inData.ptr    = convertToAedat4(FRAME_EVENT, pkt.get());
+				}
+				else {
+					// Skip unknown packet.
+					continue;
+				}
+
+				// outData.size is in bytes, not elements.
+				auto outData = output.processPacket(inData);
+
+				auto outBuffer = std::make_shared<asio::const_buffer>(outData.ptr, outData.size);
+
+				for (const auto client : clients) {
+					client->writeBuffer(outBuffer);
+				}
+			}
+		}
+
+		ioService.poll();
+		ioService.restart();
+	}
+
+private:
+	void acceptStart() {
+		acceptor.async_accept(acceptorNewSocket, [this](const boost::system::error_code &error) {
+			if (error) {
+				// Ignore cancel error, normal on shutdown.
+				if (error != asio::error::operation_aborted) {
+					logger::log(logger::logLevel::ERROR, "TCP OUTPUT", "Failed to accept connection. Error: %s (%d).",
+						error.message().c_str(), error.value());
+				}
+			}
+			else {
+				auto client = std::make_shared<Connection>(std::move(acceptorNewSocket), this);
+
+				clients.push_back(client.get());
+
+				client->start();
+
+				acceptStart();
+			}
+		});
+	}
+
+	// TODO: this is all manual for now.
+	void makeSourceInfo(dv::Config::Node moduleNode) {
+		auto sourceInfoNode = moduleNode.getRelativeNode("sourceInfo/");
+
+		// First stream for now.
+		auto streamInfoNode = sourceInfoNode.getRelativeNode("0/");
+
+		if (moduleNode.getName() == "_visualizer_event") {
+			streamInfoNode.create<dv::Config::AttributeType::STRING>("type", "POLA", {0, UINT16_MAX},
+				dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Type of data.");
+		}
+		else if (moduleNode.getName() == "_visualizer_frame") {
+			streamInfoNode.create<dv::Config::AttributeType::STRING>("type", "FRM8", {0, UINT16_MAX},
+				dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Type of data.");
+		}
+		else {
+			streamInfoNode.create<dv::Config::AttributeType::STRING>("type", "UNKN", {0, UINT16_MAX},
+				dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Type of data.");
+		}
+
+		// Fixed at 346x260 for now.
+		streamInfoNode.create<dv::Config::AttributeType::INT>("width", 346, {0, UINT16_MAX},
+			dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Data width.");
+		streamInfoNode.create<dv::Config::AttributeType::INT>("height", 260, {0, UINT16_MAX},
+			dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Data height.");
 	}
 
 	static void *convertToAedat4(int16_t type, const libcaer::events::EventPacket *oldPacket) {
@@ -150,63 +237,6 @@ public:
 				return (nullptr);
 				break;
 		}
-	}
-
-	void run(const libcaer::events::EventPacketContainer &in) {
-		if (!in.empty()) {
-			for (const auto &pkt : in) {
-				struct arraydef inData;
-
-				if (pkt->getEventType() == POLARITY_EVENT) {
-					inData.typeId = *(reinterpret_cast<const uint32_t *>(PolarityPacketIdentifier()));
-					inData.size   = static_cast<size_t>(pkt->getEventValid());
-					inData.ptr    = convertToAedat4(POLARITY_EVENT, pkt.get());
-				}
-				else if (pkt->getEventType() == FRAME_EVENT) {
-					inData.typeId = *(reinterpret_cast<const uint32_t *>(Frame8PacketIdentifier()));
-					inData.size   = static_cast<size_t>(pkt->getEventValid());
-					inData.ptr    = convertToAedat4(FRAME_EVENT, pkt.get());
-				}
-				else {
-					// Skip unknown packet.
-					continue;
-				}
-
-				// outData.size is in bytes, not elements.
-				auto outData = output.processPacket(inData);
-
-				auto outBuffer = std::make_shared<asio::const_buffer>(outData.ptr, outData.size);
-
-				for (const auto client : clients) {
-					client->writeBuffer(outBuffer);
-				}
-			}
-		}
-
-		ioService.poll();
-		ioService.restart();
-	}
-
-private:
-	void acceptStart() {
-		acceptor.async_accept(acceptorNewSocket, [this](const boost::system::error_code &error) {
-			if (error) {
-				// Ignore cancel error, normal on shutdown.
-				if (error != asio::error::operation_aborted) {
-					logger::log(logger::logLevel::ERROR, "TCP OUTPUT", "Failed to accept connection. Error: %s (%d).",
-						error.message().c_str(), error.value());
-				}
-			}
-			else {
-				auto client = std::make_shared<Connection>(std::move(acceptorNewSocket), this);
-
-				clients.push_back(client.get());
-
-				client->start();
-
-				acceptStart();
-			}
-		});
 	}
 };
 
