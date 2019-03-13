@@ -10,11 +10,11 @@ static void caerInputFileConfigInit(dvConfigNode configNode);
 static bool caerInputFileInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS InputFileFunctions = {
-		.moduleConfigInit = &caerInputFileConfigInit,
-	.moduleInit   = &caerInputFileInit,
-	.moduleRun    = &caerInputCommonRun,
-	.moduleConfig = NULL,
-	.moduleExit   = &caerInputCommonExit,
+	.moduleConfigInit = &caerInputFileConfigInit,
+	.moduleInit       = &caerInputFileInit,
+	.moduleRun        = &caerInputCommonRun,
+	.moduleConfig     = NULL,
+	.moduleExit       = &caerInputCommonExit,
 };
 
 static const struct caer_event_stream_out InputFileOutputs[] = {{.type = -1}};
@@ -37,15 +37,14 @@ dvModuleInfo dvModuleGetInfo(void) {
 
 static void caerInputFileConfigInit(dvConfigNode moduleNode) {
 	dvConfigNodeCreateString(
-			moduleNode, "filePath", "", 0, PATH_MAX, DVCFG_FLAGS_NORMAL, "File path for reading input data.");
+		moduleNode, "filePath", "", 0, PATH_MAX, DVCFG_FLAGS_NORMAL, "File path for reading input data.");
 	dvConfigNodeAttributeModifierFileChooser(moduleNode, "filePath", "LOAD:aedat");
 	dvConfigNodeAttributeModifierPriorityAttributes(moduleNode, "filePath");
 
-    caerInputCommonConfigInit(moduleNode);
+	caerInputCommonConfigInit(moduleNode);
 }
 
 static bool caerInputFileInit(dvModuleData moduleData) {
-
 	char *filePath = dvConfigNodeGetString(moduleData->moduleNode, "filePath");
 
 	if (caerStrEquals(filePath, "")) {

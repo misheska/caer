@@ -10,11 +10,11 @@ static void caerInputUnixSocketConfigInit(dvConfigNode moduleNode);
 static bool caerInputUnixSocketInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS InputUnixSocketFunctions = {
-		.moduleConfigInit = &caerInputUnixSocketConfigInit,
-	.moduleInit   = &caerInputUnixSocketInit,
-	.moduleRun    = &caerInputCommonRun,
-	.moduleConfig = NULL,
-	.moduleExit   = &caerInputCommonExit,
+	.moduleConfigInit = &caerInputUnixSocketConfigInit,
+	.moduleInit       = &caerInputUnixSocketInit,
+	.moduleRun        = &caerInputCommonRun,
+	.moduleConfig     = NULL,
+	.moduleExit       = &caerInputCommonExit,
 };
 
 static const struct caer_event_stream_out InputUnixSocketOutputs[] = {{.type = -1}};
@@ -39,7 +39,7 @@ static void caerInputUnixSocketConfigInit(dvConfigNode moduleNode) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
-							 "Unix Socket path for reading input data.");
+		"Unix Socket path for reading input data.");
 
 	caerInputCommonConfigInit(moduleNode);
 }

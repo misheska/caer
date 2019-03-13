@@ -42,6 +42,6 @@ public:
 #endif
 	}
 };
-}
+} // namespace sfml
 
 #endif /* EXT_SFML_HELPERS_HPP_ */

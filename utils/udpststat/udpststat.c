@@ -1,9 +1,14 @@
+#include <libcaer/events/common.h>
+
 #include "ext/uthash/utarray.h"
 #include "ext/uthash/utlist.h"
 #include "modules/inout/inout_common.h"
+
 #include <arpa/inet.h>
 #include <inttypes.h>
 #include <netinet/in.h>
+#include <signal.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -11,11 +16,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
-#include <libcaer/events/common.h>
-
-#include <signal.h>
-#include <stdatomic.h>
 
 struct udp_packet {
 	struct udp_packet *next;
