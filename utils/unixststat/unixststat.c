@@ -1,6 +1,11 @@
+#include <libcaer/events/common.h>
+
 #include "ext/net_rw.h"
 #include "modules/inout/inout_common.h"
+
 #include <inttypes.h>
+#include <signal.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,11 +14,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-
-#include <libcaer/events/common.h>
-
-#include <signal.h>
-#include <stdatomic.h>
 
 static atomic_bool globalShutdown = ATOMIC_VAR_INIT(false);
 

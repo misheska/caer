@@ -14,11 +14,11 @@ static void caerOutputFileConfigInit(dvConfigNode node);
 static bool caerOutputFileInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS OutputFileFunctions = {
-		.moduleConfigInit = &caerOutputFileConfigInit,
-	.moduleInit   = &caerOutputFileInit,
-	.moduleRun    = &caerOutputCommonRun,
-	.moduleConfig = NULL,
-	.moduleExit   = &caerOutputCommonExit,
+	.moduleConfigInit = &caerOutputFileConfigInit,
+	.moduleInit       = &caerOutputFileInit,
+	.moduleRun        = &caerOutputCommonRun,
+	.moduleConfig     = NULL,
+	.moduleExit       = &caerOutputCommonExit,
 };
 
 static const struct caer_event_stream_in OutputFileInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
@@ -39,29 +39,7 @@ dvModuleInfo dvModuleGetInfo(void) {
 	return (&OutputFileInfo);
 }
 
-static char *getUserHomeDirectory();
 static char *getFullFilePath(dvModuleData moduleData, const char *directory, const char *prefix);
-
-// Remember to free strings returned by this.
-static char *getUserHomeDirectory() {
-	size_t homeDirLength = PATH_MAX;
-
-	// Allocate memory for home directory path.
-	char *homeDir = malloc(homeDirLength);
-	if (homeDir == NULL) {
-		caerLog(CAER_LOG_ERROR, "outfile", "Failed to allocate memory for home directory string.");
-		return (NULL);
-	}
-
-	// Discover home directory path, use libuv for cross-platform support.
-	int retVal = uv_os_homedir(homeDir, &homeDirLength);
-	if (retVal < 0) {
-		caerLog(CAER_LOG_ERROR, "outfile", "uv_os_homedir failed, error %d (%s).", retVal, uv_err_name(retVal));
-		return (NULL);
-	}
-
-	return (homeDir);
-}
 
 static char *getFullFilePath(dvModuleData moduleData, const char *directory, const char *prefix) {
 	// First get time suffix string.
@@ -97,25 +75,23 @@ static char *getFullFilePath(dvModuleData moduleData, const char *directory, con
 static void caerOutputFileConfigInit(dvConfigNode node) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
-	char *userHomeDir = getUserHomeDirectory();
+	char *userHomeDir = portable_get_user_home_directory();
 	if (userHomeDir == NULL) {
 		return;
 	}
 
-	dvConfigNodeCreateString(node, "directory", userHomeDir, 1, (PATH_MAX - MAX_PREFIX_LENGTH),
-							 DVCFG_FLAGS_NORMAL, "Directory to write output data files in.");
+	dvConfigNodeCreateString(node, "directory", userHomeDir, 1, (PATH_MAX - MAX_PREFIX_LENGTH), DVCFG_FLAGS_NORMAL,
+		"Directory to write output data files in.");
 	free(userHomeDir);
 
 	// Support file-chooser in GUI, select any directory.
 	dvConfigNodeAttributeModifierFileChooser(node, "directory", "DIRECTORY");
 
-	dvConfigNodeCreateString(node, "prefix", DEFAULT_PREFIX, 1, MAX_PREFIX_LENGTH, DVCFG_FLAGS_NORMAL,
-							 "Output data files name prefix.");
+	dvConfigNodeCreateString(
+		node, "prefix", DEFAULT_PREFIX, 1, MAX_PREFIX_LENGTH, DVCFG_FLAGS_NORMAL, "Output data files name prefix.");
 }
 
-
 static bool caerOutputFileInit(dvModuleData moduleData) {
-
 	// Generate current file name and open it.
 	char *directory = dvConfigNodeGetString(moduleData->moduleNode, "directory");
 	char *prefix    = dvConfigNodeGetString(moduleData->moduleNode, "prefix");

@@ -1,0 +1,16 @@
+native_include "cvector.hpp";
+
+file_identifier "POLA";
+
+struct PolarityEvent {
+	timestamp: int64;
+	addressX: int16;
+	addressY: int16;
+	polarity: bool;
+}
+
+table PolarityPacket {
+	events: [PolarityEvent] (native_inline);
+}
+
+root_type PolarityPacket;

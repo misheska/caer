@@ -5,6 +5,7 @@
 #include "dv-sdk/module.h"
 
 #include "module.h"
+#include "types.hpp"
 
 #include <functional>
 #include <memory>
@@ -177,14 +178,11 @@ struct MainloopData {
 	std::vector<ActiveStreams> streams;
 	std::vector<std::reference_wrapper<ModuleInfo>> globalExecution;
 	std::vector<caerEventPacketHeader> eventPackets;
+	dv::Types::TypeSystem typeSystem;
 
 	MainloopData() : configNode(nullptr) {
 	}
 };
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /*
  * Run global mainloop (data processing).
@@ -196,8 +194,6 @@ void dvMainloopRun(void);
  */
 void dvMainloopSDKLibInit(MainloopData *setMainloopPtr);
 
-#ifdef __cplusplus
-}
-#endif
+const dv::Types::TypeSystem &getTypeSystem();
 
 #endif /* MAINLOOP_H_ */

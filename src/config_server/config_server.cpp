@@ -128,11 +128,18 @@ void ConfigServer::serviceConfigure() {
 	auto endpoint = asioTCP::endpoint(asioIP::address::from_string(serverNode.get<dvCfgType::STRING>("ipAddress")),
 		U16T(serverNode.get<dvCfgType::INT>("portNumber")));
 
-	// TODO: this can fail if port already in use!
-	acceptor.open(endpoint.protocol());
-	acceptor.set_option(asioTCP::socket::reuse_address(true));
-	acceptor.bind(endpoint);
-	acceptor.listen();
+	// This can fail if port already in use.
+	// There's nothing we can do really, exit.
+	try {
+		acceptor.open(endpoint.protocol());
+		acceptor.set_option(asioTCP::socket::reuse_address(true));
+		acceptor.bind(endpoint);
+		acceptor.listen();
+	}
+	catch (const boost::system::system_error &ex) {
+		logger::log(logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to start server. Error: %s.", ex.what());
+		exit(EXIT_FAILURE);
+	}
 
 	// Configure TLS support.
 	tlsEnabled = serverNode.get<dvCfgType::BOOL>("tls");

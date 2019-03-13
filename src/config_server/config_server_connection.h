@@ -2,7 +2,7 @@
 #define SRC_CONFIG_SERVER_CONFIG_SERVER_CONNECTION_H_
 
 #include "asio.h"
-#include "dv_config_action_data.h"
+#include "dv_config_action_data.hpp"
 
 #include <memory>
 

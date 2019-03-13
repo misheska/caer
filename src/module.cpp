@@ -33,6 +33,12 @@ void dvModuleConfigInit(dv::Config::Node moduleNode) {
 	moduleNode.create<dvCfgType::BOOL>("runAtStartup", true, {}, dvCfgFlags::NORMAL,
 		"Start this module when the mainloop starts."); // Allow for users to disable a module at start.
 
+	moduleNode.create<dvCfgType::BOOL>(
+		"running", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Module start/stop.");
+
+	moduleNode.create<dvCfgType::BOOL>(
+		"isRunning", false, {}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module running state.");
+
 	// Call module's configInit function to create default static config.
 	const std::string moduleName = moduleNode.get<dvCfgType::STRING>("moduleLibrary");
 
@@ -82,6 +88,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 				catch (const std::exception &ex) {
 					libcaer::log::log(libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString,
 						"moduleConfig(): '%s', disabling module.", ex.what());
+
 					moduleNode.put<dvCfgType::BOOL>("running", false);
 					return;
 				}
@@ -95,6 +102,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 			catch (const std::exception &ex) {
 				libcaer::log::log(libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString,
 					"moduleRun(): '%s', disabling module.", ex.what());
+
 				moduleNode.put<dvCfgType::BOOL>("running", false);
 				return;
 			}
@@ -109,6 +117,8 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 			for (size_t i = 0; i < neededModulesSize; i++) {
 				if (dvMainloopModuleGetStatus(neededModules[i]) != DV_MODULE_RUNNING) {
 					free(neededModules);
+
+					moduleNode.put<dvCfgType::BOOL>("running", false);
 					return;
 				}
 			}
@@ -120,6 +130,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 		if (memSize != 0) {
 			moduleData->moduleState = calloc(1, memSize);
 			if (moduleData->moduleState == nullptr) {
+				moduleNode.put<dvCfgType::BOOL>("running", false);
 				return;
 			}
 		}
@@ -150,11 +161,13 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 				}
 				moduleData->moduleState = nullptr;
 
+				moduleNode.put<dvCfgType::BOOL>("running", false);
 				return;
 			}
 		}
 
 		moduleData->moduleStatus = DV_MODULE_RUNNING;
+		moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", true);
 
 		// After starting successfully, try to enable dependent
 		// modules if their 'runAtStartup' is true. Else shutting down
@@ -193,6 +206,8 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 			free(moduleData->moduleState);
 		}
 		moduleData->moduleState = nullptr;
+
+		moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
 
 		// Shutdown of module: ensure all modules depending on this
 		// one also get stopped (running set to false).
@@ -253,9 +268,8 @@ dvModuleData dvModuleInitialize(int16_t moduleID, const char *moduleName, dvCfg:
 	// Initialize shutdown controls.
 	bool runModule = moduleNode.get<dvCfgType::BOOL>("runAtStartup");
 
-	moduleNode.create<dvCfgType::BOOL>(
-		"running", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Module start/stop.");
 	moduleNode.put<dvCfgType::BOOL>("running", runModule);
+	moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
 
 	moduleData->running.store(runModule, std::memory_order_relaxed);
 	moduleNode.addAttributeListener(moduleData, &moduleShutdownListener);

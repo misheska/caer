@@ -8,8 +8,7 @@
 #include <string_view>
 #include <vector>
 
-namespace dv {
-namespace Config {
+namespace dv::Config {
 
 enum class AttributeType {
 	UNKNOWN = DVCFG_TYPE_UNKNOWN,
@@ -793,7 +792,6 @@ public:
 
 static Tree GLOBAL = Tree::globalTree();
 
-} // namespace Config
-} // namespace dv
+} // namespace dv::Config
 
 #endif /* DVCONFIG_HPP_ */

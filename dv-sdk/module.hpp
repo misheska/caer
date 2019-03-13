@@ -212,7 +212,7 @@ public:
  */
 template<class T>
 const dvModuleFunctionsS ModuleStatics<T>::functions = {&ModuleStatics<T>::configInit, &ModuleStatics<T>::init,
-	&ModuleStatics<T>::run, &ModuleStatics<T>::config, &ModuleStatics<T>::exit, nullptr};
+	&ModuleStatics<T>::run, &ModuleStatics<T>::config, &ModuleStatics<T>::exit};
 
 /**
  * Static definition of the info struct, which gets passed to DV.

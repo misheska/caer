@@ -1,7 +1,7 @@
 #include "dv-sdk/cross/portable_io.h"
 #include "dv-sdk/utils.h"
 
-#include "../../src/config_server/dv_config_action_data.h"
+#include "../../src/config_server/dv_config_action_data.hpp"
 #include "utils/ext/linenoise-ng/linenoise.h"
 
 #include <boost/algorithm/string/join.hpp>

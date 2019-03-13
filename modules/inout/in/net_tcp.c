@@ -10,11 +10,11 @@ static void caerInputNetTCPConfigInit(dvConfigNode moduleNode);
 static bool caerInputNetTCPInit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS InputNetTCPFunctions = {
-		.moduleConfigInit = &caerInputNetTCPConfigInit,
-		.moduleInit   = &caerInputNetTCPInit,
-		.moduleRun    = &caerInputCommonRun,
-		.moduleConfig = NULL,
-		.moduleExit   = &caerInputCommonExit,
+	.moduleConfigInit = &caerInputNetTCPConfigInit,
+	.moduleInit       = &caerInputNetTCPInit,
+	.moduleRun        = &caerInputCommonRun,
+	.moduleConfig     = NULL,
+	.moduleExit       = &caerInputCommonExit,
 };
 
 static const struct caer_event_stream_out InputNetTCPOutputs[] = {{.type = -1}};
@@ -39,14 +39,13 @@ static void caerInputNetTCPConfigInit(dvConfigNode moduleNode) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
 	dvConfigNodeCreateString(
-			moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL, "IPv4 address to connect to.");
+		moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL, "IPv4 address to connect to.");
 	dvConfigNodeCreateInt(
-			moduleNode, "portNumber", 7777, 1, UINT16_MAX, DVCFG_FLAGS_NORMAL, "Port number to connect to.");
+		moduleNode, "portNumber", 7777, 1, UINT16_MAX, DVCFG_FLAGS_NORMAL, "Port number to connect to.");
 	caerInputCommonConfigInit(moduleNode);
 }
 
 static bool caerInputNetTCPInit(dvModuleData moduleData) {
-
 	// Open a TCP socket to the remote client, to which we'll send data packets.
 	int sockFd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sockFd < 0) {

@@ -2,9 +2,9 @@
 #define CALIBRATION_SETTINGS_H_
 
 #ifdef __cplusplus
-#include <cstdint>
+#	include <cstdint>
 #else
-#include <stdint.h>
+#	include <stdint.h>
 #endif
 
 enum CameraCalibrationPattern { CAMCALIB_CHESSBOARD, CAMCALIB_CIRCLES_GRID, CAMCALIB_ASYMMETRIC_CIRCLES_GRID };

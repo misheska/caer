@@ -187,8 +187,8 @@ public:
 			}
 			case ConfigVariant::STRING: {
 				auto &config_ = getConfigObject<ConfigVariant::STRING>();
-				dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, UINT32_MAX,
-					DVCFG_FLAGS_NORMAL, config_.description.c_str());
+				dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, INT32_MAX, DVCFG_FLAGS_NORMAL,
+					config_.description.c_str());
 				break;
 			}
 			case ConfigVariant::FILE: {

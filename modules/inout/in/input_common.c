@@ -1866,28 +1866,26 @@ static const UT_icd ut_caerEventPacketHeader_icd = {sizeof(caerEventPacketHeader
 
 void caerInputCommonConfigInit(dvConfigNode configNode) {
 	// Add auto-restart setting.
-	dvConfigNodeCreateBool(configNode, "autoRestart", true, DVCFG_FLAGS_NORMAL,
-						   "Automatically restart module after shutdown.");
+	dvConfigNodeCreateBool(
+		configNode, "autoRestart", true, DVCFG_FLAGS_NORMAL, "Automatically restart module after shutdown.");
 
 	// Handle configuration.
 	dvConfigNodeCreateBool(configNode, "validOnly", false, DVCFG_FLAGS_NORMAL, "Only read valid events.");
 	dvConfigNodeCreateBool(configNode, "keepPackets", false, DVCFG_FLAGS_NORMAL,
-						   "Ensure all packets are kept (stall input if transfer-buffer full).");
+		"Ensure all packets are kept (stall input if transfer-buffer full).");
 	dvConfigNodeCreateBool(configNode, "pause", false, DVCFG_FLAGS_NORMAL, "Pause the event stream.");
-	dvConfigNodeCreateInt(configNode, "bufferSize", 65536, 512, 512 * 1024, DVCFG_FLAGS_NORMAL,
-						  "Size of read data buffer in bytes.");
+	dvConfigNodeCreateInt(
+		configNode, "bufferSize", 65536, 512, 512 * 1024, DVCFG_FLAGS_NORMAL, "Size of read data buffer in bytes.");
 	dvConfigNodeCreateInt(configNode, "ringBufferSize", 128, 8, 1024, DVCFG_FLAGS_NORMAL,
-						  "Size of EventPacketContainer and EventPacket queues, used for transfers between input threads and mainloop.");
+		"Size of EventPacketContainer and EventPacket queues, used for transfers between input threads and mainloop.");
 
-	dvConfigNodeCreateInt(configNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024,
-						  DVCFG_FLAGS_NORMAL,
-						  "Maximum packet size in events, when any packet reaches this size, the EventPacketContainer is sent for "
-						  "processing.");
-	dvConfigNodeCreateInt(configNode, "PacketContainerInterval", 10000, 1, 120 * 1000 * 1000,
-						  DVCFG_FLAGS_NORMAL, "Time interval in µs, each sent EventPacketContainer will span this interval.");
-	dvConfigNodeCreateInt(configNode, "PacketContainerDelay", 10000, 1, 120 * 1000 * 1000,
-						  DVCFG_FLAGS_NORMAL, "Time delay in µs between consecutive EventPacketContainers sent for processing.");
-
+	dvConfigNodeCreateInt(configNode, "PacketContainerMaxPacketSize", 0, 0, 10 * 1024 * 1024, DVCFG_FLAGS_NORMAL,
+		"Maximum packet size in events, when any packet reaches this size, the EventPacketContainer is sent for "
+		"processing.");
+	dvConfigNodeCreateInt(configNode, "PacketContainerInterval", 10000, 1, 120 * 1000 * 1000, DVCFG_FLAGS_NORMAL,
+		"Time interval in µs, each sent EventPacketContainer will span this interval.");
+	dvConfigNodeCreateInt(configNode, "PacketContainerDelay", 10000, 1, 120 * 1000 * 1000, DVCFG_FLAGS_NORMAL,
+		"Time delay in µs between consecutive EventPacketContainers sent for processing.");
 }
 
 bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStream, bool isNetworkMessageBased) {

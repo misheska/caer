@@ -3,6 +3,7 @@ SET(LIBDVSDK_SRC_FILES
 	module_sdk.cpp
 	mainloop_sdk.cpp
 	portability_sdk.cpp
+	types.cpp
 	config_tree/tree.cpp
 	config_tree/helper.cpp
 	config_tree/node.cpp)

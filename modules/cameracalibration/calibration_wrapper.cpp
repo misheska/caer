@@ -1,4 +1,5 @@
 #include "calibration_wrapper.h"
+
 #include "calibration.hpp"
 
 Calibration *calibration_init(CameraCalibrationSettings settings) {
