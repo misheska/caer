@@ -25,8 +25,6 @@ struct dvOutputStatistics {
 
 class dvOutput {
 private:
-	/// FlatBuffer builder.
-	flatbuffers::FlatBufferBuilder builder;
 	/// Apply compression.
 	bool compression;
 	/// Compression type flags.
@@ -35,7 +33,7 @@ private:
 	struct dvOutputStatistics;
 
 public:
-	dvOutput() : builder(16 * 1024), compression(false), compressionFlags(0) {
+	dvOutput() : compression(false), compressionFlags(0) {
 	}
 
 	void setCompression(bool compress) {
@@ -54,29 +52,24 @@ public:
 		return (compressionFlags);
 	}
 
-	struct arraydef processPacket(struct arraydef packet) {
+	std::shared_ptr<const flatbuffers::FlatBufferBuilder> processPacket(struct arraydef packet) {
 		const auto typeInfo = getTypeSystem().getTypeInfo(packet.typeId);
 
 		// Construct serialized flatbuffer packet.
-		builder.Clear();
+		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(16 * 1024);
 
-		auto offset = (*typeInfo.pack)(&builder, packet.ptr);
+		auto offset = (*typeInfo.pack)(msgBuild.get(), packet.ptr);
 
-		builder.FinishSizePrefixed(flatbuffers::Offset<void>(offset), typeInfo.identifier);
+		msgBuild->FinishSizePrefixed(flatbuffers::Offset<void>(offset), typeInfo.identifier);
 
-		uint8_t *data   = builder.GetBufferPointer();
-		size_t dataSize = builder.GetSize();
+		uint8_t *data   = msgBuild->GetBufferPointer();
+		size_t dataSize = msgBuild->GetSize();
 
 		if (compression) {
 			// TODO: compression.
 		}
 
-		struct arraydef ret;
-		ret.typeId = packet.typeId;
-		ret.ptr    = data;
-		ret.size   = dataSize;
-
-		return (ret);
+		return (msgBuild);
 	}
 };
 

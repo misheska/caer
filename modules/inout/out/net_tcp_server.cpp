@@ -22,7 +22,7 @@ public:
 
 	void start();
 	void close();
-	void writeBuffer(std::shared_ptr<const asio::const_buffer> buffer);
+	void writeMessage(std::shared_ptr<const flatbuffers::FlatBufferBuilder> message);
 
 private:
 	void keepAliveByReading();
@@ -130,12 +130,12 @@ public:
 				}
 
 				// outData.size is in bytes, not elements.
-				auto outData = output.processPacket(inData);
+				auto outMessage = output.processPacket(inData);
 
-				auto outBuffer = std::make_shared<asio::const_buffer>(outData.ptr, outData.size);
+				freeAedat4(pkt->getEventType(), inData.ptr);
 
 				for (const auto client : clients) {
-					client->writeBuffer(outBuffer);
+					client->writeMessage(outMessage);
 				}
 			}
 		}
@@ -195,6 +195,25 @@ private:
 			dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Data width.");
 		streamInfoNode.create<dv::Config::AttributeType::INT>("height", 260, {0, UINT16_MAX},
 			dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Data height.");
+	}
+
+	static void freeAedat4(int16_t type, void *packet) {
+		switch (type) {
+			case POLARITY_EVENT: {
+				auto delPacket = static_cast<PolarityPacketT *>(packet);
+				delete delPacket;
+				break;
+			}
+
+			case FRAME_EVENT: {
+				auto delPacket = static_cast<Frame8PacketT *>(packet);
+				delete delPacket;
+				break;
+			}
+
+			default:
+				break;
+		}
 	}
 
 	static void *convertToAedat4(int16_t type, const libcaer::events::EventPacket *oldPacket) {
@@ -295,14 +314,15 @@ void Connection::close() {
 	socket.close();
 }
 
-void Connection::writeBuffer(std::shared_ptr<const asio::const_buffer> buffer) {
+void Connection::writeMessage(std::shared_ptr<const flatbuffers::FlatBufferBuilder> message) {
 	auto self(shared_from_this());
 
-	socket.write(*buffer, [this, self, buffer](const boost::system::error_code &error, size_t /*length*/) {
-		if (error) {
-			handleError(error, "Failed to write buffer");
-		}
-	});
+	socket.write(asio::buffer(message->GetBufferPointer(), message->GetSize()),
+		[this, self, message](const boost::system::error_code &error, size_t /*length*/) {
+			if (error) {
+				handleError(error, "Failed to write message");
+			}
+		});
 }
 
 void Connection::keepAliveByReading() {
