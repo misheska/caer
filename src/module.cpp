@@ -30,8 +30,9 @@ void dvModuleConfigInit(dv::Config::Node moduleNode) {
 		dvCfgFlags::NORMAL, "Module-specific log-level.");
 
 	// Initialize shutdown controls. By default modules always run.
-	moduleNode.create<dvCfgType::BOOL>("runAtStartup", true, {}, dvCfgFlags::NORMAL,
-		"Start this module when the mainloop starts."); // Allow for users to disable a module at start.
+	// Allow for users to disable a module at start.
+	moduleNode.create<dvCfgType::BOOL>("autoStartup", true, {}, dvCfgFlags::NORMAL,
+		"Start this module when the mainloop starts and keep retrying if initialization fails.");
 
 	moduleNode.create<dvCfgType::BOOL>(
 		"running", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Module start/stop.");
@@ -69,6 +70,23 @@ void dvModuleConfigInit(dv::Config::Node moduleNode) {
 	// Each module can set priority attributes for UI display. By default let's show 'logLevel'.
 	// Called last to allow for configInit() function to create a different default first.
 	moduleNode.attributeModifierPriorityAttributes("logLevel");
+}
+
+static inline void handleModuleInitFailure(dvCfg::Node moduleNode) {
+	// Set running back to false on initialization failure.
+	moduleNode.put<dvCfgType::BOOL>("running", false);
+
+	// Schedule retry on next update-handler pass, if module should
+	// automatically retry starting up and initializing.
+	if (moduleNode.get<dvCfgType::BOOL>("autoStartup")) {
+		moduleNode.attributeUpdaterAdd("running", dvCfgType::BOOL,
+			[](void *, const char *, enum dvConfigAttributeType) {
+				dvConfigAttributeValue val;
+				val.boolean = true;
+				return (val);
+			},
+			nullptr, true);
+	}
 }
 
 void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size_t memSize, caerEventPacketContainer in,
@@ -118,7 +136,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 				if (dvMainloopModuleGetStatus(neededModules[i]) != DV_MODULE_RUNNING) {
 					free(neededModules);
 
-					moduleNode.put<dvCfgType::BOOL>("running", false);
+					handleModuleInitFailure(moduleNode);
 					return;
 				}
 			}
@@ -130,7 +148,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 		if (memSize != 0) {
 			moduleData->moduleState = calloc(1, memSize);
 			if (moduleData->moduleState == nullptr) {
-				moduleNode.put<dvCfgType::BOOL>("running", false);
+				handleModuleInitFailure(moduleNode);
 				return;
 			}
 		}
@@ -161,7 +179,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 				}
 				moduleData->moduleState = nullptr;
 
-				moduleNode.put<dvCfgType::BOOL>("running", false);
+				handleModuleInitFailure(moduleNode);
 				return;
 			}
 		}
@@ -170,7 +188,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 		moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", true);
 
 		// After starting successfully, try to enable dependent
-		// modules if their 'runAtStartup' is true. Else shutting down
+		// modules if their 'autoStartup' is true. Else shutting down
 		// an input would kill everything until mainloop restart.
 		// This is consistent with initial mainloop start.
 		int16_t *dependantModules;
@@ -180,7 +198,7 @@ void dvModuleSM(dvModuleFunctions moduleFunctions, dvModuleData moduleData, size
 			for (size_t i = 0; i < dependantModulesSize; i++) {
 				dvCfg::Node moduleConfigNode(dvMainloopModuleGetConfigNode(dependantModules[i]));
 
-				if (moduleConfigNode.get<dvCfgType::BOOL>("runAtStartup")) {
+				if (moduleConfigNode.get<dvCfgType::BOOL>("autoStartup")) {
 					moduleNode.put<dvCfgType::BOOL>("running", true);
 				}
 			}
@@ -266,7 +284,7 @@ dvModuleData dvModuleInitialize(int16_t moduleID, const char *moduleName, dvCfg:
 	moduleNode.addAttributeListener(moduleData, &moduleLogLevelListener);
 
 	// Initialize shutdown controls.
-	bool runModule = moduleNode.get<dvCfgType::BOOL>("runAtStartup");
+	bool runModule = moduleNode.get<dvCfgType::BOOL>("autoStartup");
 
 	moduleNode.put<dvCfgType::BOOL>("running", runModule);
 	moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
