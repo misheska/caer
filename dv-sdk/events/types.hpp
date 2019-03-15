@@ -14,7 +14,8 @@ typedef void (*dvTypeDestructPtr)(void *object);
 
 struct dvType {
 	uint32_t id;
-	char identifier[5];
+	const char *identifier;
+	const char *description;
 	size_t sizeOfType;
 	dvTypePackFuncPtr pack;
 	dvTypeUnpackFuncPtr unpack;
@@ -22,23 +23,34 @@ struct dvType {
 	dvTypeDestructPtr destruct;
 
 #ifdef __cplusplus
-	dvType(const char *_identifier, size_t _sizeOfType, dvTypePackFuncPtr _pack, dvTypeUnpackFuncPtr _unpack,
-		dvTypeConstructPtr _construct, dvTypeDestructPtr _destruct) :
+	dvType(const char *_identifier, const char *_description, size_t _sizeOfType, dvTypePackFuncPtr _pack,
+		dvTypeUnpackFuncPtr _unpack, dvTypeConstructPtr _construct, dvTypeDestructPtr _destruct) :
+		identifier(_identifier),
+		description(_description),
 		sizeOfType(_sizeOfType),
 		pack(_pack),
 		unpack(_unpack),
 		construct(_construct),
 		destruct(_destruct) {
-		// Four character identifier, NULL terminated.
-		identifier[0] = _identifier[0];
-		identifier[1] = _identifier[1];
-		identifier[2] = _identifier[2];
-		identifier[3] = _identifier[3];
-		identifier[4] = '\0';
+		if (identifier == nullptr) {
+			throw std::invalid_argument("Type identifier must be defined.");
+		}
+
+		if (strlen(identifier) != 4) {
+			throw std::invalid_argument("Type identifier must be exactly four characters long.");
+		}
+
+		if ((description == nullptr) || (strlen(description) == 0)) {
+			throw std::invalid_argument("Type description must be defined.");
+		}
+
+		if (sizeOfType == 0) {
+			throw std::invalid_argument("Type size must be bigger than zero.");
+		}
 
 		// Transform into 32bit integer for fast comparison.
 		// Does not have to be endian-neutral, only used internally.
-		id = *(reinterpret_cast<uint32_t *>(identifier));
+		id = *(reinterpret_cast<const uint32_t *>(identifier));
 	}
 
 	bool operator==(const dvType &rhs) const noexcept {
@@ -103,10 +115,11 @@ template<typename ObjectAPIType> static void Destructor(void *object) {
 	free(obj);
 }
 
-template<typename FBType, typename ObjectAPIType> static Type makeTypeDefinition() {
+template<typename FBType, typename ObjectAPIType>
+static Type makeTypeDefinition(const char *identifier, const char *description) {
 	static_assert(std::is_standard_layout_v<ObjectAPIType>, "ObjectAPIType is not standard layout");
 
-	return (Type{FBType::rootIdentifier(), sizeof(ObjectAPIType), &Packer<FBType, ObjectAPIType>,
+	return (Type{identifier, description, sizeof(ObjectAPIType), &Packer<FBType, ObjectAPIType>,
 		&Unpacker<FBType, ObjectAPIType>, &Constructor<ObjectAPIType>, &Destructor<ObjectAPIType>});
 }
 
