@@ -310,6 +310,7 @@ struct Frame8Packet FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 		Frame8PacketT *_o, const Frame8Packet *_fb, const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<Frame8Packet> Pack(flatbuffers::FlatBufferBuilder &_fbb, const Frame8PacketT *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+	static const char *rootIdentifier();
 };
 
 struct Frame8PacketBuilder {
@@ -544,6 +545,10 @@ inline const Frame8Packet *GetSizePrefixedFrame8Packet(const void *buf) {
 
 inline const char *Frame8PacketIdentifier() {
 	return "FRM8";
+}
+
+inline const char *Frame8Packet::rootIdentifier() {
+	return Frame8PacketIdentifier();
 }
 
 inline bool Frame8PacketBufferHasIdentifier(const void *buf) {

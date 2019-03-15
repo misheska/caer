@@ -10,11 +10,9 @@ namespace dv::Types {
 TypeSystem::TypeSystem() {
 	// Initialize system types. These are always available due to
 	// being compiled into the core.
-	systemTypes.emplace_back(PolarityPacketIdentifier(), &Packer<PolarityPacket, PolarityPacketT>,
-		&Unpacker<PolarityPacket, PolarityPacketT>);
+	systemTypes.push_back(makeTypeDefinition<PolarityPacket, PolarityPacketT>());
 
-	systemTypes.emplace_back(
-		Frame8PacketIdentifier(), &Packer<Frame8Packet, Frame8PacketT>, &Unpacker<Frame8Packet, Frame8PacketT>);
+	systemTypes.push_back(makeTypeDefinition<Frame8Packet, Frame8PacketT>());
 }
 
 void TypeSystem::registerType(const Type t) {

@@ -79,6 +79,7 @@ struct PolarityPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 		PolarityPacketT *_o, const PolarityPacket *_fb, const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<PolarityPacket> Pack(flatbuffers::FlatBufferBuilder &_fbb, const PolarityPacketT *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+	static const char *rootIdentifier();
 };
 
 struct PolarityPacketBuilder {
@@ -186,6 +187,10 @@ inline const PolarityPacket *GetSizePrefixedPolarityPacket(const void *buf) {
 
 inline const char *PolarityPacketIdentifier() {
 	return "POLA";
+}
+
+inline const char *PolarityPacket::rootIdentifier() {
+	return PolarityPacketIdentifier();
 }
 
 inline bool PolarityPacketBufferHasIdentifier(const void *buf) {
