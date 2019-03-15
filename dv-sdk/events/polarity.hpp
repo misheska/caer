@@ -26,7 +26,7 @@ private:
 
 public:
 	PolarityEvent() {
-		memset(this, 0, sizeof(PolarityEvent));
+		memset(static_cast<void *>(this), 0, sizeof(PolarityEvent));
 	}
 	PolarityEvent(int64_t _timestamp, int16_t _addressX, int16_t _addressY, bool _polarity) :
 		timestamp_(flatbuffers::EndianScalar(_timestamp)),
@@ -79,7 +79,6 @@ struct PolarityPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 		PolarityPacketT *_o, const PolarityPacket *_fb, const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<PolarityPacket> Pack(flatbuffers::FlatBufferBuilder &_fbb, const PolarityPacketT *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
-	static const char *rootIdentifier();
 };
 
 struct PolarityPacketBuilder {
@@ -122,6 +121,8 @@ inline PolarityPacketT *PolarityPacket::UnPack(const flatbuffers::resolver_funct
 }
 
 inline void PolarityPacket::UnPackTo(PolarityPacketT *_o, const flatbuffers::resolver_function_t *_resolver) const {
+	(void) _o;
+	(void) _resolver;
 	UnPackToFrom(_o, this, _resolver);
 }
 
@@ -187,10 +188,6 @@ inline const PolarityPacket *GetSizePrefixedPolarityPacket(const void *buf) {
 
 inline const char *PolarityPacketIdentifier() {
 	return "POLA";
-}
-
-inline const char *PolarityPacket::rootIdentifier() {
-	return PolarityPacketIdentifier();
 }
 
 inline bool PolarityPacketBufferHasIdentifier(const void *buf) {

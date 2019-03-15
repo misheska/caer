@@ -35,7 +35,7 @@ private:
 
 public:
 	TestStruct() {
-		memset(this, 0, sizeof(TestStruct));
+		memset(static_cast<void *>(this), 0, sizeof(TestStruct));
 	}
 	TestStruct(int32_t _num, bool _valid) :
 		num_(flatbuffers::EndianScalar(_num)),
@@ -80,6 +80,8 @@ struct TestTable FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	}
 	TestTableT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
 	void UnPackTo(TestTableT *_o, const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+	static void UnPackToFrom(
+		TestTableT *_o, const TestTable *_fb, const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<TestTable> Pack(flatbuffers::FlatBufferBuilder &_fbb, const TestTableT *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 };
@@ -209,6 +211,7 @@ struct Test FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	}
 	TestT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
 	void UnPackTo(TestT *_o, const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+	static void UnPackToFrom(TestT *_o, const Test *_fb, const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<Test> Pack(flatbuffers::FlatBufferBuilder &_fbb, const TestT *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 };
@@ -329,6 +332,8 @@ struct TestPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	}
 	TestPacketT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
 	void UnPackTo(TestPacketT *_o, const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+	static void UnPackToFrom(
+		TestPacketT *_o, const TestPacket *_fb, const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<TestPacket> Pack(flatbuffers::FlatBufferBuilder &_fbb, const TestPacketT *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 };
@@ -375,12 +380,20 @@ inline TestTableT *TestTable::UnPack(const flatbuffers::resolver_function_t *_re
 inline void TestTable::UnPackTo(TestTableT *_o, const flatbuffers::resolver_function_t *_resolver) const {
 	(void) _o;
 	(void) _resolver;
+	UnPackToFrom(_o, this, _resolver);
+}
+
+inline void TestTable::UnPackToFrom(
+	TestTableT *_o, const TestTable *_fb, const flatbuffers::resolver_function_t *_resolver) {
+	(void) _o;
+	(void) _fb;
+	(void) _resolver;
 	{
-		auto _e    = length();
+		auto _e    = _fb->length();
 		_o->length = _e;
 	};
 	{
-		auto _e = node();
+		auto _e = _fb->node();
 		if (_e)
 			_o->node = dv::cstring(_e->c_str(), _e->size());
 	};
@@ -415,29 +428,36 @@ inline TestT *Test::UnPack(const flatbuffers::resolver_function_t *_resolver) co
 inline void Test::UnPackTo(TestT *_o, const flatbuffers::resolver_function_t *_resolver) const {
 	(void) _o;
 	(void) _resolver;
+	UnPackToFrom(_o, this, _resolver);
+}
+
+inline void Test::UnPackToFrom(TestT *_o, const Test *_fb, const flatbuffers::resolver_function_t *_resolver) {
+	(void) _o;
+	(void) _fb;
+	(void) _resolver;
 	{
-		auto _e       = timestamp();
+		auto _e       = _fb->timestamp();
 		_o->timestamp = _e;
 	};
 	{
-		auto _e      = addressX();
+		auto _e      = _fb->addressX();
 		_o->addressX = _e;
 	};
 	{
-		auto _e      = addressY();
+		auto _e      = _fb->addressY();
 		_o->addressY = _e;
 	};
 	{
-		auto _e      = polarity();
+		auto _e      = _fb->polarity();
 		_o->polarity = _e;
 	};
 	{
-		auto _e = astr();
+		auto _e = _fb->astr();
 		if (_e)
 			_o->astr = dv::cstring(_e->c_str(), _e->size());
 	};
 	{
-		auto _e = aboolvec();
+		auto _e = _fb->aboolvec();
 		if (_e) {
 			_o->aboolvec.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
@@ -446,7 +466,7 @@ inline void Test::UnPackTo(TestT *_o, const flatbuffers::resolver_function_t *_r
 		}
 	};
 	{
-		auto _e = aintvec();
+		auto _e = _fb->aintvec();
 		if (_e) {
 			_o->aintvec.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
@@ -455,7 +475,7 @@ inline void Test::UnPackTo(TestT *_o, const flatbuffers::resolver_function_t *_r
 		}
 	};
 	{
-		auto _e = astrvec();
+		auto _e = _fb->astrvec();
 		if (_e) {
 			_o->astrvec.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
@@ -464,17 +484,17 @@ inline void Test::UnPackTo(TestT *_o, const flatbuffers::resolver_function_t *_r
 		}
 	};
 	{
-		auto _e = ttab();
+		auto _e = _fb->ttab();
 		if (_e)
 			_e->UnPackTo(&_o->ttab, _resolver);
 	};
 	{
-		auto _e = tstru();
+		auto _e = _fb->tstru();
 		if (_e)
 			_o->tstru = *_e;
 	};
 	{
-		auto _e = ttabvec();
+		auto _e = _fb->ttabvec();
 		if (_e) {
 			_o->ttabvec.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
@@ -483,7 +503,7 @@ inline void Test::UnPackTo(TestT *_o, const flatbuffers::resolver_function_t *_r
 		}
 	};
 	{
-		auto _e = tstruvec();
+		auto _e = _fb->tstruvec();
 		if (_e) {
 			_o->tstruvec.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
@@ -545,8 +565,16 @@ inline TestPacketT *TestPacket::UnPack(const flatbuffers::resolver_function_t *_
 inline void TestPacket::UnPackTo(TestPacketT *_o, const flatbuffers::resolver_function_t *_resolver) const {
 	(void) _o;
 	(void) _resolver;
+	UnPackToFrom(_o, this, _resolver);
+}
+
+inline void TestPacket::UnPackToFrom(
+	TestPacketT *_o, const TestPacket *_fb, const flatbuffers::resolver_function_t *_resolver) {
+	(void) _o;
+	(void) _fb;
+	(void) _resolver;
 	{
-		auto _e = events();
+		auto _e = _fb->events();
 		if (_e) {
 			_o->events.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {

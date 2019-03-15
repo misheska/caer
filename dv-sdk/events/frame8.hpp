@@ -196,6 +196,8 @@ struct Frame8 FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	}
 	Frame8T *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
 	void UnPackTo(Frame8T *_o, const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+	static void UnPackToFrom(
+		Frame8T *_o, const Frame8 *_fb, const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<Frame8> Pack(flatbuffers::FlatBufferBuilder &_fbb, const Frame8T *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 };
@@ -310,7 +312,6 @@ struct Frame8Packet FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 		Frame8PacketT *_o, const Frame8Packet *_fb, const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<Frame8Packet> Pack(flatbuffers::FlatBufferBuilder &_fbb, const Frame8PacketT *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
-	static const char *rootIdentifier();
 };
 
 struct Frame8PacketBuilder {
@@ -355,52 +356,59 @@ inline Frame8T *Frame8::UnPack(const flatbuffers::resolver_function_t *_resolver
 inline void Frame8::UnPackTo(Frame8T *_o, const flatbuffers::resolver_function_t *_resolver) const {
 	(void) _o;
 	(void) _resolver;
+	UnPackToFrom(_o, this, _resolver);
+}
+
+inline void Frame8::UnPackToFrom(Frame8T *_o, const Frame8 *_fb, const flatbuffers::resolver_function_t *_resolver) {
+	(void) _o;
+	(void) _fb;
+	(void) _resolver;
 	{
-		auto _e       = timestamp();
+		auto _e       = _fb->timestamp();
 		_o->timestamp = _e;
 	};
 	{
-		auto _e                   = timestampStartOfFrame();
+		auto _e                   = _fb->timestampStartOfFrame();
 		_o->timestampStartOfFrame = _e;
 	};
 	{
-		auto _e                 = timestampEndOfFrame();
+		auto _e                 = _fb->timestampEndOfFrame();
 		_o->timestampEndOfFrame = _e;
 	};
 	{
-		auto _e                      = timestampStartOfExposure();
+		auto _e                      = _fb->timestampStartOfExposure();
 		_o->timestampStartOfExposure = _e;
 	};
 	{
-		auto _e                    = timestampEndOfExposure();
+		auto _e                    = _fb->timestampEndOfExposure();
 		_o->timestampEndOfExposure = _e;
 	};
 	{
-		auto _e         = numChannels();
+		auto _e         = _fb->numChannels();
 		_o->numChannels = _e;
 	};
 	{
-		auto _e             = origColorFilter();
+		auto _e             = _fb->origColorFilter();
 		_o->origColorFilter = _e;
 	};
 	{
-		auto _e     = lengthX();
+		auto _e     = _fb->lengthX();
 		_o->lengthX = _e;
 	};
 	{
-		auto _e     = lengthY();
+		auto _e     = _fb->lengthY();
 		_o->lengthY = _e;
 	};
 	{
-		auto _e       = positionX();
+		auto _e       = _fb->positionX();
 		_o->positionX = _e;
 	};
 	{
-		auto _e       = positionY();
+		auto _e       = _fb->positionY();
 		_o->positionY = _e;
 	};
 	{
-		auto _e = pixels();
+		auto _e = _fb->pixels();
 		if (_e) {
 			_o->pixels.resize(_e->size());
 			for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
@@ -448,6 +456,8 @@ inline Frame8PacketT *Frame8Packet::UnPack(const flatbuffers::resolver_function_
 }
 
 inline void Frame8Packet::UnPackTo(Frame8PacketT *_o, const flatbuffers::resolver_function_t *_resolver) const {
+	(void) _o;
+	(void) _resolver;
 	UnPackToFrom(_o, this, _resolver);
 }
 
@@ -545,10 +555,6 @@ inline const Frame8Packet *GetSizePrefixedFrame8Packet(const void *buf) {
 
 inline const char *Frame8PacketIdentifier() {
 	return "FRM8";
-}
-
-inline const char *Frame8Packet::rootIdentifier() {
-	return Frame8PacketIdentifier();
 }
 
 inline bool Frame8PacketBufferHasIdentifier(const void *buf) {
