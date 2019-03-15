@@ -121,14 +121,10 @@ public:
 				struct arraydef inData;
 
 				if (pkt->getEventType() == POLARITY_EVENT) {
-					inData.typeId = *(reinterpret_cast<const uint32_t *>(PolarityPacketIdentifier()));
-					inData.size   = static_cast<size_t>(pkt->getEventValid());
-					inData.ptr    = convertToAedat4(POLARITY_EVENT, pkt.get());
+					inData = convertToAedat4(POLARITY_EVENT, pkt.get());
 				}
 				else if (pkt->getEventType() == FRAME_EVENT) {
-					inData.typeId = *(reinterpret_cast<const uint32_t *>(Frame8PacketIdentifier()));
-					inData.size   = static_cast<size_t>(pkt->getEventValid());
-					inData.ptr    = convertToAedat4(FRAME_EVENT, pkt.get());
+					inData = convertToAedat4(FRAME_EVENT, pkt.get());
 				}
 				else {
 					// Skip unknown packet.
@@ -137,8 +133,6 @@ public:
 
 				// outData.size is in bytes, not elements.
 				auto outMessage = output.processPacket(inData);
-
-				freeAedat4(pkt->getEventType(), inData.ptr);
 
 				for (const auto client : clients) {
 					client->writeMessage(outMessage);
@@ -203,29 +197,12 @@ private:
 			dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Data height.");
 	}
 
-	static void freeAedat4(int16_t type, void *packet) {
+	static struct arraydef convertToAedat4(int16_t type, const libcaer::events::EventPacket *oldPacket) {
 		switch (type) {
 			case POLARITY_EVENT: {
-				auto delPacket = static_cast<PolarityPacketT *>(packet);
-				delete delPacket;
-				break;
-			}
+				auto typeInfo = getTypeSystem().getTypeInfo("POLA");
 
-			case FRAME_EVENT: {
-				auto delPacket = static_cast<Frame8PacketT *>(packet);
-				delete delPacket;
-				break;
-			}
-
-			default:
-				break;
-		}
-	}
-
-	static void *convertToAedat4(int16_t type, const libcaer::events::EventPacket *oldPacket) {
-		switch (type) {
-			case POLARITY_EVENT: {
-				auto newPacket = new PolarityPacketT();
+				auto newPacket = static_cast<PolarityPacketT *>((*typeInfo.construct)(typeInfo.sizeOfType));
 
 				auto oldPacketPolarity = dynamic_cast<const libcaer::events::PolarityEventPacket *>(oldPacket);
 
@@ -238,12 +215,20 @@ private:
 						evt.getTimestamp64(*oldPacketPolarity), evt.getX(), evt.getY(), evt.getPolarity());
 				}
 
-				return (newPacket);
+				struct arraydef outData;
+
+				outData.typeId = typeInfo.id;
+				outData.ptr    = newPacket;
+				outData.size   = newPacket->events.size();
+
+				return (outData);
 				break;
 			}
 
 			case FRAME_EVENT: {
-				auto newPacket = new Frame8PacketT();
+				auto typeInfo = getTypeSystem().getTypeInfo("FRM8");
+
+				auto newPacket = static_cast<Frame8PacketT *>((*typeInfo.construct)(typeInfo.sizeOfType));
 
 				auto oldPacketFrame = dynamic_cast<const libcaer::events::FrameEventPacket *>(oldPacket);
 
@@ -275,12 +260,25 @@ private:
 					newPacket->events.emplace_back(newFrame);
 				}
 
-				return (newPacket);
+				struct arraydef outData;
+
+				outData.typeId = typeInfo.id;
+				outData.ptr    = newPacket;
+				outData.size   = newPacket->events.size();
+
+				return (outData);
 				break;
 			}
 
 			default:
-				return (nullptr);
+				// Unknown data.
+				struct arraydef outData;
+
+				outData.typeId = 0;
+				outData.ptr    = nullptr;
+				outData.size   = 0;
+
+				return (outData);
 				break;
 		}
 	}

@@ -70,6 +70,9 @@ using UnpackFuncPtr = dvTypeUnpackFuncPtr;
 using ConstructPtr  = dvTypeConstructPtr;
 using DestructPtr   = dvTypeDestructPtr;
 
+constexpr auto RegisterType   = dvTypesRegisterType;
+constexpr auto UnregisterType = dvTypesUnregisterType;
+
 template<typename FBType, typename ObjectAPIType> static uint32_t Packer(void *toBuffer, const void *fromObject) {
 	return (FBType::Pack(*(static_cast<flatbuffers::FlatBufferBuilder *>(toBuffer)),
 		static_cast<const ObjectAPIType *>(fromObject), nullptr)

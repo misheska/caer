@@ -62,6 +62,9 @@ public:
 
 		msgBuild->FinishSizePrefixed(flatbuffers::Offset<void>(offset), typeInfo.identifier);
 
+		// Free old memory.
+		(*typeInfo.destruct)(packet.ptr);
+
 		uint8_t *data   = msgBuild->GetBufferPointer();
 		size_t dataSize = msgBuild->GetSize();
 
