@@ -229,10 +229,15 @@ void ConfigServer::serviceStop() {
 	// Stop accepting connections.
 	acceptor.close();
 
-	// Close all open connections, hard.
-	for (auto client : clients) {
-		client->close();
-	}
+	// Post 'close all connections' to end of async queue,
+	// so that any other callbacks, such as pending accepts,
+	// are executed first, and we really close all sockets.
+	ioService.post([this]() {
+		// Close all open connections, hard.
+		for (const auto client : clients) {
+			client->close();
+		}
+	});
 
 	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Stopping configuration server service.");
 }
