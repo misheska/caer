@@ -6,6 +6,8 @@
 #ifndef DV_SDK_MODULE_H_
 #define DV_SDK_MODULE_H_
 
+#include "events/types.hpp"
+
 #include "utils.h"
 
 #ifdef __cplusplus
@@ -25,6 +27,17 @@ using atomic_int_fast16_t  = std::atomic_int_fast16_t;
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Module connectivity.
+void dvModuleRegisterOutput(const char *name, const char *typeName);
+void dvModuleRegisterInput(const char *name, const char *typeName);
+
+dvTypedArray *dvModuleOutputAllocate(const char *name, size_t elements);
+bool dvModuleOutputCommit(const char *name);
+
+const dvTypedArray *dvModuleInputGet(const char *name);
+void dvModuleInputRefInc(const char *name, const dvTypedArray *data);
+void dvModuleInputRefDec(const char *name, const dvTypedArray *data);
 
 // Module-related definitions.
 enum dvModuleStatus {

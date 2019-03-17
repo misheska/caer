@@ -64,6 +64,13 @@ struct dvType {
 #endif
 };
 
+struct dvTypedArray {
+	uint32_t typeId;
+	size_t typeSize;
+	size_t elemSize;
+	void *elem;
+};
+
 bool dvTypesRegisterType(const dvType t);
 bool dvTypesUnregisterType(const dvType t);
 
