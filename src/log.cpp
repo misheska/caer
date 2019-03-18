@@ -1,4 +1,4 @@
-#include "log.h"
+#include "log.hpp"
 
 #include "dv-sdk/cross/portable_io.h"
 
@@ -117,4 +117,41 @@ static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAtt
 		caerLogLevelSet(static_cast<enum caer_log_level>(changeValue.iint));
 		caerLog(CAER_LOG_DEBUG, "Logger", "Log-level set to %d.", changeValue.iint);
 	}
+}
+
+static thread_local logBlock *logger = nullptr;
+
+void dvLog(enum caer_log_level logLevel, const char *format, ...) {
+	logBlock *localLogger = logger;
+
+	if (localLogger == nullptr) {
+		// System default logger.
+		va_list argumentList;
+		va_start(argumentList, format);
+		caerLogVAFull(caerLogLevelGet(), logLevel, "DV-Runtime", format, argumentList);
+		va_end(argumentList);
+	}
+	else {
+		// Specialized logger.
+		auto localLogLevel = localLogger->logLevel.load(std::memory_order_relaxed);
+
+		// Only log messages above the specified severity level.
+		if (logLevel > localLogLevel) {
+			return;
+		}
+
+		va_list argumentList;
+		va_start(argumentList, format);
+		caerLogVAFull(static_cast<enum caer_log_level>(localLogLevel), logLevel, localLogger->logPrefix.c_str(), format,
+			argumentList);
+		va_end(argumentList);
+	}
+}
+
+template<typename... Args> void dvLog(libcaer::log::logLevel logLevel, const std::string &format, Args &&... args) {
+	dvLog(static_cast<enum caer_log_level>(logLevel), format.c_str(), std::forward<Args>(args)...);
+}
+
+void dvLog(libcaer::log::logLevel logLevel, const boost::format &format) {
+	dvLog(static_cast<enum caer_log_level>(logLevel), "%s", format.str().c_str());
 }

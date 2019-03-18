@@ -4,18 +4,15 @@
 // Common includes, useful for everyone.
 #include <libcaer/libcaer.h>
 
-#include <libcaer/events/packetContainer.h>
-
 #include "config/dvConfig.h"
 
 // Suppress unused argument warnings, if needed
 #define UNUSED_ARGUMENT(arg) (void) (arg)
 
+void dvLog(enum caer_log_level logLevel, const char *format, ...) ATTRIBUTE_FORMAT(2);
+
 #ifdef __cplusplus
-
 #	include <libcaercpp/libcaer.hpp>
-
-#	include <libcaercpp/events/packetContainer.hpp>
 
 #	include "config/dvConfig.hpp"
 

@@ -19,7 +19,6 @@ void dvMainloopDataNotifyDecrease(void *p);
 bool dvMainloopModuleExists(int16_t id);
 enum dvModuleType dvMainloopModuleGetType(int16_t id);
 uint32_t dvMainloopModuleGetVersion(int16_t id);
-enum dvModuleStatus dvMainloopModuleGetStatus(int16_t id);
 dvConfigNode dvMainloopModuleGetConfigNode(int16_t id);
 size_t dvMainloopModuleGetInputDeps(int16_t id, int16_t **inputDepIds);
 size_t dvMainloopModuleGetOutputRevDeps(int16_t id, int16_t **outputRevDepIds);

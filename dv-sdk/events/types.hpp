@@ -71,9 +71,6 @@ struct dvTypedArray {
 	void *elem;
 };
 
-bool dvTypesRegisterType(const dvType t);
-bool dvTypesUnregisterType(const dvType t);
-
 #ifdef __cplusplus
 }
 
@@ -88,9 +85,6 @@ using PackFuncPtr   = dvTypePackFuncPtr;
 using UnpackFuncPtr = dvTypeUnpackFuncPtr;
 using ConstructPtr  = dvTypeConstructPtr;
 using DestructPtr   = dvTypeDestructPtr;
-
-constexpr auto RegisterType   = dvTypesRegisterType;
-constexpr auto UnregisterType = dvTypesUnregisterType;
 
 template<typename FBType, typename ObjectAPIType> static uint32_t Packer(void *toBuffer, const void *fromObject) {
 	return (FBType::Pack(*(static_cast<flatbuffers::FlatBufferBuilder *>(toBuffer)),
