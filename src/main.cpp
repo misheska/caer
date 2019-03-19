@@ -1,6 +1,6 @@
 #include "config.h"
 #include "config_server/config_server_main.h"
-#include "log.h"
+#include "log.hpp"
 #include "mainloop.h"
 #include "service.h"
 
@@ -9,7 +9,7 @@ static void mainRunner(void) {
 	dvConfigServerStart();
 
 	// Finally run the main event processing loop.
-	dvMainloopRun();
+	dv::MainRun();
 
 	// After shutting down the mainloops, also shutdown the config server
 	// thread if needed.
@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
 	dvConfigInit(argc, argv);
 
 	// Initialize logging sub-system.
-	dvLogInit();
+	dv::LoggerInit();
 
 	// Start the DV runtime. Can be as a background service or console application.
 	dvServiceInit(&mainRunner);
