@@ -71,6 +71,9 @@ struct dvTypedArray {
 	void *elem;
 };
 
+typedef struct dvTypedArray *dvTypedArrayPtr;
+typedef const struct dvTypedArray *dvTypedArrayConstPtr;
+
 #ifdef __cplusplus
 }
 
