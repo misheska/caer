@@ -79,7 +79,7 @@ typedef struct dvModuleInfoS const *dvModuleInfo;
 // Function to be implemented by modules:
 dvModuleInfo dvModuleGetInfo(void);
 
-// Module connectivity.
+// Functions available for use: module connectivity.
 bool dvModuleRegisterType(dvConfigNode moduleNode, const dvType type);
 void dvModuleRegisterOutput(dvConfigNode moduleNode, const char *name, const char *typeName);
 void dvModuleRegisterInput(dvConfigNode moduleNode, const char *name, const char *typeName, bool optional);
@@ -90,10 +90,6 @@ bool dvModuleOutputCommit(dvModuleData moduleData, const char *name);
 const dvTypedArray *dvModuleInputGet(dvModuleData moduleData, const char *name);
 void dvModuleInputRefInc(dvModuleData moduleData, const char *name, const dvTypedArray *data);
 void dvModuleInputRefDec(dvModuleData moduleData, const char *name, const dvTypedArray *data);
-
-// Functions available to call:
-void dvModuleDefaultConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
-	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 #ifdef __cplusplus
 }

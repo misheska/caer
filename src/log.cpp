@@ -4,6 +4,7 @@
 
 #include <boost/filesystem.hpp>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>

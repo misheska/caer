@@ -44,7 +44,7 @@ class Module {
 	ModuleLibrary library;
 	ModuleStatus moduleStatus;
 	std::atomic_bool running;
-	std::atomic_uint_fast32_t configUpdate;
+	std::atomic_uint32_t configUpdate;
 	dv::LogBlock logger;
 	std::unordered_map<std::string, ModuleOutput> outputs;
 	std::unordered_map<std::string, ModuleInput> inputs;
@@ -126,6 +126,8 @@ class Module {
 	}
 
 	void StaticInit(dvCfg::Node &moduleNode) {
+		moduleNode.addAttributeListener(&configUpdate, &moduleConfigUpdateListener);
+
 		// Call module's staticInit function to create default static config.
 		if (info->functions->moduleStaticInit != nullptr) {
 			try {
@@ -282,6 +284,21 @@ class Module {
 
 		if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
 			data->store(changeValue.iint);
+		}
+	}
+
+	static void moduleConfigUpdateListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+		UNUSED_ARGUMENT(node);
+		UNUSED_ARGUMENT(changeKey);
+		UNUSED_ARGUMENT(changeType);
+		UNUSED_ARGUMENT(changeValue);
+
+		auto data = static_cast<std::atomic_uint32_t *>(userData);
+
+		// Simply set the config update flag to 1 on any attribute change.
+		if (event == DVCFG_ATTRIBUTE_MODIFIED) {
+			data->store(1);
 		}
 	}
 };
