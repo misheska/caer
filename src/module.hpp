@@ -1,9 +1,10 @@
-#ifndef MODULE_H_
-#define MODULE_H_
+#ifndef MODULE_HPP_
+#define MODULE_HPP_
 
 #include "dv-sdk/module.h"
 
 #include "log.hpp"
+#include "types.hpp"
 
 #include <string>
 #include <utility>
@@ -19,15 +20,20 @@
 
 #if BOOST_HAS_DLL_LOAD
 #	include <boost/dll.hpp>
-using ModuleLibrary = boost::dll::shared_library;
 #else
 #	include <dlfcn.h>
+#endif
+
+namespace dv {
+
+#if BOOST_HAS_DLL_LOAD
+using ModuleLibrary = boost::dll::shared_library;
+#else
 using ModuleLibrary = void *;
 #endif
 
-std::pair<ModuleLibrary, dvModuleInfo> dvModuleLoadLibrary(const std::string &moduleName);
-void dvModuleUnloadLibrary(ModuleLibrary &moduleLibrary);
-void dvUpdateModulesInformation();
+void ModulesUpdateInformationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 // Module-related definitions.
 enum class ModuleStatus {
@@ -61,6 +67,8 @@ public:
 	Module(const std::string &_name, const std::string &_library);
 	~Module();
 
+	dv::Config::Node getConfigNode();
+
 	void runStateMachine();
 
 private:
@@ -78,4 +86,6 @@ private:
 		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 };
 
-#endif /* MODULE_H_ */
+} // namespace dv
+
+#endif /* MODULE_HPP_ */

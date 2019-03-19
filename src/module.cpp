@@ -1,4 +1,4 @@
-#include "module.h"
+#include "module.hpp"
 
 #include "dv-sdk/cross/portable_io.h"
 
@@ -21,7 +21,11 @@ static struct {
 	std::recursive_mutex modulePathsMutex;
 } glModuleData;
 
-Module::Module(const std::string &_name, const std::string &_library) :
+static std::pair<dv::ModuleLibrary, dvModuleInfo> ModuleLoadLibrary(const std::string &moduleName);
+static void ModuleUnloadLibrary(dv::ModuleLibrary &moduleLibrary);
+static void ModulesUpdateInformation();
+
+dv::Module::Module(const std::string &_name, const std::string &_library) :
 	name(_name),
 	moduleStatus(ModuleStatus::STOPPED),
 	running(false),
@@ -30,7 +34,7 @@ Module::Module(const std::string &_name, const std::string &_library) :
 	std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
 	try {
-		std::tie(library, info) = dvModuleLoadLibrary(_library);
+		std::tie(library, info) = ModuleLoadLibrary(_library);
 	}
 	catch (const std::exception &ex) {
 		boost::format exMsg = boost::format("%s: module library load failed, error '%s'.") % name % ex.what();
@@ -56,14 +60,14 @@ Module::Module(const std::string &_name, const std::string &_library) :
 	StaticInit(moduleNode);
 }
 
-Module::~Module() {
+dv::Module::~Module() {
 	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAllAttributeListeners(data.moduleNode);
+	getConfigNode().removeAllAttributeListeners();
 
-	dvModuleUnloadLibrary(library);
+	ModuleUnloadLibrary(library);
 }
 
-void Module::LoggingInit(dvCfg::Node &moduleNode) {
+void dv::Module::LoggingInit(dvCfg::Node &moduleNode) {
 	// Per-module custom log string prefix.
 	logger.logPrefix = name;
 
@@ -75,7 +79,7 @@ void Module::LoggingInit(dvCfg::Node &moduleNode) {
 	moduleNode.addAttributeListener(&logger.logLevel, &moduleLogLevelListener);
 }
 
-void Module::RunningInit(dvCfg::Node &moduleNode) {
+void dv::Module::RunningInit(dvCfg::Node &moduleNode) {
 	// Initialize shutdown controls. By default modules always run.
 	// Allow for users to disable a module at start.
 	moduleNode.create<dvCfgType::BOOL>("autoStartup", true, {}, dvCfgFlags::NORMAL,
@@ -96,7 +100,7 @@ void Module::RunningInit(dvCfg::Node &moduleNode) {
 	moduleNode.addAttributeListener(&running, &moduleShutdownListener);
 }
 
-void Module::StaticInit(dvCfg::Node &moduleNode) {
+void dv::Module::StaticInit(dvCfg::Node &moduleNode) {
 	moduleNode.addAttributeListener(&configUpdate, &moduleConfigUpdateListener);
 
 	// Call module's staticInit function to create default static config.
@@ -116,7 +120,11 @@ void Module::StaticInit(dvCfg::Node &moduleNode) {
 	moduleNode.attributeModifierPriorityAttributes("logLevel");
 }
 
-void Module::handleModuleInitFailure(dvCfg::Node &moduleNode) {
+dv::Config::Node dv::Module::getConfigNode() {
+	return (data.moduleNode);
+}
+
+void dv::Module::handleModuleInitFailure(dvCfg::Node &moduleNode) {
 	// Set running back to false on initialization failure.
 	moduleNode.put<dvCfgType::BOOL>("running", false);
 
@@ -133,7 +141,7 @@ void Module::handleModuleInitFailure(dvCfg::Node &moduleNode) {
 	}
 }
 
-void Module::runStateMachine() {
+void dv::Module::runStateMachine() {
 	dv::LoggerSet(&logger);
 
 	bool localRunning = running.load(std::memory_order_relaxed);
@@ -236,7 +244,7 @@ void Module::runStateMachine() {
 	}
 }
 
-void Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+void dv::Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
@@ -247,7 +255,7 @@ void Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvCo
 	}
 }
 
-void Module::moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+void dv::Module::moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
@@ -258,7 +266,7 @@ void Module::moduleLogLevelListener(dvConfigNode node, void *userData, enum dvCo
 	}
 }
 
-void Module::moduleConfigUpdateListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+void dv::Module::moduleConfigUpdateListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 	UNUSED_ARGUMENT(changeKey);
@@ -273,7 +281,7 @@ void Module::moduleConfigUpdateListener(dvConfigNode node, void *userData, enum 
 	}
 }
 
-std::pair<ModuleLibrary, dvModuleInfo> dvModuleLoadLibrary(const std::string &moduleName) {
+static std::pair<dv::ModuleLibrary, dvModuleInfo> ModuleLoadLibrary(const std::string &moduleName) {
 	// For each module, we search if a path exists to load it from.
 	// If yes, we do so. The various OS's shared library load mechanisms
 	// will keep track of reference count if same module is loaded
@@ -297,7 +305,7 @@ std::pair<ModuleLibrary, dvModuleInfo> dvModuleLoadLibrary(const std::string &mo
 	}
 
 #if BOOST_HAS_DLL_LOAD
-	ModuleLibrary moduleLibrary;
+	dv::ModuleLibrary moduleLibrary;
 	try {
 		moduleLibrary.load(modulePath.c_str(), boost::dll::load_mode::rtld_now);
 	}
@@ -314,7 +322,7 @@ std::pair<ModuleLibrary, dvModuleInfo> dvModuleLoadLibrary(const std::string &mo
 	}
 	catch (const std::exception &ex) {
 		// Failed to find symbol in shared library!
-		dvModuleUnloadLibrary(moduleLibrary);
+		ModuleUnloadLibrary(moduleLibrary);
 		boost::format exMsg
 			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % ex.what();
 		throw std::runtime_error(exMsg.str());
@@ -331,7 +339,7 @@ std::pair<ModuleLibrary, dvModuleInfo> dvModuleLoadLibrary(const std::string &mo
 	dvModuleInfo (*getInfo)(void) = (dvModuleInfo(*)(void)) dlsym(moduleLibrary, "dvModuleGetInfo");
 	if (getInfo == nullptr) {
 		// Failed to find symbol in shared library!
-		dvModuleUnloadLibrary(moduleLibrary);
+		ModuleUnloadLibrary(moduleLibrary);
 		boost::format exMsg
 			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % dlerror();
 		throw std::runtime_error(exMsg.str());
@@ -340,16 +348,16 @@ std::pair<ModuleLibrary, dvModuleInfo> dvModuleLoadLibrary(const std::string &mo
 
 	dvModuleInfo info = (*getInfo)();
 	if (info == nullptr) {
-		dvModuleUnloadLibrary(moduleLibrary);
+		ModuleUnloadLibrary(moduleLibrary);
 		boost::format exMsg = boost::format("Failed to get info from library '%s'.") % modulePath.string();
 		throw std::runtime_error(exMsg.str());
 	}
 
-	return (std::pair<ModuleLibrary, dvModuleInfo>(moduleLibrary, info));
+	return (std::pair<dv::ModuleLibrary, dvModuleInfo>(moduleLibrary, info));
 }
 
 // Small helper to unload libraries on error.
-void dvModuleUnloadLibrary(ModuleLibrary &moduleLibrary) {
+static void ModuleUnloadLibrary(dv::ModuleLibrary &moduleLibrary) {
 #if BOOST_HAS_DLL_LOAD
 	moduleLibrary.unload();
 #else
@@ -357,7 +365,25 @@ void dvModuleUnloadLibrary(ModuleLibrary &moduleLibrary) {
 #endif
 }
 
-void dvUpdateModulesInformation() {
+void dv::ModulesUpdateInformationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+	UNUSED_ARGUMENT(userData);
+
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
+		&& caerStrEquals(changeKey, "updateModulesInformation") && changeValue.boolean) {
+		// Get information on available modules, put it into ConfigTree.
+		try {
+			ModulesUpdateInformation();
+		}
+		catch (const std::exception &ex) {
+			dv::Log(dv::logLevel::CRITICAL, "Failed to find any modules (error: '%s').", ex.what());
+		}
+
+		dvConfigNodeAttributeButtonReset(node, changeKey);
+	}
+}
+
+static void ModulesUpdateInformation() {
 	std::lock_guard<std::recursive_mutex> lock(glModuleData.modulePathsMutex);
 
 	auto modulesNode = dvCfg::GLOBAL.getNode("/system/modules/");
@@ -408,10 +434,10 @@ void dvUpdateModulesInformation() {
 		std::string moduleName = iter->stem().string();
 
 		// Load library.
-		std::pair<ModuleLibrary, dvModuleInfo> mLoad;
+		std::pair<dv::ModuleLibrary, dvModuleInfo> mLoad;
 
 		try {
-			mLoad = dvModuleLoadLibrary(moduleName);
+			mLoad = ModuleLoadLibrary(moduleName);
 		}
 		catch (const std::exception &ex) {
 			boost::format exMsg = boost::format("Module '%s': %s") % moduleName % ex.what();
@@ -435,7 +461,7 @@ void dvUpdateModulesInformation() {
 			"path", iter->string(), {1, PATH_MAX}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module file path.");
 
 		// Done, unload library.
-		dvModuleUnloadLibrary(mLoad.first);
+		ModuleUnloadLibrary(mLoad.first);
 
 		iter++;
 	}
