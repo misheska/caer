@@ -181,8 +181,6 @@ void dv::MainRun(void) {
 	systemNode.addAttributeListener(nullptr, &systemRunningListener);
 	glMainData.systemRunning.store(true);
 
-	glMainData.configNode = dvCfg::GLOBAL.getNode("/mainloop/");
-
 	while (glMainData.systemRunning.load()) {
 		mainRunner();
 	}

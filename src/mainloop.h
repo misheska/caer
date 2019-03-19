@@ -18,12 +18,11 @@ namespace dv {
 
 class MainData {
 public:
-	dv::Config::Node configNode;
 	std::atomic_bool systemRunning;
 	std::unordered_map<std::string, dv::Module> modules;
 	dv::Types::TypeSystem typeSystem;
 
-	MainData() : configNode(nullptr), systemRunning(false) {
+	MainData() : systemRunning(false) {
 	}
 };
 
