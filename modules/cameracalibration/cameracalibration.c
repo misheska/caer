@@ -18,42 +18,40 @@ struct CameraCalibrationState_struct {
 
 typedef struct CameraCalibrationState_struct *CameraCalibrationState;
 
-static void caerCameraCalibrationConfigInit(dvConfigNode moduleNode);
+static void caerCameraCalibrationStaticInit(dvConfigNode moduleNode);
 static bool caerCameraCalibrationInit(dvModuleData moduleData);
-static void caerCameraCalibrationRun(
-	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerCameraCalibrationRun(dvModuleData moduleData);
 static void caerCameraCalibrationConfig(dvModuleData moduleData);
 static void caerCameraCalibrationExit(dvModuleData moduleData);
 static void updateSettings(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS CameraCalibrationFunctions = {
-	.moduleConfigInit = &caerCameraCalibrationConfigInit,
+	.moduleStaticInit = &caerCameraCalibrationStaticInit,
 	.moduleInit       = &caerCameraCalibrationInit,
 	.moduleRun        = &caerCameraCalibrationRun,
 	.moduleConfig     = &caerCameraCalibrationConfig,
 	.moduleExit       = &caerCameraCalibrationExit,
 };
 
-static const struct caer_event_stream_in CameraCalibrationInputs[]
-	= {{.type = POLARITY_EVENT, .number = 1, .readOnly = false}, {.type = FRAME_EVENT, .number = 1, .readOnly = false}};
-
 static const struct dvModuleInfoS CameraCalibrationInfo = {
-	.version           = 1,
-	.description       = "Lens distortion calibration, for undistortion of both events and frames.",
-	.type              = DV_MODULE_PROCESSOR,
-	.memSize           = sizeof(struct CameraCalibrationState_struct),
-	.functions         = &CameraCalibrationFunctions,
-	.inputStreams      = CameraCalibrationInputs,
-	.inputStreamsSize  = CAER_EVENT_STREAM_IN_SIZE(CameraCalibrationInputs),
-	.outputStreams     = NULL,
-	.outputStreamsSize = 0,
+	.version     = 1,
+	.description = "Lens distortion calibration, for undistortion of both events and frames.",
+	.type        = DV_MODULE_PROCESSOR,
+	.memSize     = sizeof(struct CameraCalibrationState_struct),
+	.functions   = &CameraCalibrationFunctions,
 };
 
 dvModuleInfo dvModuleGetInfo(void) {
 	return (&CameraCalibrationInfo);
 }
 
-static void caerCameraCalibrationConfigInit(dvConfigNode moduleNode) {
+static void caerCameraCalibrationStaticInit(dvConfigNode moduleNode) {
+	dvModuleRegisterInput(moduleNode, "frames", "FRM8", false);
+	dvModuleRegisterInput(moduleNode, "events", "POLA", true);
+
+	dvModuleRegisterOutput(moduleNode, "undistortedFrames", "FRM8");
+	dvModuleRegisterOutput(moduleNode, "undistortedEvents", "POLA");
+
 	dvConfigNodeCreateBool(moduleNode, "doCalibration", false, DVCFG_FLAGS_NORMAL, "Do calibration using live images.");
 	dvConfigNodeCreateString(moduleNode, "saveFileName", "camera_calib.xml", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
 		"The name of the file where to write the calculated calibration settings.");
