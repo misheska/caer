@@ -23,7 +23,7 @@ static void logMessagesToConfigTree(const char *msg, size_t msgLength);
 static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-void dvLogInit(void) {
+void dv::LoggerInit(void) {
 	logNode = dvCfg::Tree::globalTree().getNode("/system/logger/");
 
 	// Ensure default log file and value are present.

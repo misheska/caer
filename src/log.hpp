@@ -16,7 +16,7 @@ struct LogBlock {
 	std::atomic_int32_t logLevel;
 };
 
-void LogInit(void);
+void LoggerInit(void);
 
 void LoggerSet(LogBlock *logger);
 
