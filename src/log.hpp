@@ -7,15 +7,23 @@
 
 #define DV_LOG_FILE_NAME ".dv-logger.txt"
 
-struct logBlock {
+namespace dv {
+
+using logLevel = libcaer::log::logLevel;
+
+struct LogBlock {
 	std::string logPrefix;
 	std::atomic_int32_t logLevel;
 };
 
-void dvLogInit(void);
+void LogInit(void);
 
-template<typename... Args> void dvLog(libcaer::log::logLevel logLevel, const std::string &format, Args &&... args);
+void LoggerSet(LogBlock *logger);
 
-void dvLog(libcaer::log::logLevel logLevel, const boost::format &format);
+void Log(logLevel logLevel, const char *format, ...);
+void Log(logLevel logLevel, const std::string format, ...);
+void Log(logLevel logLevel, const boost::format &format);
+
+} // namespace dv
 
 #endif /* LOG_HPP_ */

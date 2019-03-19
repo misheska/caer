@@ -119,17 +119,18 @@ static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAtt
 	}
 }
 
-static thread_local logBlock *logger = nullptr;
+static thread_local dv::LogBlock *logger = nullptr;
 
-void dvLog(enum caer_log_level logLevel, const char *format, ...) {
-	logBlock *localLogger = logger;
+void dv::LoggerSet(dv::LogBlock *_logger) {
+	logger = _logger;
+}
+
+static inline void dvLogVA(enum caer_log_level logLevel, const char *format, va_list argumentList) {
+	auto localLogger = logger;
 
 	if (localLogger == nullptr) {
 		// System default logger.
-		va_list argumentList;
-		va_start(argumentList, format);
 		caerLogVAFull(caerLogLevelGet(), logLevel, "DV-Runtime", format, argumentList);
-		va_end(argumentList);
 	}
 	else {
 		// Specialized logger.
@@ -140,18 +141,32 @@ void dvLog(enum caer_log_level logLevel, const char *format, ...) {
 			return;
 		}
 
-		va_list argumentList;
-		va_start(argumentList, format);
 		caerLogVAFull(static_cast<enum caer_log_level>(localLogLevel), logLevel, localLogger->logPrefix.c_str(), format,
 			argumentList);
-		va_end(argumentList);
 	}
 }
 
-template<typename... Args> void dvLog(libcaer::log::logLevel logLevel, const std::string &format, Args &&... args) {
-	dvLog(static_cast<enum caer_log_level>(logLevel), format.c_str(), std::forward<Args>(args)...);
+void dvLog(enum caer_log_level logLevel, const char *format, ...) {
+	va_list argumentList;
+	va_start(argumentList, format);
+	dvLogVA(logLevel, format, argumentList);
+	va_end(argumentList);
 }
 
-void dvLog(libcaer::log::logLevel logLevel, const boost::format &format) {
+void dv::Log(libcaer::log::logLevel logLevel, const char *format, ...) {
+	va_list argumentList;
+	va_start(argumentList, format);
+	dvLogVA(static_cast<enum caer_log_level>(logLevel), format, argumentList);
+	va_end(argumentList);
+}
+
+void dv::Log(libcaer::log::logLevel logLevel, const std::string format, ...) {
+	va_list argumentList;
+	va_start(argumentList, format);
+	dvLogVA(static_cast<enum caer_log_level>(logLevel), format.c_str(), argumentList);
+	va_end(argumentList);
+}
+
+void dv::Log(libcaer::log::logLevel logLevel, const boost::format &format) {
 	dvLog(static_cast<enum caer_log_level>(logLevel), "%s", format.str().c_str());
 }
