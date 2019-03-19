@@ -181,6 +181,11 @@ void dv::MainRun(void) {
 	systemNode.addAttributeListener(nullptr, &systemRunningListener);
 	glMainData.systemRunning.store(true);
 
+	// Add each module defined in configuration to runnable modules.
+	for (const auto &child : dvCfg::GLOBAL.getNode("/mainloop/").getChildren()) {
+		addModule(child.getName(), child.get<dvCfgType::STRING>("moduleLibrary"));
+	}
+
 	while (glMainData.systemRunning.load()) {
 		mainRunner();
 	}
