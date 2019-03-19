@@ -2,8 +2,6 @@
 
 #include "dv-sdk/cross/portable_io.h"
 
-#include "log.hpp"
-
 #include <algorithm>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
@@ -23,285 +21,257 @@ static struct {
 	std::recursive_mutex modulePathsMutex;
 } glModuleData;
 
-// Module-related definitions.
-enum class ModuleStatus {
-	STOPPED = 0,
-	RUNNING = 1,
-};
+Module::Module(const std::string &_name, const std::string &_library) :
+	name(_name),
+	moduleStatus(ModuleStatus::STOPPED),
+	running(false),
+	configUpdate(0) {
+	// Load library to get module functions.
+	std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
-class ModuleOutput {
-	dv::Types::Type type;
-};
+	try {
+		std::tie(library, info) = dvModuleLoadLibrary(_library);
+	}
+	catch (const std::exception &ex) {
+		boost::format exMsg = boost::format("%s: module library load failed, error '%s'.") % name % ex.what();
+		dv::Log(dv::logLevel::ERROR, exMsg);
+		throw std::invalid_argument(exMsg.str().c_str());
+	}
 
-class ModuleInput {
-	dv::Types::Type type;
-	bool optional;
-};
+	// Set configuration node (so it's user accessible).
+	dvCfg::Node moduleNode = dvCfg::GLOBAL.getNode("/mainloop/" + name + "/");
 
-class Module {
-	std::string name;
-	dvModuleInfo info;
-	ModuleLibrary library;
-	ModuleStatus moduleStatus;
-	std::atomic_bool running;
-	std::atomic_uint32_t configUpdate;
-	dv::LogBlock logger;
-	std::unordered_map<std::string, ModuleOutput> outputs;
-	std::unordered_map<std::string, ModuleInput> inputs;
-	dvModuleDataS data;
+	data.moduleNode = static_cast<dvConfigNode>(moduleNode);
 
-	Module(const std::string &_name, const std::string &_library) :
-		name(_name),
-		moduleStatus(ModuleStatus::STOPPED),
-		running(false),
-		configUpdate(0) {
-		// Load library to get module functions.
-		std::pair<ModuleLibrary, dvModuleInfo> mLoad;
+	// State allocated later by init().
+	data.moduleState = nullptr;
 
+	// Initialize logging related functionality.
+	LoggingInit(moduleNode);
+
+	// Initialize running related functionality.
+	RunningInit(moduleNode);
+
+	// Ensure static configuration is created on each module initialization.
+	StaticInit(moduleNode);
+}
+
+Module::~Module() {
+	// Remove listener, which can reference invalid memory in userData.
+	dvConfigNodeRemoveAllAttributeListeners(data.moduleNode);
+
+	dvModuleUnloadLibrary(library);
+}
+
+void Module::LoggingInit(dvCfg::Node &moduleNode) {
+	// Per-module custom log string prefix.
+	logger.logPrefix = name;
+
+	// Per-module log level support. Initialize with global log level value.
+	moduleNode.create<dvCfgType::INT>("logLevel", caerLogLevelGet(), {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
+		dvCfgFlags::NORMAL, "Module-specific log-level.");
+
+	logger.logLevel.store(moduleNode.get<dvCfgType::INT>("logLevel"));
+	moduleNode.addAttributeListener(&logger.logLevel, &moduleLogLevelListener);
+}
+
+void Module::RunningInit(dvCfg::Node &moduleNode) {
+	// Initialize shutdown controls. By default modules always run.
+	// Allow for users to disable a module at start.
+	moduleNode.create<dvCfgType::BOOL>("autoStartup", true, {}, dvCfgFlags::NORMAL,
+		"Start this module when the mainloop starts and keep retrying if initialization fails.");
+
+	moduleNode.create<dvCfgType::BOOL>(
+		"running", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Module start/stop.");
+
+	moduleNode.create<dvCfgType::BOOL>(
+		"isRunning", false, {}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module running state.");
+
+	bool runModule = moduleNode.get<dvCfgType::BOOL>("autoStartup");
+
+	moduleNode.put<dvCfgType::BOOL>("running", runModule);
+	moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
+
+	running.store(runModule);
+	moduleNode.addAttributeListener(&running, &moduleShutdownListener);
+}
+
+void Module::StaticInit(dvCfg::Node &moduleNode) {
+	moduleNode.addAttributeListener(&configUpdate, &moduleConfigUpdateListener);
+
+	// Call module's staticInit function to create default static config.
+	if (info->functions->moduleStaticInit != nullptr) {
 		try {
-			std::tie(library, info) = dvModuleLoadLibrary(_library);
+			info->functions->moduleStaticInit(static_cast<dvConfigNode>(moduleNode));
 		}
 		catch (const std::exception &ex) {
-			boost::format exMsg = boost::format("%s: module library load failed, error '%s'.") % name % ex.what();
+			boost::format exMsg = boost::format("%s: moduleStaticInit() failed, error '%s'.") % name % ex.what();
 			dv::Log(dv::logLevel::ERROR, exMsg);
 			throw std::invalid_argument(exMsg.str().c_str());
 		}
-
-		// Set configuration node (so it's user accessible).
-		dvCfg::Node moduleNode = dvCfg::GLOBAL.getNode("/mainloop/" + name + "/");
-
-		data.moduleNode = static_cast<dvConfigNode>(moduleNode);
-
-		// State allocated later by init().
-		data.moduleState = nullptr;
-
-		// Initialize logging related functionality.
-		LoggingInit(moduleNode);
-
-		// Initialize running related functionality.
-		RunningInit(moduleNode);
-
-		// Ensure static configuration is created on each module initialization.
-		StaticInit(moduleNode);
 	}
 
-	~Module() {
-		// Remove listener, which can reference invalid memory in userData.
-		dvConfigNodeRemoveAllAttributeListeners(data.moduleNode);
+	// Each module can set priority attributes for UI display. By default let's show 'logLevel'.
+	// Called last to allow for configInit() function to create a different default first.
+	moduleNode.attributeModifierPriorityAttributes("logLevel");
+}
 
-		dvModuleUnloadLibrary(library);
+void Module::handleModuleInitFailure(dvCfg::Node &moduleNode) {
+	// Set running back to false on initialization failure.
+	moduleNode.put<dvCfgType::BOOL>("running", false);
+
+	// Schedule retry on next update-handler pass, if module should
+	// automatically retry starting up and initializing.
+	if (moduleNode.get<dvCfgType::BOOL>("autoStartup")) {
+		moduleNode.attributeUpdaterAdd("running", dvCfgType::BOOL,
+			[](void *, const char *, enum dvConfigAttributeType) {
+				dvConfigAttributeValue val;
+				val.boolean = true;
+				return (val);
+			},
+			nullptr, true);
 	}
+}
 
-	void LoggingInit(dvCfg::Node &moduleNode) {
-		// Per-module custom log string prefix.
-		logger.logPrefix = name;
+void Module::runStateMachine() {
+	dv::LoggerSet(&logger);
 
-		// Per-module log level support. Initialize with global log level value.
-		moduleNode.create<dvCfgType::INT>("logLevel", caerLogLevelGet(), {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
-			dvCfgFlags::NORMAL, "Module-specific log-level.");
+	bool localRunning = running.load(std::memory_order_relaxed);
+	dvCfg::Node moduleNode(data.moduleNode);
 
-		logger.logLevel.store(moduleNode.get<dvCfgType::INT>("logLevel"));
-		moduleNode.addAttributeListener(&logger.logLevel, &moduleLogLevelListener);
-	}
+	if (moduleStatus == ModuleStatus::RUNNING && localRunning) {
+		if (configUpdate.load(std::memory_order_relaxed) != 0) {
+			configUpdate.store(0);
 
-	void RunningInit(dvCfg::Node &moduleNode) {
-		// Initialize shutdown controls. By default modules always run.
-		// Allow for users to disable a module at start.
-		moduleNode.create<dvCfgType::BOOL>("autoStartup", true, {}, dvCfgFlags::NORMAL,
-			"Start this module when the mainloop starts and keep retrying if initialization fails.");
-
-		moduleNode.create<dvCfgType::BOOL>(
-			"running", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Module start/stop.");
-
-		moduleNode.create<dvCfgType::BOOL>(
-			"isRunning", false, {}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module running state.");
-
-		bool runModule = moduleNode.get<dvCfgType::BOOL>("autoStartup");
-
-		moduleNode.put<dvCfgType::BOOL>("running", runModule);
-		moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
-
-		running.store(runModule);
-		moduleNode.addAttributeListener(&running, &moduleShutdownListener);
-	}
-
-	void StaticInit(dvCfg::Node &moduleNode) {
-		moduleNode.addAttributeListener(&configUpdate, &moduleConfigUpdateListener);
-
-		// Call module's staticInit function to create default static config.
-		if (info->functions->moduleStaticInit != nullptr) {
-			try {
-				info->functions->moduleStaticInit(static_cast<dvConfigNode>(moduleNode));
-			}
-			catch (const std::exception &ex) {
-				boost::format exMsg = boost::format("%s: moduleStaticInit() failed, error '%s'.") % name % ex.what();
-				dv::Log(dv::logLevel::ERROR, exMsg);
-				throw std::invalid_argument(exMsg.str().c_str());
-			}
-		}
-
-		// Each module can set priority attributes for UI display. By default let's show 'logLevel'.
-		// Called last to allow for configInit() function to create a different default first.
-		moduleNode.attributeModifierPriorityAttributes("logLevel");
-	}
-
-	static void handleModuleInitFailure(dvCfg::Node &moduleNode) {
-		// Set running back to false on initialization failure.
-		moduleNode.put<dvCfgType::BOOL>("running", false);
-
-		// Schedule retry on next update-handler pass, if module should
-		// automatically retry starting up and initializing.
-		if (moduleNode.get<dvCfgType::BOOL>("autoStartup")) {
-			moduleNode.attributeUpdaterAdd("running", dvCfgType::BOOL,
-				[](void *, const char *, enum dvConfigAttributeType) {
-					dvConfigAttributeValue val;
-					val.boolean = true;
-					return (val);
-				},
-				nullptr, true);
-		}
-	}
-
-	void runStateMachine() {
-		dv::LoggerSet(&logger);
-
-		bool localRunning = running.load(std::memory_order_relaxed);
-		dvCfg::Node moduleNode(data.moduleNode);
-
-		if (moduleStatus == ModuleStatus::RUNNING && localRunning) {
-			if (configUpdate.load(std::memory_order_relaxed) != 0) {
-				configUpdate.store(0);
-
-				if (info->functions->moduleConfig != nullptr) {
-					// Call config function. 'configUpdate' variable reset is done above.
-					try {
-						info->functions->moduleConfig(&data);
-					}
-					catch (const std::exception &ex) {
-						dv::Log(dv::logLevel::ERROR, "moduleConfig(): '%s', disabling module.", ex.what());
-
-						moduleNode.put<dvCfgType::BOOL>("running", false);
-						return;
-					}
-				}
-			}
-
-			if (info->functions->moduleRun != nullptr) {
+			if (info->functions->moduleConfig != nullptr) {
+				// Call config function. 'configUpdate' variable reset is done above.
 				try {
-					info->functions->moduleRun(&data);
+					info->functions->moduleConfig(&data);
 				}
 				catch (const std::exception &ex) {
-					dv::Log(dv::logLevel::ERROR, "moduleRun(): '%s', disabling module.", ex.what());
+					dv::Log(dv::logLevel::ERROR, "moduleConfig(): '%s', disabling module.", ex.what());
 
 					moduleNode.put<dvCfgType::BOOL>("running", false);
 					return;
 				}
 			}
 		}
-		else if (moduleStatus == ModuleStatus::STOPPED && localRunning) {
-			// Allocate memory for module state.
-			if (info->memSize != 0) {
-				data.moduleState = calloc(1, info->memSize);
-				if (data.moduleState == nullptr) {
-					dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "memory allocation failure");
 
-					handleModuleInitFailure(moduleNode);
-					return;
-				}
+		if (info->functions->moduleRun != nullptr) {
+			try {
+				info->functions->moduleRun(&data);
 			}
-			else {
-				// memSize is zero, so moduleState must be nullptr.
-				data.moduleState = nullptr;
+			catch (const std::exception &ex) {
+				dv::Log(dv::logLevel::ERROR, "moduleRun(): '%s', disabling module.", ex.what());
+
+				moduleNode.put<dvCfgType::BOOL>("running", false);
+				return;
 			}
-
-			// Reset variables, as the following Init() is stronger than a reset
-			// and implies a full configuration update. This avoids stale state
-			// forcing an update and/or reset right away in the first run of
-			// the module, which is unneeded and wasteful.
-			configUpdate.store(0);
-
-			if (info->functions->moduleInit != nullptr) {
-				try {
-					if (!info->functions->moduleInit(&data)) {
-						throw std::runtime_error("Failed to initialize module.");
-					}
-				}
-				catch (const std::exception &ex) {
-					dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", ex.what());
-
-					if (info->memSize != 0) {
-						// Only deallocate if we were the original allocator.
-						free(data.moduleState);
-					}
-					data.moduleState = nullptr;
-
-					handleModuleInitFailure(moduleNode);
-					return;
-				}
-			}
-
-			moduleStatus = ModuleStatus::RUNNING;
-			moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", true);
 		}
-		else if (moduleStatus == ModuleStatus::RUNNING && !localRunning) {
-			moduleStatus = ModuleStatus::STOPPED;
+	}
+	else if (moduleStatus == ModuleStatus::STOPPED && localRunning) {
+		// Allocate memory for module state.
+		if (info->memSize != 0) {
+			data.moduleState = calloc(1, info->memSize);
+			if (data.moduleState == nullptr) {
+				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "memory allocation failure");
 
-			if (info->functions->moduleExit != nullptr) {
-				try {
-					info->functions->moduleExit(&data);
-				}
-				catch (const std::exception &ex) {
-					dv::Log(dv::logLevel::ERROR, "moduleExit(): '%s'.", ex.what());
-				}
+				handleModuleInitFailure(moduleNode);
+				return;
 			}
-
-			if (info->memSize != 0) {
-				// Only deallocate if we were the original allocator.
-				free(data.moduleState);
-			}
+		}
+		else {
+			// memSize is zero, so moduleState must be nullptr.
 			data.moduleState = nullptr;
-
-			moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
 		}
-	}
 
-	static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
-		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
-		UNUSED_ARGUMENT(node);
+		// Reset variables, as the following Init() is stronger than a reset
+		// and implies a full configuration update. This avoids stale state
+		// forcing an update and/or reset right away in the first run of
+		// the module, which is unneeded and wasteful.
+		configUpdate.store(0);
 
-		auto data = static_cast<std::atomic_bool *>(userData);
+		if (info->functions->moduleInit != nullptr) {
+			try {
+				if (!info->functions->moduleInit(&data)) {
+					throw std::runtime_error("Failed to initialize module.");
+				}
+			}
+			catch (const std::exception &ex) {
+				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", ex.what());
 
-		if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
-			data->store(changeValue.boolean);
+				if (info->memSize != 0) {
+					// Only deallocate if we were the original allocator.
+					free(data.moduleState);
+				}
+				data.moduleState = nullptr;
+
+				handleModuleInitFailure(moduleNode);
+				return;
+			}
 		}
+
+		moduleStatus = ModuleStatus::RUNNING;
+		moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", true);
 	}
+	else if (moduleStatus == ModuleStatus::RUNNING && !localRunning) {
+		moduleStatus = ModuleStatus::STOPPED;
 
-	static void moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
-		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
-		UNUSED_ARGUMENT(node);
-
-		auto data = static_cast<std::atomic_int32_t *>(userData);
-
-		if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
-			data->store(changeValue.iint);
+		if (info->functions->moduleExit != nullptr) {
+			try {
+				info->functions->moduleExit(&data);
+			}
+			catch (const std::exception &ex) {
+				dv::Log(dv::logLevel::ERROR, "moduleExit(): '%s'.", ex.what());
+			}
 		}
-	}
 
-	static void moduleConfigUpdateListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
-		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
-		UNUSED_ARGUMENT(node);
-		UNUSED_ARGUMENT(changeKey);
-		UNUSED_ARGUMENT(changeType);
-		UNUSED_ARGUMENT(changeValue);
-
-		auto data = static_cast<std::atomic_uint32_t *>(userData);
-
-		// Simply set the config update flag to 1 on any attribute change.
-		if (event == DVCFG_ATTRIBUTE_MODIFIED) {
-			data->store(1);
+		if (info->memSize != 0) {
+			// Only deallocate if we were the original allocator.
+			free(data.moduleState);
 		}
+		data.moduleState = nullptr;
+
+		moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
 	}
-};
+}
+
+void Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+	UNUSED_ARGUMENT(node);
+
+	auto data = static_cast<std::atomic_bool *>(userData);
+
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
+		data->store(changeValue.boolean);
+	}
+}
+
+void Module::moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+	UNUSED_ARGUMENT(node);
+
+	auto data = static_cast<std::atomic_int32_t *>(userData);
+
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
+		data->store(changeValue.iint);
+	}
+}
+
+void Module::moduleConfigUpdateListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+	UNUSED_ARGUMENT(node);
+	UNUSED_ARGUMENT(changeKey);
+	UNUSED_ARGUMENT(changeType);
+	UNUSED_ARGUMENT(changeValue);
+
+	auto data = static_cast<std::atomic_uint32_t *>(userData);
+
+	// Simply set the config update flag to 1 on any attribute change.
+	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
+		data->store(1);
+	}
+}
 
 std::pair<ModuleLibrary, dvModuleInfo> dvModuleLoadLibrary(const std::string &moduleName) {
 	// For each module, we search if a path exists to load it from.
