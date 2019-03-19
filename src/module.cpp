@@ -50,6 +50,10 @@ dv::Module::Module(const std::string &_name, const std::string &_library) :
 	// State allocated later by init().
 	data.moduleState = nullptr;
 
+	// Ensure the library is stored for successive startups.
+	moduleNode.create<dvCfgType::STRING>(
+		"moduleLibrary", _library, {1, PATH_MAX}, dvCfgFlags::READ_ONLY, "Module library.");
+
 	// Initialize logging related functionality.
 	LoggingInit(moduleNode);
 
@@ -61,8 +65,7 @@ dv::Module::Module(const std::string &_name, const std::string &_library) :
 }
 
 dv::Module::~Module() {
-	// Remove listener, which can reference invalid memory in userData.
-	getConfigNode().removeAllAttributeListeners();
+	getConfigNode().removeNode();
 
 	ModuleUnloadLibrary(library);
 }
@@ -115,9 +118,9 @@ void dv::Module::StaticInit(dvCfg::Node &moduleNode) {
 		}
 	}
 
-	// Each module can set priority attributes for UI display. By default let's show 'logLevel'.
+	// Each module can set priority attributes for UI display. By default let's show 'running'.
 	// Called last to allow for configInit() function to create a different default first.
-	moduleNode.attributeModifierPriorityAttributes("logLevel");
+	moduleNode.attributeModifierPriorityAttributes("running");
 }
 
 dv::Config::Node dv::Module::getConfigNode() {

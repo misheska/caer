@@ -32,6 +32,9 @@ public:
  */
 void MainRun(void);
 
+void addModule(const std::string &name, const std::string &library);
+void removeModule(const std::string &name);
+
 /**
  * Only for internal usage! Do not reset the main data pointer!
  */

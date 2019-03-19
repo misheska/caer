@@ -197,6 +197,14 @@ void dv::MainRun(void) {
 static void mainRunner() {
 }
 
+void dv::addModule(const std::string &name, const std::string &library) {
+	glMainData.modules.try_emplace(name, name, library);
+}
+
+void dv::removeModule(const std::string &name) {
+	glMainData.modules.erase(name);
+}
+
 static void mainSegfaultHandler(int signum) {
 	signal(signum, SIG_DFL);
 
