@@ -75,7 +75,7 @@ private:
 	static void moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 	static void moduleConfigUpdateListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
-		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) :
+		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 };
 
 #endif /* MODULE_H_ */
