@@ -30,7 +30,8 @@ dv::Module::Module(std::string_view _name, std::string_view _library, Types::Typ
 	moduleStatus(ModuleStatus::STOPPED),
 	running(false),
 	configUpdate(0),
-	typeSystem(_typeSystem) {
+	typeSystem(_typeSystem),
+	moduleNode(nullptr) {
 	// Load library to get module functions.
 	std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
@@ -44,7 +45,7 @@ dv::Module::Module(std::string_view _name, std::string_view _library, Types::Typ
 	}
 
 	// Set configuration node (so it's user accessible).
-	dvCfg::Node moduleNode = dvCfg::GLOBAL.getNode("/mainloop/" + name + "/");
+	moduleNode = dvCfg::GLOBAL.getNode("/mainloop/" + name + "/");
 
 	data.moduleNode = static_cast<dvConfigNode>(moduleNode);
 
@@ -56,24 +57,24 @@ dv::Module::Module(std::string_view _name, std::string_view _library, Types::Typ
 		"moduleLibrary", std::string(_library), {1, PATH_MAX}, dvCfgFlags::READ_ONLY, "Module library.");
 
 	// Initialize logging related functionality.
-	LoggingInit(moduleNode);
+	LoggingInit();
 
 	// Initialize running related functionality.
-	RunningInit(moduleNode);
+	RunningInit();
 
 	// Ensure static configuration is created on each module initialization.
-	StaticInit(moduleNode);
+	StaticInit();
 }
 
 dv::Module::~Module() {
-	getConfigNode().removeNode();
+	moduleNode.removeNode();
 
 	typeSystem->unregisterModuleTypes(this);
 
 	ModuleUnloadLibrary(library);
 }
 
-void dv::Module::LoggingInit(dvCfg::Node &moduleNode) {
+void dv::Module::LoggingInit() {
 	// Per-module custom log string prefix.
 	logger.logPrefix = name;
 
@@ -85,7 +86,7 @@ void dv::Module::LoggingInit(dvCfg::Node &moduleNode) {
 	moduleNode.addAttributeListener(&logger.logLevel, &moduleLogLevelListener);
 }
 
-void dv::Module::RunningInit(dvCfg::Node &moduleNode) {
+void dv::Module::RunningInit() {
 	// Initialize shutdown controls. By default modules always run.
 	// Allow for users to disable a module at start.
 	moduleNode.create<dvCfgType::BOOL>("autoStartup", true, {}, dvCfgFlags::NORMAL,
@@ -106,7 +107,7 @@ void dv::Module::RunningInit(dvCfg::Node &moduleNode) {
 	moduleNode.addAttributeListener(&running, &moduleShutdownListener);
 }
 
-void dv::Module::StaticInit(dvCfg::Node &moduleNode) {
+void dv::Module::StaticInit() {
 	moduleNode.addAttributeListener(&configUpdate, &moduleConfigUpdateListener);
 
 	// Call module's staticInit function to create default static config.
@@ -127,7 +128,7 @@ void dv::Module::StaticInit(dvCfg::Node &moduleNode) {
 }
 
 dv::Config::Node dv::Module::getConfigNode() {
-	return (data.moduleNode);
+	return (moduleNode);
 }
 
 void dv::Module::registerType(const dv::Types::Type type) {
@@ -143,7 +144,10 @@ void dv::Module::registerInput(std::string_view inputName, std::string_view type
 		throw std::invalid_argument("Input with name '" + inputNameString + "' already exists.");
 	}
 
+	// Add info to internal data structure.
 	inputs.try_emplace(inputNameString, typeInfo, optional);
+
+	// Add info to ConfigTree.
 }
 
 void dv::Module::registerOutput(std::string_view outputName, std::string_view typeName) {
@@ -158,7 +162,7 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 	outputs.try_emplace(outputNameString, typeInfo);
 }
 
-void dv::Module::handleModuleInitFailure(dvCfg::Node &moduleNode) {
+void dv::Module::handleModuleInitFailure() {
 	// Set running back to false on initialization failure.
 	moduleNode.put<dvCfgType::BOOL>("running", false);
 
@@ -179,7 +183,6 @@ void dv::Module::runStateMachine() {
 	dv::LoggerSet(&logger);
 
 	bool localRunning = running.load(std::memory_order_relaxed);
-	dvCfg::Node moduleNode(data.moduleNode);
 
 	if (moduleStatus == ModuleStatus::RUNNING && localRunning) {
 		if (configUpdate.load(std::memory_order_relaxed) != 0) {
@@ -218,7 +221,7 @@ void dv::Module::runStateMachine() {
 			if (data.moduleState == nullptr) {
 				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "memory allocation failure");
 
-				handleModuleInitFailure(moduleNode);
+				handleModuleInitFailure();
 				return;
 			}
 		}
@@ -248,7 +251,7 @@ void dv::Module::runStateMachine() {
 				}
 				data.moduleState = nullptr;
 
-				handleModuleInitFailure(moduleNode);
+				handleModuleInitFailure();
 				return;
 			}
 		}

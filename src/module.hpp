@@ -11,6 +11,8 @@
 #include <string>
 #include <utility>
 
+#define INTER_MODULE_TRANSFER_QUEUE_SIZE 256
+
 // If Boost version recent enough, use their portable DLL loading support.
 // Else use dlopen() on POSIX systems.
 #include <boost/version.hpp>
@@ -49,7 +51,7 @@ public:
 	bool optional;
 	libcaer::ringbuffer::RingBuffer queue;
 
-	ModuleInput(const dv::Types::Type &t, bool opt) : type(t), optional(opt), queue(256) {
+	ModuleInput(const dv::Types::Type &t, bool opt) : type(t), optional(opt), queue(INTER_MODULE_TRANSFER_QUEUE_SIZE) {
 	}
 };
 
@@ -73,6 +75,7 @@ private:
 	dv::Types::TypeSystem *typeSystem;
 	std::unordered_map<std::string, ModuleInput> inputs;
 	std::unordered_map<std::string, ModuleOutput> outputs;
+	dv::Config::Node moduleNode; // C++ convenience variant.
 	dvModuleDataS data;
 
 public:
@@ -88,11 +91,11 @@ public:
 	void runStateMachine();
 
 private:
-	void LoggingInit(dv::Config::Node &moduleNode);
-	void RunningInit(dv::Config::Node &moduleNode);
-	void StaticInit(dv::Config::Node &moduleNode);
+	void LoggingInit();
+	void RunningInit();
+	void StaticInit();
 
-	static void handleModuleInitFailure(dv::Config::Node &moduleNode);
+	void handleModuleInitFailure();
 
 	static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
