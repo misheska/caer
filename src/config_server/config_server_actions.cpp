@@ -9,6 +9,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/tokenizer.hpp>
 #include <regex>
+#include <thread>
 
 namespace logger = libcaer::log;
 namespace dvCfg  = dv::Config;

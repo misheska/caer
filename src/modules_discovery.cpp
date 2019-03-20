@@ -1,8 +1,8 @@
 #include "modules_discovery.hpp"
 
-#include "log.hpp"
-
 #include "dv-sdk/cross/portable_io.h"
+
+#include "log.hpp"
 
 #include <algorithm>
 #include <boost/filesystem.hpp>
@@ -20,8 +20,6 @@ static struct {
 	std::vector<boost::filesystem::path> modulePaths;
 	std::recursive_mutex modulePathsMutex;
 } glModuleData;
-
-static void ModulesUpdateInformation();
 
 std::pair<dv::ModuleLibrary, dvModuleInfo> dv::ModulesLoadLibrary(std::string_view moduleName) {
 	// For each module, we search if a path exists to load it from.
@@ -125,7 +123,7 @@ void dv::ModulesUpdateInformationListener(dvConfigNode node, void *userData, enu
 	}
 }
 
-static void ModulesUpdateInformation() {
+void dv::ModulesUpdateInformation() {
 	std::lock_guard<std::recursive_mutex> lock(glModuleData.modulePathsMutex);
 
 	auto modulesNode = dvCfg::GLOBAL.getNode("/system/modules/");

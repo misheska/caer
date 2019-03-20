@@ -32,8 +32,8 @@ public:
  */
 void MainRun(void);
 
-void addModule(const std::string &name, const std::string &library);
-void removeModule(const std::string &name);
+void addModule(std::string_view name, std::string_view library);
+void removeModule(std::string_view name);
 
 /**
  * Only for internal usage! Do not reset the main data pointer!

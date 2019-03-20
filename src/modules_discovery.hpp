@@ -34,6 +34,7 @@ void ModulesUnloadLibrary(dv::ModuleLibrary &moduleLibrary);
 
 void ModulesUpdateInformationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
+void ModulesUpdateInformation();
 
 } // namespace dv
 
