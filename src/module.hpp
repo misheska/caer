@@ -7,38 +7,18 @@
 
 #include "log.hpp"
 #include "mainloop.h"
+#include "modules_discovery.hpp"
 #include "types.hpp"
 
+#include <atomic>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <utility>
 
 #define INTER_MODULE_TRANSFER_QUEUE_SIZE 256
 
-// If Boost version recent enough, use their portable DLL loading support.
-// Else use dlopen() on POSIX systems.
-#include <boost/version.hpp>
-#if defined(BOOST_VERSION) && (BOOST_VERSION / 100000) == 1 && (BOOST_VERSION / 100 % 1000) >= 61
-#	define BOOST_HAS_DLL_LOAD 1
-#else
-#	define BOOST_HAS_DLL_LOAD 0
-#endif
-
-#if BOOST_HAS_DLL_LOAD
-#	include <boost/dll.hpp>
-#else
-#	include <dlfcn.h>
-#endif
-
 namespace dv {
-
-#if BOOST_HAS_DLL_LOAD
-using ModuleLibrary = boost::dll::shared_library;
-#else
-using ModuleLibrary = void *;
-#endif
-
-void ModulesUpdateInformationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
-	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 // Module-related definitions.
 enum class ModuleStatus {
@@ -68,7 +48,7 @@ class Module {
 private:
 	std::string name;
 	dvModuleInfo info;
-	ModuleLibrary library;
+	dv::ModuleLibrary library;
 	ModuleStatus moduleStatus;
 	std::atomic_bool running;
 	std::atomic_uint32_t configUpdate;

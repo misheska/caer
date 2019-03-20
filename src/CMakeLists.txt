@@ -35,6 +35,7 @@ SET(DV_SRC_FILES
 	config_server/config_server_actions.cpp
 	config_server/config_server_connection.cpp
 	config_server/config_server.cpp
+	modules_discovery.cpp
 	module.cpp
 	mainloop.cpp
 	service.cpp
