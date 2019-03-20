@@ -14,14 +14,14 @@
 
 namespace po = boost::program_options;
 
-static boost::filesystem::path configFile;
+static boost::filesystem::path glConfigFile;
 
 [[noreturn]] static inline void printHelpAndExit(po::options_description &desc) {
 	std::cout << std::endl << desc << std::endl;
 	exit(EXIT_FAILURE);
 }
 
-void dvConfigInit(int argc, char *argv[]) {
+void dv::ConfigInit(int argc, char *argv[]) {
 	// Allowed command-line options for configuration.
 	po::options_description cliDescription("Command-line options");
 	cliDescription.add_options()("help,h", "print help text")("config,c", po::value<std::string>(),
@@ -54,42 +54,42 @@ void dvConfigInit(int argc, char *argv[]) {
 
 	if (cliVarMap.count("config")) {
 		// User supplied config file.
-		configFile = boost::filesystem::path(cliVarMap["config"].as<std::string>());
+		glConfigFile = boost::filesystem::path(cliVarMap["config"].as<std::string>());
 	}
 	else {
 		// Default config file in $USER_HOME.
 		char *userHome = portable_get_user_home_directory();
-		configFile     = boost::filesystem::path(std::string(userHome) + "/" + DV_CONFIG_FILE_NAME);
+		glConfigFile   = boost::filesystem::path(std::string(userHome) + "/" + DV_CONFIG_FILE_NAME);
 		free(userHome);
 	}
 
 	// Ensure file path is absolute.
-	configFile = boost::filesystem::absolute(configFile);
+	glConfigFile = boost::filesystem::absolute(glConfigFile);
 
 	// Check that config file ends in .xml, exists, and is a normal file.
-	if (configFile.extension().string() != ".xml") {
-		std::cout << "Supplied configuration file " << configFile << " has no XML extension." << std::endl;
+	if (glConfigFile.extension().string() != ".xml") {
+		std::cout << "Supplied configuration file " << glConfigFile << " has no XML extension." << std::endl;
 		printHelpAndExit(cliDescription);
 	}
 
-	if (boost::filesystem::exists(configFile)) {
-		if (!boost::filesystem::is_regular_file(configFile)) {
-			std::cout << "Supplied configuration file " << configFile << " could not be accessed." << std::endl;
+	if (boost::filesystem::exists(glConfigFile)) {
+		if (!boost::filesystem::is_regular_file(glConfigFile)) {
+			std::cout << "Supplied configuration file " << glConfigFile << " could not be accessed." << std::endl;
 			printHelpAndExit(cliDescription);
 		}
 	}
 	else {
 		// File doesn't exist yet, let's make sure the parent directory
 		// at least exists and is a directory.
-		if (!boost::filesystem::is_directory(configFile.parent_path())) {
-			std::cout << "Supplied configuration file directory " << configFile.parent_path()
+		if (!boost::filesystem::is_directory(glConfigFile.parent_path())) {
+			std::cout << "Supplied configuration file directory " << glConfigFile.parent_path()
 					  << " could not be accessed." << std::endl;
 			printHelpAndExit(cliDescription);
 		}
 	}
 
 	// Let's try to open the file for reading, or create it.
-	int configFileFd = open(configFile.string().c_str(), O_RDONLY | O_CREAT, S_IWUSR | S_IRUSR | S_IRGRP);
+	int configFileFd = open(glConfigFile.string().c_str(), O_RDONLY | O_CREAT, S_IWUSR | S_IRUSR | S_IRGRP);
 
 	if (configFileFd >= 0) {
 		// File opened for reading (or created) successfully.
@@ -105,10 +105,10 @@ void dvConfigInit(int argc, char *argv[]) {
 
 		// This means it exists and we can access it, so let's remember
 		// it for writing the configuration later at shutdown.
-		configFile = boost::filesystem::canonical(configFile);
+		glConfigFile = boost::filesystem::canonical(glConfigFile);
 	}
 	else {
-		std::cout << "Supplied configuration file " << configFile
+		std::cout << "Supplied configuration file " << glConfigFile
 				  << " could not be created or read. Error: " << strerror(errno) << "." << std::endl;
 		printHelpAndExit(cliDescription);
 	}
@@ -138,10 +138,10 @@ void dvConfigInit(int argc, char *argv[]) {
 	}
 }
 
-void dvConfigWriteBack(void) {
+void dv::ConfigWriteBack() {
 	// configFile can only be correctly initialized, absolute and canonical
 	// by the point this function may ever be called, so we use it directly.
-	int configFileFd = open(configFile.string().c_str(), O_WRONLY | O_TRUNC);
+	int configFileFd = open(glConfigFile.string().c_str(), O_WRONLY | O_TRUNC);
 
 	if (configFileFd >= 0) {
 		dv::Config::GLOBAL.getRootNode().exportSubTreeToXML(configFileFd);
@@ -149,10 +149,22 @@ void dvConfigWriteBack(void) {
 		portable_fsync(configFileFd);
 		close(configFileFd);
 
-		caerLog(CAER_LOG_DEBUG, "Config", "Configuration file '%s' written to disk.", configFile.string().c_str());
+		caerLog(CAER_LOG_DEBUG, "Config", "Configuration file '%s' written to disk.", glConfigFile.string().c_str());
 	}
 	else {
 		caerLog(CAER_LOG_EMERGENCY, "Config", "Could not write to the configuration file '%s'. Error: %d.",
-			configFile.string().c_str(), errno);
+			glConfigFile.string().c_str(), errno);
+	}
+}
+
+void dv::ConfigWriteBackListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+	UNUSED_ARGUMENT(userData);
+
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
+		&& caerStrEquals(changeKey, "writeConfiguration") && changeValue.boolean) {
+		ConfigWriteBack();
+
+		dvConfigNodeAttributeButtonReset(node, changeKey);
 	}
 }

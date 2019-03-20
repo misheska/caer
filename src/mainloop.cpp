@@ -56,8 +56,6 @@ static void mainSegfaultHandler(int signum);
 static void mainShutdownHandler(int signum);
 static void systemRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
-static void writeConfigurationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
-	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
 void dv::MainRun(void) {
 	// Setup internal mainloop pointer for public support library.
@@ -175,7 +173,7 @@ void dv::MainRun(void) {
 	systemNode.create<dvCfgType::BOOL>("writeConfiguration", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT,
 		"Write current configuration to XML config file.");
 	systemNode.attributeModifierButton("writeConfiguration", "EXECUTE");
-	systemNode.addAttributeListener(nullptr, &writeConfigurationListener);
+	systemNode.addAttributeListener(nullptr, &ConfigWriteBackListener);
 
 	// Allow system running status control (shutdown).
 	systemNode.create<dvCfgType::BOOL>(
@@ -194,7 +192,7 @@ void dv::MainRun(void) {
 
 	// Remove attribute listeners for clean shutdown.
 	systemNode.removeAttributeListener(nullptr, &systemRunningListener);
-	modulesNode.removeAttributeListener(nullptr, &writeConfigurationListener);
+	modulesNode.removeAttributeListener(nullptr, &ConfigWriteBackListener);
 	modulesNode.removeAttributeListener(nullptr, &ModulesUpdateInformationListener);
 	devicesNode.removeAttributeListener(nullptr, &DevicesUpdateListener);
 }
@@ -240,17 +238,5 @@ static void systemRunningListener(dvConfigNode node, void *userData, enum dvConf
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
 		glMainData.systemRunning.store(false);
-	}
-}
-
-static void writeConfigurationListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
-	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
-	UNUSED_ARGUMENT(userData);
-
-	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL
-		&& caerStrEquals(changeKey, "writeConfiguration") && changeValue.boolean) {
-		dvConfigWriteBack();
-
-		dvConfigNodeAttributeButtonReset(node, changeKey);
 	}
 }

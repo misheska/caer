@@ -18,7 +18,7 @@ static void mainRunner(void) {
 
 int main(int argc, char **argv) {
 	// Initialize config storage from file, support command-line overrides.
-	dvConfigInit(argc, argv);
+	dv::ConfigInit(argc, argv);
 
 	// Initialize logging sub-system.
 	dv::LoggerInit();

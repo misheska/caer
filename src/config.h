@@ -1,21 +1,20 @@
-#ifndef CONFIG_H_
-#define CONFIG_H_
+#ifndef CONFIG_HPP_
+#define CONFIG_HPP_
 
 #include "dv-sdk/utils.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define DV_CONFIG_FILE_NAME ".dv-config.xml"
+
+namespace dv {
 
 // Create configuration storage, initialize it with content from the
 // configuration file, and apply eventual CLI overrides.
-void dvConfigInit(int argc, char *argv[]);
-void dvConfigWriteBack(void);
+void ConfigInit(int argc, char *argv[]);
 
-#ifdef __cplusplus
-}
-#endif
+void ConfigWriteBackListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
+void ConfigWriteBack();
 
-#endif /* CONFIG_H_ */
+} // namespace dv
+
+#endif /* CONFIG_HPP_ */
