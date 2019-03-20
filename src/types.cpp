@@ -17,7 +17,7 @@ TypeSystem::TypeSystem() {
 		makeTypeDefinition<Frame8Packet, Frame8PacketT>(Frame8PacketIdentifier(), "Standard frames (8-bit images)."));
 }
 
-void TypeSystem::registerType(const Type t) {
+void TypeSystem::registerModuleType(const Module *m, const Type t) {
 	std::lock_guard<std::recursive_mutex> lock(typesLock);
 
 	// Register user type. Rules:
@@ -30,58 +30,78 @@ void TypeSystem::registerType(const Type t) {
 	// once. It is assumed types with same identifier are
 	// equal or fully compatible.
 	if (findIfBool(
-			systemTypes.cbegin(), systemTypes.cend(), [&t](const Type &sysType) { return (t.id == sysType.id); })) {
-		throw std::invalid_argument("Already present as system type.");
+			systemTypes.cbegin(), systemTypes.cend(), [&t](const auto &sysType) { return (t.id == sysType.id); })) {
+		throw std::invalid_argument("Already present as a system type.");
 	}
 
-	// Not a system type. Add to list.
-	userTypes[t.id].push_back(t);
+	// Not a system type. Check if this module already registered
+	// this type before.
+	if (userTypes.count(t.id)
+		&& findIfBool(userTypes[t.id].cbegin(), userTypes[t.id].cend(),
+			   [m](const auto &userType) { return (m == userType.first); })) {
+		throw std::invalid_argument("User type already registered for this module.");
+	}
+
+	userTypes[t.id].emplace_back(m, t);
 }
 
-void TypeSystem::unregisterType(const Type t) {
+void TypeSystem::unregisterModuleTypes(const Module *m) {
 	std::lock_guard<std::recursive_mutex> lock(typesLock);
 
-	if (userTypes.count(t.id) == 0) {
-		// Non existing type, error!
-		throw std::invalid_argument("Type does not exist.");
+	// Remove all types registered to this module.
+	for (auto &type : userTypes) {
+		auto &vec = type.second;
+		auto pos  = std::find_if(vec.cbegin(), vec.cend(), [m](const auto &userType) { return (m == userType.first); });
+
+		if (pos != vec.cend()) {
+			vec.erase(pos);
+		}
 	}
 
-	auto &vec = userTypes[t.id];
-	auto pos  = std::find(vec.cbegin(), vec.cend(), t);
-
-	if (pos != vec.cend()) {
-		vec.erase(pos);
-	}
-
-	// Remove empty types.
-	if (vec.empty()) {
-		userTypes.erase(t.id);
+	// Cleanup empty vectors.
+	for (auto it = userTypes.begin(); it != userTypes.end();) {
+		if (it->second.empty()) {
+			it = userTypes.erase(it);
+		}
+		else {
+			++it;
+		}
 	}
 }
 
-Type TypeSystem::getTypeInfo(const char *tIdentifier) const {
+const Type TypeSystem::getTypeInfo(const char *tIdentifier, const Module *m) const {
 	uint32_t id = *(reinterpret_cast<const uint32_t *>(tIdentifier));
 
-	return (getTypeInfo(id));
+	return (getTypeInfo(id, m));
 }
 
-Type TypeSystem::getTypeInfo(uint32_t tId) const {
+const Type TypeSystem::getTypeInfo(uint32_t tId, const Module *m) const {
 	std::lock_guard<std::recursive_mutex> lock(typesLock);
 
 	// Search for type, first in system then user types.
-	auto sysPos
-		= std::find_if(systemTypes.cbegin(), systemTypes.cend(), [tId](const Type &t) { return (t.id == tId); });
+	auto sysPos = std::find_if(
+		systemTypes.cbegin(), systemTypes.cend(), [tId](const auto &sysType) { return (tId == sysType.id); });
 
 	if (sysPos != systemTypes.cend()) {
 		// Found.
 		return (*sysPos);
 	}
 
-	if (userTypes.count(tId) > 0) {
-		return (userTypes.at(tId).at(0));
+	if (m == nullptr) {
+		throw std::invalid_argument("For user type lookups, the related module must be defined.");
 	}
 
-	// Not fund.
+	if (userTypes.count(tId) > 0) {
+		auto userPos = std::find_if(userTypes.at(tId).cbegin(), userTypes.at(tId).cend(),
+			[m](const auto &userType) { return (m == userType.first); });
+
+		if (userPos != userTypes.at(tId).cend()) {
+			// Found.
+			return (userPos->second);
+		}
+	}
+
+	// Not found.
 	throw std::out_of_range("Type not found in type system.");
 }
 

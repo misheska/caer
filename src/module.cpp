@@ -25,11 +25,12 @@ static std::pair<dv::ModuleLibrary, dvModuleInfo> ModuleLoadLibrary(const std::s
 static void ModuleUnloadLibrary(dv::ModuleLibrary &moduleLibrary);
 static void ModulesUpdateInformation();
 
-dv::Module::Module(const std::string &_name, const std::string &_library) :
+dv::Module::Module(const std::string &_name, const std::string &_library, Types::TypeSystem *_typeSystem) :
 	name(_name),
 	moduleStatus(ModuleStatus::STOPPED),
 	running(false),
-	configUpdate(0) {
+	configUpdate(0),
+	typeSystem(_typeSystem) {
 	// Load library to get module functions.
 	std::pair<ModuleLibrary, dvModuleInfo> mLoad;
 
@@ -66,6 +67,8 @@ dv::Module::Module(const std::string &_name, const std::string &_library) :
 
 dv::Module::~Module() {
 	getConfigNode().removeNode();
+
+	typeSystem->unregisterModuleTypes(this);
 
 	ModuleUnloadLibrary(library);
 }
@@ -125,6 +128,16 @@ void dv::Module::StaticInit(dvCfg::Node &moduleNode) {
 
 dv::Config::Node dv::Module::getConfigNode() {
 	return (data.moduleNode);
+}
+
+void dv::Module::registerType(const dv::Types::Type type) {
+	typeSystem->registerModuleType(this, type);
+}
+
+void dv::Module::registerOutput(std::string_view name, std::string_view typeName) {
+}
+
+void dv::Module::registerInput(std::string_view name, std::string_view typeName, bool optional) {
 }
 
 void dv::Module::handleModuleInitFailure(dvCfg::Node &moduleNode) {

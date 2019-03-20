@@ -2,6 +2,7 @@
 #define MODULE_HPP_
 
 #include "dv-sdk/module.h"
+#include <libcaercpp/ringbuffer.hpp>
 
 #include "log.hpp"
 #include "types.hpp"
@@ -46,8 +47,9 @@ class ModuleOutput {
 };
 
 class ModuleInput {
-	dv::Types::Type type;
+	uint32_t typeId;
 	bool optional;
+	libcaer::ringbuffer::RingBuffer queue;
 };
 
 class Module {
@@ -59,15 +61,20 @@ private:
 	std::atomic_bool running;
 	std::atomic_uint32_t configUpdate;
 	dv::LogBlock logger;
+	dv::Types::TypeSystem *typeSystem;
 	std::unordered_map<std::string, ModuleOutput> outputs;
 	std::unordered_map<std::string, ModuleInput> inputs;
 	dvModuleDataS data;
 
 public:
-	Module(const std::string &_name, const std::string &_library);
+	Module(const std::string &_name, const std::string &_library, dv::Types::TypeSystem *_typeSystem);
 	~Module();
 
 	dv::Config::Node getConfigNode();
+
+	void registerType(const dv::Types::Type type);
+	void registerOutput(std::string_view name, std::string_view typeName);
+	void registerInput(std::string_view name, std::string_view typeName, bool optional = false);
 
 	void runStateMachine();
 
