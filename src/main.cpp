@@ -1,8 +1,8 @@
-#include "config.h"
+#include "config.hpp"
 #include "config_server/config_server_main.h"
 #include "log.hpp"
 #include "mainloop.h"
-#include "service.h"
+#include "service.hpp"
 
 static void mainRunner(void) {
 	// Start the configuration server thread for run-time config changes.
@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
 	dv::LoggerInit();
 
 	// Start the DV runtime. Can be as a background service or console application.
-	dvServiceInit(&mainRunner);
+	dv::ServiceInit(&mainRunner);
 
 	return (EXIT_SUCCESS);
 }

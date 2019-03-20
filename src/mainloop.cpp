@@ -4,7 +4,7 @@
 
 #include "dv-sdk/cross/portable_io.h"
 
-#include "config.h"
+#include "config.hpp"
 #include "devices_discovery.hpp"
 #include "log.hpp"
 #include "module.hpp"

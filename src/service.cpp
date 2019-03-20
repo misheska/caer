@@ -1,4 +1,4 @@
-#include "service.h"
+#include "service.hpp"
 
 #if !defined(OS_WINDOWS)
 #	include <fcntl.h>
@@ -79,7 +79,7 @@ static void unixDaemonize(void) {
 }
 #endif
 
-void dvServiceInit(void (*runner)(void)) {
+void dv::ServiceInit(void (*runner)(void)) {
 	auto systemNode = dv::Config::GLOBAL.getNode("/system/");
 
 	systemNode.create<dvCfgType::BOOL>(
