@@ -76,7 +76,7 @@ private:
 	dvModuleDataS data;
 
 public:
-	Module(const std::string &_name, const std::string &_library, dv::Types::TypeSystem *_typeSystem);
+	Module(std::string_view _name, std::string_view _library, dv::Types::TypeSystem *_typeSystem);
 	~Module();
 
 	dv::Config::Node getConfigNode();

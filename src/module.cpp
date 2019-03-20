@@ -21,11 +21,11 @@ static struct {
 	std::recursive_mutex modulePathsMutex;
 } glModuleData;
 
-static std::pair<dv::ModuleLibrary, dvModuleInfo> ModuleLoadLibrary(const std::string &moduleName);
+static std::pair<dv::ModuleLibrary, dvModuleInfo> ModuleLoadLibrary(std::string_view moduleName);
 static void ModuleUnloadLibrary(dv::ModuleLibrary &moduleLibrary);
 static void ModulesUpdateInformation();
 
-dv::Module::Module(const std::string &_name, const std::string &_library, Types::TypeSystem *_typeSystem) :
+dv::Module::Module(std::string_view _name, std::string_view _library, Types::TypeSystem *_typeSystem) :
 	name(_name),
 	moduleStatus(ModuleStatus::STOPPED),
 	running(false),
@@ -53,7 +53,7 @@ dv::Module::Module(const std::string &_name, const std::string &_library, Types:
 
 	// Ensure the library is stored for successive startups.
 	moduleNode.create<dvCfgType::STRING>(
-		"moduleLibrary", _library, {1, PATH_MAX}, dvCfgFlags::READ_ONLY, "Module library.");
+		"moduleLibrary", std::string(_library), {1, PATH_MAX}, dvCfgFlags::READ_ONLY, "Module library.");
 
 	// Initialize logging related functionality.
 	LoggingInit(moduleNode);
@@ -135,7 +135,7 @@ void dv::Module::registerType(const dv::Types::Type type) {
 }
 
 void dv::Module::registerInput(std::string_view inputName, std::string_view typeName, bool optional) {
-	auto typeInfo = typeSystem->getTypeInfo(typeName);
+	auto typeInfo = typeSystem->getTypeInfo(typeName, this);
 
 	std::string inputNameString(inputName);
 
@@ -147,7 +147,7 @@ void dv::Module::registerInput(std::string_view inputName, std::string_view type
 }
 
 void dv::Module::registerOutput(std::string_view outputName, std::string_view typeName) {
-	auto typeInfo = typeSystem->getTypeInfo(typeName);
+	auto typeInfo = typeSystem->getTypeInfo(typeName, this);
 
 	std::string outputNameString(outputName);
 
@@ -315,7 +315,7 @@ void dv::Module::moduleConfigUpdateListener(dvConfigNode node, void *userData, e
 	}
 }
 
-static std::pair<dv::ModuleLibrary, dvModuleInfo> ModuleLoadLibrary(const std::string &moduleName) {
+static std::pair<dv::ModuleLibrary, dvModuleInfo> ModuleLoadLibrary(std::string_view moduleName) {
 	// For each module, we search if a path exists to load it from.
 	// If yes, we do so. The various OS's shared library load mechanisms
 	// will keep track of reference count if same module is loaded
