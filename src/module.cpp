@@ -148,6 +148,17 @@ void dv::Module::registerInput(std::string_view inputName, std::string_view type
 	inputs.try_emplace(inputNameString, typeInfo, optional);
 
 	// Add info to ConfigTree.
+	auto inputNode = moduleNode.getRelativeNode("inputs/" + inputNameString + "/");
+
+	inputNode.create<dvCfgType::BOOL>("optional", optional, {}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT,
+		"Module can run without this input being connected.");
+	inputNode.create<dvCfgType::STRING>("typeIdentifier", typeInfo.identifier, {4, 4},
+		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type identifier.");
+	inputNode.create<dvCfgType::STRING>("typeDescription", typeInfo.description, {1, 200},
+		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type description.");
+
+	inputNode.create<dvCfgType::STRING>(
+		"from", "", {0, 256}, dvCfgFlags::NORMAL, "From which 'moduleName[outputName]' to get data.");
 }
 
 void dv::Module::registerOutput(std::string_view outputName, std::string_view typeName) {
@@ -159,7 +170,16 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 		throw std::invalid_argument("Output with name '" + outputNameString + "' already exists.");
 	}
 
+	// Add info to internal data structure.
 	outputs.try_emplace(outputNameString, typeInfo);
+
+	// Add info to ConfigTree.
+	auto outputNode = moduleNode.getRelativeNode("outputs/" + outputNameString + "/");
+
+	outputNode.create<dvCfgType::STRING>("typeIdentifier", typeInfo.identifier, {4, 4},
+		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type identifier.");
+	outputNode.create<dvCfgType::STRING>("typeDescription", typeInfo.description, {1, 200},
+		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type description.");
 }
 
 void dv::Module::handleModuleInitFailure() {
