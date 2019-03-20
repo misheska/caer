@@ -201,7 +201,7 @@ static void mainRunner() {
 }
 
 void dv::addModule(const std::string &name, const std::string &library) {
-	glMainData.modules.try_emplace(name, name, library);
+	glMainData.modules.try_emplace(name, name, library, &glMainData.typeSystem);
 }
 
 void dv::removeModule(const std::string &name) {
