@@ -6,6 +6,7 @@
 #include "dv-sdk/module.h"
 
 #include "log.hpp"
+#include "mainloop.h"
 #include "types.hpp"
 
 #include <string>
@@ -72,14 +73,14 @@ private:
 	std::atomic_bool running;
 	std::atomic_uint32_t configUpdate;
 	dv::LogBlock logger;
-	dv::Types::TypeSystem *typeSystem;
+	dv::MainData *mainData;
 	std::unordered_map<std::string, ModuleInput> inputs;
 	std::unordered_map<std::string, ModuleOutput> outputs;
 	dv::Config::Node moduleNode; // C++ convenience variant.
 	dvModuleDataS data;
 
 public:
-	Module(std::string_view _name, std::string_view _library, dv::Types::TypeSystem *_typeSystem);
+	Module(std::string_view _name, std::string_view _library, dv::MainData *_mainData);
 	~Module();
 
 	dv::Config::Node getConfigNode();
@@ -102,6 +103,9 @@ private:
 	static void moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 	static void moduleConfigUpdateListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
+
+	static void inputListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 };
 

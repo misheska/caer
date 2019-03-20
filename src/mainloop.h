@@ -2,11 +2,10 @@
 #define MAINLOOP_H_
 
 #include "dv-sdk/mainloop.h"
-#include "dv-sdk/module.h"
 
-#include "module.hpp"
 #include "types.hpp"
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
@@ -16,10 +15,12 @@
 
 namespace dv {
 
+class Module;
+
 class MainData {
 public:
 	std::atomic_bool systemRunning;
-	std::unordered_map<std::string, dv::Module> modules;
+	std::unordered_map<std::string, std::shared_ptr<dv::Module>> modules;
 	dv::Types::TypeSystem typeSystem;
 
 	MainData() : systemRunning(false) {

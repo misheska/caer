@@ -25,12 +25,12 @@ static std::pair<dv::ModuleLibrary, dvModuleInfo> ModuleLoadLibrary(std::string_
 static void ModuleUnloadLibrary(dv::ModuleLibrary &moduleLibrary);
 static void ModulesUpdateInformation();
 
-dv::Module::Module(std::string_view _name, std::string_view _library, Types::TypeSystem *_typeSystem) :
+dv::Module::Module(std::string_view _name, std::string_view _library, dv::MainData *_mainData) :
 	name(_name),
 	moduleStatus(ModuleStatus::STOPPED),
 	running(false),
 	configUpdate(0),
-	typeSystem(_typeSystem),
+	mainData(_mainData),
 	moduleNode(nullptr) {
 	// Load library to get module functions.
 	std::pair<ModuleLibrary, dvModuleInfo> mLoad;
@@ -69,7 +69,7 @@ dv::Module::Module(std::string_view _name, std::string_view _library, Types::Typ
 dv::Module::~Module() {
 	moduleNode.removeNode();
 
-	typeSystem->unregisterModuleTypes(this);
+	mainData->typeSystem.unregisterModuleTypes(this);
 
 	ModuleUnloadLibrary(library);
 }
@@ -132,11 +132,11 @@ dv::Config::Node dv::Module::getConfigNode() {
 }
 
 void dv::Module::registerType(const dv::Types::Type type) {
-	typeSystem->registerModuleType(this, type);
+	mainData->typeSystem.registerModuleType(this, type);
 }
 
 void dv::Module::registerInput(std::string_view inputName, std::string_view typeName, bool optional) {
-	auto typeInfo = typeSystem->getTypeInfo(typeName, this);
+	auto typeInfo = mainData->typeSystem.getTypeInfo(typeName, this);
 
 	std::string inputNameString(inputName);
 
@@ -157,12 +157,19 @@ void dv::Module::registerInput(std::string_view inputName, std::string_view type
 	inputNode.create<dvCfgType::STRING>("typeDescription", typeInfo.description, {1, 200},
 		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type description.");
 
+	// Add listener first so that any ADD/MODIFY/REMOVE to 'from' is caught.
+	inputNode.addAttributeListener(nullptr, &inputListener);
+
 	inputNode.create<dvCfgType::STRING>(
 		"from", "", {0, 256}, dvCfgFlags::NORMAL, "From which 'moduleName[outputName]' to get data.");
 }
 
+void dv::Module::inputListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+}
+
 void dv::Module::registerOutput(std::string_view outputName, std::string_view typeName) {
-	auto typeInfo = typeSystem->getTypeInfo(typeName, this);
+	auto typeInfo = mainData->typeSystem.getTypeInfo(typeName, this);
 
 	std::string outputNameString(outputName);
 

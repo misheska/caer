@@ -5,6 +5,8 @@
 #include "dv-sdk/cross/portable_io.h"
 
 #include "config.h"
+#include "log.hpp"
+#include "module.hpp"
 
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
@@ -66,27 +68,27 @@ void dv::MainRun(void) {
 // Install signal handler for global shutdown.
 #if defined(OS_WINDOWS)
 	if (signal(SIGTERM, &mainloopShutdownHandler) == SIG_ERR) {
-		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGTERM. Error: %d.", errno);
+		dv::Log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGTERM. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
 	if (signal(SIGINT, &mainloopShutdownHandler) == SIG_ERR) {
-		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGINT. Error: %d.", errno);
+		dv::Log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGINT. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
 	if (signal(SIGBREAK, &mainloopShutdownHandler) == SIG_ERR) {
-		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGBREAK. Error: %d.", errno);
+		dv::Log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGBREAK. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
 	if (signal(SIGSEGV, &mainloopSegfaultHandler) == SIG_ERR) {
-		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGSEGV. Error: %d.", errno);
+		dv::Log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGSEGV. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
 	if (signal(SIGABRT, &mainloopSegfaultHandler) == SIG_ERR) {
-		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGABRT. Error: %d.", errno);
+		dv::Log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGABRT. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
@@ -112,12 +114,12 @@ void dv::MainRun(void) {
 	sigaddset(&shutdown.sa_mask, SIGINT);
 
 	if (sigaction(SIGTERM, &shutdown, nullptr) == -1) {
-		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGTERM. Error: %d.", errno);
+		dv::Log(dv::logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGTERM. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
 	if (sigaction(SIGINT, &shutdown, nullptr) == -1) {
-		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGINT. Error: %d.", errno);
+		dv::Log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGINT. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
@@ -130,12 +132,12 @@ void dv::MainRun(void) {
 	sigaddset(&segfault.sa_mask, SIGABRT);
 
 	if (sigaction(SIGSEGV, &segfault, nullptr) == -1) {
-		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGSEGV. Error: %d.", errno);
+		dv::Log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGSEGV. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
 	if (sigaction(SIGABRT, &segfault, nullptr) == -1) {
-		log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGABRT. Error: %d.", errno);
+		dv::Log(logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGABRT. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
@@ -201,7 +203,7 @@ static void mainRunner() {
 }
 
 void dv::addModule(const std::string &name, const std::string &library) {
-	glMainData.modules.try_emplace(name, name, library, &glMainData.typeSystem);
+	glMainData.modules.try_emplace(name, std::make_shared<dv::Module>(name, library, &glMainData));
 }
 
 void dv::removeModule(const std::string &name) {
