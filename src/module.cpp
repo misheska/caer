@@ -84,6 +84,9 @@ void dv::Module::LoggingInit() {
 
 	logger.logLevel.store(moduleNode.get<dvCfgType::INT>("logLevel"));
 	moduleNode.addAttributeListener(&logger.logLevel, &moduleLogLevelListener);
+
+	// Switch to current module logger.
+	dv::LoggerSet(&logger);
 }
 
 void dv::Module::RunningInit() {
@@ -157,15 +160,9 @@ void dv::Module::registerInput(std::string_view inputName, std::string_view type
 	inputNode.create<dvCfgType::STRING>("typeDescription", typeInfo.description, {1, 200},
 		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type description.");
 
-	// Add listener first so that any ADD/MODIFY/REMOVE to 'from' is caught.
-	inputNode.addAttributeListener(nullptr, &inputListener);
-
+	// Add connectivity configuration attribute.
 	inputNode.create<dvCfgType::STRING>(
 		"from", "", {0, 256}, dvCfgFlags::NORMAL, "From which 'moduleName[outputName]' to get data.");
-}
-
-void dv::Module::inputListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
-	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 }
 
 void dv::Module::registerOutput(std::string_view outputName, std::string_view typeName) {
