@@ -134,10 +134,28 @@ void dv::Module::registerType(const dv::Types::Type type) {
 	typeSystem->registerModuleType(this, type);
 }
 
-void dv::Module::registerOutput(std::string_view name, std::string_view typeName) {
+void dv::Module::registerInput(std::string_view inputName, std::string_view typeName, bool optional) {
+	auto typeInfo = typeSystem->getTypeInfo(typeName);
+
+	std::string inputNameString(inputName);
+
+	if (inputs.count(inputNameString)) {
+		throw std::invalid_argument("Input with name '" + inputNameString + "' already exists.");
+	}
+
+	inputs.try_emplace(inputNameString, typeInfo, optional);
 }
 
-void dv::Module::registerInput(std::string_view name, std::string_view typeName, bool optional) {
+void dv::Module::registerOutput(std::string_view outputName, std::string_view typeName) {
+	auto typeInfo = typeSystem->getTypeInfo(typeName);
+
+	std::string outputNameString(outputName);
+
+	if (outputs.count(outputNameString)) {
+		throw std::invalid_argument("Output with name '" + outputNameString + "' already exists.");
+	}
+
+	outputs.try_emplace(outputNameString, typeInfo);
 }
 
 void dv::Module::handleModuleInitFailure(dvCfg::Node &moduleNode) {

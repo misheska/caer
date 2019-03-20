@@ -1,8 +1,9 @@
 #ifndef MODULE_HPP_
 #define MODULE_HPP_
 
-#include "dv-sdk/module.h"
 #include <libcaercpp/ringbuffer.hpp>
+
+#include "dv-sdk/module.h"
 
 #include "log.hpp"
 #include "types.hpp"
@@ -42,14 +43,22 @@ enum class ModuleStatus {
 	RUNNING = 1,
 };
 
-class ModuleOutput {
-	dv::Types::Type type;
-};
-
 class ModuleInput {
-	uint32_t typeId;
+public:
+	dv::Types::Type type;
 	bool optional;
 	libcaer::ringbuffer::RingBuffer queue;
+
+	ModuleInput(const dv::Types::Type &t, bool opt) : type(t), optional(opt), queue(256) {
+	}
+};
+
+class ModuleOutput {
+public:
+	dv::Types::Type type;
+
+	ModuleOutput(const dv::Types::Type &t) : type(t) {
+	}
 };
 
 class Module {
@@ -62,8 +71,8 @@ private:
 	std::atomic_uint32_t configUpdate;
 	dv::LogBlock logger;
 	dv::Types::TypeSystem *typeSystem;
-	std::unordered_map<std::string, ModuleOutput> outputs;
 	std::unordered_map<std::string, ModuleInput> inputs;
+	std::unordered_map<std::string, ModuleOutput> outputs;
 	dvModuleDataS data;
 
 public:

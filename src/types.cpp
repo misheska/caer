@@ -69,7 +69,21 @@ void TypeSystem::unregisterModuleTypes(const Module *m) {
 	}
 }
 
+const Type TypeSystem::getTypeInfo(std::string_view tIdentifier, const Module *m) const {
+	if (tIdentifier.size() != 4) {
+		throw std::invalid_argument("Identifier must be 4 characters long.");
+	}
+
+	uint32_t id = *(reinterpret_cast<const uint32_t *>(tIdentifier.data()));
+
+	return (getTypeInfo(id, m));
+}
+
 const Type TypeSystem::getTypeInfo(const char *tIdentifier, const Module *m) const {
+	if (strlen(tIdentifier) != 4) {
+		throw std::invalid_argument("Identifier must be 4 characters long.");
+	}
+
 	uint32_t id = *(reinterpret_cast<const uint32_t *>(tIdentifier));
 
 	return (getTypeInfo(id, m));
