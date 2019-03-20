@@ -76,6 +76,7 @@ private:
 	void RunningInit();
 	void StaticInit();
 
+	bool handleInputConnectivity();
 	void handleModuleInitFailure();
 
 	static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,

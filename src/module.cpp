@@ -17,8 +17,6 @@ dv::Module::Module(std::string_view _name, std::string_view _library, dv::MainDa
 	mainData(_mainData),
 	moduleNode(nullptr) {
 	// Load library to get module functions.
-	std::pair<ModuleLibrary, dvModuleInfo> mLoad;
-
 	try {
 		std::tie(library, info) = dv::ModulesLoadLibrary(_library);
 	}
@@ -170,6 +168,10 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type description.");
 }
 
+bool dv::Module::handleInputConnectivity() {
+	return (true);
+}
+
 void dv::Module::handleModuleInitFailure() {
 	// Set running back to false on initialization failure.
 	moduleNode.put<dvCfgType::BOOL>("running", false);
@@ -223,6 +225,15 @@ void dv::Module::runStateMachine() {
 		}
 	}
 	else if (moduleStatus == ModuleStatus::STOPPED && localRunning) {
+		// At module startup, first check that input connectivity is
+		// satisfied and hook up the input queues.
+		if (!handleInputConnectivity()) {
+			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "input connectivity failure");
+
+			handleModuleInitFailure();
+			return;
+		}
+
 		// Allocate memory for module state.
 		if (info->memSize != 0) {
 			data.moduleState = calloc(1, info->memSize);
