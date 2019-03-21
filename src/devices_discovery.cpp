@@ -10,7 +10,7 @@ using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
 // Available devices list support.
-static std::recursive_mutex glAvailableDevicesLock;
+static std::mutex glAvailableDevicesLock;
 
 void dv::DevicesUpdateListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {

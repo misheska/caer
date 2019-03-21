@@ -16,9 +16,11 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
+static std::pair<dv::ModuleLibrary, dvModuleInfo> InternalLoadLibrary(boost::filesystem::path modulePath);
+
 static struct {
 	std::vector<boost::filesystem::path> modulePaths;
-	std::recursive_mutex modulePathsMutex;
+	std::mutex modulePathsMutex;
 } glModuleData;
 
 std::pair<dv::ModuleLibrary, dvModuleInfo> dv::ModulesLoadLibrary(std::string_view moduleName) {
@@ -35,6 +37,7 @@ std::pair<dv::ModuleLibrary, dvModuleInfo> dv::ModulesLoadLibrary(std::string_vi
 			if (moduleName == p.stem().string()) {
 				// Found a module with same name!
 				modulePath = p;
+				break;
 			}
 		}
 	}
@@ -44,6 +47,10 @@ std::pair<dv::ModuleLibrary, dvModuleInfo> dv::ModulesLoadLibrary(std::string_vi
 		throw std::runtime_error(exMsg.str());
 	}
 
+	return (InternalLoadLibrary(modulePath));
+}
+
+static std::pair<dv::ModuleLibrary, dvModuleInfo> InternalLoadLibrary(boost::filesystem::path modulePath) {
 #if BOOST_HAS_DLL_LOAD
 	dv::ModuleLibrary moduleLibrary;
 	try {
@@ -62,7 +69,7 @@ std::pair<dv::ModuleLibrary, dvModuleInfo> dv::ModulesLoadLibrary(std::string_vi
 	}
 	catch (const std::exception &ex) {
 		// Failed to find symbol in shared library!
-		ModulesUnloadLibrary(moduleLibrary);
+		dv::ModulesUnloadLibrary(moduleLibrary);
 		boost::format exMsg
 			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % ex.what();
 		throw std::runtime_error(exMsg.str());
@@ -79,7 +86,7 @@ std::pair<dv::ModuleLibrary, dvModuleInfo> dv::ModulesLoadLibrary(std::string_vi
 	dvModuleInfo (*getInfo)(void) = (dvModuleInfo(*)(void)) dlsym(moduleLibrary, "dvModuleGetInfo");
 	if (getInfo == nullptr) {
 		// Failed to find symbol in shared library!
-		ModulesUnloadLibrary(moduleLibrary);
+		dv::ModulesUnloadLibrary(moduleLibrary);
 		boost::format exMsg
 			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % dlerror();
 		throw std::runtime_error(exMsg.str());
@@ -88,7 +95,7 @@ std::pair<dv::ModuleLibrary, dvModuleInfo> dv::ModulesLoadLibrary(std::string_vi
 
 	dvModuleInfo info = (*getInfo)();
 	if (info == nullptr) {
-		ModulesUnloadLibrary(moduleLibrary);
+		dv::ModulesUnloadLibrary(moduleLibrary);
 		boost::format exMsg = boost::format("Failed to get info from library '%s'.") % modulePath.string();
 		throw std::runtime_error(exMsg.str());
 	}
@@ -168,16 +175,16 @@ void dv::ModulesUpdateInformation() {
 
 	// Generate nodes for each module, with their in/out information as attributes.
 	// This also checks basic validity of the module's information.
-	auto iter = std::cbegin(glModuleData.modulePaths);
+	auto iter = glModuleData.modulePaths.cbegin();
 
-	while (iter != std::cend(glModuleData.modulePaths)) {
+	while (iter != glModuleData.modulePaths.cend()) {
 		std::string moduleName = iter->stem().string();
 
 		// Load library.
 		std::pair<dv::ModuleLibrary, dvModuleInfo> mLoad;
 
 		try {
-			mLoad = dv::ModulesLoadLibrary(moduleName);
+			mLoad = InternalLoadLibrary(*iter);
 		}
 		catch (const std::exception &ex) {
 			boost::format exMsg = boost::format("Module '%s': %s") % moduleName % ex.what();
@@ -197,8 +204,8 @@ void dv::ModulesUpdateInformation() {
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module description.");
 		moduleNode.create<dvCfgType::STRING>("type", dvModuleTypeToString(mLoad.second->type), {1, 64},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module type.");
-		moduleNode.create<dvCfgType::STRING>(
-			"path", iter->string(), {1, PATH_MAX}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module file path.");
+		moduleNode.create<dvCfgType::STRING>("path", iter->string(), {1, PATH_MAX},
+			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module file full path.");
 
 		// Done, unload library.
 		dv::ModulesUnloadLibrary(mLoad.first);

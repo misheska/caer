@@ -19,7 +19,7 @@ class TypeSystem {
 private:
 	std::vector<Type> systemTypes;
 	std::unordered_map<uint32_t, std::vector<std::pair<const Module *, Type>>> userTypes;
-	mutable std::recursive_mutex typesLock;
+	mutable std::mutex typesLock;
 
 public:
 	TypeSystem();
