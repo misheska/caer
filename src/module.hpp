@@ -39,6 +39,8 @@ public:
 class ModuleOutput {
 public:
 	dv::Types::Type type;
+	std::mutex destinationsLock;
+	std::vector<libcaer::ringbuffer::RingBuffer> destinations;
 
 	ModuleOutput(const dv::Types::Type &t) : type(t) {
 	}
@@ -68,6 +70,9 @@ public:
 	void registerType(const dv::Types::Type type);
 	void registerOutput(std::string_view name, std::string_view typeName);
 	void registerInput(std::string_view name, std::string_view typeName, bool optional = false);
+
+	ModuleOutput *getModuleOutput(const std::string &outputName);
+	void connectToModuleOutput(const std::string &outputName, libcaer::ringbuffer::RingBuffer &destinationQueue);
 
 	void runStateMachine();
 

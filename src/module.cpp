@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <boost/format.hpp>
+#include <regex>
 
 namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
@@ -168,8 +169,101 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type description.");
 }
 
+static const std::regex inputConnRegex("^([a-zA-Z-_\\d\\.]+)\\[([a-zA-Z-_\\d\\.]+)\\]$");
+
 bool dv::Module::handleInputConnectivity() {
+	for (auto &input : inputs) {
+		// Get current module connectivity configuration.
+		auto inputNode = moduleNode.getRelativeNode("inputs/" + input.first + "/");
+		auto inputConn = inputNode.get<dvCfgType::STRING>("from");
+
+		// Check basic syntax: either empty or 'x[y]'.
+		if (inputConn.empty()) {
+			if (input.second.optional) {
+				// Fine if optional, just skip this input then.
+				continue;
+			}
+			else {
+				// Not optional, must be defined!
+				auto msg = boost::format(
+							   "Input '%s': input is not optional, its connectivity attribute can not be left empty.")
+						   % input.first;
+				dv::Log(dv::logLevel::ERROR, msg);
+				return (false);
+			}
+		}
+
+		// Not empty, so check syntax and then components.
+		std::smatch inputConnComponents;
+		if (!std::regex_match(inputConn, inputConnComponents, inputConnRegex)) {
+			auto msg
+				= boost::format("Input '%s': invalid format of connectivity attribute '%s'.") % input.first % inputConn;
+			dv::Log(dv::logLevel::ERROR, msg);
+			return (false);
+		}
+
+		auto moduleName = inputConnComponents.str(1);
+		auto outputName = inputConnComponents.str(2);
+
+		// Does the referenced module exist?
+		if (!mainData->modules.count(moduleName)) {
+			auto msg = boost::format("Input '%s': invalid connectivity attribute, module '%s' doesn't exist.")
+					   % input.first % moduleName;
+			dv::Log(dv::logLevel::ERROR, msg);
+			return (false);
+		}
+
+		auto otherModule = mainData->modules[moduleName];
+
+		// Does it have the specified output?
+		auto moduleOutput = otherModule->getModuleOutput(outputName);
+		if (moduleOutput == nullptr) {
+			auto msg
+				= boost::format("Input '%s': invalid connectivity attribute, output '%s' doesn't exist in module '%s'.")
+				  % input.first % outputName % moduleName;
+			dv::Log(dv::logLevel::ERROR, msg);
+			return (false);
+		}
+
+		// Lastly, check the type.
+		if (input.second.type.id != moduleOutput->type.id) {
+			auto msg = boost::format("Input '%s': invalid connectivity attribute, output '%s' in module '%s' has type "
+									 "'%s', but this input requires type '%s'.")
+					   % input.first % outputName % moduleName % moduleOutput->type.identifier % input.second.type.id;
+			dv::Log(dv::logLevel::ERROR, msg);
+			return (false);
+		}
+
+		// All is well, let's connect to that output.
+		otherModule->connectToModuleOutput(outputName, input.second.queue);
+	}
+
 	return (true);
+}
+
+dv::ModuleOutput *dv::Module::getModuleOutput(const std::string &outputName) {
+	try {
+		return (&outputs.at(outputName));
+	}
+	catch (const std::out_of_range &) {
+		// Fine, not fund.
+		return (nullptr);
+	}
+}
+
+void dv::Module::connectToModuleOutput(
+	const std::string &outputName, libcaer::ringbuffer::RingBuffer &destinationQueue) {
+	auto moduleOutput = getModuleOutput(outputName);
+	if (moduleOutput == nullptr) {
+		auto msg = boost::format("connectToModuleOutput(): no output named '%s' present.") % outputName;
+		throw std::invalid_argument(msg.str());
+	}
+
+	{
+		std::scoped_lock lock(moduleOutput->destinationsLock);
+
+		moduleOutput->destinations.push_back(destinationQueue);
+	}
 }
 
 void dv::Module::handleModuleInitFailure() {
@@ -225,6 +319,9 @@ void dv::Module::runStateMachine() {
 		}
 	}
 	else if (moduleStatus == ModuleStatus::STOPPED && localRunning) {
+		// Serialize module start/stop globally.
+		std::scoped_lock lock(mainData->modulesLock);
+
 		// At module startup, first check that input connectivity is
 		// satisfied and hook up the input queues.
 		if (!handleInputConnectivity()) {
@@ -279,6 +376,9 @@ void dv::Module::runStateMachine() {
 		moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", true);
 	}
 	else if (moduleStatus == ModuleStatus::RUNNING && !localRunning) {
+		// Serialize module start/stop globally.
+		std::scoped_lock lock(mainData->modulesLock);
+
 		moduleStatus = ModuleStatus::STOPPED;
 
 		if (info->functions->moduleExit != nullptr) {

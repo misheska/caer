@@ -21,7 +21,7 @@ class Module;
 class MainData {
 public:
 	std::atomic_bool systemRunning;
-	std::recursive_mutex modulesLock;
+	std::mutex modulesLock;
 	std::unordered_map<std::string, std::shared_ptr<dv::Module>> modules;
 	dv::Types::TypeSystem typeSystem;
 
