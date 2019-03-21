@@ -201,10 +201,14 @@ static void mainRunner() {
 }
 
 void dv::addModule(std::string_view name, std::string_view library) {
+	std::scoped_lock lock(glMainData.modulesLock);
+
 	glMainData.modules.try_emplace(std::string(name), std::make_shared<dv::Module>(name, library, &glMainData));
 }
 
 void dv::removeModule(std::string_view name) {
+	std::scoped_lock lock(glMainData.modulesLock);
+
 	glMainData.modules.erase(std::string(name));
 }
 

@@ -8,6 +8,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -20,6 +21,7 @@ class Module;
 class MainData {
 public:
 	std::atomic_bool systemRunning;
+	std::recursive_mutex modulesLock;
 	std::unordered_map<std::string, std::shared_ptr<dv::Module>> modules;
 	dv::Types::TypeSystem typeSystem;
 

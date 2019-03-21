@@ -18,7 +18,7 @@ TypeSystem::TypeSystem() {
 }
 
 void TypeSystem::registerModuleType(const Module *m, const Type t) {
-	std::lock_guard<std::recursive_mutex> lock(typesLock);
+	std::scoped_lock lock(typesLock);
 
 	// Register user type. Rules:
 	// a) cannot have same identifier as a system type
@@ -46,7 +46,7 @@ void TypeSystem::registerModuleType(const Module *m, const Type t) {
 }
 
 void TypeSystem::unregisterModuleTypes(const Module *m) {
-	std::lock_guard<std::recursive_mutex> lock(typesLock);
+	std::scoped_lock lock(typesLock);
 
 	// Remove all types registered to this module.
 	for (auto &type : userTypes) {
@@ -90,7 +90,7 @@ const Type TypeSystem::getTypeInfo(const char *tIdentifier, const Module *m) con
 }
 
 const Type TypeSystem::getTypeInfo(uint32_t tId, const Module *m) const {
-	std::lock_guard<std::recursive_mutex> lock(typesLock);
+	std::scoped_lock lock(typesLock);
 
 	// Search for type, first in system then user types.
 	auto sysPos = std::find_if(

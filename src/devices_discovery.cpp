@@ -26,7 +26,7 @@ void dv::DevicesUpdateListener(dvConfigNode node, void *userData, enum dvConfigA
 }
 
 void dv::DevicesUpdateList() {
-	std::lock_guard<std::recursive_mutex> lock(glAvailableDevicesLock);
+	std::scoped_lock lock(glAvailableDevicesLock);
 
 	auto devicesNode = dvCfg::GLOBAL.getNode("/system/devices/");
 

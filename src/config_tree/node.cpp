@@ -181,7 +181,7 @@ public:
 
 		enum dvConfigAttributeEvents attrEvents;
 
-		std::lock_guard<std::recursive_mutex> lock(node_lock);
+		std::scoped_lock lock(node_lock);
 
 		// Add if not present, else replace.
 		if (!attributes.count(key)) {
@@ -258,7 +258,7 @@ public:
 	}
 
 	void removeAttribute(const std::string &key, enum dvConfigAttributeType type) {
-		std::lock_guard<std::recursive_mutex> lock(node_lock);
+		std::scoped_lock lock(node_lock);
 
 		if (!attributeExists(key, type)) {
 			// Ignore calls on non-existent attributes for remove, as it is used
@@ -286,7 +286,7 @@ public:
 	}
 
 	void removeAllAttributes() {
-		std::lock_guard<std::recursive_mutex> lock(node_lock);
+		std::scoped_lock lock(node_lock);
 
 		for (const auto &attr : attributes) {
 			dvConfigAttributeChangeListener globalListener = dvConfigGlobalAttributeListenerGetFunction(this->global);
@@ -307,7 +307,7 @@ public:
 	}
 
 	bool attributeExists(const std::string &key, enum dvConfigAttributeType type) {
-		std::lock_guard<std::recursive_mutex> lockNode(node_lock);
+		std::scoped_lock lockNode(node_lock);
 
 		if ((!attributes.count(key)) || (attributes[key].getValue().getType() != type)) {
 			errno = ENOENT;
@@ -319,7 +319,7 @@ public:
 	}
 
 	const dv_value getAttribute(const std::string &key, enum dvConfigAttributeType type) {
-		std::lock_guard<std::recursive_mutex> lockNode(node_lock);
+		std::scoped_lock lockNode(node_lock);
 
 		if (!attributeExists(key, type)) {
 			dvConfigNodeErrorNoAttribute("dvConfigNodeGetAttribute", key, type);
@@ -330,7 +330,7 @@ public:
 	}
 
 	bool putAttribute(const std::string &key, const dv_value &value, bool forceReadOnlyUpdate = false) {
-		std::lock_guard<std::recursive_mutex> lockNode(node_lock);
+		std::scoped_lock lockNode(node_lock);
 
 		if (!attributeExists(key, value.getType())) {
 			dvConfigNodeErrorNoAttribute("dvConfigNodePutAttribute", key, value.getType());
@@ -434,7 +434,7 @@ dvConfigNode dvConfigNodeAddChild(dvConfigNode node, const char *childName) {
 		node->children[childName] = newChild;
 
 		// Listener support (only on new addition!).
-		std::lock_guard<std::recursive_mutex> nodeLock(node->node_lock);
+		std::scoped_lock nodeLock(node->node_lock);
 
 		dvConfigNodeChangeListener globalListener = dvConfigGlobalNodeListenerGetFunction(node->global);
 		if (globalListener != nullptr) {
@@ -488,7 +488,7 @@ dvConfigNode *dvConfigNodeGetChildren(dvConfigNode node, size_t *numChildren) {
 void dvConfigNodeAddNodeListener(dvConfigNode node, void *userData, dvConfigNodeChangeListener node_changed) {
 	dv_node_listener listener(node_changed, userData);
 
-	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
+	std::scoped_lock lock(node->node_lock);
 
 	if (!findBool(node->nodeListeners.begin(), node->nodeListeners.end(), listener)) {
 		node->nodeListeners.push_back(listener);
@@ -498,14 +498,14 @@ void dvConfigNodeAddNodeListener(dvConfigNode node, void *userData, dvConfigNode
 void dvConfigNodeRemoveNodeListener(dvConfigNode node, void *userData, dvConfigNodeChangeListener node_changed) {
 	dv_node_listener listener(node_changed, userData);
 
-	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
+	std::scoped_lock lock(node->node_lock);
 
 	node->nodeListeners.erase(
 		std::remove(node->nodeListeners.begin(), node->nodeListeners.end(), listener), node->nodeListeners.end());
 }
 
 void dvConfigNodeRemoveAllNodeListeners(dvConfigNode node) {
-	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
+	std::scoped_lock lock(node->node_lock);
 
 	node->nodeListeners.clear();
 }
@@ -514,7 +514,7 @@ void dvConfigNodeAddAttributeListener(
 	dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed) {
 	dv_attribute_listener listener(attribute_changed, userData);
 
-	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
+	std::scoped_lock lock(node->node_lock);
 
 	if (!findBool(node->attrListeners.begin(), node->attrListeners.end(), listener)) {
 		node->attrListeners.push_back(listener);
@@ -525,20 +525,20 @@ void dvConfigNodeRemoveAttributeListener(
 	dvConfigNode node, void *userData, dvConfigAttributeChangeListener attribute_changed) {
 	dv_attribute_listener listener(attribute_changed, userData);
 
-	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
+	std::scoped_lock lock(node->node_lock);
 
 	node->attrListeners.erase(
 		std::remove(node->attrListeners.begin(), node->attrListeners.end(), listener), node->attrListeners.end());
 }
 
 void dvConfigNodeRemoveAllAttributeListeners(dvConfigNode node) {
-	std::lock_guard<std::recursive_mutex> lock(node->node_lock);
+	std::scoped_lock lock(node->node_lock);
 
 	node->attrListeners.clear();
 }
 
 void dvConfigNodeClearSubTree(dvConfigNode startNode, bool clearStartNode) {
-	std::lock_guard<std::recursive_mutex> lockNode(startNode->node_lock);
+	std::scoped_lock lockNode(startNode->node_lock);
 
 	// Recurse down children and remove all attributes.
 	size_t numChildren;
@@ -562,7 +562,7 @@ void dvConfigNodeClearSubTree(dvConfigNode startNode, bool clearStartNode) {
 // You need to make sure of this in your application!
 void dvConfigNodeRemoveNode(dvConfigNode node) {
 	{
-		std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+		std::scoped_lock lockNode(node->node_lock);
 
 		// Now we can clear the subtree from all attribute related data.
 		dvConfigNodeClearSubTree(node, true);
@@ -581,7 +581,7 @@ void dvConfigNodeRemoveNode(dvConfigNode node) {
 }
 
 void dvConfigNodeRemoveSubTree(dvConfigNode node) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	// Recurse down first, we remove from the bottom up.
 	size_t numChildren;
@@ -602,7 +602,7 @@ void dvConfigNodeRemoveSubTree(dvConfigNode node) {
 // must be cleaned up prior to this call.
 static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string childName) {
 	std::unique_lock<std::shared_mutex> lock(node->traversal_lock);
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	if (!node->children.count(childName)) {
 		// Verify that a valid node exists, else simply return
@@ -632,7 +632,7 @@ static void dvConfigNodeRemoveChild(dvConfigNode node, const std::string childNa
 // must be cleaned up prior to this call.
 static void dvConfigNodeRemoveAllChildren(dvConfigNode node) {
 	std::unique_lock<std::shared_mutex> lock(node->traversal_lock);
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	for (const auto &child : node->children) {
 		dvConfigNodeChangeListener globalListener = dvConfigGlobalNodeListenerGetFunction(node->global);
@@ -904,7 +904,7 @@ static boost::property_tree::ptree dvConfigNodeGenerateXML(dvConfigNode node, bo
 		}
 	}
 
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	// Then it's attributes (key:value pairs).
 	auto attrFirstIterator = content.begin();
@@ -1105,7 +1105,7 @@ bool dvConfigNodeStringToAttributeConverter(
 	}
 
 	{
-		std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+		std::scoped_lock lockNode(node->node_lock);
 
 		// IFF attribute already exists, we update it using dvConfigNodePut(), else
 		// we create the attribute with maximum range and a default description.
@@ -1222,7 +1222,7 @@ const char **dvConfigNodeGetChildNames(dvConfigNode node, size_t *numNames) {
 
 // Remember to free the resulting array.
 const char **dvConfigNodeGetAttributeKeys(dvConfigNode node, size_t *numKeys) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	if (node->attributes.empty()) {
 		*numKeys = 0;
@@ -1263,7 +1263,7 @@ const char **dvConfigNodeGetAttributeKeys(dvConfigNode node, size_t *numKeys) {
 }
 
 enum dvConfigAttributeType dvConfigNodeGetAttributeType(dvConfigNode node, const char *key) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	if (!node->attributes.count(key)) {
 		errno = ENOENT;
@@ -1276,7 +1276,7 @@ enum dvConfigAttributeType dvConfigNodeGetAttributeType(dvConfigNode node, const
 
 struct dvConfigAttributeRanges dvConfigNodeGetAttributeRanges(
 	dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, type)) {
 		dvConfigNodeErrorNoAttribute("dvConfigNodeGetAttributeRanges", key, type);
@@ -1286,7 +1286,7 @@ struct dvConfigAttributeRanges dvConfigNodeGetAttributeRanges(
 }
 
 int dvConfigNodeGetAttributeFlags(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, type)) {
 		dvConfigNodeErrorNoAttribute("dvConfigNodeGetAttributeFlags", key, type);
@@ -1297,7 +1297,7 @@ int dvConfigNodeGetAttributeFlags(dvConfigNode node, const char *key, enum dvCon
 
 // Remember to free the resulting string.
 char *dvConfigNodeGetAttributeDescription(dvConfigNode node, const char *key, enum dvConfigAttributeType type) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, type)) {
 		dvConfigNodeErrorNoAttribute("dvConfigNodeGetAttributeDescription", key, type);
@@ -1310,7 +1310,7 @@ char *dvConfigNodeGetAttributeDescription(dvConfigNode node, const char *key, en
 }
 
 void dvConfigNodeAttributeModifierButton(dvConfigNode node, const char *key, const char *type) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, DVCFG_TYPE_BOOL)) {
 		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierButton", key, DVCFG_TYPE_BOOL);
@@ -1331,7 +1331,7 @@ void dvConfigNodeAttributeModifierButton(dvConfigNode node, const char *key, con
 
 void dvConfigNodeAttributeModifierListOptions(
 	dvConfigNode node, const char *key, const char *listOptions, bool allowMultipleSelections) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, DVCFG_TYPE_STRING)) {
 		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierListOptions", key, DVCFG_TYPE_STRING);
@@ -1355,7 +1355,7 @@ void dvConfigNodeAttributeModifierListOptions(
 }
 
 void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *typeAndExtensions) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, DVCFG_TYPE_STRING)) {
 		dvConfigNodeErrorNoAttribute("dvConfigNodeAttributeModifierFileChooser", key, DVCFG_TYPE_STRING);
@@ -1388,7 +1388,7 @@ void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key
 }
 
 void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const char *unitInformation) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	if (!node->attributeExists(key, DVCFG_TYPE_INT) && !node->attributeExists(key, DVCFG_TYPE_LONG)
 		&& !node->attributeExists(key, DVCFG_TYPE_FLOAT) && !node->attributeExists(key, DVCFG_TYPE_DOUBLE)) {
@@ -1409,7 +1409,7 @@ void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const
 }
 
 void dvConfigNodeAttributeModifierPriorityAttributes(dvConfigNode node, const char *priorityAttributes) {
-	std::lock_guard<std::recursive_mutex> lockNode(node->node_lock);
+	std::scoped_lock lockNode(node->node_lock);
 
 	dvConfigNodeCreateString(node, "_priorityAttributes", priorityAttributes, 0, INT32_MAX, DVCFG_FLAGS_NORMAL,
 		"Comma separated list of attributes to prioritize regarding visualization in the UI (can be empty).", true);

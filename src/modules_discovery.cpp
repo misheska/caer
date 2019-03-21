@@ -29,7 +29,7 @@ std::pair<dv::ModuleLibrary, dvModuleInfo> dv::ModulesLoadLibrary(std::string_vi
 	boost::filesystem::path modulePath;
 
 	{
-		std::lock_guard<std::recursive_mutex> lock(glModuleData.modulePathsMutex);
+		std::scoped_lock lock(glModuleData.modulePathsMutex);
 
 		for (const auto &p : glModuleData.modulePaths) {
 			if (moduleName == p.stem().string()) {
@@ -124,7 +124,7 @@ void dv::ModulesUpdateInformationListener(dvConfigNode node, void *userData, enu
 }
 
 void dv::ModulesUpdateInformation() {
-	std::lock_guard<std::recursive_mutex> lock(glModuleData.modulePathsMutex);
+	std::scoped_lock lock(glModuleData.modulePathsMutex);
 
 	auto modulesNode = dvCfg::GLOBAL.getNode("/system/modules/");
 
