@@ -235,7 +235,7 @@ bool dv::Module::inputConnectivityInitialize() {
 		}
 
 		// All is well, let's connect to that output.
-		otherModule->connectToModuleOutput(moduleOutput, input.second.queue);
+		otherModule->connectToModuleOutput(moduleOutput, std::pair{&input.second, input.second.queue});
 	}
 
 	return (true);
@@ -251,13 +251,26 @@ dv::ModuleOutput *dv::Module::getModuleOutput(const std::string &outputName) {
 	}
 }
 
-void dv::Module::connectToModuleOutput(ModuleOutput *output, libcaer::ringbuffer::RingBuffer &destinationQueue) {
+void dv::Module::connectToModuleOutput(
+	ModuleOutput *output, std::pair<ModuleInput *, libcaer::ringbuffer::RingBuffer> &destinationQueue) {
 	std::scoped_lock lock(output->destinationsLock);
 
 	output->destinations.push_back(destinationQueue);
 }
 
+void dv::Module::disconnectFromModuleOutput(
+	ModuleOutput *output, std::pair<ModuleInput *, libcaer::ringbuffer::RingBuffer> &destinationQueue) {
+	std::scoped_lock lock(output->destinationsLock);
+
+	auto pos = std::find(output->destinations.begin(), output->destinations.end(), destinationQueue);
+
+	if (pos != output->destinations.end()) {
+		output->destinations.erase(pos);
+	}
+}
+
 void dv::Module::inputConnectivityDestroy() {
+	// Cleanup inputs, disconnect from all of them.
 }
 
 void dv::Module::handleModuleInitFailure() {

@@ -20,6 +20,9 @@
 
 namespace dv {
 
+class ModuleInput;
+class ModuleOutput;
+
 // Module-related definitions.
 enum class ModuleStatus {
 	STOPPED = 0,
@@ -28,21 +31,27 @@ enum class ModuleStatus {
 
 class ModuleInput {
 public:
+	Module *relatedModule;
 	dv::Types::Type type;
 	bool optional;
-	libcaer::ringbuffer::RingBuffer queue;
+	std::pair<ModuleOutput *, libcaer::ringbuffer::RingBuffer> queue;
 
-	ModuleInput(const dv::Types::Type &t, bool opt) : type(t), optional(opt), queue(INTER_MODULE_TRANSFER_QUEUE_SIZE) {
+	ModuleInput(Module *parent, const dv::Types::Type &t, bool opt) :
+		relatedModule(parent),
+		type(t),
+		optional(opt),
+		queue(std::make_pair(nullptr, INTER_MODULE_TRANSFER_QUEUE_SIZE)) {
 	}
 };
 
 class ModuleOutput {
 public:
+	Module *relatedModule;
 	dv::Types::Type type;
 	std::mutex destinationsLock;
-	std::vector<libcaer::ringbuffer::RingBuffer> destinations;
+	std::vector<std::pair<ModuleInput *, libcaer::ringbuffer::RingBuffer>> destinations;
 
-	ModuleOutput(const dv::Types::Type &t) : type(t) {
+	ModuleOutput(Module *parent, const dv::Types::Type &t) : relatedModule(parent), type(t) {
 	}
 };
 
@@ -79,7 +88,10 @@ private:
 	void StaticInit();
 
 	ModuleOutput *getModuleOutput(const std::string &outputName);
-	void connectToModuleOutput(ModuleOutput *output, libcaer::ringbuffer::RingBuffer &destinationQueue);
+	void connectToModuleOutput(
+		ModuleOutput *output, std::pair<ModuleInput *, libcaer::ringbuffer::RingBuffer> &destinationQueue);
+	void disconnectFromModuleOutput(
+		ModuleOutput *output, std::pair<ModuleInput *, libcaer::ringbuffer::RingBuffer> &destinationQueue);
 
 	bool inputConnectivityInitialize();
 	void inputConnectivityDestroy();
