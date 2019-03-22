@@ -71,15 +71,15 @@ public:
 	void registerOutput(std::string_view name, std::string_view typeName);
 	void registerInput(std::string_view name, std::string_view typeName, bool optional = false);
 
-	ModuleOutput *getModuleOutput(const std::string &outputName);
-	void connectToModuleOutput(const std::string &outputName, libcaer::ringbuffer::RingBuffer &destinationQueue);
-
 	void runStateMachine();
 
 private:
 	void LoggingInit();
 	void RunningInit();
 	void StaticInit();
+
+	ModuleOutput *getModuleOutput(const std::string &outputName);
+	void connectToModuleOutput(ModuleOutput *output, libcaer::ringbuffer::RingBuffer &destinationQueue);
 
 	bool handleInputConnectivity();
 	void handleModuleInitFailure();

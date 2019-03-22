@@ -235,7 +235,7 @@ bool dv::Module::handleInputConnectivity() {
 		}
 
 		// All is well, let's connect to that output.
-		otherModule->connectToModuleOutput(outputName, input.second.queue);
+		otherModule->connectToModuleOutput(moduleOutput, input.second.queue);
 	}
 
 	return (true);
@@ -251,19 +251,10 @@ dv::ModuleOutput *dv::Module::getModuleOutput(const std::string &outputName) {
 	}
 }
 
-void dv::Module::connectToModuleOutput(
-	const std::string &outputName, libcaer::ringbuffer::RingBuffer &destinationQueue) {
-	auto moduleOutput = getModuleOutput(outputName);
-	if (moduleOutput == nullptr) {
-		auto msg = boost::format("connectToModuleOutput(): no output named '%s' present.") % outputName;
-		throw std::invalid_argument(msg.str());
-	}
+void dv::Module::connectToModuleOutput(ModuleOutput *output, libcaer::ringbuffer::RingBuffer &destinationQueue) {
+	std::scoped_lock lock(output->destinationsLock);
 
-	{
-		std::scoped_lock lock(moduleOutput->destinationsLock);
-
-		moduleOutput->destinations.push_back(destinationQueue);
-	}
+	output->destinations.push_back(destinationQueue);
 }
 
 void dv::Module::handleModuleInitFailure() {
