@@ -171,7 +171,7 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 
 static const std::regex inputConnRegex("^([a-zA-Z-_\\d\\.]+)\\[([a-zA-Z-_\\d\\.]+)\\]$");
 
-bool dv::Module::handleInputConnectivity() {
+bool dv::Module::inputConnectivityInitialize() {
 	for (auto &input : inputs) {
 		// Get current module connectivity configuration.
 		auto inputNode = moduleNode.getRelativeNode("inputs/" + input.first + "/");
@@ -257,7 +257,13 @@ void dv::Module::connectToModuleOutput(ModuleOutput *output, libcaer::ringbuffer
 	output->destinations.push_back(destinationQueue);
 }
 
+void dv::Module::inputConnectivityDestroy() {
+}
+
 void dv::Module::handleModuleInitFailure() {
+	// Disconnect from other modules.
+	inputConnectivityDestroy();
+
 	// Set running back to false on initialization failure.
 	moduleNode.put<dvCfgType::BOOL>("running", false);
 
@@ -315,7 +321,7 @@ void dv::Module::runStateMachine() {
 
 		// At module startup, first check that input connectivity is
 		// satisfied and hook up the input queues.
-		if (!handleInputConnectivity()) {
+		if (!inputConnectivityInitialize()) {
 			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "input connectivity failure");
 
 			handleModuleInitFailure();
@@ -386,6 +392,9 @@ void dv::Module::runStateMachine() {
 			free(data.moduleState);
 		}
 		data.moduleState = nullptr;
+
+		// Disconnect from other modules.
+		inputConnectivityDestroy();
 
 		moduleNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
 	}

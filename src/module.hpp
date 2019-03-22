@@ -81,7 +81,9 @@ private:
 	ModuleOutput *getModuleOutput(const std::string &outputName);
 	void connectToModuleOutput(ModuleOutput *output, libcaer::ringbuffer::RingBuffer &destinationQueue);
 
-	bool handleInputConnectivity();
+	bool inputConnectivityInitialize();
+	void inputConnectivityDestroy();
+
 	void handleModuleInitFailure();
 
 	static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
