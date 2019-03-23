@@ -131,7 +131,7 @@ void dv::Module::registerInput(std::string_view inputName, std::string_view type
 	}
 
 	// Add info to internal data structure.
-	inputs.try_emplace(inputNameString, typeInfo, optional);
+	inputs.try_emplace(inputNameString, this, typeInfo, optional);
 
 	// Add info to ConfigTree.
 	auto inputNode = moduleNode.getRelativeNode("inputs/" + inputNameString + "/");
@@ -158,7 +158,7 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 	}
 
 	// Add info to internal data structure.
-	outputs.try_emplace(outputNameString, typeInfo);
+	outputs.try_emplace(outputNameString, this, typeInfo);
 
 	// Add info to ConfigTree.
 	auto outputNode = moduleNode.getRelativeNode("outputs/" + outputNameString + "/");
@@ -235,7 +235,12 @@ bool dv::Module::inputConnectivityInitialize() {
 		}
 
 		// All is well, let's connect to that output.
-		otherModule->connectToModuleOutput(moduleOutput, std::pair{&input.second, input.second.queue});
+		OutgoingConnection connection{&input.second, input.second.source.queue};
+
+		connectToModuleOutput(moduleOutput, connection);
+
+		// And make that connection bidirectional.
+		input.second.source.linkedOutput = moduleOutput;
 	}
 
 	return (true);
@@ -251,18 +256,16 @@ dv::ModuleOutput *dv::Module::getModuleOutput(const std::string &outputName) {
 	}
 }
 
-void dv::Module::connectToModuleOutput(
-	ModuleOutput *output, std::pair<ModuleInput *, libcaer::ringbuffer::RingBuffer> &destinationQueue) {
+void dv::Module::connectToModuleOutput(ModuleOutput *output, OutgoingConnection connection) {
 	std::scoped_lock lock(output->destinationsLock);
 
-	output->destinations.push_back(destinationQueue);
+	output->destinations.push_back(connection);
 }
 
-void dv::Module::disconnectFromModuleOutput(
-	ModuleOutput *output, std::pair<ModuleInput *, libcaer::ringbuffer::RingBuffer> &destinationQueue) {
+void dv::Module::disconnectFromModuleOutput(ModuleOutput *output, OutgoingConnection connection) {
 	std::scoped_lock lock(output->destinationsLock);
 
-	auto pos = std::find(output->destinations.begin(), output->destinations.end(), destinationQueue);
+	auto pos = std::find(output->destinations.begin(), output->destinations.end(), connection);
 
 	if (pos != output->destinations.end()) {
 		output->destinations.erase(pos);
@@ -271,6 +274,20 @@ void dv::Module::disconnectFromModuleOutput(
 
 void dv::Module::inputConnectivityDestroy() {
 	// Cleanup inputs, disconnect from all of them.
+	for (auto &input : inputs) {
+		if (input.second.source.linkedOutput == nullptr) {
+			// Not connected to another output, skip.
+			continue;
+		}
+
+		// Remove the connection from the output.
+		OutgoingConnection connection{&input.second, input.second.source.queue};
+
+		disconnectFromModuleOutput(input.second.source.linkedOutput, connection);
+
+		// Dissolve bond.
+		input.second.source.linkedOutput = nullptr;
+	}
 }
 
 void dv::Module::handleModuleInitFailure() {

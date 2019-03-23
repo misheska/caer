@@ -29,18 +29,54 @@ enum class ModuleStatus {
 	RUNNING = 1,
 };
 
+class IncomingConnection {
+public:
+	ModuleOutput *linkedOutput;
+	libcaer::ringbuffer::RingBuffer queue;
+
+	IncomingConnection(ModuleOutput *from) : linkedOutput(from), queue(INTER_MODULE_TRANSFER_QUEUE_SIZE) {
+	}
+
+	bool operator==(const IncomingConnection &rhs) const noexcept {
+		return ((linkedOutput == rhs.linkedOutput) && (queue == rhs.queue));
+	}
+
+	bool operator!=(const IncomingConnection &rhs) const noexcept {
+		return (!operator==(rhs));
+	}
+};
+
 class ModuleInput {
 public:
 	Module *relatedModule;
 	dv::Types::Type type;
 	bool optional;
-	std::pair<ModuleOutput *, libcaer::ringbuffer::RingBuffer> queue;
+	IncomingConnection source;
 
 	ModuleInput(Module *parent, const dv::Types::Type &t, bool opt) :
 		relatedModule(parent),
 		type(t),
 		optional(opt),
-		queue(std::make_pair(nullptr, INTER_MODULE_TRANSFER_QUEUE_SIZE)) {
+		source(nullptr) {
+	}
+};
+
+class OutgoingConnection {
+public:
+	ModuleInput *linkedInput;
+	libcaer::ringbuffer::RingBuffer queue;
+
+	OutgoingConnection(ModuleInput *to, libcaer::ringbuffer::RingBuffer linkedQueue) :
+		linkedInput(to),
+		queue(linkedQueue) {
+	}
+
+	bool operator==(const OutgoingConnection &rhs) const noexcept {
+		return ((linkedInput == rhs.linkedInput) && (queue == rhs.queue));
+	}
+
+	bool operator!=(const OutgoingConnection &rhs) const noexcept {
+		return (!operator==(rhs));
 	}
 };
 
@@ -49,7 +85,7 @@ public:
 	Module *relatedModule;
 	dv::Types::Type type;
 	std::mutex destinationsLock;
-	std::vector<std::pair<ModuleInput *, libcaer::ringbuffer::RingBuffer>> destinations;
+	std::vector<OutgoingConnection> destinations;
 
 	ModuleOutput(Module *parent, const dv::Types::Type &t) : relatedModule(parent), type(t) {
 	}
@@ -88,10 +124,9 @@ private:
 	void StaticInit();
 
 	ModuleOutput *getModuleOutput(const std::string &outputName);
-	void connectToModuleOutput(
-		ModuleOutput *output, std::pair<ModuleInput *, libcaer::ringbuffer::RingBuffer> &destinationQueue);
-	void disconnectFromModuleOutput(
-		ModuleOutput *output, std::pair<ModuleInput *, libcaer::ringbuffer::RingBuffer> &destinationQueue);
+
+	static void connectToModuleOutput(ModuleOutput *output, OutgoingConnection connection);
+	static void disconnectFromModuleOutput(ModuleOutput *output, OutgoingConnection connection);
 
 	bool inputConnectivityInitialize();
 	void inputConnectivityDestroy();
