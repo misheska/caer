@@ -34,7 +34,20 @@ public:
  */
 void MainRun(void);
 
+/**
+ * Adds a new module to the system, initializing it and
+ * its static configuration.
+ *
+ * @param name new module instance name.
+ * @param library shared library plugin to load.
+ */
 void addModule(std::string_view name, std::string_view library);
+/**
+ * Removes a module from the system, fully erasing its configuration.
+ * You must ensure the module was stopped first!
+ *
+ * @param name module instance name.
+ */
 void removeModule(std::string_view name);
 
 /**

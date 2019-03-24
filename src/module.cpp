@@ -50,10 +50,36 @@ dv::Module::Module(std::string_view _name, std::string_view _library, dv::MainDa
 }
 
 dv::Module::~Module() {
+	// Check module is properly shut down, which takes care of
+	// cleaning up all input connections. This should always be
+	// the case as it's a requirement for calling removeModule().
+	if (moduleNode.get<dvCfgType::BOOL>("isRunning")) {
+		dv::Log(dv::logLevel::CRITICAL, "Destroying a running module. This should never happen!");
+	}
+
+	// Now take care of cleaning up all output connections.
+	for (auto &output : outputs) {
+		std::scoped_lock lock(output.second.destinationsLock);
+
+		for (auto &dest : output.second.destinations) {
+			// Break link. Queue remains and just receives no new data.
+			dest.linkedInput->source.linkedOutput = nullptr;
+
+			// Downstream module has now an incorrect, impossible
+			// input configuration. Let's stop it so the user can
+			// fix it and restart it then.
+			dest.linkedInput->relatedModule->moduleNode.put<dvCfgType::BOOL>("running", false);
+		}
+
+		output.second.destinations.clear();
+	}
+
+	// Cleanup configuration and types.
 	moduleNode.removeNode();
 
 	mainData->typeSystem.unregisterModuleTypes(this);
 
+	// Last, unload the shared library plugin.
 	dv::ModulesUnloadLibrary(library);
 }
 
