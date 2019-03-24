@@ -5,16 +5,36 @@
 
 #include <stdexcept>
 
+namespace dvCfg  = dv::Config;
+using dvCfgType  = dvCfg::AttributeType;
+using dvCfgFlags = dvCfg::AttributeFlags;
+
 namespace dv::Types {
 
+static inline void makeTypeNode(const Type &t, dvCfg::Node n) {
+	auto typeNode = n.getRelativeNode(std::string(t.identifier) + "/");
+
+	typeNode.create<dvCfgType::STRING>(
+		"description", t.description, {0, 2000}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type description.");
+
+	typeNode.create<dvCfgType::LONG>("size", static_cast<int64_t>(t.sizeOfType), {0, INT64_MAX},
+		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type size.");
+}
+
 TypeSystem::TypeSystem() {
+	auto systemTypesNode = dvCfg::GLOBAL.getNode("/system/types/system/");
+
 	// Initialize system types. These are always available due to
 	// being compiled into the core.
-	systemTypes.push_back(
-		makeTypeDefinition<PolarityPacket, PolarityPacketT>(PolarityPacketIdentifier(), "Polarity ON/OFF events."));
+	auto polaType
+		= makeTypeDefinition<PolarityPacket, PolarityPacketT>(PolarityPacketIdentifier(), "Polarity ON/OFF events.");
+	systemTypes.push_back(polaType);
+	makeTypeNode(polaType, systemTypesNode);
 
-	systemTypes.push_back(
-		makeTypeDefinition<Frame8Packet, Frame8PacketT>(Frame8PacketIdentifier(), "Standard frames (8-bit images)."));
+	auto frm8Type
+		= makeTypeDefinition<Frame8Packet, Frame8PacketT>(Frame8PacketIdentifier(), "Standard frames (8-bit images).");
+	systemTypes.push_back(frm8Type);
+	makeTypeNode(frm8Type, systemTypesNode);
 }
 
 void TypeSystem::registerModuleType(const Module *m, const Type t) {
@@ -43,6 +63,9 @@ void TypeSystem::registerModuleType(const Module *m, const Type t) {
 	}
 
 	userTypes[t.id].emplace_back(m, t);
+
+	auto userTypesNode = dvCfg::GLOBAL.getNode("/system/types/user/");
+	makeTypeNode(t, userTypesNode);
 }
 
 void TypeSystem::unregisterModuleTypes(const Module *m) {
@@ -61,6 +84,15 @@ void TypeSystem::unregisterModuleTypes(const Module *m) {
 	// Cleanup empty vectors.
 	for (auto it = userTypes.begin(); it != userTypes.end();) {
 		if (it->second.empty()) {
+			// Empty vector means no survivors of this type, so we can remove
+			// it from the global registry too.
+			uint32_t id       = it->first;
+			const char *idStr = reinterpret_cast<const char *>(&id);
+			std::string identifier{idStr, 4};
+
+			auto userTypesNode = dvCfg::GLOBAL.getNode("/system/types/user/");
+			userTypesNode.getRelativeNode(identifier + "/").removeNode();
+
 			it = userTypes.erase(it);
 		}
 		else {
