@@ -11,6 +11,8 @@
 #include "types.hpp"
 
 #include <atomic>
+#include <boost/intrusive_ptr.hpp>
+#include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -23,6 +25,27 @@ namespace dv {
 class ModuleInput;
 class ModuleOutput;
 
+class IntrusiveTypedObject : public dvTypedObject,
+							 public boost::intrusive_ref_counter<IntrusiveTypedObject, boost::thread_safe_counter> {
+public:
+	IntrusiveTypedObject(const dv::Types::Type &t) {
+		typeId  = t.id;
+		objSize = t.sizeOfType;
+		obj     = (*t.construct)(objSize);
+
+		if (obj == nullptr) {
+			throw std::bad_alloc();
+		}
+	}
+
+	~IntrusiveTypedObject() {
+		const dv::Types::Type t = MainData::getGlobal().typeSystem.getTypeInfo(typeId);
+		(*t.destruct)(obj);
+	}
+};
+
+using ModuleBuffer = libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *>;
+
 // Module-related definitions.
 enum class ModuleStatus {
 	STOPPED = 0,
@@ -32,9 +55,11 @@ enum class ModuleStatus {
 class IncomingConnection {
 public:
 	ModuleOutput *linkedOutput;
-	libcaer::ringbuffer::RingBuffer queue;
+	std::shared_ptr<ModuleBuffer> queue;
 
-	IncomingConnection(ModuleOutput *from) : linkedOutput(from), queue(INTER_MODULE_TRANSFER_QUEUE_SIZE) {
+	IncomingConnection(ModuleOutput *from) :
+		linkedOutput(from),
+		queue(std::make_shared<ModuleBuffer>(INTER_MODULE_TRANSFER_QUEUE_SIZE)) {
 	}
 
 	bool operator==(const IncomingConnection &rhs) const noexcept {
@@ -64,9 +89,9 @@ public:
 class OutgoingConnection {
 public:
 	ModuleInput *linkedInput;
-	libcaer::ringbuffer::RingBuffer queue;
+	std::shared_ptr<ModuleBuffer> queue;
 
-	OutgoingConnection(ModuleInput *to, libcaer::ringbuffer::RingBuffer linkedQueue) :
+	OutgoingConnection(ModuleInput *to, std::shared_ptr<ModuleBuffer> linkedQueue) :
 		linkedInput(to),
 		queue(linkedQueue) {
 	}
@@ -86,6 +111,7 @@ public:
 	dv::Types::Type type;
 	std::mutex destinationsLock;
 	std::vector<OutgoingConnection> destinations;
+	boost::intrusive_ptr<IntrusiveTypedObject> nextPacket;
 
 	ModuleOutput(Module *parent, const dv::Types::Type &t) : relatedModule(parent), type(t) {
 	}
@@ -116,6 +142,12 @@ public:
 	void registerInput(std::string_view name, std::string_view typeName, bool optional = false);
 
 	void runStateMachine();
+
+	dv::Types::TypedObject *outputAllocate(std::string_view outputName);
+	void outputCommit(std::string_view outputName);
+	const dv::Types::TypedObject *inputGet(std::string_view inputName);
+	void inputRefInc(std::string_view inputName, const dv::Types::TypedObject *data);
+	void inputRefDec(std::string_view inputName, const dv::Types::TypedObject *data);
 
 private:
 	void LoggingInit();

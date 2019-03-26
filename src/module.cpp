@@ -465,6 +465,57 @@ void dv::Module::runStateMachine() {
 	}
 }
 
+dv::Types::TypedObject *dv::Module::outputAllocate(std::string_view outputName) {
+	auto output = getModuleOutput(std::string(outputName));
+	if (output == nullptr) {
+		// Not found.
+		auto msg = boost::format("Output with name '%s' doesn't exist.") % outputName;
+		throw std::out_of_range(msg.str());
+	}
+
+	if (!output->nextPacket) {
+		// Allocate new and store.
+		output->nextPacket = new IntrusiveTypedObject(output->type);
+	}
+
+	// Return current value.
+	return (output->nextPacket.get());
+}
+
+void dv::Module::outputCommit(std::string_view outputName) {
+	auto output = getModuleOutput(std::string(outputName));
+	if (output == nullptr) {
+		// Not found.
+		auto msg = boost::format("Output with name '%s' doesn't exist.") % outputName;
+		throw std::out_of_range(msg.str());
+	}
+
+	if (!output->nextPacket) {
+		// Not previously allocated, ignore.
+		return;
+	}
+
+	{
+		std::scoped_lock lock(output->destinationsLock);
+
+		for (auto &conn : output->destinations) {
+			auto refInc = output->nextPacket;
+			conn.queue->put(refInc.detach());
+		}
+	}
+
+	output->nextPacket.reset();
+}
+
+const dv::Types::TypedObject *dv::Module::inputGet(std::string_view inputName) {
+}
+
+void dv::Module::inputRefInc(std::string_view inputName, const dv::Types::TypedObject *data) {
+}
+
+void dv::Module::inputRefDec(std::string_view inputName, const dv::Types::TypedObject *data) {
+}
+
 void dv::Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
