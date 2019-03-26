@@ -100,14 +100,13 @@ private:
 	std::atomic_bool running;
 	std::atomic_uint32_t configUpdate;
 	dv::LogBlock logger;
-	dv::MainData *mainData;
 	std::unordered_map<std::string, ModuleInput> inputs;
 	std::unordered_map<std::string, ModuleOutput> outputs;
 	dv::Config::Node moduleNode; // C++ convenience variant.
 	dvModuleDataS data;
 
 public:
-	Module(std::string_view _name, std::string_view _library, dv::MainData *_mainData);
+	Module(std::string_view _name, std::string_view _library);
 	~Module();
 
 	dv::Config::Node getConfigNode();
@@ -124,6 +123,7 @@ private:
 	void StaticInit();
 
 	ModuleOutput *getModuleOutput(const std::string &outputName);
+	ModuleInput *getModuleInput(const std::string &outputName);
 
 	static void connectToModuleOutput(ModuleOutput *output, OutgoingConnection connection);
 	static void disconnectFromModuleOutput(ModuleOutput *output, OutgoingConnection connection);

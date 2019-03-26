@@ -10,12 +10,11 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
-dv::Module::Module(std::string_view _name, std::string_view _library, dv::MainData *_mainData) :
+dv::Module::Module(std::string_view _name, std::string_view _library) :
 	name(_name),
 	moduleStatus(ModuleStatus::STOPPED),
 	running(false),
 	configUpdate(0),
-	mainData(_mainData),
 	moduleNode(nullptr) {
 	// Load library to get module functions.
 	try {
@@ -77,7 +76,7 @@ dv::Module::~Module() {
 	// Cleanup configuration and types.
 	moduleNode.removeNode();
 
-	mainData->typeSystem.unregisterModuleTypes(this);
+	MainData::getGlobal().typeSystem.unregisterModuleTypes(this);
 
 	// Last, unload the shared library plugin.
 	dv::ModulesUnloadLibrary(library);
@@ -144,11 +143,11 @@ dv::Config::Node dv::Module::getConfigNode() {
 }
 
 void dv::Module::registerType(const dv::Types::Type type) {
-	mainData->typeSystem.registerModuleType(this, type);
+	MainData::getGlobal().typeSystem.registerModuleType(this, type);
 }
 
 void dv::Module::registerInput(std::string_view inputName, std::string_view typeName, bool optional) {
-	auto typeInfo = mainData->typeSystem.getTypeInfo(typeName, this);
+	auto typeInfo = MainData::getGlobal().typeSystem.getTypeInfo(typeName, this);
 
 	std::string inputNameString(inputName);
 
@@ -175,7 +174,7 @@ void dv::Module::registerInput(std::string_view inputName, std::string_view type
 }
 
 void dv::Module::registerOutput(std::string_view outputName, std::string_view typeName) {
-	auto typeInfo = mainData->typeSystem.getTypeInfo(typeName, this);
+	auto typeInfo = MainData::getGlobal().typeSystem.getTypeInfo(typeName, this);
 
 	std::string outputNameString(outputName);
 
@@ -232,14 +231,14 @@ bool dv::Module::inputConnectivityInitialize() {
 		auto outputName = inputConnComponents.str(2);
 
 		// Does the referenced module exist?
-		if (!mainData->modules.count(moduleName)) {
+		if (!MainData::getGlobal().modules.count(moduleName)) {
 			auto msg = boost::format("Input '%s': invalid connectivity attribute, module '%s' doesn't exist.")
 					   % input.first % moduleName;
 			dv::Log(dv::logLevel::ERROR, msg);
 			return (false);
 		}
 
-		auto otherModule = mainData->modules[moduleName];
+		auto otherModule = MainData::getGlobal().modules[moduleName];
 
 		// Does it have the specified output?
 		auto moduleOutput = otherModule->getModuleOutput(outputName);
@@ -277,7 +276,17 @@ dv::ModuleOutput *dv::Module::getModuleOutput(const std::string &outputName) {
 		return (&outputs.at(outputName));
 	}
 	catch (const std::out_of_range &) {
-		// Fine, not fund.
+		// Fine, not found.
+		return (nullptr);
+	}
+}
+
+dv::ModuleInput *dv::Module::getModuleInput(const std::string &outputName) {
+	try {
+		return (&inputs.at(outputName));
+	}
+	catch (const std::out_of_range &) {
+		// Fine, not found.
 		return (nullptr);
 	}
 }
@@ -373,7 +382,7 @@ void dv::Module::runStateMachine() {
 	}
 	else if (moduleStatus == ModuleStatus::STOPPED && localRunning) {
 		// Serialize module start/stop globally.
-		std::scoped_lock lock(mainData->modulesLock);
+		std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
 		// At module startup, first check that input connectivity is
 		// satisfied and hook up the input queues.
@@ -430,7 +439,7 @@ void dv::Module::runStateMachine() {
 	}
 	else if (moduleStatus == ModuleStatus::RUNNING && !localRunning) {
 		// Serialize module start/stop globally.
-		std::scoped_lock lock(mainData->modulesLock);
+		std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
 		moduleStatus = ModuleStatus::STOPPED;
 

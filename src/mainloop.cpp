@@ -47,9 +47,6 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
-// MAINLOOP DATA GLOBAL VARIABLE.
-static dv::MainData glMainData;
-
 static void mainRunner();
 
 static void mainSegfaultHandler(int signum);
@@ -59,7 +56,7 @@ static void systemRunningListener(dvConfigNode node, void *userData, enum dvConf
 
 void dv::MainRun(void) {
 	// Setup internal mainloop pointer for public support library.
-	dv::MainSDKLibInit(&glMainData);
+	dv::MainSDKLibInit(&MainData::getGlobal());
 
 // Install signal handler for global shutdown.
 #if defined(OS_WINDOWS)
@@ -179,14 +176,14 @@ void dv::MainRun(void) {
 	systemNode.create<dvCfgType::BOOL>(
 		"running", true, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Global system start/stop.");
 	systemNode.addAttributeListener(nullptr, &systemRunningListener);
-	glMainData.systemRunning.store(true);
+	MainData::getGlobal().systemRunning.store(true);
 
 	// Add each module defined in configuration to runnable modules.
 	for (const auto &child : dvCfg::GLOBAL.getNode("/mainloop/").getChildren()) {
 		addModule(child.getName(), child.get<dvCfgType::STRING>("moduleLibrary"));
 	}
 
-	while (glMainData.systemRunning.load()) {
+	while (MainData::getGlobal().systemRunning.load()) {
 		mainRunner();
 	}
 
@@ -201,15 +198,15 @@ static void mainRunner() {
 }
 
 void dv::addModule(std::string_view name, std::string_view library) {
-	std::scoped_lock lock(glMainData.modulesLock);
+	std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
-	glMainData.modules.try_emplace(std::string(name), std::make_shared<dv::Module>(name, library, &glMainData));
+	MainData::getGlobal().modules.try_emplace(std::string(name), std::make_shared<dv::Module>(name, library));
 }
 
 void dv::removeModule(std::string_view name) {
-	std::scoped_lock lock(glMainData.modulesLock);
+	std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
-	glMainData.modules.erase(std::string(name));
+	MainData::getGlobal().modules.erase(std::string(name));
 }
 
 static void mainSegfaultHandler(int signum) {
@@ -231,7 +228,7 @@ static void mainShutdownHandler(int signum) {
 	UNUSED_ARGUMENT(signum);
 
 	// Simply set all the running flags to false on SIGTERM and SIGINT (CTRL+C) for global shutdown.
-	glMainData.systemRunning.store(false);
+	dv::MainData::getGlobal().systemRunning.store(false);
 }
 
 static void systemRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -241,6 +238,6 @@ static void systemRunningListener(dvConfigNode node, void *userData, enum dvConf
 	UNUSED_ARGUMENT(changeValue);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
-		glMainData.systemRunning.store(false);
+		dv::MainData::getGlobal().systemRunning.store(false);
 	}
 }

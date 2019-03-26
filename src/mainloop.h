@@ -10,6 +10,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -25,6 +26,12 @@ public:
 	std::unordered_map<std::string, std::shared_ptr<dv::Module>> modules;
 	dv::Types::TypeSystem typeSystem;
 
+	static MainData &getGlobal() {
+		static MainData md;
+		return (md);
+	}
+
+private:
 	MainData() : systemRunning(false) {
 	}
 };
