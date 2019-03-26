@@ -64,15 +64,14 @@ struct dvType {
 #endif
 };
 
-struct dvTypedArray {
+struct dvTypedObject {
 	uint32_t typeId;
-	size_t typeSize;
-	size_t elemSize;
-	void *elem;
+	size_t objSize;
+	void *obj;
 };
 
-typedef struct dvTypedArray *dvTypedArrayPtr;
-typedef const struct dvTypedArray *dvTypedArrayConstPtr;
+typedef struct dvTypedObject *dvTypedObjectPtr;
+typedef const struct dvTypedObject *dvTypedObjectConstPtr;
 
 #ifdef __cplusplus
 }
