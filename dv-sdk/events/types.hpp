@@ -77,12 +77,15 @@ typedef const struct dvTypedObject *dvTypedObjectConstPtr;
 }
 
 static_assert(std::is_standard_layout_v<dvType>, "dvType is not standard layout");
+static_assert(std::is_standard_layout_v<dvTypedObject>, "dvTypedObject is not standard layout");
 
 #	include "dv-sdk/events/flatbuffers/flatbuffers.h"
 
 namespace dv::Types {
 
-using Type          = dvType;
+using Type        = dvType;
+using TypedObject = dvTypedObject;
+
 using PackFuncPtr   = dvTypePackFuncPtr;
 using UnpackFuncPtr = dvTypeUnpackFuncPtr;
 using ConstructPtr  = dvTypeConstructPtr;
