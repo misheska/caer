@@ -131,7 +131,7 @@ void dv::Module::StaticInit() {
 	// Call module's staticInit function to create default static config.
 	if (info->functions->moduleStaticInit != nullptr) {
 		try {
-			info->functions->moduleStaticInit(static_cast<dvConfigNode>(moduleNode));
+			info->functions->moduleStaticInit(moduleNode);
 		}
 		catch (const std::exception &ex) {
 			boost::format exMsg = boost::format("%s: moduleStaticInit() failed, error '%s'.") % name % ex.what();
@@ -143,10 +143,6 @@ void dv::Module::StaticInit() {
 	// Each module can set priority attributes for UI display. By default let's show 'running'.
 	// Called last to allow for configInit() function to create a different default first.
 	moduleConfigNode.attributeModifierPriorityAttributes("running");
-}
-
-dv::Config::Node dv::Module::getConfigNode() {
-	return (moduleNode);
 }
 
 void dv::Module::registerType(const dv::Types::Type type) {

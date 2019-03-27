@@ -133,8 +133,6 @@ public:
 	Module(std::string_view _name, std::string_view _library);
 	~Module();
 
-	dv::Config::Node getConfigNode();
-
 	void registerType(const dv::Types::Type type);
 	void registerOutput(std::string_view name, std::string_view typeName);
 	void registerInput(std::string_view name, std::string_view typeName, bool optional = false);
