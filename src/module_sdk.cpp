@@ -12,14 +12,11 @@ void dvModuleRegisterInput(dvConfigNode moduleNode, const char *name, const char
 dvTypedObjectPtr dvModuleOutputAllocate(dvModuleData moduleData, const char *name) {
 }
 
-bool dvModuleOutputCommit(dvModuleData moduleData, const char *name) {
+void dvModuleOutputCommit(dvModuleData moduleData, const char *name) {
 }
 
 dvTypedObjectConstPtr dvModuleInputGet(dvModuleData moduleData, const char *name) {
 }
 
-void dvModuleInputRefInc(dvModuleData moduleData, const char *name, dvTypedObjectConstPtr data) {
-}
-
-void dvModuleInputRefDec(dvModuleData moduleData, const char *name, dvTypedObjectConstPtr data) {
+void dvModuleInputDismiss(dvModuleData moduleData, const char *name, dvTypedObjectConstPtr data) {
 }

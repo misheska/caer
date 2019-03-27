@@ -142,8 +142,7 @@ public:
 	dv::Types::TypedObject *outputAllocate(std::string_view outputName);
 	void outputCommit(std::string_view outputName);
 	const dv::Types::TypedObject *inputGet(std::string_view inputName);
-	void inputRefInc(std::string_view inputName, const dv::Types::TypedObject *data);
-	void inputRefDec(std::string_view inputName, const dv::Types::TypedObject *data);
+	void inputDismiss(std::string_view inputName, const dv::Types::TypedObject *data);
 
 private:
 	void LoggingInit();
