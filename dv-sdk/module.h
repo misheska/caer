@@ -32,12 +32,12 @@ extern "C" {
 void dvModuleRegisterOutput(const char *name, const char *typeName);
 void dvModuleRegisterInput(const char *name, const char *typeName);
 
-dvTypedArray *dvModuleOutputAllocate(const char *name, size_t elements);
+struct dvTypedArray *dvModuleOutputAllocate(const char *name, size_t elements);
 bool dvModuleOutputCommit(const char *name);
 
-const dvTypedArray *dvModuleInputGet(const char *name);
-void dvModuleInputRefInc(const char *name, const dvTypedArray *data);
-void dvModuleInputRefDec(const char *name, const dvTypedArray *data);
+const struct dvTypedArray *dvModuleInputGet(const char *name);
+void dvModuleInputRefInc(const char *name, const struct dvTypedArray *data);
+void dvModuleInputRefDec(const char *name, const struct dvTypedArray *data);
 
 // Module-related definitions.
 enum dvModuleStatus {

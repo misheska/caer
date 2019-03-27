@@ -71,8 +71,8 @@ struct dvTypedArray {
 	void *elem;
 };
 
-bool dvTypesRegisterType(const dvType t);
-bool dvTypesUnregisterType(const dvType t);
+bool dvTypesRegisterType(const struct dvType t);
+bool dvTypesUnregisterType(const struct dvType t);
 
 #ifdef __cplusplus
 }
