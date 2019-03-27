@@ -117,7 +117,7 @@ public:
 	}
 };
 
-class Module {
+class Module : public dvModuleDataS {
 private:
 	std::string name;
 	dvModuleInfo info;
@@ -128,8 +128,6 @@ private:
 	dv::LogBlock logger;
 	std::unordered_map<std::string, ModuleInput> inputs;
 	std::unordered_map<std::string, ModuleOutput> outputs;
-	dv::Config::Node moduleNode; // C++ convenience variant.
-	dvModuleDataS data;
 
 public:
 	Module(std::string_view _name, std::string_view _library);
