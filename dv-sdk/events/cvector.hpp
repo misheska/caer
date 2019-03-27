@@ -361,68 +361,34 @@ public:
 		reallocateMemory(curr_size);
 	}
 
-	reference operator[](int32_t index) {
+	template<typename INT> reference operator[](INT index) {
 		return (at(index));
 	}
 
-	const_reference operator[](int32_t index) const {
+	template<typename INT> const_reference operator[](INT index) const {
 		return (at(index));
 	}
 
-	reference operator[](int64_t index) {
-		return (at(index));
+	template<typename INT> reference at(INT index) {
+		static_assert(std::is_integral_v<INT>, "CVector subscript operator index must be an integer.");
+
+		if constexpr (std::is_unsigned_v<INT>) {
+			return (data_ptr[getIndex(static_cast<size_type>(index))]);
+		}
+		else {
+			return (data_ptr[getIndex(static_cast<difference_type>(index))]);
+		}
 	}
 
-	const_reference operator[](int64_t index) const {
-		return (at(index));
-	}
+	template<typename INT> const_reference at(INT index) const {
+		static_assert(std::is_integral_v<INT>, "CVector subscript operator index must be an integer.");
 
-	reference operator[](uint32_t index) {
-		return (at(index));
-	}
-
-	const_reference operator[](uint32_t index) const {
-		return (at(index));
-	}
-
-	reference operator[](uint64_t index) {
-		return (at(index));
-	}
-
-	const_reference operator[](uint64_t index) const {
-		return (at(index));
-	}
-
-	reference at(int32_t index) {
-		return (data_ptr[getIndex(static_cast<difference_type>(index))]);
-	}
-
-	const_reference at(int32_t index) const {
-		return (data_ptr[getIndex(static_cast<difference_type>(index))]);
-	}
-
-	reference at(int64_t index) {
-		return (data_ptr[getIndex(static_cast<difference_type>(index))]);
-	}
-
-	const_reference at(int64_t index) const {
-		return (data_ptr[getIndex(static_cast<difference_type>(index))]);
-	}
-
-	reference at(uint32_t index) {
-		return (data_ptr[getIndex(static_cast<size_type>(index))]);
-	}
-
-	const_reference at(uint32_t index) const {
-		return (data_ptr[getIndex(static_cast<size_type>(index))]);
-	}
-
-	reference at(uint64_t index) {
-		return (data_ptr[getIndex(static_cast<size_type>(index))]);
-	}
-
-	const_reference at(uint64_t index) const {
-		return (data_ptr[getIndex(static_cast<size_type>(index))]);
+		if constexpr (std::is_unsigned_v<INT>) {
+			return (data_ptr[getIndex(static_cast<size_type>(index))]);
+		}
+		else {
+			return (data_ptr[getIndex(static_cast<difference_type>(index))]);
+		}
 	}
 
 	explicit operator std::vector<value_type>() const {
