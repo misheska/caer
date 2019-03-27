@@ -13,6 +13,8 @@
 #include <atomic>
 #include <boost/intrusive_ptr.hpp>
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
+#include <condition_variable>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -65,6 +67,7 @@ public:
 	dv::Types::Type type;
 	bool optional;
 	IncomingConnection source;
+	std::vector<boost::intrusive_ptr<IntrusiveTypedObject>> inUsePackets;
 
 	ModuleInput(Module *parent, const dv::Types::Type &t, bool opt) :
 		relatedModule(parent),
@@ -120,6 +123,10 @@ private:
 	// I/O connectivity.
 	std::unordered_map<std::string, ModuleInput> inputs;
 	std::unordered_map<std::string, ModuleOutput> outputs;
+	// Input data availability.
+	std::mutex dataLock;
+	std::condition_variable dataCond;
+	int32_t dataAvailable;
 
 public:
 	Module(std::string_view _name, std::string_view _library);

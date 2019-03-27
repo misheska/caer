@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <boost/format.hpp>
+#include <chrono>
 #include <regex>
 
 namespace dvCfg  = dv::Config;
@@ -14,7 +15,8 @@ dv::Module::Module(std::string_view _name, std::string_view _library) :
 	name(_name),
 	moduleStatus(ModuleStatus::STOPPED),
 	running(false),
-	configUpdate(0) {
+	configUpdate(false),
+	dataAvailable(0) {
 	// Load library to get module functions.
 	try {
 		std::tie(library, info) = dv::ModulesLoadLibrary(_library);
@@ -331,6 +333,23 @@ void dv::Module::inputConnectivityDestroy() {
 
 		// Dissolve bond.
 		input.second.source.linkedOutput = nullptr;
+
+		// Empty queue of any remaining data elements.
+		{
+			std::scoped_lock lock(dataLock);
+
+			while (!input.second.source.queue->empty()) {
+				auto dataPtr = input.second.source.queue->get();
+
+				// Ensure refcount is decremented properly.
+				boost::intrusive_ptr<IntrusiveTypedObject> packet(dataPtr, false);
+
+				dataAvailable--;
+			}
+		}
+
+		// Empty per-input tracker of live memory of remaining data.
+		input.second.inUsePackets.clear();
 	}
 }
 
@@ -378,6 +397,15 @@ void dv::Module::runStateMachine() {
 					moduleConfigNode.put<dvCfgType::BOOL>("running", false);
 					return;
 				}
+			}
+		}
+
+		// Only run if there is data. On timeout with no data, do nothing.
+		{
+			std::unique_lock lock(dataLock);
+
+			if (!dataCond.wait_for(lock, std::chrono::seconds(1), [this]() { return (dataAvailable <= 0); })) {
+				return;
 			}
 		}
 
@@ -511,9 +539,27 @@ void dv::Module::outputCommit(std::string_view outputName) {
 	{
 		std::scoped_lock lock(output->destinationsLock);
 
-		for (auto &conn : output->destinations) {
+		for (auto &dest : output->destinations) {
+			// Send new data to downstream module, increasing its reference
+			// count to share ownership amongst the downstream modules.
 			auto refInc = output->nextPacket;
-			conn.queue->put(refInc.detach());
+
+			try {
+				dest.queue->put(refInc.get());
+				refInc.detach();
+			}
+			catch (const std::out_of_range &) {
+				// TODO: notify user somehow, statistics?
+				continue;
+			}
+
+			// Notify downstream module about new data being available.
+			{
+				std::scoped_lock lock2(dest.linkedInput->relatedModule->dataLock);
+				dest.linkedInput->relatedModule->dataAvailable++;
+			}
+
+			dest.linkedInput->relatedModule->dataCond.notify_all();
 		}
 	}
 
@@ -521,12 +567,48 @@ void dv::Module::outputCommit(std::string_view outputName) {
 }
 
 const dv::Types::TypedObject *dv::Module::inputGet(std::string_view inputName) {
+	auto input = getModuleInput(std::string(inputName));
+	if (input == nullptr) {
+		// Not found.
+		auto msg = boost::format("Input with name '%s' doesn't exist.") % inputName;
+		throw std::out_of_range(msg.str());
+	}
+
+	IntrusiveTypedObject *dataPtr = nullptr;
+
+	try {
+		dataPtr = input->source.queue->get();
+	}
+	catch (const std::out_of_range &) {
+		// Empty queue, no data, return NULL.
+		return (nullptr);
+	}
+
+	{
+		std::scoped_lock lock(dataLock);
+		dataAvailable--;
+	}
+
+	boost::intrusive_ptr<IntrusiveTypedObject> nextPacket(dataPtr, false);
+
+	input->inUsePackets.push_back(nextPacket);
+
+	return (nextPacket.get());
 }
 
-void dv::Module::inputRefInc(std::string_view inputName, const dv::Types::TypedObject *data) {
-}
+void dv::Module::inputDismiss(std::string_view inputName, const dv::Types::TypedObject *data) {
+	auto input = getModuleInput(std::string(inputName));
+	if (input == nullptr) {
+		// Not found.
+		auto msg = boost::format("Input with name '%s' doesn't exist.") % inputName;
+		throw std::out_of_range(msg.str());
+	}
 
-void dv::Module::inputRefDec(std::string_view inputName, const dv::Types::TypedObject *data) {
+	auto pos = std::find(input->inUsePackets.begin(), input->inUsePackets.end(), data);
+
+	if (pos != input->inUsePackets.end()) {
+		input->inUsePackets.erase(pos);
+	}
 }
 
 void dv::Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
