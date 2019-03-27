@@ -83,6 +83,11 @@ static_assert(std::is_standard_layout_v<dvType>, "dvType is not standard layout"
 
 namespace dv::Types {
 
+// Specialized, internal modules use only!
+// Must be part of public API for linking reasons.
+class TypeSystem;
+const TypeSystem *getTypeSystem();
+
 using Type          = dvType;
 using PackFuncPtr   = dvTypePackFuncPtr;
 using UnpackFuncPtr = dvTypeUnpackFuncPtr;

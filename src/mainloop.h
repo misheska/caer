@@ -194,6 +194,4 @@ void dvMainloopRun(void);
  */
 void dvMainloopSDKLibInit(MainloopData *setMainloopPtr);
 
-const dv::Types::TypeSystem &getTypeSystem();
-
 #endif /* MAINLOOP_H_ */

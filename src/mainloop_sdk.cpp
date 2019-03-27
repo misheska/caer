@@ -236,3 +236,11 @@ bool dvTypesUnregisterType(const dvType t) {
 
 	return (true);
 }
+
+namespace dv::Types {
+
+const dv::Types::TypeSystem *getTypeSystem() {
+	return (&glMainloopDataPtr->typeSystem);
+}
+
+} // namespace dv::Types

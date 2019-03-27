@@ -2143,7 +2143,3 @@ static void dvUpdateAvailableDevices() {
 		}
 	}
 }
-
-const dv::Types::TypeSystem &getTypeSystem() {
-	return (glMainloopData.typeSystem);
-}
