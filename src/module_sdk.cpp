@@ -9,14 +9,14 @@ void dvModuleRegisterOutput(dvConfigNode moduleNode, const char *name, const cha
 void dvModuleRegisterInput(dvConfigNode moduleNode, const char *name, const char *typeName, bool optional) {
 }
 
-dvTypedObjectPtr dvModuleOutputAllocate(dvModuleData moduleData, const char *name) {
+struct dvTypedObject *dvModuleOutputAllocate(dvModuleData moduleData, const char *name) {
 }
 
 void dvModuleOutputCommit(dvModuleData moduleData, const char *name) {
 }
 
-dvTypedObjectConstPtr dvModuleInputGet(dvModuleData moduleData, const char *name) {
+const struct dvTypedObject *dvModuleInputGet(dvModuleData moduleData, const char *name) {
 }
 
-void dvModuleInputDismiss(dvModuleData moduleData, const char *name, dvTypedObjectConstPtr data) {
+void dvModuleInputDismiss(dvModuleData moduleData, const char *name, const struct dvTypedObject *data) {
 }

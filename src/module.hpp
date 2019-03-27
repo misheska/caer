@@ -25,22 +25,10 @@ namespace dv {
 class ModuleInput;
 class ModuleOutput;
 
-class IntrusiveTypedObject : public dvTypedObject,
+class IntrusiveTypedObject : public dv::Types::TypedObject,
 							 public boost::intrusive_ref_counter<IntrusiveTypedObject, boost::thread_safe_counter> {
 public:
-	IntrusiveTypedObject(const dv::Types::Type &t) {
-		typeId  = t.id;
-		objSize = t.sizeOfType;
-		obj     = (*t.construct)(objSize);
-
-		if (obj == nullptr) {
-			throw std::bad_alloc();
-		}
-	}
-
-	~IntrusiveTypedObject() {
-		const dv::Types::Type t = MainData::getGlobal().typeSystem.getTypeInfo(typeId);
-		(*t.destruct)(obj);
+	IntrusiveTypedObject(const dv::Types::Type &t) : dv::Types::TypedObject(t) {
 	}
 };
 

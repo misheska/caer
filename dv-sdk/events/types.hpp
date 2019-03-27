@@ -64,14 +64,39 @@ struct dvType {
 #endif
 };
 
+const struct dvType dvTypeSystemGetInfoByIdentifier(const char *tIdentifier);
+const struct dvType dvTypeSystemGetInfoByID(uint32_t tId);
+
 struct dvTypedObject {
 	uint32_t typeId;
 	size_t objSize;
 	void *obj;
-};
 
-typedef struct dvTypedObject *dvTypedObjectPtr;
-typedef const struct dvTypedObject *dvTypedObjectConstPtr;
+#ifdef __cplusplus
+	dvTypedObject(const dvType &t) {
+		typeId  = t.id;
+		objSize = t.sizeOfType;
+		obj     = (*t.construct)(objSize);
+
+		if (obj == nullptr) {
+			throw std::bad_alloc();
+		}
+	}
+
+	~dvTypedObject() noexcept {
+		const dvType t = dvTypeSystemGetInfoByID(typeId);
+		(*t.destruct)(obj);
+	}
+
+	bool operator==(const dvTypedObject &rhs) const noexcept {
+		return ((typeId == rhs.typeId) && (objSize == rhs.objSize) && (obj == rhs.obj));
+	}
+
+	bool operator!=(const dvTypedObject &rhs) const noexcept {
+		return (!operator==(rhs));
+	}
+#endif
+};
 
 #ifdef __cplusplus
 }
