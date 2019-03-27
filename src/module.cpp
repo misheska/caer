@@ -364,8 +364,8 @@ void dv::Module::runStateMachine() {
 	bool localRunning = running.load(std::memory_order_relaxed);
 
 	if (moduleStatus == ModuleStatus::RUNNING && localRunning) {
-		if (configUpdate.load(std::memory_order_relaxed) != 0) {
-			configUpdate.store(0);
+		if (configUpdate.load(std::memory_order_relaxed)) {
+			configUpdate.store(false);
 
 			if (info->functions->moduleConfig != nullptr) {
 				// Call config function. 'configUpdate' variable reset is done above.
@@ -425,7 +425,7 @@ void dv::Module::runStateMachine() {
 		// and implies a full configuration update. This avoids stale state
 		// forcing an update and/or reset right away in the first run of
 		// the module, which is unneeded and wasteful.
-		configUpdate.store(0);
+		configUpdate.store(false);
 
 		if (info->functions->moduleInit != nullptr) {
 			try {
@@ -558,10 +558,10 @@ void dv::Module::moduleConfigUpdateListener(dvConfigNode node, void *userData, e
 	UNUSED_ARGUMENT(changeType);
 	UNUSED_ARGUMENT(changeValue);
 
-	auto data = static_cast<std::atomic_uint32_t *>(userData);
+	auto data = static_cast<std::atomic_bool *>(userData);
 
 	// Simply set the config update flag to 1 on any attribute change.
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
-		data->store(1);
+		data->store(true);
 	}
 }

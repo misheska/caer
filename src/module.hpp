@@ -107,13 +107,17 @@ public:
 
 class Module : public dvModuleDataS {
 private:
+	// Module info.
 	std::string name;
 	dvModuleInfo info;
 	dv::ModuleLibrary library;
+	// Run status.
 	ModuleStatus moduleStatus;
 	std::atomic_bool running;
-	std::atomic_uint32_t configUpdate;
+	std::atomic_bool configUpdate;
+	// Logging.
 	dv::LogBlock logger;
+	// I/O connectivity.
 	std::unordered_map<std::string, ModuleInput> inputs;
 	std::unordered_map<std::string, ModuleOutput> outputs;
 
