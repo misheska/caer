@@ -24,7 +24,7 @@ private:
 public:
 	TypeSystem();
 
-	void registerModuleType(const Module *m, const Type t);
+	void registerModuleType(const Module *m, const Type &t);
 	void unregisterModuleTypes(const Module *m);
 
 	const Type getTypeInfo(std::string_view tIdentifier, const Module *m = nullptr) const;

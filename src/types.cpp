@@ -37,7 +37,7 @@ TypeSystem::TypeSystem() {
 	makeTypeNode(frm8Type, systemTypesNode);
 }
 
-void TypeSystem::registerModuleType(const Module *m, const Type t) {
+void TypeSystem::registerModuleType(const Module *m, const Type &t) {
 	std::scoped_lock lock(typesLock);
 
 	// Register user type. Rules:
