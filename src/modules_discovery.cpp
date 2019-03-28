@@ -202,8 +202,6 @@ void dv::ModulesUpdateInformation() {
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module version.");
 		moduleNode.create<dvCfgType::STRING>("description", mLoad.second->description, {1, 8192},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module description.");
-		moduleNode.create<dvCfgType::STRING>("type", dvModuleTypeToString(mLoad.second->type), {1, 64},
-			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module type.");
 		moduleNode.create<dvCfgType::STRING>("path", iter->string(), {1, PATH_MAX},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module file full path.");
 
