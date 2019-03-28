@@ -401,7 +401,8 @@ void dv::Module::runStateMachine() {
 		}
 
 		// Only run if there is data. On timeout with no data, do nothing.
-		{
+		// If is an input generation module (no inputs defined at all), always run.
+		if (inputs.size() > 0) {
 			std::unique_lock lock(dataLock);
 
 			if (!dataCond.wait_for(lock, std::chrono::seconds(1), [this]() { return (dataAvailable > 0); })) {
