@@ -2,6 +2,8 @@
 
 #include "dv-sdk/cross/portable_io.h"
 
+#include "main.hpp"
+
 #include <algorithm>
 #include <boost/format.hpp>
 #include <chrono>

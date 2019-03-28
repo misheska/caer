@@ -6,9 +6,7 @@
 #include "dv-sdk/module.h"
 
 #include "log.hpp"
-#include "mainloop.h"
 #include "modules_discovery.hpp"
-#include "types.hpp"
 
 #include <atomic>
 #include <boost/intrusive_ptr.hpp>
@@ -25,6 +23,7 @@
 
 namespace dv {
 
+class Module;
 class ModuleInput;
 class ModuleOutput;
 
@@ -136,8 +135,6 @@ public:
 	void registerOutput(std::string_view name, std::string_view typeName);
 	void registerInput(std::string_view name, std::string_view typeName, bool optional = false);
 
-	void runStateMachine();
-
 	dv::Types::TypedObject *outputAllocate(std::string_view outputName);
 	void outputCommit(std::string_view outputName);
 	const dv::Types::TypedObject *inputGet(std::string_view inputName);
@@ -158,6 +155,7 @@ private:
 	void inputConnectivityDestroy();
 
 	void runThread();
+	void runStateMachine();
 	void handleModuleInitFailure();
 
 	static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
