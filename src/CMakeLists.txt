@@ -1,9 +1,7 @@
 # SDK support library.
 SET(LIBDVSDK_SRC_FILES
 	module_sdk.cpp
-	mainloop_sdk.cpp
 	portability_sdk.cpp
-	types.cpp
 	config_tree/tree.cpp
 	config_tree/helper.cpp
 	config_tree/node.cpp)
@@ -38,7 +36,7 @@ SET(DV_SRC_FILES
 	devices_discovery.cpp
 	modules_discovery.cpp
 	module.cpp
-	mainloop.cpp
+	types.cpp
 	service.cpp
 	main.cpp)
 
