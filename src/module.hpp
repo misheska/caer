@@ -17,6 +17,7 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 
@@ -35,12 +36,6 @@ public:
 };
 
 using ModuleBuffer = libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *>;
-
-// Module-related definitions.
-enum class ModuleStatus {
-	STOPPED = 0,
-	RUNNING = 1,
-};
 
 class IncomingConnection {
 public:
@@ -115,8 +110,10 @@ private:
 	dvModuleInfo info;
 	dv::ModuleLibrary library;
 	// Run status.
-	ModuleStatus moduleStatus;
-	std::atomic_bool running;
+	std::mutex runLock;
+	std::condition_variable runCond;
+	bool running;
+	bool isRunning;
 	std::atomic_bool configUpdate;
 	// Logging.
 	dv::LogBlock logger;
@@ -127,6 +124,9 @@ private:
 	std::mutex dataLock;
 	std::condition_variable dataCond;
 	int32_t dataAvailable;
+	// Module thread management.
+	std::thread thread;
+	std::atomic_bool threadAlive;
 
 public:
 	Module(std::string_view _name, std::string_view _library);
@@ -157,6 +157,7 @@ private:
 	bool inputConnectivityInitialize();
 	void inputConnectivityDestroy();
 
+	void runThread();
 	void handleModuleInitFailure();
 
 	static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,

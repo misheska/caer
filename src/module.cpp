@@ -13,10 +13,11 @@ using dvCfgFlags = dvCfg::AttributeFlags;
 
 dv::Module::Module(std::string_view _name, std::string_view _library) :
 	name(_name),
-	moduleStatus(ModuleStatus::STOPPED),
 	running(false),
+	isRunning(false),
 	configUpdate(false),
-	dataAvailable(0) {
+	dataAvailable(0),
+	threadAlive(false) {
 	// Load library to get module functions.
 	try {
 		std::tie(library, info) = dv::ModulesLoadLibrary(_library);
@@ -47,17 +48,25 @@ dv::Module::Module(std::string_view _name, std::string_view _library) :
 
 	// Ensure static configuration is created on each module initialization.
 	StaticInit();
+
+	// Start module thread.
+	threadAlive.store(true);
+	thread = std::thread(&dv::Module::runThread, this);
 }
 
 dv::Module::~Module() {
-	auto moduleConfigNode = dvCfg::Node(moduleNode);
-
 	// Check module is properly shut down, which takes care of
 	// cleaning up all input connections. This should always be
 	// the case as it's a requirement for calling removeModule().
-	if (moduleConfigNode.get<dvCfgType::BOOL>("isRunning")) {
+	if (isRunning) {
 		dv::Log(dv::logLevel::CRITICAL, "Destroying a running module. This should never happen!");
 	}
+
+	// Stop module thread and wait for it to exit.
+	threadAlive.store(false);
+	runCond.notify_all();
+
+	thread.join();
 
 	// Now take care of cleaning up all output connections.
 	for (auto &output : outputs) {
@@ -77,7 +86,7 @@ dv::Module::~Module() {
 	}
 
 	// Cleanup configuration and types.
-	moduleConfigNode.removeNode();
+	dvCfg::Node(moduleNode).removeNode();
 
 	MainData::getGlobal().typeSystem.unregisterModuleTypes(this);
 
@@ -118,11 +127,13 @@ void dv::Module::RunningInit() {
 
 	bool runModule = moduleConfigNode.get<dvCfgType::BOOL>("autoStartup");
 
+	running = runModule;
 	moduleConfigNode.put<dvCfgType::BOOL>("running", runModule);
+
+	isRunning = false;
 	moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
 
-	running.store(runModule);
-	moduleConfigNode.addAttributeListener(&running, &moduleShutdownListener);
+	moduleConfigNode.addAttributeListener(this, &moduleShutdownListener);
 }
 
 void dv::Module::StaticInit() {
@@ -375,14 +386,35 @@ void dv::Module::handleModuleInitFailure() {
 	}
 }
 
-void dv::Module::runStateMachine() {
+void dv::Module::runThread() {
+	// Set thread-local logger once at startup.
 	dv::LoggerSet(&logger);
 
+	while (threadAlive.load(std::memory_order_relaxed)) {
+		runStateMachine();
+	}
+}
+
+void dv::Module::runStateMachine() {
 	auto moduleConfigNode = dvCfg::Node(moduleNode);
 
-	bool localRunning = running.load(std::memory_order_relaxed);
+	bool shouldRun = false;
 
-	if (moduleStatus == ModuleStatus::RUNNING && localRunning) {
+	{
+		std::unique_lock lock(runLock);
+
+		runCond.wait(lock, [this]() {
+			if (!threadAlive.load(std::memory_order_relaxed)) {
+				return (true); // Stop waiting on thread exit.
+			}
+
+			return (running || isRunning);
+		});
+
+		shouldRun = running;
+	}
+
+	if (isRunning && shouldRun) {
 		if (configUpdate.load(std::memory_order_relaxed)) {
 			configUpdate.store(false);
 
@@ -422,7 +454,7 @@ void dv::Module::runStateMachine() {
 			}
 		}
 	}
-	else if (moduleStatus == ModuleStatus::STOPPED && localRunning) {
+	else if (!isRunning && shouldRun) {
 		// Serialize module start/stop globally.
 		std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
@@ -476,14 +508,12 @@ void dv::Module::runStateMachine() {
 			}
 		}
 
-		moduleStatus = ModuleStatus::RUNNING;
+		isRunning = true;
 		moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", true);
 	}
-	else if (moduleStatus == ModuleStatus::RUNNING && !localRunning) {
+	else if (isRunning && !shouldRun) {
 		// Serialize module start/stop globally.
 		std::scoped_lock lock(MainData::getGlobal().modulesLock);
-
-		moduleStatus = ModuleStatus::STOPPED;
 
 		if (info->functions->moduleExit != nullptr) {
 			try {
@@ -503,6 +533,7 @@ void dv::Module::runStateMachine() {
 		// Disconnect from other modules.
 		inputConnectivityDestroy();
 
+		isRunning = false;
 		moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
 	}
 }
@@ -616,10 +647,16 @@ void dv::Module::moduleShutdownListener(dvConfigNode node, void *userData, enum 
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	auto data = static_cast<std::atomic_bool *>(userData);
+	auto module = static_cast<dv::Module *>(userData);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
-		data->store(changeValue.boolean);
+		{
+			std::scoped_lock lock(module->runLock);
+
+			module->running = changeValue.boolean;
+		}
+
+		module->runCond.notify_all();
 	}
 }
 
@@ -627,10 +664,10 @@ void dv::Module::moduleLogLevelListener(dvConfigNode node, void *userData, enum 
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	auto data = static_cast<std::atomic_int32_t *>(userData);
+	auto logLevel = static_cast<std::atomic_int32_t *>(userData);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
-		data->store(changeValue.iint);
+		logLevel->store(changeValue.iint);
 	}
 }
 
@@ -641,10 +678,10 @@ void dv::Module::moduleConfigUpdateListener(dvConfigNode node, void *userData, e
 	UNUSED_ARGUMENT(changeType);
 	UNUSED_ARGUMENT(changeValue);
 
-	auto data = static_cast<std::atomic_bool *>(userData);
+	auto configUpdate = static_cast<std::atomic_bool *>(userData);
 
 	// Simply set the config update flag to 1 on any attribute change.
 	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
-		data->store(true);
+		configUpdate->store(true);
 	}
 }
