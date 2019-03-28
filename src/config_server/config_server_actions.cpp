@@ -2,7 +2,7 @@
 
 #include "dv-sdk/cross/portable_io.h"
 
-#include "../mainloop.h"
+#include "../main.hpp"
 #include "config_server_connection.h"
 #include "config_server_main.h"
 
@@ -623,7 +623,7 @@ void dvConfigServerHandleRequest(
 			auto modulesSysNode = configStore.getNode("/system/modules/");
 			auto modulesList    = modulesSysNode.getChildNames();
 
-			if (!findBool(modulesList.begin(), modulesList.end(), moduleLibrary)) {
+			if (!dv::findBool(modulesList.begin(), modulesList.end(), moduleLibrary)) {
 				sendError("Library does not exist.", client, receivedID);
 				break;
 			}
