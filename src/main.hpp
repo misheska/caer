@@ -1,19 +1,14 @@
-#ifndef MAINLOOP_H_
-#define MAINLOOP_H_
-
-#include "dv-sdk/mainloop.h"
+#ifndef MAIN_HPP_
+#define MAIN_HPP_
 
 #include "types.hpp"
 
 #include <atomic>
-#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <utility>
-#include <vector>
 
 namespace dv {
 
@@ -36,11 +31,6 @@ private:
 	}
 };
 
-/*
- * Run application (data processing).
- */
-void MainRun(void);
-
 /**
  * Adds a new module to the system, initializing it and
  * its static configuration.
@@ -49,6 +39,7 @@ void MainRun(void);
  * @param library shared library plugin to load.
  */
 void addModule(std::string_view name, std::string_view library);
+
 /**
  * Removes a module from the system, fully erasing its configuration.
  * You must ensure the module was stopped first!
@@ -60,8 +51,8 @@ void removeModule(std::string_view name);
 /**
  * Only for internal usage! Do not reset the main data pointer!
  */
-void MainSDKLibInit(MainData *setMainDataPtr);
+void SDKLibInit(MainData *setMainDataPtr);
 
 } // namespace dv
 
-#endif /* MAINLOOP_H_ */
+#endif /* MAIN_HPP_ */
