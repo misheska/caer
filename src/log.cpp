@@ -5,7 +5,6 @@
 #include <boost/filesystem.hpp>
 #include <fcntl.h>
 #include <stdarg.h>
-#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -17,9 +16,9 @@ using dvCfgFlags = dvCfg::AttributeFlags;
 static int DV_LOG_FILE_FD  = -1;
 static dvCfg::Node logNode = nullptr;
 
+static void logMessagesToConfigTree(const char *msg, size_t msgLength);
 static void logShutDownWriteBack(void);
 static void logConfigLogger(const char *msg, bool fatal);
-static void logMessagesToConfigTree(const char *msg, size_t msgLength);
 static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
@@ -120,54 +119,16 @@ static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAtt
 	}
 }
 
-static thread_local dv::LogBlock *logger = nullptr;
-
-void dv::LoggerSet(dv::LogBlock *_logger) {
-	logger = _logger;
-}
-
-static inline void dvLogVA(enum caer_log_level logLevel, const char *format, va_list argumentList) {
-	auto localLogger = logger;
-
-	if (localLogger == nullptr) {
-		// System default logger.
-		caerLogVAFull(caerLogLevelGet(), logLevel, "DV-Runtime", format, argumentList);
-	}
-	else {
-		// Specialized logger.
-		auto localLogLevel = localLogger->logLevel.load(std::memory_order_relaxed);
-
-		// Only log messages above the specified severity level.
-		if (logLevel > localLogLevel) {
-			return;
-		}
-
-		caerLogVAFull(static_cast<enum caer_log_level>(localLogLevel), logLevel, localLogger->logPrefix.c_str(), format,
-			argumentList);
-	}
-}
-
-void dvLog(enum caer_log_level logLevel, const char *format, ...) {
-	va_list argumentList;
-	va_start(argumentList, format);
-	dvLogVA(logLevel, format, argumentList);
-	va_end(argumentList);
-}
-
 void dv::Log(libcaer::log::logLevel logLevel, const char *format, ...) {
 	va_list argumentList;
 	va_start(argumentList, format);
-	dvLogVA(static_cast<enum caer_log_level>(logLevel), format, argumentList);
+	dv::LoggerVA(static_cast<enum caer_log_level>(logLevel), format, argumentList);
 	va_end(argumentList);
 }
 
 void dv::Log(libcaer::log::logLevel logLevel, const std::string format, ...) {
 	va_list argumentList;
 	va_start(argumentList, format);
-	dvLogVA(static_cast<enum caer_log_level>(logLevel), format.c_str(), argumentList);
+	dv::LoggerVA(static_cast<enum caer_log_level>(logLevel), format.c_str(), argumentList);
 	va_end(argumentList);
-}
-
-void dv::Log(libcaer::log::logLevel logLevel, const boost::format &format) {
-	dvLog(static_cast<enum caer_log_level>(logLevel), "%s", format.str().c_str());
 }

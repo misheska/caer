@@ -3,13 +3,12 @@
 
 #include "dv-sdk/utils.h"
 
-#include <boost/format.hpp>
+#include <atomic>
+#include <string>
 
 #define DV_LOG_FILE_NAME ".dv-logger.txt"
 
 namespace dv {
-
-using logLevel = libcaer::log::logLevel;
 
 struct LogBlock {
 	std::string logPrefix;
@@ -18,11 +17,13 @@ struct LogBlock {
 
 void LoggerInit(void);
 
+// Part of SDK due to dvLog() having to be part of it.
 void LoggerSet(LogBlock *logger);
+void LoggerVA(enum caer_log_level logLevel, const char *format, va_list argumentList);
 
+// Only for core use.
 void Log(logLevel logLevel, const char *format, ...);
 void Log(logLevel logLevel, const std::string format, ...);
-void Log(logLevel logLevel, const boost::format &format);
 
 } // namespace dv
 
