@@ -44,7 +44,7 @@ typedef struct dvModuleInfoS const *dvModuleInfo;
 dvModuleInfo dvModuleGetInfo(void);
 
 // Functions available for use: module connectivity.
-bool dvModuleRegisterType(dvConfigNode moduleNode, const struct dvType type);
+void dvModuleRegisterType(dvConfigNode moduleNode, const struct dvType type);
 void dvModuleRegisterOutput(dvConfigNode moduleNode, const char *name, const char *typeName);
 void dvModuleRegisterInput(dvConfigNode moduleNode, const char *name, const char *typeName, bool optional);
 
