@@ -404,7 +404,7 @@ void dv::Module::runStateMachine() {
 		{
 			std::unique_lock lock(dataLock);
 
-			if (!dataCond.wait_for(lock, std::chrono::seconds(1), [this]() { return (dataAvailable <= 0); })) {
+			if (!dataCond.wait_for(lock, std::chrono::seconds(1), [this]() { return (dataAvailable > 0); })) {
 				return;
 			}
 		}
