@@ -146,7 +146,7 @@ void dv::Module::StaticInit() {
 	// Call module's staticInit function to create default static config.
 	if (info->functions->moduleStaticInit != nullptr) {
 		try {
-			info->functions->moduleStaticInit(moduleNode);
+			info->functions->moduleStaticInit(this);
 		}
 		catch (const std::exception &ex) {
 			boost::format exMsg = boost::format("%s: moduleStaticInit() failed, error '%s'.") % name % ex.what();

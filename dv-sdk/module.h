@@ -22,7 +22,7 @@ struct dvModuleDataS {
 typedef struct dvModuleDataS *dvModuleData;
 
 struct dvModuleFunctionsS {
-	void (*const moduleStaticInit)(dvConfigNode moduleNode); // Can be NULL.
+	void (*const moduleStaticInit)(dvModuleData moduleData); // Can be NULL. ModuleState is always NULL.
 	bool (*const moduleInit)(dvModuleData moduleData);       // Can be NULL.
 	void (*const moduleRun)(dvModuleData moduleData);        // Must be defined.
 	void (*const moduleConfig)(dvModuleData moduleData);     // Can be NULL.
@@ -44,9 +44,9 @@ typedef struct dvModuleInfoS const *dvModuleInfo;
 dvModuleInfo dvModuleGetInfo(void);
 
 // Functions available for use: module connectivity.
-void dvModuleRegisterType(dvConfigNode moduleNode, const struct dvType type);
-void dvModuleRegisterOutput(dvConfigNode moduleNode, const char *name, const char *typeName);
-void dvModuleRegisterInput(dvConfigNode moduleNode, const char *name, const char *typeName, bool optional);
+void dvModuleRegisterType(dvModuleData moduleData, const struct dvType type);
+void dvModuleRegisterOutput(dvModuleData moduleData, const char *name, const char *typeName);
+void dvModuleRegisterInput(dvModuleData moduleData, const char *name, const char *typeName, bool optional);
 
 struct dvTypedObject *dvModuleOutputAllocate(dvModuleData moduleData, const char *name);
 void dvModuleOutputCommit(dvModuleData moduleData, const char *name);

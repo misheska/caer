@@ -66,48 +66,36 @@ const struct dvType dvTypeSystemGetInfoByID(uint32_t tId) {
 	}
 }
 
-void dvModuleRegisterType(dvConfigNode moduleNode, const struct dvType type) {
-	std::string moduleName(dvConfigNodeGetName(moduleNode));
+void dvModuleRegisterType(dvModuleData moduleData, const struct dvType type) {
+	auto module = static_cast<dv::Module *>(moduleData);
 
-	{
-		std::scoped_lock lock(glMainDataPtr->modulesLock);
-
-		try {
-			glMainDataPtr->modules.at(moduleName)->registerType(type);
-		}
-		catch (const std::exception &ex) {
-			dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
-		}
+	try {
+		module->registerType(type);
+	}
+	catch (const std::exception &ex) {
+		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
 	}
 }
 
-void dvModuleRegisterOutput(dvConfigNode moduleNode, const char *name, const char *typeName) {
-	std::string moduleName(dvConfigNodeGetName(moduleNode));
+void dvModuleRegisterOutput(dvModuleData moduleData, const char *name, const char *typeName) {
+	auto module = static_cast<dv::Module *>(moduleData);
 
-	{
-		std::scoped_lock lock(glMainDataPtr->modulesLock);
-
-		try {
-			glMainDataPtr->modules.at(moduleName)->registerOutput(name, typeName);
-		}
-		catch (const std::exception &ex) {
-			dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
-		}
+	try {
+		module->registerOutput(name, typeName);
+	}
+	catch (const std::exception &ex) {
+		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
 	}
 }
 
-void dvModuleRegisterInput(dvConfigNode moduleNode, const char *name, const char *typeName, bool optional) {
-	std::string moduleName(dvConfigNodeGetName(moduleNode));
+void dvModuleRegisterInput(dvModuleData moduleData, const char *name, const char *typeName, bool optional) {
+	auto module = static_cast<dv::Module *>(moduleData);
 
-	{
-		std::scoped_lock lock(glMainDataPtr->modulesLock);
-
-		try {
-			glMainDataPtr->modules.at(moduleName)->registerInput(name, typeName, optional);
-		}
-		catch (const std::exception &ex) {
-			dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
-		}
+	try {
+		module->registerInput(name, typeName, optional);
+	}
+	catch (const std::exception &ex) {
+		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
 	}
 }
 
