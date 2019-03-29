@@ -118,17 +118,3 @@ static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAtt
 		caerLog(CAER_LOG_DEBUG, "Logger", "Log-level set to %d.", changeValue.iint);
 	}
 }
-
-void dv::Log(libcaer::log::logLevel logLevel, const char *format, ...) {
-	va_list argumentList;
-	va_start(argumentList, format);
-	dv::LoggerVA(static_cast<enum caer_log_level>(logLevel), format, argumentList);
-	va_end(argumentList);
-}
-
-void dv::Log(libcaer::log::logLevel logLevel, const std::string format, ...) {
-	va_list argumentList;
-	va_start(argumentList, format);
-	dv::LoggerVA(static_cast<enum caer_log_level>(logLevel), format.c_str(), argumentList);
-	va_end(argumentList);
-}

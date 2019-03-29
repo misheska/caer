@@ -21,10 +21,6 @@ void LoggerInit(void);
 void LoggerSet(LogBlock *logger);
 void LoggerVA(enum caer_log_level logLevel, const char *format, va_list argumentList);
 
-// Only for core use.
-void Log(logLevel logLevel, const char *format, ...);
-void Log(logLevel logLevel, const std::string format, ...);
-
 } // namespace dv
 
 #endif /* LOG_HPP_ */

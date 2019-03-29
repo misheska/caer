@@ -24,11 +24,20 @@ void dvLog(enum caer_log_level logLevel, const char *format, ...) ATTRIBUTE_FORM
 
 #	include <algorithm>
 #	include <vector>
+#	include <utility>
 #	include <boost/format.hpp>
 
 namespace dv {
 
 using logLevel = libcaer::log::logLevel;
+
+template<typename... Args> static inline void Log(logLevel logLevel, const char *format, Args &&... args) {
+	dvLog(static_cast<enum caer_log_level>(logLevel), format, std::forward<Args>(args)...);
+}
+
+template<typename... Args> static inline void Log(logLevel logLevel, const std::string &format, Args &&... args) {
+	dvLog(static_cast<enum caer_log_level>(logLevel), format.c_str(), std::forward<Args>(args)...);
+}
 
 static inline void Log(logLevel logLevel, const boost::format &format) {
 	dvLog(static_cast<enum caer_log_level>(logLevel), "%s", format.str().c_str());

@@ -19,7 +19,7 @@ void dv::LoggerVA(enum caer_log_level logLevel, const char *format, va_list argu
 
 	if (localLogger == nullptr) {
 		// System default logger.
-		caerLogVAFull(caerLogLevelGet(), logLevel, "DV-Runtime", format, argumentList);
+		caerLogVA(logLevel, "DV-Runtime", format, argumentList);
 	}
 	else {
 		// Specialized logger.
