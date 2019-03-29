@@ -1,5 +1,5 @@
 SET(INC_INSTALL_DIR ${CMAKE_INSTALL_INCLUDEDIR}/dv-sdk)
 
-INSTALL(FILES utils.h buffers.h module.h module.hpp BaseModule.hpp config.hpp log.hpp DESTINATION ${INC_INSTALL_DIR})
+INSTALL(FILES utils.h module.h module.hpp BaseModule.hpp config.hpp log.hpp DESTINATION ${INC_INSTALL_DIR})
 INSTALL(DIRECTORY cross DESTINATION ${INC_INSTALL_DIR})
 INSTALL(DIRECTORY config DESTINATION ${INC_INSTALL_DIR})
