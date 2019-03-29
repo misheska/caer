@@ -4,7 +4,7 @@
 
 #include "../main.hpp"
 #include "config_server_connection.h"
-#include "config_server_main.h"
+#include "config_server_main.hpp"
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/tokenizer.hpp>

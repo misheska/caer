@@ -1,5 +1,5 @@
-#ifndef SRC_CONFIG_SERVER_CONFIG_SERVER_MAIN_H_
-#define SRC_CONFIG_SERVER_CONFIG_SERVER_MAIN_H_
+#ifndef SRC_CONFIG_SERVER_CONFIG_SERVER_MAIN_HPP_
+#define SRC_CONFIG_SERVER_CONFIG_SERVER_MAIN_HPP_
 
 #include "dv-sdk/utils.h"
 
@@ -12,4 +12,4 @@ void ConfigServerStop();
 
 } // namespace dv
 
-#endif /* SRC_CONFIG_SERVER_CONFIG_SERVER_MAIN_H_ */
+#endif /* SRC_CONFIG_SERVER_CONFIG_SERVER_MAIN_HPP_ */

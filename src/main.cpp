@@ -3,7 +3,7 @@
 #include "dv-sdk/cross/portable_io.h"
 
 #include "config.hpp"
-#include "config_server/config_server_main.h"
+#include "config_server/config_server_main.hpp"
 #include "devices_discovery.hpp"
 #include "log.hpp"
 #include "module.hpp"
