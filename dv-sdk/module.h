@@ -22,25 +22,34 @@ struct dvModuleDataS {
 typedef struct dvModuleDataS *dvModuleData;
 
 struct dvModuleFunctionsS {
-	void (*const moduleStaticInit)(dvModuleData moduleData); // Can be NULL. ModuleState is always NULL.
-	bool (*const moduleInit)(dvModuleData moduleData);       // Can be NULL.
-	void (*const moduleRun)(dvModuleData moduleData);        // Must be defined.
-	void (*const moduleConfig)(dvModuleData moduleData);     // Can be NULL.
-	void (*const moduleExit)(dvModuleData moduleData);       // Can be NULL.
+	void (*const moduleStaticInit)(
+		dvModuleData moduleData); // Can be NULL. ModuleState is always NULL, do not dereference/use.
+	bool (*const moduleInit)(dvModuleData moduleData);   // Can be NULL.
+	void (*const moduleRun)(dvModuleData moduleData);    // Must be defined.
+	void (*const moduleConfig)(dvModuleData moduleData); // Can be NULL.
+	void (*const moduleExit)(dvModuleData moduleData);   // Can be NULL.
 };
 
 typedef struct dvModuleFunctionsS const *dvModuleFunctions;
 
 struct dvModuleInfoS {
+	// Module version (informative).
 	int32_t version;
+	// Module description (informative).
 	const char *description;
+	// Size in bytes of module state.
 	size_t memSize;
+	// Functions to execute to run module.
 	dvModuleFunctions functions;
 };
 
 typedef struct dvModuleInfoS const *dvModuleInfo;
 
-// Function to be implemented by modules:
+/**
+ * Function to be implemented by modules.
+ * Must return a dvModuleInfoS structure pointer,
+ * with all the information from your module.
+ */
 dvModuleInfo dvModuleGetInfo(void);
 
 // Functions available for use: module connectivity.
