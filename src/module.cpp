@@ -334,18 +334,15 @@ void dv::Module::disconnectFromModuleOutput(ModuleOutput *output, OutgoingConnec
 void dv::Module::inputConnectivityDestroy() {
 	// Cleanup inputs, disconnect from all of them.
 	for (auto &input : inputs) {
-		if (input.second.source.linkedOutput == nullptr) {
-			// Not connected to another output, skip.
-			continue;
+		if (input.second.source.linkedOutput != nullptr) {
+			// Remove the connection from the output.
+			OutgoingConnection connection{&input.second, input.second.source.queue};
+
+			disconnectFromModuleOutput(input.second.source.linkedOutput, connection);
+
+			// Dissolve bond.
+			input.second.source.linkedOutput = nullptr;
 		}
-
-		// Remove the connection from the output.
-		OutgoingConnection connection{&input.second, input.second.source.queue};
-
-		disconnectFromModuleOutput(input.second.source.linkedOutput, connection);
-
-		// Dissolve bond.
-		input.second.source.linkedOutput = nullptr;
 
 		// Empty queue of any remaining data elements.
 		{
