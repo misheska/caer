@@ -17,7 +17,6 @@
 #include <csignal>
 #include <iostream>
 #include <mutex>
-#include <regex>
 
 // If Boost version recent enough, enable better stack traces on segfault.
 #include <boost/version.hpp>
@@ -195,6 +194,11 @@ static void mainRunner() {
 	dv::ConfigServerStart();
 
 	// Main thread now works as updater (sleeps most of the time).
+	while (dv::MainData::getGlobal().systemRunning.load(std::memory_order_relaxed)) {
+		dvCfg::GLOBAL.attributeUpdaterRun();
+
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
 
 	// After shutting down the updater, also shutdown the config server thread.
 	dv::ConfigServerStop();

@@ -4,7 +4,6 @@
 #include "dv-sdk/cross/portable_threads.h"
 
 #include "config_server_main.hpp"
-#include "config_updater.h"
 
 #include <algorithm>
 #include <boost/version.hpp>
