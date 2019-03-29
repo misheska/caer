@@ -1,7 +1,8 @@
 # SDK support library.
 SET(LIBDVSDK_SRC_FILES
-	module_sdk.cpp
-	portability_sdk.cpp
+	sdk_base.cpp
+	sdk_module.cpp
+	sdk_cross.cpp
 	config_tree/tree.cpp
 	config_tree/helper.cpp
 	config_tree/node.cpp)
