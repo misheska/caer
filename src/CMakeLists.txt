@@ -1,31 +1,5 @@
 # SDK support library.
-SET(LIBDVSDK_SRC_FILES
-	sdk_base.cpp
-	sdk_module.cpp
-	sdk_cross.cpp
-	config_tree/tree.cpp
-	config_tree/helper.cpp
-	config_tree/node.cpp)
-
-# Set full RPATH
-SET(CMAKE_INSTALL_RPATH ${USER_LOCAL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
-
-# Compile SDK library.
-ADD_LIBRARY(dvsdk SHARED ${LIBDVSDK_SRC_FILES})
-
-SET_TARGET_PROPERTIES(dvsdk
-    PROPERTIES
-    SOVERSION ${PROJECT_VERSION_MAJOR}
-    VERSION ${PROJECT_VERSION}
-)
-
-TARGET_LINK_LIBRARIES(dvsdk ${DV_LIBS})
-
-IF (OS_WINDOWS)
-    INSTALL(TARGETS dvsdk RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-ELSE()
-    INSTALL(TARGETS dvsdk DESTINATION ${CMAKE_INSTALL_LIBDIR})
-ENDIF()
+ADD_SUBDIRECTORY(sdk_lib)
 
 # Main dv-runtime executable.
 SET(DV_SRC_FILES

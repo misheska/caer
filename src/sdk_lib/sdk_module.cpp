@@ -1,4 +1,4 @@
-#include "module.hpp"
+#include "../module.hpp"
 
 void dvModuleRegisterType(dvModuleData moduleData, const struct dvType type) {
 	auto module = static_cast<dv::Module *>(moduleData);

@@ -1,5 +1,5 @@
-#include "log.hpp"
-#include "main.hpp"
+#include "../log.hpp"
+#include "../main.hpp"
 
 static dv::MainData *glMainDataPtr = nullptr;
 
