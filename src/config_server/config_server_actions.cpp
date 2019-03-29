@@ -11,7 +11,6 @@
 #include <regex>
 #include <thread>
 
-namespace logger = libcaer::log;
 namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
@@ -46,8 +45,7 @@ static inline void sendError(
 		return (msg.Finish());
 	});
 
-	logger::log(logger::logLevel::DEBUG, DV_CONFIG_SERVER_NAME, "Sent error back to client %lld: %s.",
-		client->getClientID(), errorMsg.c_str());
+	dv::Log(dv::logLevel::DEBUG, "Sent error back to client %lld: %s.", client->getClientID(), errorMsg.c_str());
 }
 
 static inline bool checkNodeExists(dvCfg::Tree configStore, const std::string &node,
@@ -104,8 +102,7 @@ void ConfigServerHandleRequest(
 	uint64_t receivedID     = message->id(); // Get incoming ID to send back.
 
 	// TODO: better debug message.
-	logger::log(
-		logger::logLevel::DEBUG, DV_CONFIG_SERVER_NAME, "Handling request from client %lld.", client->getClientID());
+	dv::Log(dv::logLevel::DEBUG, "Handling request from client %lld.", client->getClientID());
 
 	// Interpretation of data is up to each action individually.
 	dvCfg::Tree configStore = dvCfg::GLOBAL;
