@@ -10,9 +10,9 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
-static void unixDaemonize(void);
+static void unixDaemonize();
 
-static void unixDaemonize(void) {
+static void unixDaemonize() {
 	// Double fork to background, for more details take a look at:
 	// http://stackoverflow.com/questions/3095566/linux-daemonize
 	pid_t result = fork();
@@ -79,7 +79,7 @@ static void unixDaemonize(void) {
 }
 #endif
 
-void dv::ServiceInit(void (*runner)(void)) {
+void dv::ServiceInit(void (*runner)()) {
 	auto systemNode = dv::Config::GLOBAL.getNode("/system/");
 
 	systemNode.create<dvCfgType::BOOL>(
@@ -95,12 +95,12 @@ void dv::ServiceInit(void (*runner)(void)) {
 		// Unix: double fork to background.
 		unixDaemonize();
 
-		// Run main processing loop.
+		// Run main code in new process.
 		(*runner)();
 #endif
 	}
 	else {
-		// Console application. Just run main processing loop.
+		// Console application. Just run main code directly.
 		(*runner)();
 	}
 }

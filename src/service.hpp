@@ -5,7 +5,7 @@
 
 namespace dv {
 
-void ServiceInit(void (*runner)(void));
+void ServiceInit(void (*runner)());
 
 } // namespace dv
 

@@ -38,7 +38,7 @@ private:
  * @param name new module instance name.
  * @param library shared library plugin to load.
  */
-void addModule(std::string_view name, std::string_view library);
+void addModule(const std::string &name, const std::string &library);
 
 /**
  * Removes a module from the system, fully erasing its configuration.
@@ -46,7 +46,7 @@ void addModule(std::string_view name, std::string_view library);
  *
  * @param name module instance name.
  */
-void removeModule(std::string_view name);
+void removeModule(const std::string &name);
 
 /**
  * Only for internal usage! Do not reset the main data pointer!
