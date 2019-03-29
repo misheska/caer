@@ -109,8 +109,8 @@ void dv::Module::LoggingInit() {
 	moduleConfigNode.create<dvCfgType::INT>("logLevel", caerLogLevelGet(), {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
 		dvCfgFlags::NORMAL, "Module-specific log-level.");
 
-	logger.logLevel.store(moduleConfigNode.get<dvCfgType::INT>("logLevel"));
 	moduleConfigNode.addAttributeListener(&logger.logLevel, &moduleLogLevelListener);
+	logger.logLevel.store(moduleConfigNode.get<dvCfgType::INT>("logLevel"));
 
 	// Switch to current module logger.
 	dv::LoggerSet(&logger);

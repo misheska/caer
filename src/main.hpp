@@ -27,7 +27,7 @@ public:
 	}
 
 private:
-	MainData() : systemRunning(false) {
+	MainData() : systemRunning(true) {
 	}
 };
 

@@ -187,7 +187,6 @@ static void mainRunner() {
 	systemNode.create<dvCfgType::BOOL>(
 		"running", true, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Global system start/stop.");
 	systemNode.addAttributeListener(nullptr, &systemRunningListener);
-	dv::MainData::getGlobal().systemRunning.store(true);
 
 	// Add each module defined in configuration to runnable modules.
 	for (const auto &child : mainloopNode.getChildren()) {
