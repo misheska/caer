@@ -3,9 +3,13 @@
 
 #include "dv-sdk/utils.h"
 
-#define CONFIG_SERVER_NAME "ConfigServer"
+#define DV_CONFIG_SERVER_NAME "ConfigServer"
 
-void dvConfigServerStart(void);
-void dvConfigServerStop(void);
+namespace dv {
+
+void ConfigServerStart();
+void ConfigServerStop();
+
+} // namespace dv
 
 #endif /* SRC_CONFIG_SERVER_CONFIG_SERVER_MAIN_H_ */

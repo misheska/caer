@@ -46,7 +46,7 @@ static inline void sendError(
 		return (msg.Finish());
 	});
 
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Sent error back to client %lld: %s.",
+	logger::log(logger::logLevel::DEBUG, DV_CONFIG_SERVER_NAME, "Sent error back to client %lld: %s.",
 		client->getClientID(), errorMsg.c_str());
 }
 
@@ -96,7 +96,7 @@ static inline const std::string getString(const flatbuffers::String *str,
 	return (s);
 }
 
-void dvConfigServerHandleRequest(
+void ConfigServerHandleRequest(
 	std::shared_ptr<ConfigServerConnection> client, std::unique_ptr<uint8_t[]> messageBuffer) {
 	auto message = dv::GetConfigActionData(messageBuffer.get());
 
@@ -105,7 +105,7 @@ void dvConfigServerHandleRequest(
 
 	// TODO: better debug message.
 	logger::log(
-		logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Handling request from client %lld.", client->getClientID());
+		logger::logLevel::DEBUG, DV_CONFIG_SERVER_NAME, "Handling request from client %lld.", client->getClientID());
 
 	// Interpretation of data is up to each action individually.
 	dvCfg::Tree configStore = dvCfg::GLOBAL;

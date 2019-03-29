@@ -192,14 +192,12 @@ static void mainRunner() {
 	}
 
 	// Start the configuration server thread for run-time config changes.
-	dvConfigServerStart();
+	dv::ConfigServerStart();
 
-	// Finally run the main event processing loop.
-	dv::MainRun();
+	// Main thread now works as updater (sleeps most of the time).
 
-	// After shutting down the mainloops, also shutdown the config server
-	// thread if needed.
-	dvConfigServerStop();
+	// After shutting down the updater, also shutdown the config server thread.
+	dv::ConfigServerStop();
 
 	// Remove attribute listeners for clean shutdown.
 	systemNode.removeAttributeListener(nullptr, &systemRunningListener);
