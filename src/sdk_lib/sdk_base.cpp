@@ -37,12 +37,16 @@ void dv::LoggerSet(dv::LogBlock *_logger) {
 	loggerPtr = _logger;
 }
 
+dv::LogBlock *dv::LoggerGet() {
+	return (loggerPtr);
+}
+
 void dv::LoggerVA(enum caer_log_level logLevel, const char *format, va_list argumentList) {
 	auto localLogger = loggerPtr;
 
 	if (localLogger == nullptr) {
 		// System default logger.
-		caerLogVA(logLevel, "DV-Runtime", format, argumentList);
+		caerLogVA(logLevel, "Runtime", format, argumentList);
 	}
 	else {
 		// Specialized logger.

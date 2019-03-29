@@ -19,6 +19,7 @@ void LoggerInit(void);
 
 // Part of SDK due to dvLog() having to be part of it.
 void LoggerSet(LogBlock *logger);
+LogBlock *LoggerGet();
 void LoggerVA(enum caer_log_level logLevel, const char *format, va_list argumentList);
 
 } // namespace dv
