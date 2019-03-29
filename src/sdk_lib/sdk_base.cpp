@@ -41,30 +41,30 @@ dv::LogBlock *dv::LoggerGet() {
 	return (loggerPtr);
 }
 
-void dv::LoggerVA(enum caer_log_level logLevel, const char *format, va_list argumentList) {
+void dv::LoggerVA(enum caer_log_level level, const char *format, va_list argumentList) {
 	auto localLogger = loggerPtr;
 
 	if (localLogger == nullptr) {
 		// System default logger.
-		caerLogVA(logLevel, "Runtime", format, argumentList);
+		caerLogVA(level, "Runtime", format, argumentList);
 	}
 	else {
 		// Specialized logger.
 		auto localLogLevel = localLogger->logLevel.load(std::memory_order_relaxed);
 
 		// Only log messages above the specified severity level.
-		if (logLevel > localLogLevel) {
+		if (level > localLogLevel) {
 			return;
 		}
 
-		caerLogVAFull(static_cast<enum caer_log_level>(localLogLevel), logLevel, localLogger->logPrefix.c_str(), format,
+		caerLogVAFull(static_cast<enum caer_log_level>(localLogLevel), level, localLogger->logPrefix.c_str(), format,
 			argumentList);
 	}
 }
 
-void dvLog(enum caer_log_level logLevel, const char *format, ...) {
+void dvLog(enum caer_log_level level, const char *format, ...) {
 	va_list argumentList;
 	va_start(argumentList, format);
-	dv::LoggerVA(logLevel, format, argumentList);
+	dv::LoggerVA(level, format, argumentList);
 	va_end(argumentList);
 }

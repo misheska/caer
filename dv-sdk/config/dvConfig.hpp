@@ -64,9 +64,11 @@ template<> struct AttributeRangeGenerator<AttributeType::STRING> { using rangeTy
 
 template<AttributeType T> struct AttributeValue {
 public:
-	typename AttributeTypeGenerator<T>::type value;
+	using valueType = typename AttributeTypeGenerator<T>::type;
 
-	AttributeValue(typename AttributeTypeGenerator<T>::type v) : value(v) {
+	valueType value;
+
+	AttributeValue(valueType v) : value(v) {
 	}
 
 	AttributeValue(const dvConfigAttributeValue v) {
@@ -76,19 +78,19 @@ public:
 				break;
 
 			case AttributeType::INT:
-				value = static_cast<int32_t>(v.iint);
+				value = static_cast<valueType>(v.iint);
 				break;
 
 			case AttributeType::LONG:
-				value = static_cast<int64_t>(v.ilong);
+				value = static_cast<valueType>(v.ilong);
 				break;
 
 			case AttributeType::FLOAT:
-				value = static_cast<float>(v.ffloat);
+				value = static_cast<valueType>(v.ffloat);
 				break;
 
 			case AttributeType::DOUBLE:
-				value = static_cast<double>(v.ddouble);
+				value = static_cast<valueType>(v.ddouble);
 				break;
 
 			default:
@@ -151,48 +153,49 @@ public:
 
 template<AttributeType T> struct AttributeRange {
 public:
-	typename AttributeRangeGenerator<T>::rangeType range;
+	using rangeType = typename AttributeRangeGenerator<T>::rangeType;
 
-	AttributeRange(typename AttributeRangeGenerator<T>::rangeType r) : range(r) {
+	rangeType range;
+
+	AttributeRange(rangeType r) : range(r) {
 	}
 };
 
 template<AttributeType T> struct AttributeRanges {
 public:
+	using rangeType = typename AttributeRangeGenerator<T>::rangeType;
+
 	AttributeRange<T> min;
 	AttributeRange<T> max;
 
-	AttributeRanges(
-		typename AttributeRangeGenerator<T>::rangeType minVal, typename AttributeRangeGenerator<T>::rangeType maxVal) :
-		min(minVal),
-		max(maxVal) {
+	AttributeRanges(rangeType minVal, rangeType maxVal) : min(minVal), max(maxVal) {
 	}
 
 	AttributeRanges(const dvConfigAttributeRanges ranges) {
 		switch (T) {
 			case AttributeType::INT:
-				min.range = static_cast<int32_t>(ranges.min.intRange);
-				max.range = static_cast<int32_t>(ranges.max.intRange);
+				min.range = static_cast<rangeType>(ranges.min.intRange);
+				max.range = static_cast<rangeType>(ranges.max.intRange);
 				break;
 
 			case AttributeType::LONG:
-				min.range = static_cast<int64_t>(ranges.min.longRange);
-				max.range = static_cast<int64_t>(ranges.max.longRange);
+				min.range = static_cast<rangeType>(ranges.min.longRange);
+				max.range = static_cast<rangeType>(ranges.max.longRange);
 				break;
 
 			case AttributeType::FLOAT:
-				min.range = static_cast<float>(ranges.min.floatRange);
-				max.range = static_cast<float>(ranges.max.floatRange);
+				min.range = static_cast<rangeType>(ranges.min.floatRange);
+				max.range = static_cast<rangeType>(ranges.max.floatRange);
 				break;
 
 			case AttributeType::DOUBLE:
-				min.range = static_cast<double>(ranges.min.doubleRange);
-				max.range = static_cast<double>(ranges.max.doubleRange);
+				min.range = static_cast<rangeType>(ranges.min.doubleRange);
+				max.range = static_cast<rangeType>(ranges.max.doubleRange);
 				break;
 
 			case AttributeType::STRING:
-				min.range = static_cast<int32_t>(ranges.min.stringRange);
-				max.range = static_cast<int32_t>(ranges.max.stringRange);
+				min.range = static_cast<rangeType>(ranges.min.stringRange);
+				max.range = static_cast<rangeType>(ranges.max.stringRange);
 				break;
 
 			default:

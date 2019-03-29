@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-void dvLog(enum caer_log_level logLevel, const char *format, ...) ATTRIBUTE_FORMAT(2);
+void dvLog(enum caer_log_level level, const char *format, ...) ATTRIBUTE_FORMAT(2);
 
 #ifdef __cplusplus
 }
@@ -31,16 +31,16 @@ namespace dv {
 
 using logLevel = libcaer::log::logLevel;
 
-template<typename... Args> static inline void Log(logLevel logLevel, const char *format, Args &&... args) {
-	dvLog(static_cast<enum caer_log_level>(logLevel), format, std::forward<Args>(args)...);
+template<typename... Args> static inline void Log(logLevel level, const char *format, Args &&... args) {
+	dvLog(static_cast<enum caer_log_level>(level), format, std::forward<Args>(args)...);
 }
 
-template<typename... Args> static inline void Log(logLevel logLevel, const std::string &format, Args &&... args) {
-	dvLog(static_cast<enum caer_log_level>(logLevel), format.c_str(), std::forward<Args>(args)...);
+template<typename... Args> static inline void Log(logLevel level, const std::string &format, Args &&... args) {
+	dvLog(static_cast<enum caer_log_level>(level), format.c_str(), std::forward<Args>(args)...);
 }
 
-static inline void Log(logLevel logLevel, const boost::format &format) {
-	dvLog(static_cast<enum caer_log_level>(logLevel), "%s", format.str().c_str());
+static inline void Log(logLevel level, const boost::format &format) {
+	dvLog(static_cast<enum caer_log_level>(level), "%s", format.str().c_str());
 }
 
 template<typename InIter, typename Elem> static inline bool findBool(InIter begin, InIter end, const Elem &val) {
