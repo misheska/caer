@@ -1,7 +1,7 @@
-#ifndef DV_CONFIG_HPP
-#define DV_CONFIG_HPP
+#ifndef DV_SDK_CONFIG_HPP
+#define DV_SDK_CONFIG_HPP
 
-#include "module.h"
+#include "utils.h"
 
 #include <cmath>
 #include <map>
@@ -443,6 +443,7 @@ public:
 		return (typename _ConfigVariantType<V>::type)(getConfigObject<V>(key).currentValue);
 	}
 };
+
 } // namespace dv
 
-#endif // DV_CONFIG_HPP
+#endif // DV_SDK_CONFIG_HPP

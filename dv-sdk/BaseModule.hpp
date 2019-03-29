@@ -18,8 +18,8 @@ namespace dv {
  */
 class BaseModule {
 private:
-	thread_local static dvModuleData __moduleData;
-	static std::function<void(std::map<std::string, ConfigOption> &)> __getDefaultConfig;
+	inline static thread_local dvModuleData __moduleData                                        = nullptr;
+	inline static std::function<void(std::map<std::string, ConfigOption> &)> __getDefaultConfig = nullptr;
 
 public:
 	/**
@@ -90,13 +90,14 @@ public:
 	 * and config are available at the time the subclass constructor is
 	 * called.
 	 */
-	BaseModule() : moduleData(__moduleData), log(Logger(__moduleData)) {
+	BaseModule() : moduleData(__moduleData) {
 		assert(__moduleData);
 
 		// initialize the config map with the default config
 		__getDefaultConfig(config);
+
 		// update the config values
-		configUpdate(__moduleData->moduleNode);
+		configUpdate(moduleData->moduleNode);
 	}
 
 	virtual ~BaseModule() {
@@ -111,44 +112,18 @@ public:
 		for (auto &entry : config) {
 			auto &key          = entry.first;
 			auto &configOption = entry.second;
+
 			configOption.createDvConfigNodeIfChanged(key, node);
 			configOption.updateValue(key, node);
 		}
 	}
 
 	/**
-	 * Wrapper for the run function that wraps the packets into their C++
-	 * representation.
-	 * @param in The input libcaer packet
-	 * @param out the output libcaer packet
-	 */
-	void runBase(caerEventPacketContainer in, caerEventPacketContainer *out) {
-		// TODO: Handle the out behaviour
-		if (!in) {
-			run(libcaer::events::EventPacketContainer());
-		}
-		else {
-			auto in_ = libcaer::events::EventPacketContainer(in, false);
-			run(in_);
-		}
-	}
-
-	/**
 	 * Virtual function to be implemented by the user.
-	 * @param in
-	 *
 	 */
-	virtual void run(const libcaer::events::EventPacketContainer &in) = 0;
+	virtual void run() = 0;
 };
 
-/**
- * Instantiation of thread_local static moduleData pointer.
- * This pointer is set prior to construction to allow the constructor
- * to access relevant data.
- */
-thread_local dvModuleData BaseModule::__moduleData = nullptr;
-
-std::function<void(std::map<std::string, ConfigOption> &)> BaseModule::__getDefaultConfig = nullptr;
 } // namespace dv
 
 #endif // DV_SDK_BASE_MODULE_HPP

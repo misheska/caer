@@ -2,13 +2,8 @@
 #define DV_SDK_MODULE_HPP
 
 #include "BaseModule.hpp"
-#include "config/dvConfig.hpp"
-#include "log.hpp"
-#include "mainloop.h"
 #include "module.h"
 #include "utils.h"
-
-#include <iostream>
 
 /**
  * Macro that expands into the global `dvModuleGetInfo` function, exposed to the API for DV.
@@ -44,54 +39,6 @@ struct has_getConfigOptions<T,
 };
 
 /**
- * Trait for input stream definition. Tests if the supplied class has a static
- * member for the input stream definition.
- * @tparam T The class to be tested.
- */
-template<typename T, typename = void> struct has_inputStreamDefinition : std::false_type {};
-template<typename T>
-struct has_inputStreamDefinition<T,
-	void_t<decltype(T::inputStreams),
-		enable_if_t<std::is_convertible<decltype(T::inputStreams), const caer_event_stream_in *>::value>>>
-	: std::true_type {};
-
-/**
- * Trait for output stream definition. Tests if the supplied class has a static
- * member for the output stream definition.
- * @tparam T The class to be tested.
- */
-template<typename T, typename = void> struct has_outputStreamDefinition : std::false_type {};
-template<typename T>
-struct has_outputStreamDefinition<T,
-	void_t<decltype(T::outputStreams),
-		enable_if_t<std::is_convertible<decltype(T::outputStreams), const caer_event_stream_out *>::value>>>
-	: std::true_type {};
-
-/**
- * Const that compiles to the number of input streams the provided module T has
- * @tparam T The module T to be analyzed
- */
-template<typename T>
-const size_t numberOfInputStreams = T::inputStreams == nullptr ? 0 : CAER_EVENT_STREAM_IN_SIZE(T::inputStreams);
-
-/**
- * Const that compiles to the number of output streams the provided module T has
- * @tparam T The module T to be analyzed
- */
-template<typename T>
-const size_t numberOfOutputStreams = T::outputStreams == nullptr ? 0 : CAER_EVENT_STREAM_OUT_SIZE(T::outputStreams);
-
-/**
- * Const that compiles to the DV module type of the provided module T, based
- * on the number of input and output streams.
- * @tparam T The module T to be analyzed
- */
-template<typename T>
-const dvModuleType moduleType
-	= (numberOfInputStreams<T> == 0) ? DV_MODULE_INPUT
-									 : ((numberOfOutputStreams<T> == 0) ? DV_MODULE_OUTPUT : DV_MODULE_PROCESSOR);
-
-/**
  * Pure static template class that provides the static C interface functions
  * for the module class `T` to be exposed to DV. It essentially wraps the
  * the functions of the given C++ module class to the stateless
@@ -112,25 +59,19 @@ template<class T> class ModuleStatics {
 		"Your module does not specify a `static void getConfigOptions(std::map<std::string, dv::ConfigOption> "
 		"&config)` function."
 		"This function should insert desired config options into the map.");
-	static_assert(has_inputStreamDefinition<T>::value,
-		"Your module does not have a `static const caer_event_stream_in inputStreams[];` property."
-		"This property should list the modules input streams.");
-	static_assert(has_outputStreamDefinition<T>::value,
-		"Your module does not have a `static const caer_event_stream_out outputStreams[];` property."
-		"This property should list the modules output streams.");
 
 public:
 	/**
-	 * Wrapper for the `configInit` DV function. Performs a static call to the
+	 * Wrapper for the `staticInit` DV function. Performs a static call to the
 	 * `configInit<T>` function of `BaseModule`, which in turn gets the config from
 	 * the user defined module `T`. The config then gets parsed and injected as DvConfig
 	 * nodes.
-	 * @param node The DV provided DvConfig node.
+	 * @param moduleData The DV provided moduleData.
 	 */
-	static void configInit(dvConfigNode node) {
+	static void staticInit(dvModuleData moduleData) {
 		BaseModule::__setGetDefaultConfig(
 			std::function<void(std::map<std::string, ConfigOption> &)>(T::getConfigOptions));
-		BaseModule::staticConfigInit(node);
+		BaseModule::staticConfigInit(moduleData->moduleNode);
 	}
 
 	/**
@@ -144,16 +85,17 @@ public:
 		try {
 			// set the moduleData pointer thread local static prior to construction.
 			BaseModule::__setStaticModuleData(moduleData);
+
 			new (moduleData->moduleState) T();
+
 			config(moduleData);
-			dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
 		}
-		catch (const std::exception &e) {
-			dvModuleLog(moduleData, CAER_LOG_ERROR, "%s", e.what());
-			dvModuleLog(moduleData, CAER_LOG_ERROR, "%s", "Could not initialize Module");
-			return false;
+		catch (const std::exception &ex) {
+			dv::Log(dv::logLevel::ERROR, "Could not initialize module: %s", ex.what());
+			return (false);
 		}
-		return true;
+
+		return (true);
 	}
 
 	/**
@@ -164,18 +106,17 @@ public:
 	 * @param in The input data to be processed by the module.
 	 * @param out Pointer to the output data.
 	 */
-	static void run(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
-		((T *) moduleData->moduleState)->runBase(in, out);
+	static void run(dvModuleData moduleData) {
+		static_cast<T *>(moduleData->moduleState)->run();
 	}
 
 	/**
 	 * Deconstructs the user defined `T` module in the state by calling
-	 * its deconstructor. Removes the DvConfig attribute listener.
+	 * its destructor.
 	 * @param moduleData The DV provided moduleData.
 	 */
 	static void exit(dvModuleData moduleData) {
-		((T *) moduleData->moduleState)->~T();
-		dvConfigNodeRemoveAllAttributeListeners(moduleData->moduleNode);
+		static_cast<T *>(moduleData->moduleState)->~T();
 	}
 
 	/**
@@ -186,7 +127,7 @@ public:
 	 * @param moduleData The moduleData provided by DV.
 	 */
 	static void config(dvModuleData moduleData) {
-		((T *) moduleData->moduleState)->configUpdate(moduleData->moduleNode);
+		static_cast<T *>(moduleData->moduleState)->configUpdate(moduleData->moduleNode);
 	}
 
 	/**
@@ -211,7 +152,7 @@ public:
  * @tparam T The user defined module. Must inherit from `dv::BaseModule`
  */
 template<class T>
-const dvModuleFunctionsS ModuleStatics<T>::functions = {&ModuleStatics<T>::configInit, &ModuleStatics<T>::init,
+const dvModuleFunctionsS ModuleStatics<T>::functions = {&ModuleStatics<T>::staticInit, &ModuleStatics<T>::init,
 	&ModuleStatics<T>::run, &ModuleStatics<T>::config, &ModuleStatics<T>::exit};
 
 /**
@@ -221,9 +162,7 @@ const dvModuleFunctionsS ModuleStatics<T>::functions = {&ModuleStatics<T>::confi
  * be a valid module and inherit from `dv::BaseModule`.
  * @tparam T The user defined module. Must inherit from `dv::BaseModule`
  */
-template<class T>
-const dvModuleInfoS ModuleStatics<T>::info = {1, T::getDescription(), moduleType<T>, sizeof(T), &functions,
-	numberOfInputStreams<T>, T::inputStreams, numberOfOutputStreams<T>, T::outputStreams};
+template<class T> const dvModuleInfoS ModuleStatics<T>::info = {1, T::getDescription(), sizeof(T), &functions};
 
 } // namespace dv
 
