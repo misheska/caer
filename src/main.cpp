@@ -50,13 +50,17 @@ static void systemRunningListener(dvConfigNode node, void *userData, enum dvConf
 void dv::addModule(const std::string &name, const std::string &library) {
 	std::scoped_lock lock(dv::MainData::getGlobal().modulesLock);
 
+	auto restoreLogger = dv::LoggerGet();
 	dv::MainData::getGlobal().modules.try_emplace(name, std::make_shared<dv::Module>(name, library));
+	dv::LoggerSet(restoreLogger);
 }
 
 void dv::removeModule(const std::string &name) {
 	std::scoped_lock lock(dv::MainData::getGlobal().modulesLock);
 
+	auto restoreLogger = dv::LoggerGet();
 	dv::MainData::getGlobal().modules.erase(name);
+	dv::LoggerSet(restoreLogger);
 }
 
 static void mainRunner() {

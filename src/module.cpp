@@ -57,6 +57,9 @@ dv::Module::Module(std::string_view _name, std::string_view _library) :
 }
 
 dv::Module::~Module() {
+	// Switch to current module logger.
+	dv::LoggerSet(&logger);
+
 	// Check module is properly shut down, which takes care of
 	// cleaning up all input connections. This should always be
 	// the case as it's a requirement for calling removeModule().
