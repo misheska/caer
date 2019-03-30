@@ -134,7 +134,7 @@ void dvConfigTreeErrorLogCallbackSet(dvConfigTreeErrorLogCallback error_log_cb) 
 }
 
 dvConfigTree dvConfigTreeNew(void) {
-	dvConfigTree newTree = (dvConfigTree) malloc(sizeof(*newTree));
+	dvConfigTree newTree = static_cast<dvConfigTree>(malloc(sizeof(*newTree)));
 	dvConfigMemoryCheck(newTree, __func__);
 
 	// Create root node.
@@ -168,7 +168,7 @@ bool dvConfigTreeExistsNode(dvConfigTree st, const char *nodePathC) {
 		return (true);
 	}
 
-	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/"));
+	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/", nullptr));
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {
@@ -203,7 +203,7 @@ dvConfigNode dvConfigTreeGetNode(dvConfigTree st, const char *nodePathC) {
 		return (curr);
 	}
 
-	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/"));
+	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/", nullptr));
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {
@@ -232,7 +232,7 @@ bool dvConfigNodeExistsRelativeNode(dvConfigNode node, const char *nodePathC) {
 	// Start with the given node.
 	dvConfigNode curr = node;
 
-	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/"));
+	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/", nullptr));
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {
@@ -262,7 +262,7 @@ dvConfigNode dvConfigNodeGetRelativeNode(dvConfigNode node, const char *nodePath
 	// Start with the given node.
 	dvConfigNode curr = node;
 
-	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/"));
+	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/", nullptr));
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {

@@ -179,7 +179,7 @@ int dvConfigHelperStringToFlagsConverter(const char *flagsString) {
 	int flags = DVCFG_FLAGS_NORMAL;
 
 	std::string flagsStr(flagsString);
-	boost::tokenizer<boost::char_separator<char>> flagsTokens(flagsStr, boost::char_separator<char>("|"));
+	boost::tokenizer<boost::char_separator<char>> flagsTokens(flagsStr, boost::char_separator<char>("|", nullptr));
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : flagsTokens) {
@@ -217,7 +217,8 @@ char *dvConfigHelperRangesToStringConverter(enum dvConfigAttributeType type, str
 			break;
 
 		case DVCFG_TYPE_FLOAT:
-			snprintf(buf, 256, "%g|%g", (double) ranges.min.floatRange, (double) ranges.max.floatRange);
+			snprintf(buf, 256, "%g|%g", static_cast<double>(ranges.min.floatRange),
+				static_cast<double>(ranges.max.floatRange));
 			break;
 
 		case DVCFG_TYPE_DOUBLE:

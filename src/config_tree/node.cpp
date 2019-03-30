@@ -473,7 +473,7 @@ dvConfigNode *dvConfigNodeGetChildren(dvConfigNode node, size_t *numChildren) {
 		return (nullptr);
 	}
 
-	dvConfigNode *children = (dvConfigNode *) malloc(childrenCount * sizeof(*children));
+	dvConfigNode *children = static_cast<dvConfigNode *>(malloc(childrenCount * sizeof(*children)));
 	dvConfigMemoryCheck(children, __func__);
 
 	size_t i = 0;
@@ -1199,7 +1199,7 @@ const char **dvConfigNodeGetChildNames(dvConfigNode node, size_t *numNames) {
 		childNamesLength += child.first.length() + 1;
 	}
 
-	char **childNames = (char **) malloc((numChildren * sizeof(char *)) + childNamesLength);
+	char **childNames = static_cast<char **>(malloc((numChildren * sizeof(char *)) + childNamesLength));
 	dvConfigMemoryCheck(childNames, __func__);
 
 	size_t offset = (numChildren * sizeof(char *));
@@ -1208,7 +1208,7 @@ const char **dvConfigNodeGetChildNames(dvConfigNode node, size_t *numNames) {
 	for (const auto &child : node->children) {
 		// We have all the memory, so now copy the strings over and set the
 		// pointers as if an array of pointers was the only result.
-		childNames[i] = (char *) (((uint8_t *) childNames) + offset);
+		childNames[i] = reinterpret_cast<char *>(reinterpret_cast<uint8_t *>(childNames) + offset);
 		strcpy(childNames[i], child.first.c_str());
 
 		// Length plus one for terminating NUL byte.
@@ -1241,7 +1241,7 @@ const char **dvConfigNodeGetAttributeKeys(dvConfigNode node, size_t *numKeys) {
 		attributeKeysLength += attr.first.length() + 1;
 	}
 
-	char **attributeKeys = (char **) malloc((numAttributes * sizeof(char *)) + attributeKeysLength);
+	char **attributeKeys = static_cast<char **>(malloc((numAttributes * sizeof(char *)) + attributeKeysLength));
 	dvConfigMemoryCheck(attributeKeys, __func__);
 
 	size_t offset = (numAttributes * sizeof(char *));
@@ -1250,7 +1250,7 @@ const char **dvConfigNodeGetAttributeKeys(dvConfigNode node, size_t *numKeys) {
 	for (const auto &attr : node->attributes) {
 		// We have all the memory, so now copy the strings over and set the
 		// pointers as if an array of pointers was the only result.
-		attributeKeys[i] = (char *) (((uint8_t *) attributeKeys) + offset);
+		attributeKeys[i] = reinterpret_cast<char *>(reinterpret_cast<uint8_t *>(attributeKeys) + offset);
 		strcpy(attributeKeys[i], attr.first.c_str());
 
 		// Length plus one for terminating NUL byte.
