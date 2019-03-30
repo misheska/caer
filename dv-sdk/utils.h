@@ -32,11 +32,17 @@ namespace dv {
 using logLevel = libcaer::log::logLevel;
 
 template<typename... Args> static inline void Log(logLevel level, const char *format, Args &&... args) {
+#	pragma GCC diagnostic push
+#	pragma GCC diagnostic ignored "-Wformat-nonliteral"
 	dvLog(static_cast<enum caer_log_level>(level), format, std::forward<Args>(args)...);
+#	pragma GCC diagnostic pop
 }
 
 template<typename... Args> static inline void Log(logLevel level, const std::string &format, Args &&... args) {
+#	pragma GCC diagnostic push
+#	pragma GCC diagnostic ignored "-Wformat-nonliteral"
 	dvLog(static_cast<enum caer_log_level>(level), format.c_str(), std::forward<Args>(args)...);
+#	pragma GCC diagnostic pop
 }
 
 static inline void Log(logLevel level, const boost::format &format) {
