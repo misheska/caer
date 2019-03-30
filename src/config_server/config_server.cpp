@@ -212,7 +212,7 @@ void ConfigServer::serviceConfigure() {
 }
 
 void ConfigServer::serviceStart() {
-	dv::Log(dv::logLevel::INFO, "Starting configuration server service.");
+	dv::Log(dv::logLevel::INFO, "%s", "Starting configuration server service.");
 
 	// Start accepting connections.
 	acceptStart();
@@ -250,29 +250,31 @@ void ConfigServer::serviceStop() {
 		}
 	});
 
-	dv::Log(dv::logLevel::INFO, "Stopping configuration server service.");
+	dv::Log(dv::logLevel::INFO, "%s", "Stopping configuration server service.");
 }
 
 void ConfigServer::acceptStart() {
-	acceptor.async_accept(acceptorNewSocket, [this](const boost::system::error_code &error) {
-		if (error) {
-			// Ignore cancel error, normal on shutdown.
-			if (error != asio::error::operation_aborted) {
-				dv::Log(dv::logLevel::ERROR, "Failed to accept new connection. Error: %s (%d).",
-					error.message().c_str(), error.value());
+	acceptor.async_accept(acceptorNewSocket,
+		[this](const boost::system::error_code &error) {
+			if (error) {
+				// Ignore cancel error, normal on shutdown.
+				if (error != asio::error::operation_aborted) {
+					dv::Log(dv::logLevel::ERROR, "Failed to accept new connection. Error: %s (%d).",
+						error.message().c_str(), error.value());
+				}
 			}
-		}
-		else {
-			auto client
-				= std::make_shared<ConfigServerConnection>(std::move(acceptorNewSocket), tlsEnabled, &tlsContext, this);
+			else {
+				auto client = std::make_shared<ConfigServerConnection>(
+					std::move(acceptorNewSocket), tlsEnabled, &tlsContext, this);
 
-			clients.push_back(client.get());
+				clients.push_back(client.get());
 
-			client->start();
+				client->start();
 
-			acceptStart();
-		}
-	});
+				acceptStart();
+			}
+		},
+		nullptr);
 }
 
 void dv::ConfigServerStart() {

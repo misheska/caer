@@ -144,7 +144,8 @@ void dv::ModulesUpdateInformation() {
 	const std::string modulesSearchPath = modulesNode.get<dvCfgType::STRING>("modulesSearchPath");
 
 	// Split on '|'.
-	boost::tokenizer<boost::char_separator<char>> searchPaths(modulesSearchPath, boost::char_separator<char>("|"));
+	boost::tokenizer<boost::char_separator<char>> searchPaths(
+		modulesSearchPath, boost::char_separator<char>("|", nullptr));
 
 	// Search is recursive for binary shared libraries.
 	const std::regex moduleRegex("\\w+\\.(so|dll|dylib)");

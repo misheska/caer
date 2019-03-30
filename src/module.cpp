@@ -64,7 +64,7 @@ dv::Module::~Module() {
 	// cleaning up all input connections. This should always be
 	// the case as it's a requirement for calling removeModule().
 	if (isRunning) {
-		dv::Log(dv::logLevel::CRITICAL, "Destroying a running module. This should never happen!");
+		dv::Log(dv::logLevel::CRITICAL, "%s", "Destroying a running module. This should never happen!");
 	}
 
 	// Stop module thread and wait for it to exit.
