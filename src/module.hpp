@@ -154,6 +154,9 @@ private:
 	bool inputConnectivityInitialize();
 	void inputConnectivityDestroy();
 
+	bool verifyOutputInfoNodes();
+	void cleanupOutputInfoNodes();
+
 	void runThread();
 	void runStateMachine();
 	void handleModuleInitFailure();

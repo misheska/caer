@@ -366,6 +366,34 @@ void dv::Module::inputConnectivityDestroy() {
 	}
 }
 
+bool dv::Module::verifyOutputInfoNodes() {
+	auto moduleConfigNode = dvCfg::Node(moduleNode);
+	auto outputNode       = moduleConfigNode.getRelativeNode("outputs/");
+
+	for (const auto &out : outputNode.getChildren()) {
+		auto infoNode = out.getRelativeNode("info/");
+
+		if (infoNode.getAttributeKeys().size() == 0) {
+			dv::Log(dv::logLevel::ERROR, "Output '%s' has no informative attributes in info node.", out.getName());
+
+			return (false);
+		}
+	}
+
+	return (true);
+}
+
+void dv::Module::cleanupOutputInfoNodes() {
+	auto moduleConfigNode = dvCfg::Node(moduleNode);
+	auto outputNode       = moduleConfigNode.getRelativeNode("outputs/");
+
+	for (const auto &out : outputNode.getChildren()) {
+		auto infoNode = out.getRelativeNode("info/");
+
+		infoNode.removeNode();
+	}
+}
+
 void dv::Module::handleModuleInitFailure() {
 	// Free state memory.
 	if (info->memSize != 0) {
@@ -376,6 +404,9 @@ void dv::Module::handleModuleInitFailure() {
 
 	// Disconnect from other modules.
 	inputConnectivityDestroy();
+
+	// Cleanup output info nodes, if any exist.
+	cleanupOutputInfoNodes();
 
 	auto moduleConfigNode = dvCfg::Node(moduleNode);
 
@@ -511,6 +542,14 @@ void dv::Module::runStateMachine() {
 			}
 		}
 
+		// Check that all info nodes for the outputs have been created and populated.
+		if (!verifyOutputInfoNodes()) {
+			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "incomplete ouput information");
+
+			handleModuleInitFailure();
+			return;
+		}
+
 		isRunning = true;
 		moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", true);
 	}
@@ -536,6 +575,9 @@ void dv::Module::runStateMachine() {
 
 		// Disconnect from other modules.
 		inputConnectivityDestroy();
+
+		// Cleanup output info nodes, if any exist.
+		cleanupOutputInfoNodes();
 
 		isRunning = false;
 		moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
