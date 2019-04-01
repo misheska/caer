@@ -367,6 +367,13 @@ void dv::Module::inputConnectivityDestroy() {
 }
 
 void dv::Module::handleModuleInitFailure() {
+	// Free state memory.
+	if (info->memSize != 0) {
+		// Only deallocate if we were the original allocator.
+		free(moduleState);
+	}
+	moduleState = nullptr;
+
 	// Disconnect from other modules.
 	inputConnectivityDestroy();
 
@@ -460,15 +467,6 @@ void dv::Module::runStateMachine() {
 		// Serialize module start/stop globally.
 		std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
-		// At module startup, first check that input connectivity is
-		// satisfied and hook up the input queues.
-		if (!inputConnectivityInitialize()) {
-			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "input connectivity failure");
-
-			handleModuleInitFailure();
-			return;
-		}
-
 		// Allocate memory for module state.
 		if (info->memSize != 0) {
 			moduleState = calloc(1, info->memSize);
@@ -482,6 +480,15 @@ void dv::Module::runStateMachine() {
 		else {
 			// memSize is zero, so moduleState must be nullptr.
 			moduleState = nullptr;
+		}
+
+		// At module startup, check that input connectivity is
+		// satisfied and hook up the input queues.
+		if (!inputConnectivityInitialize()) {
+			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "input connectivity failure");
+
+			handleModuleInitFailure();
+			return;
 		}
 
 		// Reset variables, as the following Init() is stronger than a reset
@@ -498,12 +505,6 @@ void dv::Module::runStateMachine() {
 			}
 			catch (const std::exception &ex) {
 				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", ex.what());
-
-				if (info->memSize != 0) {
-					// Only deallocate if we were the original allocator.
-					free(moduleState);
-				}
-				moduleState = nullptr;
 
 				handleModuleInitFailure();
 				return;
@@ -526,6 +527,7 @@ void dv::Module::runStateMachine() {
 			}
 		}
 
+		// Free state memory.
 		if (info->memSize != 0) {
 			// Only deallocate if we were the original allocator.
 			free(moduleState);
