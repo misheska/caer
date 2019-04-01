@@ -848,8 +848,11 @@ bool dvConfigNodeExportSubTreeToXML(dvConfigNode node, int fd) {
 }
 
 static bool dvConfigNodeToXML(dvConfigNode node, int fd, bool recursive) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 	boost::iostreams::stream_buffer<boost::iostreams::file_descriptor_sink> fdStream(
 		fd, boost::iostreams::never_close_handle);
+#pragma GCC diagnostic pop
 
 	std::ostream outStream(&fdStream);
 
@@ -960,8 +963,11 @@ static std::vector<std::reference_wrapper<const boost::property_tree::ptree>> dv
 }
 
 static bool dvConfigNodeFromXML(dvConfigNode node, int fd, bool recursive, bool strict) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 	boost::iostreams::stream_buffer<boost::iostreams::file_descriptor_source> fdStream(
 		fd, boost::iostreams::never_close_handle);
+#pragma GCC diagnostic pop
 
 	std::istream inStream(&fdStream);
 
