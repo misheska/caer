@@ -35,7 +35,7 @@ inline constexpr bool has_getDescription = has_static_member_function_getDescrip
 BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(getConfigOptions)
 template<typename T>
 inline constexpr bool has_getConfigOptions
-	= has_static_member_function_getConfigOptions<T, void, std::map<std::string, dv::ConfigOption> &>::value;
+	= has_static_member_function_getConfigOptions<T, void(std::map<std::string, dv::ConfigOption> &)>::value;
 
 /**
  * Pure static template class that provides the static C interface functions
