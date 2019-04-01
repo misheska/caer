@@ -1,6 +1,7 @@
 #ifndef DV_SDK_CONFIG_HPP
 #define DV_SDK_CONFIG_HPP
 
+#include "cross/portable_io.h"
 #include "utils.h"
 
 #include <cmath>
@@ -101,7 +102,8 @@ private:
 	 */
 	ConfigOption(std::shared_ptr<void> configOption, ConfigVariant variant) :
 		configOption_(std::move(configOption)),
-		variant_(variant){};
+		variant_(variant) {
+	}
 
 	/**
 	 * Private base factory method.
@@ -261,7 +263,7 @@ public:
 	static ConfigOption fractionalOption(
 		const std::string &description, double defaultValue, double minValue, double maxValue) {
 		return getOption<ConfigVariant::FRACTIONAL>(description, defaultValue, {minValue, maxValue});
-	};
+	}
 
 	/**
 	 * Factory function. Creates a fractional config option.
@@ -274,7 +276,7 @@ public:
 			= ((std::abs(defaultValue) > 0.) ? std::pow(10., std::floor(std::log10(std::abs(defaultValue)) + 1.)) : 1.)
 			  * sgn(defaultValue);
 		return getOption<ConfigVariant::FRACTIONAL>(description, defaultValue, {0., sensibleUpperRange});
-	};
+	}
 
 	/**
 	 * Factory function. Creates a integer config option.
