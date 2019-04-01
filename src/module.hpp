@@ -93,12 +93,16 @@ public:
 class ModuleOutput {
 public:
 	Module *relatedModule;
+	dv::Config::Node infoNode;
 	dv::Types::Type type;
 	std::mutex destinationsLock;
 	std::vector<OutgoingConnection> destinations;
 	boost::intrusive_ptr<IntrusiveTypedObject> nextPacket;
 
-	ModuleOutput(Module *parent, const dv::Types::Type &t) : relatedModule(parent), type(t) {
+	ModuleOutput(Module *parent, dv::Config::Node info, const dv::Types::Type &t) :
+		relatedModule(parent),
+		infoNode(info),
+		type(t) {
 	}
 };
 

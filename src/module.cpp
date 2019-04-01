@@ -205,9 +205,6 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 		throw std::invalid_argument("Output with name '" + outputNameString + "' already exists.");
 	}
 
-	// Add info to internal data structure.
-	outputs.try_emplace(outputNameString, this, typeInfo);
-
 	// Add info to ConfigTree.
 	auto moduleConfigNode = dvCfg::Node(moduleNode);
 
@@ -217,6 +214,11 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type identifier.");
 	outputNode.create<dvCfgType::STRING>("typeDescription", typeInfo.description, {1, 200},
 		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type description.");
+
+	auto infoNode = outputNode.getRelativeNode("info/");
+
+	// Add info to internal data structure.
+	outputs.try_emplace(outputNameString, this, infoNode, typeInfo);
 }
 
 static const std::regex inputConnRegex("^([a-zA-Z-_\\d\\.]+)\\[([a-zA-Z-_\\d\\.]+)\\]$");
@@ -366,15 +368,17 @@ void dv::Module::inputConnectivityDestroy() {
 	}
 }
 
+/**
+ * Check that each output's info node has been populated with
+ * at least one informative attribute, so that downstream modules
+ * can find out relevant information about the output.
+ *
+ * @return True if all outputs have info attributes, false otherwise.
+ */
 bool dv::Module::verifyOutputInfoNodes() {
-	auto moduleConfigNode = dvCfg::Node(moduleNode);
-	auto outputNode       = moduleConfigNode.getRelativeNode("outputs/");
-
-	for (const auto &out : outputNode.getChildren()) {
-		auto infoNode = out.getRelativeNode("info/");
-
-		if (infoNode.getAttributeKeys().size() == 0) {
-			dv::Log(dv::logLevel::ERROR, "Output '%s' has no informative attributes in info node.", out.getName());
+	for (const auto &out : outputs) {
+		if (out.second.infoNode.getAttributeKeys().size() == 0) {
+			dv::Log(dv::logLevel::ERROR, "Output '%s' has no informative attributes in info node.", out.first);
 
 			return (false);
 		}
@@ -383,14 +387,16 @@ bool dv::Module::verifyOutputInfoNodes() {
 	return (true);
 }
 
+/**
+ * Remove all attributes and children of the informative
+ * output nodes, leaving them empty.
+ * This cleanup should happen on module initialization failure
+ * and on module exit, to ensure no stale attributes are kept.
+ */
 void dv::Module::cleanupOutputInfoNodes() {
-	auto moduleConfigNode = dvCfg::Node(moduleNode);
-	auto outputNode       = moduleConfigNode.getRelativeNode("outputs/");
-
-	for (const auto &out : outputNode.getChildren()) {
-		auto infoNode = out.getRelativeNode("info/");
-
-		infoNode.removeNode();
+	for (auto &out : outputs) {
+		out.second.infoNode.clearSubTree(true);
+		out.second.infoNode.removeSubTree();
 	}
 }
 
