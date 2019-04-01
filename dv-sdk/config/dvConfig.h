@@ -26,6 +26,7 @@ extern "C" {
 
 // dv::Config Node
 typedef struct dv_config_node *dvConfigNode;
+typedef const struct dv_config_node *dvConfigNodeConst;
 
 enum dvConfigAttributeType {
 	DVCFG_TYPE_UNKNOWN = -1,

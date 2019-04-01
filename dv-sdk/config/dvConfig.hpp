@@ -293,7 +293,11 @@ public:
 	Node(dvConfigNode n) : node(n) {
 	}
 
-	explicit operator dvConfigNode() const {
+	explicit operator dvConfigNode() {
+		return (node);
+	}
+
+	explicit operator dvConfigNodeConst() const {
 		return (node);
 	}
 
