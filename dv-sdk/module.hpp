@@ -5,6 +5,8 @@
 #include "module.h"
 #include "utils.h"
 
+#include <boost/tti/has_static_member_function.hpp>
+
 /**
  * Macro that expands into the global `dvModuleGetInfo` function, exposed to the API for DV.
  * The function instantiates the `ModuleStaticDefinition` class with the given Module (A subclass)
@@ -22,21 +24,18 @@ namespace dv {
  * Trait for the existence of a static getDescription method with const char* return value
  * @tparam T The class to be tested
  */
-template<typename T, typename = void> struct has_getDescription : std::false_type {};
+BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(getDescription)
 template<typename T>
-struct has_getDescription<T, void_t<decltype(T::getDescription()),
-								 enable_if_t<std::is_same<decltype(T::getDescription()), const char *>::value>>>
-	: std::true_type {};
+inline constexpr bool has_getDescription = has_static_member_function_getDescription<T, const char *>::value;
 
 /**
  * Trait for the existence of a static getConfigOptions method with map argument
  * @tparam T The class to be tested
  */
-template<typename T, typename = void> struct has_getConfigOptions : std::false_type {};
+BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(getConfigOptions)
 template<typename T>
-struct has_getConfigOptions<T,
-	void_t<decltype(T::getConfigOptions(std::declval<std::map<std::string, dv::ConfigOption> &>()))>> : std::true_type {
-};
+inline constexpr bool has_getConfigOptions
+	= has_static_member_function_getConfigOptions<T, void, std::map<std::string, dv::ConfigOption> &>::value;
 
 /**
  * Pure static template class that provides the static C interface functions
@@ -52,10 +51,10 @@ struct has_getConfigOptions<T,
 template<class T> class ModuleStatics {
 	/* Static assertions. Checks the existence of all required static members. */
 	static_assert(std::is_base_of<BaseModule, T>::value, "Your module does not inherit from dv::BaseModule.");
-	static_assert(has_getDescription<T>::value,
+	static_assert(has_getDescription<T>,
 		"Your module does not specify a `static const char* getDescription()` function."
 		"This function should return a string with a description of the module.");
-	static_assert(has_getConfigOptions<T>::value,
+	static_assert(has_getConfigOptions<T>,
 		"Your module does not specify a `static void getConfigOptions(std::map<std::string, dv::ConfigOption> "
 		"&config)` function."
 		"This function should insert desired config options into the map.");
@@ -69,6 +68,9 @@ public:
 	 * @param moduleData The DV provided moduleData.
 	 */
 	static void staticInit(dvModuleData moduleData) {
+		if constexpr (has_getDescription<T>) {
+			printf("%s\n", T::getDescription());
+		}
 		BaseModule::__setGetDefaultConfig(
 			std::function<void(std::map<std::string, ConfigOption> &)>(T::getConfigOptions));
 		BaseModule::staticConfigInit(moduleData->moduleNode);
