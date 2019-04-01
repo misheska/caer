@@ -695,6 +695,51 @@ void dv::Module::inputDismiss(std::string_view inputName, const dv::Types::Typed
 	}
 }
 
+/**
+ * Get upstream module node for an input.
+ * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
+ * moduleInit() and moduleExit(). Do not hold references in state!
+ *
+ * @param inputName name of input.
+ * @return upstream module node.
+ */
+dv::Config::Node dv::Module::getUpstreamNodeForInput(std::string_view inputName) {
+	auto input = getModuleInput(std::string(inputName));
+	if (input == nullptr) {
+		// Not found.
+		auto msg = boost::format("Input with name '%s' doesn't exist.") % inputName;
+		throw std::out_of_range(msg.str());
+	}
+
+	return (input->source.linkedOutput->relatedModule->moduleNode);
+}
+
+/**
+ * Get informative node for an input from that input's upstream module.
+ * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
+ * moduleInit() and moduleExit(). Do not hold references in state!
+ *
+ * @param inputName name of input.
+ * @return informative node for that input.
+ */
+const dv::Config::Node dv::Module::getInfoNodeForInput(std::string_view inputName) {
+	auto input = getModuleInput(std::string(inputName));
+	if (input == nullptr) {
+		// Not found.
+		auto msg = boost::format("Input with name '%s' doesn't exist.") % inputName;
+		throw std::out_of_range(msg.str());
+	}
+
+	auto infoNode = input->source.linkedOutput->infoNode;
+
+	if (infoNode.getAttributeKeys().size() == 0) {
+		auto msg = boost::format("No informative content present for input '%s'.") % inputName;
+		throw std::out_of_range(msg.str());
+	}
+
+	return (infoNode);
+}
+
 void dv::Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
