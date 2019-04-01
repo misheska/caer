@@ -80,3 +80,29 @@ void dvModuleInputDismiss(dvModuleData moduleData, const char *name, const struc
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
 	}
 }
+
+dvConfigNode dvModuleInputGetUpstreamNode(dvModuleData moduleData, const char *name) {
+	auto module = static_cast<dv::Module *>(moduleData);
+
+	try {
+		return (static_cast<dvConfigNode>(module->inputGetUpstreamNode(name)));
+	}
+	catch (const std::exception &ex) {
+		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
+
+		return (nullptr);
+	}
+}
+
+dvConfigNodeConst dvModuleInputGetInfoNode(dvModuleData moduleData, const char *name) {
+	auto module = static_cast<dv::Module *>(moduleData);
+
+	try {
+		return (static_cast<dvConfigNodeConst>(module->inputGetInfoNode(name)));
+	}
+	catch (const std::exception &ex) {
+		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
+
+		return (nullptr);
+	}
+}

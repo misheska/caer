@@ -144,8 +144,8 @@ public:
 	const dv::Types::TypedObject *inputGet(std::string_view inputName);
 	void inputDismiss(std::string_view inputName, const dv::Types::TypedObject *data);
 
-	dv::Config::Node getUpstreamNodeForInput(std::string_view inputName);
-	const dv::Config::Node getInfoNodeForInput(std::string_view inputName);
+	dv::Config::Node inputGetUpstreamNode(std::string_view inputName);
+	const dv::Config::Node inputGetInfoNode(std::string_view inputName);
 
 private:
 	void LoggingInit();

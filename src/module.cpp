@@ -703,7 +703,7 @@ void dv::Module::inputDismiss(std::string_view inputName, const dv::Types::Typed
  * @param inputName name of input.
  * @return upstream module node.
  */
-dv::Config::Node dv::Module::getUpstreamNodeForInput(std::string_view inputName) {
+dv::Config::Node dv::Module::inputGetUpstreamNode(std::string_view inputName) {
 	auto input = getModuleInput(std::string(inputName));
 	if (input == nullptr) {
 		// Not found.
@@ -722,7 +722,7 @@ dv::Config::Node dv::Module::getUpstreamNodeForInput(std::string_view inputName)
  * @param inputName name of input.
  * @return informative node for that input.
  */
-const dv::Config::Node dv::Module::getInfoNodeForInput(std::string_view inputName) {
+const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) {
 	auto input = getModuleInput(std::string(inputName));
 	if (input == nullptr) {
 		// Not found.
