@@ -696,6 +696,25 @@ void dv::Module::inputDismiss(std::string_view inputName, const dv::Types::Typed
 }
 
 /**
+ * Get informative node for an output of this module.
+ * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
+ * moduleInit() and moduleExit(). Do not hold references in state!
+ *
+ * @param outputName name of output.
+ * @return informative node for that output.
+ */
+dv::Config::Node dv::Module::outputGetInfoNode(std::string_view outputName) {
+	auto output = getModuleOutput(std::string(outputName));
+	if (output == nullptr) {
+		// Not found.
+		auto msg = boost::format("Output with name '%s' doesn't exist.") % outputName;
+		throw std::out_of_range(msg.str());
+	}
+
+	return (output->infoNode);
+}
+
+/**
  * Get upstream module node for an input.
  * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
  * moduleInit() and moduleExit(). Do not hold references in state!
@@ -703,7 +722,7 @@ void dv::Module::inputDismiss(std::string_view inputName, const dv::Types::Typed
  * @param inputName name of input.
  * @return upstream module node.
  */
-dv::Config::Node dv::Module::inputGetUpstreamNode(std::string_view inputName) {
+const dv::Config::Node dv::Module::inputGetUpstreamNode(std::string_view inputName) {
 	auto input = getModuleInput(std::string(inputName));
 	if (input == nullptr) {
 		// Not found.

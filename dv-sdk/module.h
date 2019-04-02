@@ -63,7 +63,8 @@ void dvModuleOutputCommit(dvModuleData moduleData, const char *name);
 const struct dvTypedObject *dvModuleInputGet(dvModuleData moduleData, const char *name);
 void dvModuleInputDismiss(dvModuleData moduleData, const char *name, const struct dvTypedObject *data);
 
-dvConfigNode dvModuleInputGetUpstreamNode(dvModuleData moduleData, const char *name);
+dvConfigNode dvModuleOutputGetInfoNode(dvModuleData moduleData, const char *name);
+dvConfigNodeConst dvModuleInputGetUpstreamNode(dvModuleData moduleData, const char *name);
 dvConfigNodeConst dvModuleInputGetInfoNode(dvModuleData moduleData, const char *name);
 
 #ifdef __cplusplus
