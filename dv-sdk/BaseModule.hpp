@@ -23,27 +23,23 @@ private:
 
 public:
 	/**
-	 * Static config init funtion. Calles the user provided `getConfigOptions` function
+	 * Static config init function. Calles the user provided `getConfigOptions` function
 	 * which exists in this class as a static called `__getDefaultConfig`.
 	 * It generates the default config and creates the elements for the default
-	 * config in the dv config tree.
-	 * @param node The dvConfig node for which the config should be generated
+	 * config in the DV config tree.
+	 *
+	 * @param moduleNode The dvConfig node for which the config should be generated.
 	 */
 	static void staticConfigInit(dv::Config::Node moduleNode) {
 		// read config options from static user provided function
 		std::unordered_map<std::string, ConfigOption> defaultConfig;
 		__getDefaultConfig(defaultConfig);
 
-		// Add standard configs.
-		defaultConfig["logLevel"] = dv::ConfigOption::intOption(
-			moduleNode.getAttributeDescription<dv::Config::AttributeType::INT>("logLevel"),
-			moduleNode.get<dv::Config::AttributeType::INT>("logLevel"), CAER_LOG_EMERGENCY, CAER_LOG_DEBUG);
-
 		for (auto &entry : defaultConfig) {
-			auto &key    = entry.first;
-			auto &config = entry.second;
+			auto &key = entry.first;
+			auto &cfg = entry.second;
 
-			config.createAttribute(key, moduleNode);
+			cfg.createAttribute(key, moduleNode);
 		}
 	}
 
@@ -69,25 +65,30 @@ public:
 	 * at runtime.
 	 * @param _getDefaultConfig
 	 */
-	static void __setGetDefaultConfig(
+	static void __setStaticGetDefaultConfig(
 		std::function<void(std::unordered_map<std::string, ConfigOption> &)> _getDefaultConfig) {
 		__getDefaultConfig = std::move(_getDefaultConfig);
 	}
 
 	/**
-	 * DV low level module data. To be used for accessing low-level DV API.
+	 * DV low-level module data. Use it to access the low-level DV API.
 	 */
 	dvModuleData moduleData;
 
-	dv::Config::Node moduleNode;
-
 	/**
-	 * Logger object to be used in implementation
+	 * Loggers for the module. Each module has their own to avoid interference.
 	 */
 	Logger log;
 
 	/**
-	 * Map that contains the runtime config values of the configs.
+	 * The module configuration node. Use it to access configuration at
+	 * a lower level than the RuntimeConfigMap.
+	 */
+	dv::Config::Node moduleNode;
+
+	/**
+	 * Map that allows easy access to configuration data and is automatically
+	 * updated with new values on changes from outside.
 	 */
 	RuntimeConfigMap config;
 
@@ -102,10 +103,15 @@ public:
 	BaseModule() : moduleData(__moduleData), moduleNode(__moduleData->moduleNode) {
 		assert(__moduleData);
 
-		// initialize the config map with the default config
+		// Initialize the config map with the default config.
 		__getDefaultConfig(config);
 
-		// update the config values
+		// Add standard config.
+		config["logLevel"] = dv::ConfigOption::intOption(
+			moduleNode.getAttributeDescription<dv::Config::AttributeType::INT>("logLevel"),
+			moduleNode.get<dv::Config::AttributeType::INT>("logLevel"), CAER_LOG_EMERGENCY, CAER_LOG_DEBUG);
+
+		// Update the config values with the latest changes.
 		configUpdate();
 	}
 
@@ -118,25 +124,39 @@ public:
 	 */
 	void configUpdate() {
 		for (auto &entry : config) {
-			auto &key    = entry.first;
-			auto &config = entry.second;
+			auto &key = entry.first;
+			auto &cfg = entry.second;
 
-			config.updateValue(key, moduleNode);
+			cfg.updateValue(key, moduleNode);
 		}
 
 		advancedConfigUpdate();
 	}
 
+	/**
+	 * Virtual function to be implemented by the user. Can be left empty.
+	 * Called on configuration update, allows more advanced control of how
+	 * configuration values are updated.
+	 */
 	virtual void advancedConfigUpdate() {
 	}
 
 	/**
 	 * Virtual function to be implemented by the user.
+	 * Main function that runs the module and handles data.
 	 */
 	virtual void run() = 0;
 
+	dv::Config::Node outputGetInfoNode(const std::string &name) {
+		return (dvModuleOutputGetInfoNode(moduleData, name.c_str()));
+	}
+
 	const dv::Config::Node inputGetInfoNode(const std::string &name) {
 		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData, name.c_str())));
+	}
+
+	const dv::Config::Node inputGetUpstreamNode(const std::string &name) {
+		return (const_cast<dvConfigNode>(dvModuleInputGetUpstreamNode(moduleData, name.c_str())));
 	}
 };
 

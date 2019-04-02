@@ -529,12 +529,12 @@ public:
 	 */
 	static ConfigOption floatOption(const std::string &description, float defaultValue) {
 		float sensibleUpperRange
-			= ((std::abs(defaultValue) > 0.0) ? std::pow(10.0, std::floor(std::log10(std::abs(defaultValue)) + 1.0))
-											  : 1.0)
+			= ((std::abs(defaultValue) > 0.0f) ? std::pow(10.0f, std::floor(std::log10(std::abs(defaultValue)) + 1.0f))
+											   : 1.0f)
 			  * sgn(defaultValue);
 
 		return getOption<dv::Config::AttributeType::FLOAT>(
-			description, defaultValue, {0.0, sensibleUpperRange}, dv::Config::AttributeFlags::NORMAL);
+			description, defaultValue, {0.0f, sensibleUpperRange}, dv::Config::AttributeFlags::NORMAL);
 	}
 
 	/**

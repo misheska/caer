@@ -62,7 +62,7 @@ public:
 			= dv::ConfigOption::intOption("Minimum time between events to not be filtered out.", 100, 0, 10000000);
 	}
 
-	static void getAdvancedConfigOptions(dv::Config::Node moduleNode) {
+	static void advancedStaticInit(dv::Config::Node moduleNode) {
 		moduleNode.create<dvCfgType::LONG>("hotPixelFiltered", 0, {0, INT64_MAX},
 			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Number of events filtered out by the hot pixel filter.");
 

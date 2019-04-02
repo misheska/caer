@@ -59,10 +59,10 @@ template<typename T>
 inline constexpr bool has_getConfigOptions
 	= has_static_member_function_getConfigOptions<T, void(std::unordered_map<std::string, dv::ConfigOption> &)>::value;
 
-BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(getAdvancedConfigOptions)
+BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(advancedStaticInit)
 template<typename T>
-inline constexpr bool has_getAdvancedConfigOptions
-	= has_static_member_function_getAdvancedConfigOptions<T, void(dv::Config::Node)>::value;
+inline constexpr bool has_advancedStaticInit
+	= has_static_member_function_advancedStaticInit<T, void(dv::Config::Node)>::value;
 
 BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(addTypes)
 template<typename T>
@@ -109,7 +109,7 @@ public:
 	 * @param moduleData The DV provided moduleData.
 	 */
 	static void staticInit(dvModuleData moduleData) {
-		if constexpr (has_addInputs<T>) {
+		if constexpr (has_addTypes<T>) {
 			std::vector<dv::Types::Type> types;
 
 			T::addTypes(types);
@@ -139,20 +139,19 @@ public:
 			}
 		}
 
-		BaseModule::__setGetDefaultConfig(
+		BaseModule::__setStaticGetDefaultConfig(
 			std::function<void(std::unordered_map<std::string, ConfigOption> &)>(T::getConfigOptions));
 
 		BaseModule::staticConfigInit(moduleData->moduleNode);
 
-		if constexpr (has_getAdvancedConfigOptions<T>) {
-			T::getAdvancedConfigOptions(moduleData->moduleNode);
+		if constexpr (has_advancedStaticInit<T>) {
+			T::advancedStaticInit(moduleData->moduleNode);
 		}
 	}
 
 	/**
 	 * Wrapper for the `init` DV function. Constructs the user defined `T` module
-	 * into the module state, calls the config update function after construction
-	 * and appends the DvConfig listener.
+	 * into the module state. Configuration is updated by the BaseModule constructor.
 	 * @param moduleData The DV provided moduleData.
 	 * @return true if construction succeeded, false if it failed.
 	 */
@@ -162,8 +161,6 @@ public:
 			BaseModule::__setStaticModuleData(moduleData);
 
 			new (moduleData->moduleState) T();
-
-			config(moduleData);
 		}
 		catch (const std::exception &ex) {
 			dv::Log(dv::logLevel::ERROR, "Could not initialize module: %s", ex.what());
