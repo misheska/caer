@@ -1,4 +1,4 @@
-ADD_LIBRARY(dvsnoisefilter SHARED dvsnoisefilter.c)
+ADD_LIBRARY(dvsnoisefilter SHARED dvsnoisefilter.cpp)
 
 SET_TARGET_PROPERTIES(dvsnoisefilter
 	PROPERTIES

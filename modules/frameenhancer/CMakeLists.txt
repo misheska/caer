@@ -1,4 +1,4 @@
-ADD_LIBRARY(frameenhancer SHARED frameenhancer.c)
+ADD_LIBRARY(frameenhancer SHARED frameenhancer.cpp)
 
 SET_TARGET_PROPERTIES(frameenhancer
 	PROPERTIES
