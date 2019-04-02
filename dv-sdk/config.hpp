@@ -124,8 +124,8 @@ public:
  */
 class ConfigOption {
 private:
-	std::shared_ptr<void> configOption;
-	dv::Config::AttributeType type = dv::Config::AttributeType::UNKNOWN;
+	dv::unique_ptr_void configOption;
+	dv::Config::AttributeType type;
 
 	/**
 	 * __Private constructor__
@@ -133,7 +133,7 @@ private:
 	 * @param configOption A shared_ptr to an instantiated `_ConfigOption`
 	 * @param variant The config variant of the passed option
 	 */
-	ConfigOption(std::shared_ptr<void> configOption_, dv::Config::AttributeType type_) :
+	ConfigOption(dv::unique_ptr_void configOption_, dv::Config::AttributeType type_) :
 		configOption(std::move(configOption_)),
 		type(type_) {
 	}
@@ -154,12 +154,13 @@ private:
 	static ConfigOption getOption(const std::string &description,
 		typename dv::Config::AttributeTypeGenerator<T>::type defaultValue, const _ConfigAttributes<T> &attributes,
 		dv::Config::AttributeFlags flags) {
-		return ConfigOption(
-			std::shared_ptr<_ConfigOption<T>>(new _ConfigOption<T>(description, defaultValue, attributes, flags)), T);
+		return (
+			ConfigOption(dv::make_unique_void(new _ConfigOption<T>(description, defaultValue, attributes, flags)), T));
 	}
 
 public:
-	ConfigOption() = default;
+	ConfigOption() : configOption(nullptr, [](void *) {}), type(dv::Config::AttributeType::UNKNOWN) {
+	}
 
 	/**
 	 * Returns the type of this `ConfigOption`.
@@ -176,7 +177,7 @@ public:
 	 * @return The underlying _ConfigObject with the configuration data
 	 */
 	template<dv::Config::AttributeType T> _ConfigOption<T> &getConfigObject() const {
-		return (*(std::static_pointer_cast<_ConfigOption<T>>(configOption)));
+		return (*(static_cast<_ConfigOption<T> *>(configOption.get())));
 	}
 
 	/**

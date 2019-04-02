@@ -32,6 +32,15 @@ namespace dv {
 
 template<typename T> using unique_ptr_deleter = std::unique_ptr<T, void (*)(T *)>;
 
+using unique_ptr_void = unique_ptr_deleter<void>;
+
+template<typename T> unique_ptr_void make_unique_void(T *ptr) {
+	return unique_ptr_void(ptr, [](void *data) {
+		T *p = static_cast<T *>(data);
+		delete p;
+	});
+}
+
 using logLevel = libcaer::log::logLevel;
 
 template<typename... Args> static inline void Log(logLevel level, const char *format, Args &&... args) {
