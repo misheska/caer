@@ -4,10 +4,11 @@
 #include "cross/portable_io.h"
 #include "utils.h"
 
+#include <boost/algorithm/string/join.hpp>
 #include <cmath>
-#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace dv {
 
@@ -18,67 +19,100 @@ namespace dv {
  * @return -1 iff x < 0, 1 otherwise
  */
 template<class T> inline T sgn(T x) {
-	return (x < (T) 0) ? (T) -1 : (T) 1;
+	return (x < static_cast<T>(0)) ? static_cast<T>(-1) : static_cast<T>(1);
 }
 
 /**
- * Different opening modes for a File Dialog config option
+ * Different viewing modes for a Button (boolean) config option.
+ * NONE is a normal checkbox.
  */
-enum class _FileDialogMode { NONE, OPEN, SAVE, DIRECTORY };
+enum class ButtonMode { NONE, PLAY, ONOFF, EXECUTE };
 
 /**
- * The different config variations a user can choose from, when building the
- * configuration of a module
+ * Different opening modes for a File Dialog config option.
  */
-enum class ConfigVariant { NONE, BOOLEAN, FILE, STRING, INTEGER, FRACTIONAL };
+enum class FileDialogMode { OPEN, SAVE, DIRECTORY };
 
 /**
- * Maps the selected config variant template to a C++ data type.
+ * INTERNAL: select between different string types.
  */
-template<ConfigVariant> struct _ConfigVariantType {};
-template<> struct _ConfigVariantType<ConfigVariant::BOOLEAN> { typedef bool type; };
-template<> struct _ConfigVariantType<ConfigVariant::FILE> { typedef std::string type; };
-template<> struct _ConfigVariantType<ConfigVariant::STRING> { typedef std::string type; };
-template<> struct _ConfigVariantType<ConfigVariant::INTEGER> { typedef int64_t type; };
-template<> struct _ConfigVariantType<ConfigVariant::FRACTIONAL> { typedef double type; };
+enum class _StringAttributeType { NORMAL, LIST, FILE };
 
 /**
- * Maps the selected config variant to a struct with additional config params
- * that have to be set for the selected config variant. Defaults to an empty struct.
+ * Maps the selected config type to a struct with additional config params
+ * that have to be set for the selected config type. Defaults to an empty struct.
  */
-template<ConfigVariant> struct _ConfigAttributes {};
-template<> struct _ConfigAttributes<ConfigVariant::FILE> {
-	std::string allowedExtensions;
-	_FileDialogMode mode = _FileDialogMode::NONE;
+template<dv::Config::AttributeType> struct _ConfigAttributes {};
+template<> struct _ConfigAttributes<dv::Config::AttributeType::BOOL> {
+	dv::ButtonMode mode;
+	bool autoReset;
+
+	_ConfigAttributes(ButtonMode bm, bool arst = false) : mode(bm), autoReset(arst) {
+	}
 };
-template<> struct _ConfigAttributes<ConfigVariant::INTEGER> {
-	using _VariantType = typename _ConfigVariantType<ConfigVariant::INTEGER>::type;
-	_VariantType min;
-	_VariantType max;
+template<> struct _ConfigAttributes<dv::Config::AttributeType::INT> {
+	dv::Config::AttributeRanges<dv::Config::AttributeType::INT> range;
+	std::string unit;
+
+	_ConfigAttributes(int32_t minValue, int32_t maxValue) : range(minValue, maxValue) {
+	}
 };
-template<> struct _ConfigAttributes<ConfigVariant::FRACTIONAL> {
-	using _VariantType = typename _ConfigVariantType<ConfigVariant::FRACTIONAL>::type;
-	_VariantType min;
-	_VariantType max;
+template<> struct _ConfigAttributes<dv::Config::AttributeType::LONG> {
+	dv::Config::AttributeRanges<dv::Config::AttributeType::LONG> range;
+	std::string unit;
+
+	_ConfigAttributes(int64_t minValue, int64_t maxValue) : range(minValue, maxValue) {
+	}
+};
+template<> struct _ConfigAttributes<dv::Config::AttributeType::FLOAT> {
+	dv::Config::AttributeRanges<dv::Config::AttributeType::FLOAT> range;
+	std::string unit;
+
+	_ConfigAttributes(float minValue, float maxValue) : range(minValue, maxValue) {
+	}
+};
+template<> struct _ConfigAttributes<dv::Config::AttributeType::DOUBLE> {
+	dv::Config::AttributeRanges<dv::Config::AttributeType::DOUBLE> range;
+	std::string unit;
+
+	_ConfigAttributes(double minValue, double maxValue) : range(minValue, maxValue) {
+	}
+};
+template<> struct _ConfigAttributes<dv::Config::AttributeType::STRING> {
+	dv::Config::AttributeRanges<dv::Config::AttributeType::STRING> length;
+	_StringAttributeType type;
+	// List of strings related options.
+	std::vector<std::string> listOptions;
+	bool listAllowMultipleSelections;
+	// File chooser (path string) related options.
+	FileDialogMode fileMode;
+	std::string fileAllowedExtensions;
+
+	_ConfigAttributes(int32_t minLength, int32_t maxLength, _StringAttributeType t) :
+		length(minLength, maxLength),
+		type(t) {
+	}
 };
 
 /**
- * Templated implementation class of a ConfigOption. Stores in a layout according
- * to the selected config variant.
- * @tparam V
+ * Templated implementation class of a ConfigOption. Stores extra attributes according to the selected config type.
  */
-template<ConfigVariant V> class _ConfigOption {
-	using _VariantType = typename _ConfigVariantType<V>::type;
+template<dv::Config::AttributeType T> class _ConfigOption {
+	using _AttrType = typename dv::Config::AttributeTypeGenerator<T>::type;
 
 public:
 	const std::string description;
-	const _VariantType initValue;
-	const _ConfigAttributes<V> attributes;
-	_VariantType currentValue;
-	_ConfigOption(const std::string &description_, _VariantType initValue_, const _ConfigAttributes<V> &attributes_) :
+	const _AttrType initValue;
+	const _ConfigAttributes<T> attributes;
+	const dv::Config::AttributeFlags flags;
+	_AttrType currentValue;
+
+	_ConfigOption(const std::string &description_, _AttrType initValue_, const _ConfigAttributes<T> &attributes_,
+		dv::Config::AttributeFlags flags_) :
 		description(description_),
 		initValue(initValue_),
 		attributes(attributes_),
+		flags(flags_),
 		currentValue(initValue_) {
 	}
 };
@@ -90,9 +124,8 @@ public:
  */
 class ConfigOption {
 private:
-	std::shared_ptr<void> configOption_;
-	ConfigVariant variant_   = ConfigVariant::NONE;
-	bool dvConfigNodeCreated = false;
+	std::shared_ptr<void> configOption;
+	dv::Config::AttributeType type = dv::Config::AttributeType::UNKNOWN;
 
 	/**
 	 * __Private constructor__
@@ -100,9 +133,9 @@ private:
 	 * @param configOption A shared_ptr to an instantiated `_ConfigOption`
 	 * @param variant The config variant of the passed option
 	 */
-	ConfigOption(std::shared_ptr<void> configOption, ConfigVariant variant) :
-		configOption_(std::move(configOption)),
-		variant_(variant) {
+	ConfigOption(std::shared_ptr<void> configOption_, dv::Config::AttributeType type_) :
+		configOption(std::move(configOption_)),
+		type(type_) {
 	}
 
 	/**
@@ -111,17 +144,18 @@ private:
 	 * Creates a new ConfigOption of the requested type. Works by first instantiating
 	 * a `_ConfigOption` with the right templated variant, then creating a `shared_ptr`
 	 * and creating a `ConfigOption` to return.
-	 * @tparam V
+	 * @tparam T
 	 * @param description
 	 * @param defaultValue
 	 * @param attributes_
 	 * @return
 	 */
-	template<ConfigVariant V>
-	static ConfigOption getOption(const std::string &description, typename _ConfigVariantType<V>::type defaultValue,
-		const _ConfigAttributes<V> &attributes_) {
+	template<dv::Config::AttributeType T>
+	static ConfigOption getOption(const std::string &description,
+		typename dv::Config::AttributeTypeGenerator<T>::type defaultValue, const _ConfigAttributes<T> &attributes,
+		dv::Config::AttributeFlags flags) {
 		return ConfigOption(
-			std::shared_ptr<_ConfigOption<V>>(new _ConfigOption<V>(description, defaultValue, attributes_)), V);
+			std::shared_ptr<_ConfigOption<T>>(new _ConfigOption<T>(description, defaultValue, attributes, flags)), T);
 	}
 
 public:
@@ -132,8 +166,8 @@ public:
 	 * function can be used to use as a
 	 * @return
 	 */
-	inline ConfigVariant getVariant() const {
-		return variant_;
+	dv::Config::AttributeType getType() const {
+		return (type);
 	}
 
 	/**
@@ -142,8 +176,8 @@ public:
 	 * @tparam V The config variant to be casted to.
 	 * @return The underlying _ConfigObject with the configuration data
 	 */
-	template<ConfigVariant V> _ConfigOption<V> &getConfigObject() const {
-		return *(std::static_pointer_cast<_ConfigOption<V>>(configOption_));
+	template<dv::Config::AttributeType T> _ConfigOption<T> &getConfigObject() const {
+		return (*(std::static_pointer_cast<_ConfigOption<T>>(configOption)));
 	}
 
 	/**
@@ -153,8 +187,8 @@ public:
 	 * @tparam V The config variant type
 	 * @return A simple value (long, string etc) that is the current value of the config option
 	 */
-	template<ConfigVariant V> typename _ConfigVariantType<V>::type &getValue() const {
-		return (typename _ConfigVariantType<V>::type &) (getConfigObject<V>().currentValue);
+	template<dv::Config::AttributeType T> typename dv::Config::AttributeTypeGenerator<T>::type &getValue() const {
+		return (static_cast<typename dv::Config::AttributeTypeGenerator<T>::type &>(getConfigObject<T>().currentValue));
 	}
 
 	/**
@@ -163,54 +197,141 @@ public:
 	 * @param key the key under which the new attribute should get stored
 	 * @param node The dvConfigNode under which the new attribute shall be created
 	 */
-	void createDvConfigNodeIfChanged(const std::string &key, dvConfigNode node) {
-		if (dvConfigNodeCreated) {
-			return;
+	void createAttribute(const std::string &fullKey, dv::Config::Node moduleNode) {
+		dv::Config::Node node = moduleNode;
+		std::string key;
+
+		size_t pos = fullKey.find_last_of("/");
+
+		if (pos != std::string::npos) {
+			node = moduleNode.getRelativeNode(fullKey.substr(0, pos + 1));
+			key  = fullKey.substr(pos + 1);
+		}
+		else {
+			// node is already moduleNode.
+			key = fullKey;
 		}
 
-		switch (variant_) {
-			case ConfigVariant::BOOLEAN: {
-				auto &config_ = getConfigObject<ConfigVariant::BOOLEAN>();
-				dvConfigNodeCreateBool(
-					node, key.c_str(), config_.initValue, DVCFG_FLAGS_NORMAL, config_.description.c_str());
-				break;
-			}
-			case ConfigVariant::FRACTIONAL: {
-				auto &config_ = getConfigObject<ConfigVariant::FRACTIONAL>();
-				dvConfigNodeCreateDouble(node, key.c_str(), config_.initValue, config_.attributes.min,
-					config_.attributes.max, DVCFG_FLAGS_NORMAL, config_.description.c_str());
-				break;
-			}
-			case ConfigVariant::INTEGER: {
-				auto &config_ = getConfigObject<ConfigVariant::INTEGER>();
-				dvConfigNodeCreateLong(node, key.c_str(), config_.initValue, config_.attributes.min,
-					config_.attributes.max, DVCFG_FLAGS_NORMAL, config_.description.c_str());
-				break;
-			}
-			case ConfigVariant::STRING: {
-				auto &config_ = getConfigObject<ConfigVariant::STRING>();
-				dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, INT32_MAX, DVCFG_FLAGS_NORMAL,
-					config_.description.c_str());
-				break;
-			}
-			case ConfigVariant::FILE: {
-				auto &config_ = getConfigObject<ConfigVariant::FILE>();
-				dvConfigNodeCreateString(node, key.c_str(), config_.initValue.c_str(), 0, PATH_MAX, DVCFG_FLAGS_NORMAL,
-					config_.description.c_str());
+		switch (type) {
+			case dv::Config::AttributeType::BOOL: {
+				auto &config = getConfigObject<dv::Config::AttributeType::BOOL>();
 
-				std::string fileChooserAttribute
-					= (config_.attributes.mode == _FileDialogMode::OPEN)
-						  ? "LOAD"
-						  : ((config_.attributes.mode == _FileDialogMode::SAVE) ? "SAVE" : "DIRECTORY");
-				dvConfigNodeAttributeModifierFileChooser(
-					node, key.c_str(), (fileChooserAttribute + ":" + config_.attributes.allowedExtensions).c_str());
+				node.createAttribute<dv::Config::AttributeType::BOOL>(
+					key, config.initValue, {}, config.flags, config.description);
+
+				if (config.attributes.mode != dv::ButtonMode::NONE) {
+					if (config.attributes.mode == dv::ButtonMode::PLAY) {
+						node.attributeModifierButton(key, "PLAY");
+					}
+					else if (config.attributes.mode == dv::ButtonMode::ONOFF) {
+						node.attributeModifierButton(key, "ONOFF");
+					}
+					else {
+						node.attributeModifierButton(key, "EXECUTE");
+					}
+				}
+
+				if (config.attributes.autoReset) {
+					node.attributeButtonReset(key);
+				}
+
 				break;
 			}
-			case ConfigVariant::NONE: {
+
+			case dv::Config::AttributeType::INT: {
+				auto &config = getConfigObject<dv::Config::AttributeType::INT>();
+
+				node.createAttribute<dv::Config::AttributeType::INT>(
+					key, config.initValue, config.attributes.range, config.flags, config.description);
+
+				if (!config.attributes.unit.empty()) {
+					node.attributeModifierUnit(key, config.attributes.unit);
+				}
+
+				break;
+			}
+
+			case dv::Config::AttributeType::LONG: {
+				auto &config = getConfigObject<dv::Config::AttributeType::LONG>();
+
+				node.createAttribute<dv::Config::AttributeType::LONG>(
+					key, config.initValue, config.attributes.range, config.flags, config.description);
+
+				if (!config.attributes.unit.empty()) {
+					node.attributeModifierUnit(key, config.attributes.unit);
+				}
+
+				break;
+			}
+
+			case dv::Config::AttributeType::FLOAT: {
+				auto &config = getConfigObject<dv::Config::AttributeType::FLOAT>();
+
+				node.createAttribute<dv::Config::AttributeType::FLOAT>(
+					key, config.initValue, config.attributes.range, config.flags, config.description);
+
+				if (!config.attributes.unit.empty()) {
+					node.attributeModifierUnit(key, config.attributes.unit);
+				}
+
+				break;
+			}
+
+			case dv::Config::AttributeType::DOUBLE: {
+				auto &config = getConfigObject<dv::Config::AttributeType::DOUBLE>();
+
+				node.createAttribute<dv::Config::AttributeType::DOUBLE>(
+					key, config.initValue, config.attributes.range, config.flags, config.description);
+
+				if (!config.attributes.unit.empty()) {
+					node.attributeModifierUnit(key, config.attributes.unit);
+				}
+
+				break;
+			}
+
+			case dv::Config::AttributeType::STRING: {
+				auto &config = getConfigObject<dv::Config::AttributeType::STRING>();
+
+				node.createAttribute<dv::Config::AttributeType::STRING>(key,
+					static_cast<const std::string_view>(config.initValue), config.attributes.length, config.flags,
+					config.description);
+
+				if (config.attributes.type == _StringAttributeType::LIST) {
+					std::string listAttribute = boost::algorithm::join(config.attributes.listOptions, ",");
+
+					node.attributeModifierListOptions(
+						key, listAttribute, config.attributes.listAllowMultipleSelections);
+				}
+
+				if (config.attributes.type == _StringAttributeType::FILE) {
+					std::string fileChooserAttribute;
+
+					if (config.attributes.fileMode == FileDialogMode::OPEN) {
+						fileChooserAttribute += "LOAD";
+					}
+					else if (config.attributes.fileMode == FileDialogMode::SAVE) {
+						fileChooserAttribute += "SAVE";
+					}
+					else {
+						fileChooserAttribute += "DIRECTORY";
+					}
+
+					if (!config.attributes.fileAllowedExtensions.empty()) {
+						fileChooserAttribute.push_back(':');
+						fileChooserAttribute += config.attributes.fileAllowedExtensions;
+					}
+
+					node.attributeModifierFileChooser(key, fileChooserAttribute);
+				}
+
+				break;
+			}
+
+			case dv::Config::AttributeType::UNKNOWN: {
 				break;
 			}
 		}
-		dvConfigNodeCreated = true;
 	}
 
 	/**
@@ -219,33 +340,71 @@ public:
 	 * @param key The key under which to find the value in the dv config tree.
 	 * @param node The node of the dv config treee under which the attribute is to be found.
 	 */
-	void updateValue(const std::string &key, dvConfigNode node) {
-		switch (variant_) {
-			case ConfigVariant::BOOLEAN: {
-				auto &config_        = getConfigObject<ConfigVariant::BOOLEAN>();
-				config_.currentValue = dvConfigNodeGetBool(node, key.c_str());
-			}
-			case ConfigVariant::FRACTIONAL: {
-				auto &config_        = getConfigObject<ConfigVariant::FRACTIONAL>();
-				config_.currentValue = dvConfigNodeGetDouble(node, key.c_str());
+	void updateValue(const std::string &fullKey, dv::Config::Node moduleNode) {
+		dv::Config::Node node = moduleNode;
+		std::string key;
+
+		size_t pos = fullKey.find_last_of("/");
+
+		if (pos != std::string::npos) {
+			node = moduleNode.getRelativeNode(fullKey.substr(0, pos + 1));
+			key  = fullKey.substr(pos + 1);
+		}
+		else {
+			// node is already moduleNode.
+			key = fullKey;
+		}
+
+		switch (type) {
+			case dv::Config::AttributeType::BOOL: {
+				auto &config = getConfigObject<dv::Config::AttributeType::BOOL>();
+
+				config.currentValue = node.get<dv::Config::AttributeType::BOOL>(key);
+
 				break;
 			}
-			case ConfigVariant::INTEGER: {
-				auto &config_        = getConfigObject<ConfigVariant::INTEGER>();
-				config_.currentValue = dvConfigNodeGetLong(node, key.c_str());
+
+			case dv::Config::AttributeType::INT: {
+				auto &config = getConfigObject<dv::Config::AttributeType::INT>();
+
+				config.currentValue = node.get<dv::Config::AttributeType::INT>(key);
+
 				break;
 			}
-			case ConfigVariant::STRING: {
-				auto &config_        = getConfigObject<ConfigVariant::STRING>();
-				config_.currentValue = dvConfigNodeGetString(node, key.c_str());
+
+			case dv::Config::AttributeType::LONG: {
+				auto &config = getConfigObject<dv::Config::AttributeType::LONG>();
+
+				config.currentValue = node.get<dv::Config::AttributeType::LONG>(key);
+
 				break;
 			}
-			case ConfigVariant::FILE: {
-				auto &config_        = getConfigObject<ConfigVariant::FILE>();
-				config_.currentValue = dvConfigNodeGetString(node, key.c_str());
+
+			case dv::Config::AttributeType::FLOAT: {
+				auto &config = getConfigObject<dv::Config::AttributeType::FLOAT>();
+
+				config.currentValue = node.get<dv::Config::AttributeType::FLOAT>(key);
+
 				break;
 			}
-			case ConfigVariant::NONE: {
+
+			case dv::Config::AttributeType::DOUBLE: {
+				auto &config = getConfigObject<dv::Config::AttributeType::DOUBLE>();
+
+				config.currentValue = node.get<dv::Config::AttributeType::DOUBLE>(key);
+
+				break;
+			}
+
+			case dv::Config::AttributeType::STRING: {
+				auto &config = getConfigObject<dv::Config::AttributeType::STRING>();
+
+				config.currentValue = node.get<dv::Config::AttributeType::STRING>(key);
+
+				break;
+			}
+
+			case dv::Config::AttributeType::UNKNOWN: {
 				break;
 			}
 		}
@@ -253,56 +412,159 @@ public:
 
 	// Static convenience factory methods -------------------------------------------------------
 	/**
-	 * Factory function. Creates a fractional config option.
+	 * Factory function. Creates boolean option (checkbox).
+	 * @param description A description that describes the purpose of this option
+	 * @return A ConfigOption Object
+	 */
+	static ConfigOption boolOption(const std::string &description) {
+		return getOption<dv::Config::AttributeType::BOOL>(
+			description, false, {dv::ButtonMode::NONE}, dv::Config::AttributeFlags::NORMAL);
+	}
+
+	/**
+	 * Factory function. Creates boolean option (checkbox).
+	 * @param description A description that describes the purpose of this option
+	 * @param defaultValue The default value of the option
+	 * @return A ConfigOption Object
+	 */
+	static ConfigOption boolOption(const std::string &description, bool defaultValue) {
+		return getOption<dv::Config::AttributeType::BOOL>(
+			description, defaultValue, {dv::ButtonMode::NONE}, dv::Config::AttributeFlags::NORMAL);
+	}
+
+	/**
+	 * Factory function. Creates boolean option (checkbox).
+	 * @param description A description that describes the purpose of this option
+	 * @param defaultValue The default value of the option
+	 * @return A ConfigOption Object
+	 */
+	static ConfigOption boolOption(const std::string &description, bool defaultValue, const dv::ButtonMode &mode) {
+		return getOption<dv::Config::AttributeType::BOOL>(
+			description, defaultValue, {mode}, dv::Config::AttributeFlags::NORMAL);
+	}
+
+	/**
+	 * Factory function. Creates a integer config option (32 bit).
 	 * @param description A description that describes the purpose of this option
 	 * @param defaultValue The default value that this option shall have
 	 * @param minValue The min value a user can choose for this option
 	 * @param maxValue The max value a user can choose for this option
 	 * @return A ConfigOption Object
 	 */
-	static ConfigOption fractionalOption(
-		const std::string &description, double defaultValue, double minValue, double maxValue) {
-		return getOption<ConfigVariant::FRACTIONAL>(description, defaultValue, {minValue, maxValue});
+	static ConfigOption intOption(
+		const std::string &description, int32_t defaultValue, int32_t minValue, int32_t maxValue) {
+		return getOption<dv::Config::AttributeType::INT>(
+			description, defaultValue, {minValue, maxValue}, dv::Config::AttributeFlags::NORMAL);
 	}
 
 	/**
-	 * Factory function. Creates a fractional config option.
+	 * Factory function. Creates a integer config option (32 bit).
 	 * @param description A description that describes the purpose of this option
 	 * @param defaultValue The default value that this option shall have
 	 * @return A ConfigOption Object
 	 */
-	static ConfigOption fractionalOption(const std::string &description, double defaultValue) {
-		double sensibleUpperRange
-			= ((std::abs(defaultValue) > 0.) ? std::pow(10., std::floor(std::log10(std::abs(defaultValue)) + 1.)) : 1.)
-			  * sgn(defaultValue);
-		return getOption<ConfigVariant::FRACTIONAL>(description, defaultValue, {0., sensibleUpperRange});
-	}
-
-	/**
-	 * Factory function. Creates a integer config option.
-	 * @param description A description that describes the purpose of this option
-	 * @param defaultValue The default value that this option shall have
-	 * @param minValue The min value a user can choose for this option
-	 * @param maxValue The max value a user can choose for this option
-	 * @return A ConfigOption Object
-	 */
-	static ConfigOption integerOption(const std::string &description, long defaultValue, long minValue, long maxValue) {
-		return getOption<ConfigVariant::INTEGER>(description, defaultValue, {minValue, maxValue});
-	}
-
-	/**
-	 * Factory function. Creates a integer config option.
-	 * @param description A description that describes the purpose of this option
-	 * @param defaultValue The default value that this option shall have
-	 * @return A ConfigOption Object
-	 */
-	static ConfigOption integerOption(const std::string &description, long defaultValue) {
-		long sensibleUpperRange
+	static ConfigOption intOption(const std::string &description, int32_t defaultValue) {
+		int32_t sensibleUpperRange
 			= ((std::abs(defaultValue) > 0)
-					  ? (long) std::pow(10., std::floor(std::log10((double) std::abs(defaultValue)) + 1.))
+					  ? static_cast<int32_t>(
+							std::pow(10.0, std::floor(std::log10(static_cast<double>(std::abs(defaultValue))) + 1.0)))
 					  : 1)
 			  * sgn(defaultValue);
-		return getOption<ConfigVariant::INTEGER>(description, defaultValue, {0, sensibleUpperRange});
+
+		return getOption<dv::Config::AttributeType::INT>(
+			description, defaultValue, {0, sensibleUpperRange}, dv::Config::AttributeFlags::NORMAL);
+	}
+
+	/**
+	 * Factory function. Creates a long integer config option (64 bit).
+	 * @param description A description that describes the purpose of this option
+	 * @param defaultValue The default value that this option shall have
+	 * @param minValue The min value a user can choose for this option
+	 * @param maxValue The max value a user can choose for this option
+	 * @return A ConfigOption Object
+	 */
+	static ConfigOption longOption(
+		const std::string &description, int64_t defaultValue, int64_t minValue, int64_t maxValue) {
+		return getOption<dv::Config::AttributeType::LONG>(
+			description, defaultValue, {minValue, maxValue}, dv::Config::AttributeFlags::NORMAL);
+	}
+
+	/**
+	 * Factory function. Creates a long integer config option (64 bit).
+	 * @param description A description that describes the purpose of this option
+	 * @param defaultValue The default value that this option shall have
+	 * @return A ConfigOption Object
+	 */
+	static ConfigOption longOption(const std::string &description, int64_t defaultValue) {
+		int64_t sensibleUpperRange
+			= ((std::abs(defaultValue) > 0)
+					  ? static_cast<int64_t>(
+							std::pow(10.0, std::floor(std::log10(static_cast<double>(std::abs(defaultValue))) + 1.0)))
+					  : 1)
+			  * sgn(defaultValue);
+
+		return getOption<dv::Config::AttributeType::LONG>(
+			description, defaultValue, {0, sensibleUpperRange}, dv::Config::AttributeFlags::NORMAL);
+	}
+
+	/**
+	 * Factory function. Creates a single-precision floating point config option.
+	 * @param description A description that describes the purpose of this option
+	 * @param defaultValue The default value that this option shall have
+	 * @param minValue The min value a user can choose for this option
+	 * @param maxValue The max value a user can choose for this option
+	 * @return A ConfigOption Object
+	 */
+	static ConfigOption floatOption(
+		const std::string &description, float defaultValue, float minValue, float maxValue) {
+		return getOption<dv::Config::AttributeType::FLOAT>(
+			description, defaultValue, {minValue, maxValue}, dv::Config::AttributeFlags::NORMAL);
+	}
+
+	/**
+	 * Factory function. Creates a single-precision floating point config option.
+	 * @param description A description that describes the purpose of this option
+	 * @param defaultValue The default value that this option shall have
+	 * @return A ConfigOption Object
+	 */
+	static ConfigOption floatOption(const std::string &description, float defaultValue) {
+		float sensibleUpperRange
+			= ((std::abs(defaultValue) > 0.0) ? std::pow(10.0, std::floor(std::log10(std::abs(defaultValue)) + 1.0))
+											  : 1.0)
+			  * sgn(defaultValue);
+
+		return getOption<dv::Config::AttributeType::FLOAT>(
+			description, defaultValue, {0.0, sensibleUpperRange}, dv::Config::AttributeFlags::NORMAL);
+	}
+
+	/**
+	 * Factory function. Creates a double-precision floating point config option.
+	 * @param description A description that describes the purpose of this option
+	 * @param defaultValue The default value that this option shall have
+	 * @param minValue The min value a user can choose for this option
+	 * @param maxValue The max value a user can choose for this option
+	 * @return A ConfigOption Object
+	 */
+	static ConfigOption doubleOption(
+		const std::string &description, double defaultValue, double minValue, double maxValue) {
+		return getOption<dv::Config::AttributeType::DOUBLE>(
+			description, defaultValue, {minValue, maxValue}, dv::Config::AttributeFlags::NORMAL);
+	}
+
+	/**
+	 * Factory function. Creates a double-precision floating point config option.
+	 * @param description A description that describes the purpose of this option
+	 * @param defaultValue The default value that this option shall have
+	 * @return A ConfigOption Object
+	 */
+	static ConfigOption doubleOption(const std::string &description, double defaultValue) {
+		double sensibleUpperRange
+			= ((std::abs(defaultValue) > 0.0) ? std::pow(10.0, std::floor(std::log10(std::abs(defaultValue)) + 1.0))
+											  : 1.0)
+			  * sgn(defaultValue);
+
+		return getOption<dv::Config::AttributeType::DOUBLE>(
+			description, defaultValue, {0.0, sensibleUpperRange}, dv::Config::AttributeFlags::NORMAL);
 	}
 
 	/**
@@ -312,7 +574,8 @@ public:
 	 * @return A ConfigOption Object
 	 */
 	static ConfigOption stringOption(const std::string &description, const std::string &defaultValue) {
-		return getOption<ConfigVariant::STRING>(description, defaultValue, {});
+		return getOption<dv::Config::AttributeType::STRING>(description, defaultValue,
+			{0, INT32_MAX, _StringAttributeType::NORMAL}, dv::Config::AttributeFlags::NORMAL);
 	}
 
 	/**
@@ -321,7 +584,11 @@ public:
 	 * @return A ConfigOption Object
 	 */
 	static ConfigOption fileOpenOption(const std::string &description) {
-		return getOption<ConfigVariant::FILE>(description, "", {".*", _FileDialogMode::OPEN});
+		_ConfigAttributes<dv::Config::AttributeType::STRING> attr{0, PATH_MAX, _StringAttributeType::FILE};
+		attr.fileMode              = FileDialogMode::OPEN;
+		attr.fileAllowedExtensions = "";
+
+		return getOption<dv::Config::AttributeType::STRING>(description, "", attr, dv::Config::AttributeFlags::NORMAL);
 	}
 
 	/**
@@ -331,7 +598,11 @@ public:
 	 * @return A ConfigOption Object
 	 */
 	static ConfigOption fileOpenOption(const std::string &description, const std::string &allowedExtensions) {
-		return getOption<ConfigVariant::FILE>(description, "", {allowedExtensions, _FileDialogMode::OPEN});
+		_ConfigAttributes<dv::Config::AttributeType::STRING> attr{0, PATH_MAX, _StringAttributeType::FILE};
+		attr.fileMode              = FileDialogMode::OPEN;
+		attr.fileAllowedExtensions = allowedExtensions;
+
+		return getOption<dv::Config::AttributeType::STRING>(description, "", attr, dv::Config::AttributeFlags::NORMAL);
 	}
 
 	/**
@@ -343,7 +614,12 @@ public:
 	 */
 	static ConfigOption fileOpenOption(
 		const std::string &description, const std::string &defaultValue, const std::string &allowedExtensions) {
-		return getOption<ConfigVariant::FILE>(description, defaultValue, {allowedExtensions, _FileDialogMode::OPEN});
+		_ConfigAttributes<dv::Config::AttributeType::STRING> attr{0, PATH_MAX, _StringAttributeType::FILE};
+		attr.fileMode              = FileDialogMode::OPEN;
+		attr.fileAllowedExtensions = allowedExtensions;
+
+		return getOption<dv::Config::AttributeType::STRING>(
+			description, defaultValue, attr, dv::Config::AttributeFlags::NORMAL);
 	}
 
 	/**
@@ -352,7 +628,11 @@ public:
 	 * @return A ConfigOption Object
 	 */
 	static ConfigOption fileSaveOption(const std::string &description) {
-		return getOption<ConfigVariant::FILE>(description, "", {"*", _FileDialogMode::SAVE});
+		_ConfigAttributes<dv::Config::AttributeType::STRING> attr{0, PATH_MAX, _StringAttributeType::FILE};
+		attr.fileMode              = FileDialogMode::SAVE;
+		attr.fileAllowedExtensions = "";
+
+		return getOption<dv::Config::AttributeType::STRING>(description, "", attr, dv::Config::AttributeFlags::NORMAL);
 	}
 
 	/**
@@ -362,7 +642,11 @@ public:
 	 * @return A ConfigOption Object
 	 */
 	static ConfigOption fileSaveOption(const std::string &description, const std::string &allowedExtensions) {
-		return getOption<ConfigVariant::FILE>(description, "", {allowedExtensions, _FileDialogMode::SAVE});
+		_ConfigAttributes<dv::Config::AttributeType::STRING> attr{0, PATH_MAX, _StringAttributeType::FILE};
+		attr.fileMode              = FileDialogMode::SAVE;
+		attr.fileAllowedExtensions = allowedExtensions;
+
+		return getOption<dv::Config::AttributeType::STRING>(description, "", attr, dv::Config::AttributeFlags::NORMAL);
 	}
 
 	/**
@@ -374,7 +658,12 @@ public:
 	 */
 	static ConfigOption fileSaveOption(
 		const std::string &description, const std::string &defaultValue, const std::string &allowedExtensions) {
-		return getOption<ConfigVariant::FILE>(description, defaultValue, {allowedExtensions, _FileDialogMode::SAVE});
+		_ConfigAttributes<dv::Config::AttributeType::STRING> attr{0, PATH_MAX, _StringAttributeType::FILE};
+		attr.fileMode              = FileDialogMode::SAVE;
+		attr.fileAllowedExtensions = allowedExtensions;
+
+		return getOption<dv::Config::AttributeType::STRING>(
+			description, defaultValue, attr, dv::Config::AttributeFlags::NORMAL);
 	}
 
 	/**
@@ -383,7 +672,10 @@ public:
 	 * @return A ConfigOption Object
 	 */
 	static ConfigOption directoryOption(const std::string &description) {
-		return getOption<ConfigVariant::FILE>(description, "", {"", _FileDialogMode::DIRECTORY});
+		_ConfigAttributes<dv::Config::AttributeType::STRING> attr{0, PATH_MAX, _StringAttributeType::FILE};
+		attr.fileMode = FileDialogMode::DIRECTORY;
+
+		return getOption<dv::Config::AttributeType::STRING>(description, "", attr, dv::Config::AttributeFlags::NORMAL);
 	}
 
 	/**
@@ -393,56 +685,42 @@ public:
 	 * @return A ConfigOption Object
 	 */
 	static ConfigOption directoryOption(const std::string &description, const std::string &defaultValue) {
-		return getOption<ConfigVariant::FILE>(description, defaultValue, {"", _FileDialogMode::DIRECTORY});
-	}
+		_ConfigAttributes<dv::Config::AttributeType::STRING> attr{0, PATH_MAX, _StringAttributeType::FILE};
+		attr.fileMode = FileDialogMode::DIRECTORY;
 
-	/**
-	 * Factory function. Creates bool option
-	 * @param description A description that describes the purpose of this option
-	 * @return A ConfigOption Object
-	 */
-	static ConfigOption boolOption(const std::string &description) {
-		return getOption<ConfigVariant::BOOLEAN>(description, false, {});
-	}
-
-	/**
-	 * Factory function. Creates bool option
-	 * @param description A description that describes the purpose of this option
-	 * @param defaultValue The default value of the option
-	 * @return A ConfigOption Object
-	 */
-	static ConfigOption boolOption(const std::string &description, const bool defaultValue) {
-		return getOption<ConfigVariant::BOOLEAN>(description, defaultValue, {});
+		return getOption<dv::Config::AttributeType::STRING>(
+			description, defaultValue, attr, dv::Config::AttributeFlags::NORMAL);
 	}
 };
 
 /**
- * A map of current config values at runtime. Extends std::map.
+ * A map of current config values at runtime. Extends std::unordered_map.
  * Type agnostic, enforces type only on accessing elements.
  */
-class RuntimeConfigMap : public std::map<std::string, ConfigOption> {
+class RuntimeConfigMap : public std::unordered_map<std::string, ConfigOption> {
 public:
 	/**
 	 * Returns the underlying `_ConfigOption` object for the given key. The
 	 * config option provides access to parameters and default and current values.
-	 * @tparam V The type of the config param. Type of `dv::ConfigVariant::`
+	 * @tparam T The type of the config param. Type of `dv::ConfigVariant::`
 	 * @param key The key of the config option to retrieve
 	 * @return The underlying `_ConfigObject` of the config option. Gives access to parameters.
 	 */
-	template<ConfigVariant V> _ConfigOption<V> const &getConfigObject(const std::string &key) {
-		return this->at(key).getConfigObject<V>();
+	template<dv::Config::AttributeType T> _ConfigOption<T> const &getConfigObject(const std::string &key) {
+		return (this->at(key).getConfigObject<T>());
 	}
 
 	/**
 	 * Returns the current value of the config option with the given key. Needs a template paramenter
 	 * of the type `dv::ConfigVariant::*` to determine what type of config parameter
 	 * to return.
-	 * @tparam V The config variant type
+	 * @tparam T The config variant type
 	 * @param key the key of the config option to look up
 	 * @return A simple value (long, string etc) that is the current value of the config option
 	 */
-	template<ConfigVariant V> const typename _ConfigVariantType<V>::type getValue(const std::string &key) {
-		return (typename _ConfigVariantType<V>::type)(getConfigObject<V>(key).currentValue);
+	template<dv::Config::AttributeType T>
+	typename dv::Config::AttributeTypeGenerator<T>::type const &getValue(const std::string &key) {
+		return (this->at(key).getValue<T>());
 	}
 };
 

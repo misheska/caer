@@ -20,6 +20,28 @@
 
 namespace dv {
 
+class InputDefinition {
+public:
+	std::string name;
+	std::string typeName;
+	bool optional;
+
+	InputDefinition(const std::string &n, const std::string &t, bool opt = false) :
+		name(n),
+		typeName(t),
+		optional(opt) {
+	}
+};
+
+class OutputDefinition {
+public:
+	std::string name;
+	std::string typeName;
+
+	OutputDefinition(const std::string &n, const std::string &t) : name(n), typeName(t) {
+	}
+};
+
 /**
  * Trait for the existence of a static getDescription method with const char* return value
  * @tparam T The class to be tested
@@ -35,7 +57,27 @@ inline constexpr bool has_getDescription = has_static_member_function_getDescrip
 BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(getConfigOptions)
 template<typename T>
 inline constexpr bool has_getConfigOptions
-	= has_static_member_function_getConfigOptions<T, void(std::map<std::string, dv::ConfigOption> &)>::value;
+	= has_static_member_function_getConfigOptions<T, void(std::unordered_map<std::string, dv::ConfigOption> &)>::value;
+
+BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(getAdvancedConfigOptions)
+template<typename T>
+inline constexpr bool has_getAdvancedConfigOptions
+	= has_static_member_function_getAdvancedConfigOptions<T, void(dv::Config::Node)>::value;
+
+BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(addTypes)
+template<typename T>
+inline constexpr bool has_addTypes
+	= has_static_member_function_addTypes<T, void(std::vector<dv::Types::Type> &)>::value;
+
+BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(addInputs)
+template<typename T>
+inline constexpr bool has_addInputs
+	= has_static_member_function_addInputs<T, void(std::vector<dv::InputDefinition> &)>::value;
+
+BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(addOutputs)
+template<typename T>
+inline constexpr bool has_addOutputs
+	= has_static_member_function_addOutputs<T, void(std::vector<dv::OutputDefinition> &)>::value;
 
 /**
  * Pure static template class that provides the static C interface functions
@@ -50,14 +92,13 @@ inline constexpr bool has_getConfigOptions
  */
 template<class T> class ModuleStatics {
 	/* Static assertions. Checks the existence of all required static members. */
-	static_assert(std::is_base_of<BaseModule, T>::value, "Your module does not inherit from dv::BaseModule.");
+	static_assert(std::is_base_of_v<BaseModule, T>, "Your module does not inherit from dv::BaseModule.");
 	static_assert(has_getDescription<T>,
 		"Your module does not specify a `static const char* getDescription()` function."
 		"This function should return a string with a description of the module.");
 	static_assert(has_getConfigOptions<T>,
-		"Your module does not specify a `static void getConfigOptions(std::map<std::string, dv::ConfigOption> "
-		"&config)` function."
-		"This function should insert desired config options into the map.");
+		"Your module does not specify a `static void getConfigOptions(std::unordered_map<std::string, "
+		"dv::ConfigOption> &config)` function. This function should insert desired config options into the map.");
 
 public:
 	/**
@@ -68,12 +109,44 @@ public:
 	 * @param moduleData The DV provided moduleData.
 	 */
 	static void staticInit(dvModuleData moduleData) {
-		if constexpr (has_getDescription<T>) {
-			printf("%s\n", T::getDescription());
+		if constexpr (has_addInputs<T>) {
+			std::vector<dv::Types::Type> types;
+
+			T::addTypes(types);
+
+			for (const auto &t : types) {
+				dvModuleRegisterType(moduleData, t);
+			}
 		}
+
+		if constexpr (has_addInputs<T>) {
+			std::vector<dv::InputDefinition> inputs;
+
+			T::addInputs(inputs);
+
+			for (const auto &in : inputs) {
+				dvModuleRegisterInput(moduleData, in.name.c_str(), in.typeName.c_str(), in.optional);
+			}
+		}
+
+		if constexpr (has_addOutputs<T>) {
+			std::vector<dv::OutputDefinition> outputs;
+
+			T::addOutputs(outputs);
+
+			for (const auto &out : outputs) {
+				dvModuleRegisterOutput(moduleData, out.name.c_str(), out.typeName.c_str());
+			}
+		}
+
 		BaseModule::__setGetDefaultConfig(
-			std::function<void(std::map<std::string, ConfigOption> &)>(T::getConfigOptions));
+			std::function<void(std::unordered_map<std::string, ConfigOption> &)>(T::getConfigOptions));
+
 		BaseModule::staticConfigInit(moduleData->moduleNode);
+
+		if constexpr (has_getAdvancedConfigOptions<T>) {
+			T::getAdvancedConfigOptions(moduleData->moduleNode);
+		}
 	}
 
 	/**
@@ -129,7 +202,7 @@ public:
 	 * @param moduleData The moduleData provided by DV.
 	 */
 	static void config(dvModuleData moduleData) {
-		static_cast<T *>(moduleData->moduleState)->configUpdate(moduleData->moduleNode);
+		static_cast<T *>(moduleData->moduleState)->configUpdate();
 	}
 
 	/**

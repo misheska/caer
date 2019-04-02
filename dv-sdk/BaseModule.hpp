@@ -5,7 +5,7 @@
 #include "log.hpp"
 #include "module.h"
 
-#include <map>
+#include <unordered_map>
 #include <utility>
 
 namespace dv {
@@ -18,8 +18,8 @@ namespace dv {
  */
 class BaseModule {
 private:
-	inline static thread_local dvModuleData __moduleData                                        = nullptr;
-	inline static std::function<void(std::map<std::string, ConfigOption> &)> __getDefaultConfig = nullptr;
+	inline static thread_local dvModuleData __moduleData                                                  = nullptr;
+	inline static std::function<void(std::unordered_map<std::string, ConfigOption> &)> __getDefaultConfig = nullptr;
 
 public:
 	/**
@@ -29,15 +29,21 @@ public:
 	 * config in the dv config tree.
 	 * @param node The dvConfig node for which the config should be generated
 	 */
-	static void staticConfigInit(dvConfigNode node) {
+	static void staticConfigInit(dv::Config::Node moduleNode) {
 		// read config options from static user provided function
-		std::map<std::string, ConfigOption> defaultConfig;
+		std::unordered_map<std::string, ConfigOption> defaultConfig;
 		__getDefaultConfig(defaultConfig);
+
+		// Add standard configs.
+		defaultConfig["logLevel"] = dv::ConfigOption::intOption(
+			moduleNode.getAttributeDescription<dv::Config::AttributeType::INT>("logLevel"),
+			moduleNode.get<dv::Config::AttributeType::INT>("logLevel"), CAER_LOG_EMERGENCY, CAER_LOG_DEBUG);
 
 		for (auto &entry : defaultConfig) {
 			auto &key    = entry.first;
 			auto &config = entry.second;
-			config.createDvConfigNodeIfChanged(key, node);
+
+			config.createAttribute(key, moduleNode);
 		}
 	}
 
@@ -63,7 +69,8 @@ public:
 	 * at runtime.
 	 * @param _getDefaultConfig
 	 */
-	static void __setGetDefaultConfig(std::function<void(std::map<std::string, ConfigOption> &)> _getDefaultConfig) {
+	static void __setGetDefaultConfig(
+		std::function<void(std::unordered_map<std::string, ConfigOption> &)> _getDefaultConfig) {
 		__getDefaultConfig = std::move(_getDefaultConfig);
 	}
 
@@ -71,6 +78,8 @@ public:
 	 * DV low level module data. To be used for accessing low-level DV API.
 	 */
 	dvModuleData moduleData;
+
+	dv::Config::Node moduleNode;
 
 	/**
 	 * Logger object to be used in implementation
@@ -90,14 +99,14 @@ public:
 	 * and config are available at the time the subclass constructor is
 	 * called.
 	 */
-	BaseModule() : moduleData(__moduleData) {
+	BaseModule() : moduleData(__moduleData), moduleNode(__moduleData->moduleNode) {
 		assert(__moduleData);
 
 		// initialize the config map with the default config
 		__getDefaultConfig(config);
 
 		// update the config values
-		configUpdate(moduleData->moduleNode);
+		configUpdate();
 	}
 
 	virtual ~BaseModule() {
@@ -106,22 +115,29 @@ public:
 	/**
 	 * Method that updates the configs in the map as soon as some config
 	 * change.
-	 * @param node the dvConfig node to read the config from.
 	 */
-	void configUpdate(dvConfigNode node) {
+	void configUpdate() {
 		for (auto &entry : config) {
-			auto &key          = entry.first;
-			auto &configOption = entry.second;
+			auto &key    = entry.first;
+			auto &config = entry.second;
 
-			configOption.createDvConfigNodeIfChanged(key, node);
-			configOption.updateValue(key, node);
+			config.updateValue(key, moduleNode);
 		}
+
+		advancedConfigUpdate();
+	}
+
+	virtual void advancedConfigUpdate() {
 	}
 
 	/**
 	 * Virtual function to be implemented by the user.
 	 */
 	virtual void run() = 0;
+
+	const dv::Config::Node inputGetInfoNode(const std::string &name) {
+		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData, name.c_str())));
+	}
 };
 
 } // namespace dv
