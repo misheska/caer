@@ -126,6 +126,7 @@ class ConfigOption {
 private:
 	dv::unique_ptr_void configOption;
 	dv::Config::AttributeType type;
+	bool createdInTree;
 
 	/**
 	 * __Private constructor__
@@ -135,7 +136,8 @@ private:
 	 */
 	ConfigOption(dv::unique_ptr_void configOption_, dv::Config::AttributeType type_) :
 		configOption(std::move(configOption_)),
-		type(type_) {
+		type(type_),
+		createdInTree(false) {
 	}
 
 	/**
@@ -159,7 +161,10 @@ private:
 	}
 
 public:
-	ConfigOption() : configOption(nullptr, [](void *) {}), type(dv::Config::AttributeType::UNKNOWN) {
+	ConfigOption() :
+		configOption(nullptr, [](void *) {}),
+		type(dv::Config::AttributeType::UNKNOWN),
+		createdInTree(false) {
 	}
 
 	/**
@@ -198,6 +203,11 @@ public:
 	 * @param node The dvConfigNode under which the new attribute shall be created
 	 */
 	void createAttribute(const std::string &fullKey, dv::Config::Node moduleNode) {
+		// Prevent multiple calls of the same thing.
+		if (createdInTree) {
+			return;
+		}
+
 		dv::Config::Node node = moduleNode;
 		std::string key;
 
@@ -332,6 +342,9 @@ public:
 				break;
 			}
 		}
+
+		// Done.
+		createdInTree = true;
 	}
 
 	/**
@@ -353,6 +366,11 @@ public:
 		else {
 			// node is already moduleNode.
 			key = fullKey;
+		}
+
+		// Ensure value exists. Values can be added at any time to the map.
+		if (!createdInTree) {
+			createAttribute(fullKey, moduleNode);
 		}
 
 		switch (type) {

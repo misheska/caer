@@ -111,7 +111,8 @@ public:
 			moduleNode.getAttributeDescription<dv::Config::AttributeType::INT>("logLevel"),
 			moduleNode.get<dv::Config::AttributeType::INT>("logLevel"), CAER_LOG_EMERGENCY, CAER_LOG_DEBUG);
 
-		// Update the config values with the latest changes.
+		// Update the config values with the latest changes, so they are
+		// available inside T() constructor.
 		configUpdate();
 	}
 

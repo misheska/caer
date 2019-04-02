@@ -160,7 +160,12 @@ public:
 			// set the moduleData pointer thread local static prior to construction.
 			BaseModule::__setStaticModuleData(moduleData);
 
+			// Construct T, will call BaseModule() and then T() constructors.
 			new (moduleData->moduleState) T();
+
+			// Update the config values with the latest changes again,
+			// in case T() constructor has added new elements.
+			config(moduleData);
 		}
 		catch (const std::exception &ex) {
 			dv::Log(dv::logLevel::ERROR, "Could not initialize module: %s", ex.what());
