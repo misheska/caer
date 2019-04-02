@@ -301,6 +301,10 @@ public:
 		return (node);
 	}
 
+	explicit operator bool() const {
+		return (node != nullptr);
+	}
+
 	std::string getName() const {
 		return (dvConfigNodeGetName(node));
 	}
