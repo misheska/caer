@@ -90,7 +90,7 @@ public:
 	 * Map that allows easy access to configuration data and is automatically
 	 * updated with new values on changes from outside.
 	 */
-	RuntimeConfigMap config;
+	std::unordered_map<std::string, ConfigOption> config;
 
 	/**
 	 * Base module constructor. The base module constructor initializes

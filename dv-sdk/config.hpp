@@ -162,8 +162,7 @@ public:
 	ConfigOption() = default;
 
 	/**
-	 * Returns the variant of this `ConfigOption`. The return value of this
-	 * function can be used to use as a
+	 * Returns the type of this `ConfigOption`.
 	 * @return
 	 */
 	dv::Config::AttributeType getType() const {
@@ -173,7 +172,7 @@ public:
 	/**
 	 * Returns the underlying config object, casted to the specified configVariant.
 	 * The config variant can be read out with the `getVariant` method.
-	 * @tparam V The config variant to be casted to.
+	 * @tparam T The config variant to be casted to.
 	 * @return The underlying _ConfigObject with the configuration data
 	 */
 	template<dv::Config::AttributeType T> _ConfigOption<T> &getConfigObject() const {
@@ -184,10 +183,10 @@ public:
 	 * Returns the current value of this config option. Needs a template paramenter
 	 * of the type `dv::ConfigVariant::*` to determine what type of config parameter
 	 * to return.
-	 * @tparam V The config variant type
+	 * @tparam T The config variant type
 	 * @return A simple value (long, string etc) that is the current value of the config option
 	 */
-	template<dv::Config::AttributeType T> typename dv::Config::AttributeTypeGenerator<T>::type &getValue() const {
+	template<dv::Config::AttributeType T> typename dv::Config::AttributeTypeGenerator<T>::type const &get() const {
 		return (static_cast<typename dv::Config::AttributeTypeGenerator<T>::type &>(getConfigObject<T>().currentValue));
 	}
 
@@ -690,37 +689,6 @@ public:
 
 		return getOption<dv::Config::AttributeType::STRING>(
 			description, defaultValue, attr, dv::Config::AttributeFlags::NORMAL);
-	}
-};
-
-/**
- * A map of current config values at runtime. Extends std::unordered_map.
- * Type agnostic, enforces type only on accessing elements.
- */
-class RuntimeConfigMap : public std::unordered_map<std::string, ConfigOption> {
-public:
-	/**
-	 * Returns the underlying `_ConfigOption` object for the given key. The
-	 * config option provides access to parameters and default and current values.
-	 * @tparam T The type of the config param. Type of `dv::ConfigVariant::`
-	 * @param key The key of the config option to retrieve
-	 * @return The underlying `_ConfigObject` of the config option. Gives access to parameters.
-	 */
-	template<dv::Config::AttributeType T> _ConfigOption<T> const &getConfigObject(const std::string &key) {
-		return (this->at(key).getConfigObject<T>());
-	}
-
-	/**
-	 * Returns the current value of the config option with the given key. Needs a template paramenter
-	 * of the type `dv::ConfigVariant::*` to determine what type of config parameter
-	 * to return.
-	 * @tparam T The config variant type
-	 * @param key the key of the config option to look up
-	 * @return A simple value (long, string etc) that is the current value of the config option
-	 */
-	template<dv::Config::AttributeType T>
-	typename dv::Config::AttributeTypeGenerator<T>::type const &getValue(const std::string &key) {
-		return (this->at(key).getValue<T>());
 	}
 };
 

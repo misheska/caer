@@ -94,9 +94,6 @@ public:
 			throw std::runtime_error("Failed to initialize DVS Noise filter.");
 		}
 
-		caerFilterDVSNoiseConfigSet(
-			noiseFilter.get(), CAER_FILTER_DVS_LOG_LEVEL, U64T(config["logLevel"].getValue<dvCfgType::INT>()));
-
 		moduleNode.attributeUpdaterAdd(
 			"hotPixelFiltered", dvCfgType::LONG, &updateHotPixelFiltered, noiseFilter.get(), false);
 		moduleNode.attributeUpdaterAdd(
@@ -116,33 +113,33 @@ public:
 
 	void advancedConfigUpdate() {
 		caerFilterDVSNoiseConfigSet(
-			noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_TIME, U64T(config["hotPixelTime"].getValue<dvCfgType::INT>()));
-		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_COUNT,
-			U64T(config["hotPixelCount"].getValue<dvCfgType::INT>()));
+			noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_TIME, U64T(config["hotPixelTime"].get<dvCfgType::INT>()));
+		caerFilterDVSNoiseConfigSet(
+			noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_COUNT, U64T(config["hotPixelCount"].get<dvCfgType::INT>()));
 
 		caerFilterDVSNoiseConfigSet(
-			noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_ENABLE, config["hotPixelEnable"].getValue<dvCfgType::BOOL>());
+			noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_ENABLE, config["hotPixelEnable"].get<dvCfgType::BOOL>());
 
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_ENABLE,
-			config["backgroundActivityEnable"].getValue<dvCfgType::BOOL>());
+			config["backgroundActivityEnable"].get<dvCfgType::BOOL>());
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_TWO_LEVELS,
-			config["backgroundActivityTwoLevels"].getValue<dvCfgType::BOOL>());
+			config["backgroundActivityTwoLevels"].get<dvCfgType::BOOL>());
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_CHECK_POLARITY,
-			config["backgroundActivityCheckPolarity"].getValue<dvCfgType::BOOL>());
+			config["backgroundActivityCheckPolarity"].get<dvCfgType::BOOL>());
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_SUPPORT_MIN,
-			U64T(config["backgroundActivitySupportMin"].getValue<dvCfgType::INT>()));
+			U64T(config["backgroundActivitySupportMin"].get<dvCfgType::INT>()));
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_SUPPORT_MAX,
-			U64T(config["backgroundActivitySupportMax"].getValue<dvCfgType::INT>()));
+			U64T(config["backgroundActivitySupportMax"].get<dvCfgType::INT>()));
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_TIME,
-			U64T(config["backgroundActivityTime"].getValue<dvCfgType::INT>()));
+			U64T(config["backgroundActivityTime"].get<dvCfgType::INT>()));
 
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_REFRACTORY_PERIOD_ENABLE,
-			config["refractoryPeriodEnable"].getValue<dvCfgType::BOOL>());
+			config["refractoryPeriodEnable"].get<dvCfgType::BOOL>());
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_REFRACTORY_PERIOD_TIME,
-			U64T(config["refractoryPeriodTime"].getValue<dvCfgType::INT>()));
+			U64T(config["refractoryPeriodTime"].get<dvCfgType::INT>()));
 
 		caerFilterDVSNoiseConfigSet(
-			noiseFilter.get(), CAER_FILTER_DVS_LOG_LEVEL, U64T(config["logLevel"].getValue<dvCfgType::INT>()));
+			noiseFilter.get(), CAER_FILTER_DVS_LOG_LEVEL, U64T(config["logLevel"].get<dvCfgType::INT>()));
 	}
 
 	void run() {
