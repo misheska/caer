@@ -25,9 +25,12 @@ void dvLog(enum caer_log_level level, const char *format, ...) ATTRIBUTE_FORMAT(
 #	include <algorithm>
 #	include <vector>
 #	include <utility>
+#	include <memory>
 #	include <boost/format.hpp>
 
 namespace dv {
+
+template<typename T> using unique_ptr_deleter = std::unique_ptr<T, void (*)(T *)>;
 
 using logLevel = libcaer::log::logLevel;
 
