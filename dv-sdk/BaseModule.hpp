@@ -10,6 +10,77 @@
 
 namespace dv {
 
+class InputDefinition {
+public:
+	std::string name;
+	std::string typeName;
+	bool optional;
+
+	InputDefinition(const std::string &n, const std::string &t, bool opt = false) :
+		name(n),
+		typeName(t),
+		optional(opt) {
+	}
+};
+
+class OutputDefinition {
+public:
+	std::string name;
+	std::string typeName;
+
+	OutputDefinition(const std::string &n, const std::string &t) : name(n), typeName(t) {
+	}
+};
+
+class RuntimeInputs {
+private:
+	dvModuleData moduleData;
+
+public:
+	RuntimeInputs(dvModuleData m) : moduleData(m) {
+	}
+
+	template<typename T> std::shared_ptr<const typename T::NativeTableType> get(const std::string &name) const {
+		auto typedObject = dvModuleInputGet(moduleData, name.c_str());
+		if (typedObject == nullptr) {
+			// Actual errors will write a log message and return null.
+			// No data just returns null. So if null we simply forward that.
+			return (nullptr);
+		}
+
+#ifndef NDEBUG
+		if (typedObject->typeId != *(reinterpret_cast<const uint32_t *>(T::identifier))) {
+			throw std::runtime_error("getInput(" + name + "): input type and given template type are not compatible.");
+		}
+#endif
+
+		return (typedObject->obj, [moduleData = moduleData, name, typedObject]() {
+			dvModuleInputDismiss(moduleData, name.c_str(), typedObject);
+		});
+	}
+
+	const dv::Config::Node getInfoNode(const std::string &name) {
+		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData, name.c_str())));
+	}
+
+	const dv::Config::Node getUpstreamNode(const std::string &name) {
+		return (const_cast<dvConfigNode>(dvModuleInputGetUpstreamNode(moduleData, name.c_str())));
+	}
+};
+
+class RuntimeOutputs {
+private:
+	dvModuleData moduleData;
+
+public:
+	RuntimeOutputs(dvModuleData m) : moduleData(m) {
+	}
+
+	dv::Config::Node getInfoNode(const std::string &name) {
+		return (dvModuleOutputGetInfoNode(moduleData, name.c_str()));
+	}
+};
+
 /**
  * The dv BaseModule. Every module shall inherit from this module.
  * The base Module provides the following:
@@ -79,10 +150,20 @@ public:
 	dv::Config::Node moduleNode;
 
 	/**
-	 * Map that allows easy access to configuration data and is automatically
-	 * updated with new values on changes from outside.
+	 * Allows easy access to configuration data and is automatically
+	 * updated with new values on changes in the configuration tree.
 	 */
 	RuntimeConfig config;
+
+	/**
+	 * Access data inputs and related actions in a type-safe manner.
+	 */
+	RuntimeInputs inputs;
+
+	/**
+	 * Access data outputs and related actions in a type-safe manner.
+	 */
+	RuntimeOutputs outputs;
 
 	/**
 	 * Base module constructor. The base module constructor initializes
@@ -92,7 +173,12 @@ public:
 	 * and config are available at the time the subclass constructor is
 	 * called.
 	 */
-	BaseModule() : moduleData(__moduleData), moduleNode(moduleData->moduleNode), config(moduleNode) {
+	BaseModule() :
+		moduleData(__moduleData),
+		moduleNode(moduleData->moduleNode),
+		config(moduleNode),
+		inputs(moduleData),
+		outputs(moduleData) {
 		assert(__moduleData);
 
 		// Initialize the config map with the default config.
@@ -135,18 +221,6 @@ public:
 	 * Main function that runs the module and handles data.
 	 */
 	virtual void run() = 0;
-
-	dv::Config::Node outputGetInfoNode(const std::string &name) {
-		return (dvModuleOutputGetInfoNode(moduleData, name.c_str()));
-	}
-
-	const dv::Config::Node inputGetInfoNode(const std::string &name) {
-		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData, name.c_str())));
-	}
-
-	const dv::Config::Node inputGetUpstreamNode(const std::string &name) {
-		return (const_cast<dvConfigNode>(dvModuleInputGetUpstreamNode(moduleData, name.c_str())));
-	}
 };
 
 } // namespace dv

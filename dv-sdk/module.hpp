@@ -20,28 +20,6 @@
 
 namespace dv {
 
-class InputDefinition {
-public:
-	std::string name;
-	std::string typeName;
-	bool optional;
-
-	InputDefinition(const std::string &n, const std::string &t, bool opt = false) :
-		name(n),
-		typeName(t),
-		optional(opt) {
-	}
-};
-
-class OutputDefinition {
-public:
-	std::string name;
-	std::string typeName;
-
-	OutputDefinition(const std::string &n, const std::string &t) : name(n), typeName(t) {
-	}
-};
-
 /**
  * Trait for the existence of a static getDescription method with const char* return value
  * @tparam T The class to be tested
