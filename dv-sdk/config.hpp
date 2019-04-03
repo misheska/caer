@@ -175,8 +175,18 @@ public:
 	 * @tparam T The config variant to be casted to.
 	 * @return The underlying _ConfigObject with the configuration data
 	 */
-	template<dv::Config::AttributeType T> _ConfigOption<T> &getConfigObject() const {
+	template<dv::Config::AttributeType T> _ConfigOption<T> &getConfigObject() {
 		return (*(static_cast<_ConfigOption<T> *>(configOption.get())));
+	}
+
+	/**
+	 * Returns the underlying config object, casted to the specified configVariant.
+	 * The config variant can be read out with the `getVariant` method.
+	 * @tparam T The config variant to be casted to.
+	 * @return The underlying _ConfigObject with the configuration data
+	 */
+	template<dv::Config::AttributeType T> _ConfigOption<T> const &getConfigObject() const {
+		return (*(static_cast<_ConfigOption<T> const *>(configOption.get())));
 	}
 
 	/**
@@ -187,7 +197,8 @@ public:
 	 * @return A simple value (long, string etc) that is the current value of the config option
 	 */
 	template<dv::Config::AttributeType T> typename dv::Config::AttributeTypeGenerator<T>::type const &get() const {
-		return (static_cast<typename dv::Config::AttributeTypeGenerator<T>::type &>(getConfigObject<T>().currentValue));
+		return (static_cast<typename dv::Config::AttributeTypeGenerator<T>::type const &>(
+			getConfigObject<T>().currentValue));
 	}
 
 	/**
