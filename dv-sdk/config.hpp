@@ -727,7 +727,16 @@ public:
 
 	template<dv::Config::AttributeType T>
 	typename dv::Config::AttributeTypeGenerator<T>::type const &get(const std::string &key) const {
-		return (configMap.at(key).get<T>());
+		auto &val = configMap.at(key);
+
+#ifndef NDEBUG
+		if (val.getType() != T) {
+			throw std::runtime_error(
+				"RuntimeConfig.get(" + key + "): key type and given template type are not the same.");
+		}
+#endif
+
+		return (val.get<T>());
 	}
 
 	auto begin() {
