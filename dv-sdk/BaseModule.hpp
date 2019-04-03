@@ -48,15 +48,20 @@ public:
 			return (nullptr);
 		}
 
+		// Build shared_ptr with custom deleter first, so that in verification failure case
+		// (debug mode), memory gets properly cleaned up.
+		std::shared_ptr<const typename T::NativeTableType> objPtr{
+			typedObject->obj, [moduleData = moduleData, name, typedObject]() {
+				dvModuleInputDismiss(moduleData, name.c_str(), typedObject);
+			}};
+
 #ifndef NDEBUG
 		if (typedObject->typeId != *(reinterpret_cast<const uint32_t *>(T::identifier))) {
 			throw std::runtime_error("getInput(" + name + "): input type and given template type are not compatible.");
 		}
 #endif
 
-		return (typedObject->obj, [moduleData = moduleData, name, typedObject]() {
-			dvModuleInputDismiss(moduleData, name.c_str(), typedObject);
-		});
+		return (objPtr);
 	}
 
 	const dv::Config::Node getInfoNode(const std::string &name) {
