@@ -31,15 +31,8 @@ public:
 	 */
 	static void staticConfigInit(dv::Config::Node moduleNode) {
 		// read config options from static user provided function
-		RuntimeConfig defaultConfig;
+		RuntimeConfig defaultConfig{moduleNode};
 		__getDefaultConfig(defaultConfig);
-
-		for (auto &entry : defaultConfig) {
-			auto &key = entry.first;
-			auto &cfg = entry.second;
-
-			cfg.createAttribute(key, moduleNode);
-		}
 	}
 
 	/**
@@ -98,7 +91,7 @@ public:
 	 * and config are available at the time the subclass constructor is
 	 * called.
 	 */
-	BaseModule() : moduleData(__moduleData), moduleNode(__moduleData->moduleNode) {
+	BaseModule() : moduleData(__moduleData), moduleNode(moduleData->moduleNode), config(moduleNode) {
 		assert(__moduleData);
 
 		// Initialize the config map with the default config.

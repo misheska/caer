@@ -126,7 +126,6 @@ class ConfigOption {
 private:
 	dv::unique_ptr_void configOption;
 	dv::Config::AttributeType type;
-	bool createdInTree;
 
 	/**
 	 * __Private constructor__
@@ -136,8 +135,7 @@ private:
 	 */
 	ConfigOption(dv::unique_ptr_void configOption_, dv::Config::AttributeType type_) :
 		configOption(std::move(configOption_)),
-		type(type_),
-		createdInTree(false) {
+		type(type_) {
 	}
 
 	/**
@@ -208,11 +206,6 @@ public:
 	 * @param node The dvConfigNode under which the new attribute shall be created
 	 */
 	void createAttribute(const std::string &fullKey, dv::Config::Node moduleNode) {
-		// Prevent multiple calls of the same thing.
-		if (createdInTree) {
-			return;
-		}
-
 		dv::Config::Node node = moduleNode;
 		std::string key;
 
@@ -347,9 +340,6 @@ public:
 				break;
 			}
 		}
-
-		// Done.
-		createdInTree = true;
 	}
 
 	/**
@@ -371,11 +361,6 @@ public:
 		else {
 			// node is already moduleNode.
 			key = fullKey;
-		}
-
-		// Ensure value exists. Values can be added at any time to the map.
-		if (!createdInTree) {
-			createAttribute(fullKey, moduleNode);
 		}
 
 		switch (type) {
@@ -719,10 +704,15 @@ public:
 class RuntimeConfig {
 private:
 	std::unordered_map<std::string, ConfigOption> configMap;
+	dv::Config::Node moduleNode;
 
 public:
+	RuntimeConfig(dv::Config::Node mn) : moduleNode(mn) {
+	}
+
 	void add(const std::string &key, ConfigOption cfg) {
 		configMap.insert_or_assign(key, std::move(cfg));
+		configMap[key].createAttribute(key, moduleNode);
 	}
 
 	template<dv::Config::AttributeType T>
