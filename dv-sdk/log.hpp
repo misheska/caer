@@ -117,8 +117,8 @@ public:
 	 */
 	template<typename... Args> void format(const std::string &fmt, const Args &... args) {
 		boost::format f(fmt);
-		std::initializer_list<char>{(static_cast<void>(f % args), char{})...};
-		this->operator()(boost::str(f));
+		(f % ... % args); // Fold expression.
+		this->operator()(f.str());
 	}
 };
 
