@@ -295,6 +295,7 @@ struct Frame8PacketT : public flatbuffers::NativeTable {
 
 struct Frame8Packet FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef Frame8PacketT NativeTableType;
+	static const char *identifier;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return Frame8PacketTypeTable();
 	}
@@ -556,6 +557,8 @@ inline const Frame8Packet *GetSizePrefixedFrame8Packet(const void *buf) {
 inline const char *Frame8PacketIdentifier() {
 	return "FRM8";
 }
+
+const char *Frame8Packet::identifier = Frame8PacketIdentifier();
 
 inline bool Frame8PacketBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, Frame8PacketIdentifier());

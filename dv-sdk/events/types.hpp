@@ -154,12 +154,12 @@ template<typename FBType> static void Destructor(void *object) {
 	free(obj);
 }
 
-template<typename FBType> static Type makeTypeDefinition(const char *identifier, const char *description) {
+template<typename FBType> static Type makeTypeDefinition(const char *description) {
 	using ObjectAPIType = typename FBType::NativeTableType;
 
 	static_assert(std::is_standard_layout_v<ObjectAPIType>, "ObjectAPIType is not standard layout");
 
-	return (Type{identifier, description, sizeof(ObjectAPIType), &Packer<FBType>, &Unpacker<FBType>,
+	return (Type{FBType::identifier, description, sizeof(ObjectAPIType), &Packer<FBType>, &Unpacker<FBType>,
 		&Constructor<FBType>, &Destructor<FBType>});
 }
 

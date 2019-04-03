@@ -62,6 +62,7 @@ struct PolarityPacketT : public flatbuffers::NativeTable {
 
 struct PolarityPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef PolarityPacketT NativeTableType;
+	static const char *identifier;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return PolarityPacketTypeTable();
 	}
@@ -189,6 +190,8 @@ inline const PolarityPacket *GetSizePrefixedPolarityPacket(const void *buf) {
 inline const char *PolarityPacketIdentifier() {
 	return "POLA";
 }
+
+const char *PolarityPacket::identifier = PolarityPacketIdentifier();
 
 inline bool PolarityPacketBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, PolarityPacketIdentifier());
