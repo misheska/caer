@@ -697,8 +697,7 @@ void dv::Module::inputDismiss(std::string_view inputName, const dv::Types::Typed
 
 /**
  * Get informative node for an output of this module.
- * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
- * moduleInit() and moduleExit(). Do not hold references in state!
+ * Can always be called.
  *
  * @param outputName name of output.
  * @return informative node for that output.
@@ -730,7 +729,14 @@ const dv::Config::Node dv::Module::inputGetUpstreamNode(std::string_view inputNa
 		throw std::out_of_range(msg.str());
 	}
 
-	return (input->source.linkedOutput->relatedModule->moduleNode);
+	auto outputLink = input->source.linkedOutput;
+	if (outputLink == nullptr) {
+		// Input can be unconnected.
+		auto msg = boost::format("Input '%s' is unconnected.") % inputName;
+		throw std::runtime_error(msg.str());
+	}
+
+	return (outputLink->relatedModule->moduleNode);
 }
 
 /**
@@ -749,11 +755,18 @@ const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) 
 		throw std::out_of_range(msg.str());
 	}
 
-	auto infoNode = input->source.linkedOutput->infoNode;
+	auto outputLink = input->source.linkedOutput;
+	if (outputLink == nullptr) {
+		// Input can be unconnected.
+		auto msg = boost::format("Input '%s' is unconnected.") % inputName;
+		throw std::runtime_error(msg.str());
+	}
+
+	auto infoNode = outputLink->infoNode;
 
 	if (infoNode.getAttributeKeys().size() == 0) {
 		auto msg = boost::format("No informative content present for input '%s'.") % inputName;
-		throw std::out_of_range(msg.str());
+		throw std::runtime_error(msg.str());
 	}
 
 	return (infoNode);
