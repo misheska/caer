@@ -161,12 +161,6 @@ private:
 	}
 
 public:
-	ConfigOption() :
-		configOption(nullptr, [](void *) {}),
-		type(dv::Config::AttributeType::UNKNOWN),
-		createdInTree(false) {
-	}
-
 	/**
 	 * Returns the type of this `ConfigOption`.
 	 * @return
@@ -708,6 +702,37 @@ public:
 
 		return getOption<dv::Config::AttributeType::STRING>(
 			description, defaultValue, attr, dv::Config::AttributeFlags::NORMAL);
+	}
+};
+
+class RuntimeConfig {
+private:
+	std::unordered_map<std::string, ConfigOption> configMap;
+
+public:
+	void add(const std::string &key, ConfigOption cfg) {
+		configMap.insert_or_assign(key, std::move(cfg));
+	}
+
+	template<dv::Config::AttributeType T>
+	typename dv::Config::AttributeTypeGenerator<T>::type const &get(const std::string &key) const {
+		return (configMap.at(key).get<T>());
+	}
+
+	auto begin() {
+		return (configMap.begin());
+	}
+
+	auto end() {
+		return (configMap.end());
+	}
+
+	auto cbegin() {
+		return (configMap.cbegin());
+	}
+
+	auto cend() {
+		return (configMap.cend());
 	}
 };
 

@@ -57,7 +57,7 @@ inline constexpr bool has_getDescription = has_static_member_function_getDescrip
 BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(getConfigOptions)
 template<typename T>
 inline constexpr bool has_getConfigOptions
-	= has_static_member_function_getConfigOptions<T, void(std::unordered_map<std::string, dv::ConfigOption> &)>::value;
+	= has_static_member_function_getConfigOptions<T, void(RuntimeConfig &)>::value;
 
 BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(advancedStaticInit)
 template<typename T>
@@ -97,8 +97,8 @@ template<class T> class ModuleStatics {
 		"Your module does not specify a `static const char* getDescription()` function."
 		"This function should return a string with a description of the module.");
 	static_assert(has_getConfigOptions<T>,
-		"Your module does not specify a `static void getConfigOptions(std::unordered_map<std::string, "
-		"dv::ConfigOption> &config)` function. This function should insert desired config options into the map.");
+		"Your module does not specify a `static void getConfigOptions(dv::RuntimeConfig &config)` "
+		"function. This function should insert desired config options into the map.");
 
 public:
 	/**
@@ -139,8 +139,7 @@ public:
 			}
 		}
 
-		BaseModule::__setStaticGetDefaultConfig(
-			std::function<void(std::unordered_map<std::string, ConfigOption> &)>(T::getConfigOptions));
+		BaseModule::__setStaticGetDefaultConfig(std::function<void(RuntimeConfig &)>(T::getConfigOptions));
 
 		BaseModule::staticConfigInit(moduleData->moduleNode);
 

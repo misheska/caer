@@ -32,34 +32,42 @@ public:
 		return ("Filters out noise from DVS change events.");
 	}
 
-	static void getConfigOptions(std::unordered_map<std::string, dv::ConfigOption> &config) {
-		config["hotPixelLearn"] = dv::ConfigOption::boolOption(
-			"Learn the position of current hot (abnormally active) pixels, so they can be filtered out.", false,
-			dv::ButtonMode::EXECUTE);
-		config["hotPixelTime"] = dv::ConfigOption::intOption(
-			"Time in µs to accumulate events for learning new hot pixels.", 1000000, 0, 30000000);
-		config["hotPixelCount"] = dv::ConfigOption::intOption(
-			"Number of events needed in a learning time period for a pixel to be considered hot.", 10000, 0, 10000000);
+	static void getConfigOptions(dv::RuntimeConfig &config) {
+		config.add("hotPixelLearn",
+			dv::ConfigOption::boolOption(
+				"Learn the position of current hot (abnormally active) pixels, so they can be filtered out.", false,
+				dv::ButtonMode::EXECUTE));
+		config.add(
+			"hotPixelTime", dv::ConfigOption::intOption(
+								"Time in µs to accumulate events for learning new hot pixels.", 1000000, 0, 30000000));
+		config.add(
+			"hotPixelCount", dv::ConfigOption::intOption(
+								 "Number of events needed in a learning time period for a pixel to be considered hot.",
+								 10000, 0, 10000000));
 
-		config["hotPixelEnable"] = dv::ConfigOption::boolOption("Enable the hot pixel filter.", false);
+		config.add("hotPixelEnable", dv::ConfigOption::boolOption("Enable the hot pixel filter.", false));
 
-		config["backgroundActivityEnable"]
-			= dv::ConfigOption::boolOption("Enable the background activity filter.", true);
-		config["backgroundActivityTwoLevels"]
-			= dv::ConfigOption::boolOption("Use two-level background activity filtering.");
-		config["backgroundActivityCheckPolarity"]
-			= dv::ConfigOption::boolOption("Consider polarity when filtering background activity.");
-		config["backgroundActivitySupportMin"] = dv::ConfigOption::intOption(
-			"Minimum number of direct neighbor pixels that must support this pixel for it to be valid.", 1, 1, 8);
-		config["backgroundActivitySupportMax"] = dv::ConfigOption::intOption(
-			"Maximum number of direct neighbor pixels that can support this pixel for it to be valid.", 8, 1, 8);
-		config["backgroundActivityTime"] = dv::ConfigOption::intOption(
-			"Maximum time difference in µs for events to be considered correlated and not be filtered out.", 2000, 0,
-			10000000);
+		config.add(
+			"backgroundActivityEnable", dv::ConfigOption::boolOption("Enable the background activity filter.", true));
+		config.add("backgroundActivityTwoLevels",
+			dv::ConfigOption::boolOption("Use two-level background activity filtering."));
+		config.add("backgroundActivityCheckPolarity",
+			dv::ConfigOption::boolOption("Consider polarity when filtering background activity."));
+		config.add("backgroundActivitySupportMin",
+			dv::ConfigOption::intOption(
+				"Minimum number of direct neighbor pixels that must support this pixel for it to be valid.", 1, 1, 8));
+		config.add("backgroundActivitySupportMax",
+			dv::ConfigOption::intOption(
+				"Maximum number of direct neighbor pixels that can support this pixel for it to be valid.", 8, 1, 8));
+		config.add("backgroundActivityTime",
+			dv::ConfigOption::intOption(
+				"Maximum time difference in µs for events to be considered correlated and not be filtered out.", 2000,
+				0, 10000000));
 
-		config["refractoryPeriodEnable"] = dv::ConfigOption::boolOption("Enable the refractory period filter.", true);
-		config["refractoryPeriodTime"]
-			= dv::ConfigOption::intOption("Minimum time between events to not be filtered out.", 100, 0, 10000000);
+		config.add(
+			"refractoryPeriodEnable", dv::ConfigOption::boolOption("Enable the refractory period filter.", true));
+		config.add("refractoryPeriodTime",
+			dv::ConfigOption::intOption("Minimum time between events to not be filtered out.", 100, 0, 10000000));
 	}
 
 	static void advancedStaticInit(dv::Config::Node moduleNode) {
@@ -113,33 +121,33 @@ public:
 
 	void advancedConfigUpdate() {
 		caerFilterDVSNoiseConfigSet(
-			noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_TIME, U64T(config["hotPixelTime"].get<dvCfgType::INT>()));
+			noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_TIME, U64T(config.get<dvCfgType::INT>("hotPixelTime")));
 		caerFilterDVSNoiseConfigSet(
-			noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_COUNT, U64T(config["hotPixelCount"].get<dvCfgType::INT>()));
+			noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_COUNT, U64T(config.get<dvCfgType::INT>("hotPixelCount")));
 
 		caerFilterDVSNoiseConfigSet(
-			noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_ENABLE, config["hotPixelEnable"].get<dvCfgType::BOOL>());
+			noiseFilter.get(), CAER_FILTER_DVS_HOTPIXEL_ENABLE, config.get<dvCfgType::BOOL>("hotPixelEnable"));
 
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_ENABLE,
-			config["backgroundActivityEnable"].get<dvCfgType::BOOL>());
+			config.get<dvCfgType::BOOL>("backgroundActivityEnable"));
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_TWO_LEVELS,
-			config["backgroundActivityTwoLevels"].get<dvCfgType::BOOL>());
+			config.get<dvCfgType::BOOL>("backgroundActivityTwoLevels"));
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_CHECK_POLARITY,
-			config["backgroundActivityCheckPolarity"].get<dvCfgType::BOOL>());
+			config.get<dvCfgType::BOOL>("backgroundActivityCheckPolarity"));
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_SUPPORT_MIN,
-			U64T(config["backgroundActivitySupportMin"].get<dvCfgType::INT>()));
+			U64T(config.get<dvCfgType::INT>("backgroundActivitySupportMin")));
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_SUPPORT_MAX,
-			U64T(config["backgroundActivitySupportMax"].get<dvCfgType::INT>()));
+			U64T(config.get<dvCfgType::INT>("backgroundActivitySupportMax")));
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_BACKGROUND_ACTIVITY_TIME,
-			U64T(config["backgroundActivityTime"].get<dvCfgType::INT>()));
+			U64T(config.get<dvCfgType::INT>("backgroundActivityTime")));
 
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_REFRACTORY_PERIOD_ENABLE,
-			config["refractoryPeriodEnable"].get<dvCfgType::BOOL>());
+			config.get<dvCfgType::BOOL>("refractoryPeriodEnable"));
 		caerFilterDVSNoiseConfigSet(noiseFilter.get(), CAER_FILTER_DVS_REFRACTORY_PERIOD_TIME,
-			U64T(config["refractoryPeriodTime"].get<dvCfgType::INT>()));
+			U64T(config.get<dvCfgType::INT>("refractoryPeriodTime")));
 
 		caerFilterDVSNoiseConfigSet(
-			noiseFilter.get(), CAER_FILTER_DVS_LOG_LEVEL, U64T(config["logLevel"].get<dvCfgType::INT>()));
+			noiseFilter.get(), CAER_FILTER_DVS_LOG_LEVEL, U64T(config.get<dvCfgType::INT>("logLevel")));
 	}
 
 	void run() {

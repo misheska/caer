@@ -5,7 +5,6 @@
 #include "log.hpp"
 #include "module.h"
 
-#include <unordered_map>
 #include <utility>
 
 namespace dv {
@@ -18,8 +17,8 @@ namespace dv {
  */
 class BaseModule {
 private:
-	inline static thread_local dvModuleData __moduleData                                                  = nullptr;
-	inline static std::function<void(std::unordered_map<std::string, ConfigOption> &)> __getDefaultConfig = nullptr;
+	inline static thread_local dvModuleData __moduleData                  = nullptr;
+	inline static std::function<void(RuntimeConfig &)> __getDefaultConfig = nullptr;
 
 public:
 	/**
@@ -32,7 +31,7 @@ public:
 	 */
 	static void staticConfigInit(dv::Config::Node moduleNode) {
 		// read config options from static user provided function
-		std::unordered_map<std::string, ConfigOption> defaultConfig;
+		RuntimeConfig defaultConfig;
 		__getDefaultConfig(defaultConfig);
 
 		for (auto &entry : defaultConfig) {
@@ -65,8 +64,7 @@ public:
 	 * at runtime.
 	 * @param _getDefaultConfig
 	 */
-	static void __setStaticGetDefaultConfig(
-		std::function<void(std::unordered_map<std::string, ConfigOption> &)> _getDefaultConfig) {
+	static void __setStaticGetDefaultConfig(std::function<void(RuntimeConfig &)> _getDefaultConfig) {
 		__getDefaultConfig = std::move(_getDefaultConfig);
 	}
 
@@ -90,7 +88,7 @@ public:
 	 * Map that allows easy access to configuration data and is automatically
 	 * updated with new values on changes from outside.
 	 */
-	std::unordered_map<std::string, ConfigOption> config;
+	RuntimeConfig config;
 
 	/**
 	 * Base module constructor. The base module constructor initializes
@@ -107,9 +105,9 @@ public:
 		__getDefaultConfig(config);
 
 		// Add standard config.
-		config["logLevel"] = dv::ConfigOption::intOption(
-			moduleNode.getAttributeDescription<dv::Config::AttributeType::INT>("logLevel"),
-			moduleNode.get<dv::Config::AttributeType::INT>("logLevel"), CAER_LOG_EMERGENCY, CAER_LOG_DEBUG);
+		config.add("logLevel",
+			dv::ConfigOption::intOption(moduleNode.getAttributeDescription<dv::Config::AttributeType::INT>("logLevel"),
+				moduleNode.get<dv::Config::AttributeType::INT>("logLevel"), CAER_LOG_EMERGENCY, CAER_LOG_DEBUG));
 
 		// Update the config values with the latest changes, so they are
 		// available inside T() constructor.
