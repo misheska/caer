@@ -727,11 +727,11 @@ public:
 		return (configMap.end());
 	}
 
-	auto cbegin() {
+	auto cbegin() const {
 		return (configMap.cbegin());
 	}
 
-	auto cend() {
+	auto cend() const {
 		return (configMap.cend());
 	}
 };
