@@ -713,6 +713,9 @@ public:
 	void add(const std::string &key, ConfigOption cfg) {
 		configMap.insert_or_assign(key, std::move(cfg));
 		configMap[key].createAttribute(key, moduleNode);
+
+		// Ensure value is up-to-date.
+		configMap[key].updateValue(key, moduleNode);
 	}
 
 	template<dv::Config::AttributeType T>
