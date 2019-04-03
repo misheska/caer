@@ -6,9 +6,9 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <cmath>
-#include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace dv {
 

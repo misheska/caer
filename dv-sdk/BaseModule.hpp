@@ -4,6 +4,7 @@
 #include "config.hpp"
 #include "log.hpp"
 #include "module.h"
+#include "utils.h"
 
 #include <utility>
 
