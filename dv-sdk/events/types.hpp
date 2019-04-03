@@ -116,16 +116,22 @@ using UnpackFuncPtr = dvTypeUnpackFuncPtr;
 using ConstructPtr  = dvTypeConstructPtr;
 using DestructPtr   = dvTypeDestructPtr;
 
-template<typename FBType, typename ObjectAPIType> static uint32_t Packer(void *toBuffer, const void *fromObject) {
+template<typename FBType> static uint32_t Packer(void *toBuffer, const void *fromObject) {
+	using ObjectAPIType = typename FBType::NativeTableType;
+
 	return (FBType::Pack(*(static_cast<flatbuffers::FlatBufferBuilder *>(toBuffer)),
 		static_cast<const ObjectAPIType *>(fromObject), nullptr)
 				.o);
 }
-template<typename FBType, typename ObjectAPIType> static void Unpacker(void *toObject, const void *fromBuffer) {
+template<typename FBType> static void Unpacker(void *toObject, const void *fromBuffer) {
+	using ObjectAPIType = typename FBType::NativeTableType;
+
 	FBType::UnPackToFrom(static_cast<ObjectAPIType *>(toObject), static_cast<const FBType *>(fromBuffer), nullptr);
 }
 
-template<typename ObjectAPIType> static void *Constructor(size_t sizeOfObject) {
+template<typename FBType> static void *Constructor(size_t sizeOfObject) {
+	using ObjectAPIType = typename FBType::NativeTableType;
+
 	ObjectAPIType *obj = static_cast<ObjectAPIType *>(malloc(sizeOfObject));
 	if (obj == nullptr) {
 		throw std::bad_alloc();
@@ -135,7 +141,9 @@ template<typename ObjectAPIType> static void *Constructor(size_t sizeOfObject) {
 
 	return (obj);
 }
-template<typename ObjectAPIType> static void Destructor(void *object) {
+template<typename FBType> static void Destructor(void *object) {
+	using ObjectAPIType = typename FBType::NativeTableType;
+
 	ObjectAPIType *obj = static_cast<ObjectAPIType *>(object);
 	if (obj == nullptr) {
 		throw std::invalid_argument("object ptr is null");
@@ -146,12 +154,13 @@ template<typename ObjectAPIType> static void Destructor(void *object) {
 	free(obj);
 }
 
-template<typename FBType, typename ObjectAPIType>
-static Type makeTypeDefinition(const char *identifier, const char *description) {
+template<typename FBType> static Type makeTypeDefinition(const char *identifier, const char *description) {
+	using ObjectAPIType = typename FBType::NativeTableType;
+
 	static_assert(std::is_standard_layout_v<ObjectAPIType>, "ObjectAPIType is not standard layout");
 
-	return (Type{identifier, description, sizeof(ObjectAPIType), &Packer<FBType, ObjectAPIType>,
-		&Unpacker<FBType, ObjectAPIType>, &Constructor<ObjectAPIType>, &Destructor<ObjectAPIType>});
+	return (Type{identifier, description, sizeof(ObjectAPIType), &Packer<FBType>, &Unpacker<FBType>,
+		&Constructor<FBType>, &Destructor<FBType>});
 }
 
 } // namespace dv::Types

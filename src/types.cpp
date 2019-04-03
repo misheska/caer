@@ -26,13 +26,11 @@ TypeSystem::TypeSystem() {
 
 	// Initialize system types. These are always available due to
 	// being compiled into the core.
-	auto polaType
-		= makeTypeDefinition<PolarityPacket, PolarityPacketT>(PolarityPacketIdentifier(), "Polarity ON/OFF events.");
+	auto polaType = makeTypeDefinition<PolarityPacket>(PolarityPacketIdentifier(), "Polarity ON/OFF events.");
 	systemTypes.push_back(polaType);
 	makeTypeNode(polaType, systemTypesNode);
 
-	auto frm8Type
-		= makeTypeDefinition<Frame8Packet, Frame8PacketT>(Frame8PacketIdentifier(), "Standard frames (8-bit images).");
+	auto frm8Type = makeTypeDefinition<Frame8Packet>(Frame8PacketIdentifier(), "Standard frames (8-bit images).");
 	systemTypes.push_back(frm8Type);
 	makeTypeNode(frm8Type, systemTypesNode);
 }
