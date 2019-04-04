@@ -720,7 +720,7 @@ public:
 		return (append(rhs_list));
 	}
 
-	basic_cstring operator+(const basic_cstring &rhs) {
+	basic_cstring operator+(const basic_cstring &rhs) const {
 		basic_cstring sum;
 		sum.reserve(size() + rhs.size());
 
@@ -730,7 +730,7 @@ public:
 		return (sum);
 	}
 
-	basic_cstring operator+(std::basic_string_view<value_type> rhs) {
+	basic_cstring operator+(std::basic_string_view<value_type> rhs) const {
 		basic_cstring sum;
 		sum.reserve(size() + rhs.size());
 
@@ -744,7 +744,7 @@ public:
 		return (rhs.operator+(lhs));
 	}
 
-	basic_cstring operator+(const_pointer rhs) {
+	basic_cstring operator+(const_pointer rhs) const {
 		size_type strLength = strlen(rhs);
 
 		basic_cstring sum;
@@ -760,7 +760,7 @@ public:
 		return (rhs.operator+(lhs));
 	}
 
-	basic_cstring operator+(value_type value) {
+	basic_cstring operator+(value_type value) const {
 		basic_cstring sum;
 		sum.reserve(size() + 1);
 
@@ -774,7 +774,7 @@ public:
 		return (rhs.operator+(value));
 	}
 
-	basic_cstring operator+(std::initializer_list<value_type> rhs_list) {
+	basic_cstring operator+(std::initializer_list<value_type> rhs_list) const {
 		basic_cstring sum;
 		sum.reserve(size() + rhs_list.size());
 
