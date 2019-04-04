@@ -1,6 +1,7 @@
 #ifndef DV_SDK_BASE_MODULE_HPP
 #define DV_SDK_BASE_MODULE_HPP
 
+#include "events/cvector_proxy.hpp"
 #include "events/polarity.hpp"
 
 #include "config.hpp"
@@ -36,99 +37,14 @@ public:
 
 template<typename T> class InputWrapper : public std::shared_ptr<const typename T::NativeTableType> {};
 
-template<> class InputWrapper<PolarityPacket> {
+template<> class InputWrapper<PolarityPacket> : public dv::cvectorProxy<PolarityEvent> {
 private:
 	std::shared_ptr<const typename PolarityPacket::NativeTableType> ptr;
 
 public:
-	// Container traits.
-	using value_type       = PolarityEvent;
-	using const_value_type = const PolarityEvent;
-	using pointer          = PolarityEvent *;
-	using const_pointer    = const PolarityEvent *;
-	using reference        = PolarityEvent &;
-	using const_reference  = const PolarityEvent &;
-	using size_type        = size_t;
-	using difference_type  = ptrdiff_t;
-
-	InputWrapper(std::shared_ptr<const typename PolarityPacket::NativeTableType> p) : ptr(std::move(p)) {
-	}
-
-	// Forward to events array.
-	template<typename INT> const_reference operator[](INT index) const {
-		return (ptr->events[index]);
-	}
-
-	template<typename INT> const_reference at(INT index) const {
-		return (ptr->events.at(index));
-	}
-
-	explicit operator std::vector<value_type>() const {
-		return (static_cast<std::vector<value_type>>(ptr->events));
-	}
-
-	const_reference front() const {
-		return (ptr->events.front());
-	}
-
-	const_reference back() const {
-		return (ptr->events.back());
-	}
-
-	const_pointer data() const noexcept {
-		return (ptr->events.data());
-	}
-
-	size_type size() const noexcept {
-		return (ptr->events.size());
-	}
-
-	size_type capacity() const noexcept {
-		return (ptr->events.capacity());
-	}
-
-	size_type max_size() const noexcept {
-		return (ptr->events.max_size());
-	}
-
-	[[nodiscard]] bool empty() const noexcept {
-		return (ptr->events.empty());
-	}
-
-	// Iterator support.
-	using const_iterator         = cPtrIterator<const_value_type>;
-	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-
-	const_iterator begin() const noexcept {
-		return (ptr->events.begin());
-	}
-
-	const_iterator end() const noexcept {
-		return (ptr->events.end());
-	}
-
-	const_iterator cbegin() const noexcept {
-		return (ptr->events.cbegin());
-	}
-
-	const_iterator cend() const noexcept {
-		return (ptr->events.cend());
-	}
-
-	const_reverse_iterator rbegin() const noexcept {
-		return (ptr->events.rbegin());
-	}
-
-	const_reverse_iterator rend() const noexcept {
-		return (ptr->events.rend());
-	}
-
-	const_reverse_iterator crbegin() const noexcept {
-		return (ptr->events.crbegin());
-	}
-
-	const_reverse_iterator crend() const noexcept {
-		return (ptr->events.crend());
+	InputWrapper(std::shared_ptr<const typename PolarityPacket::NativeTableType> p) :
+		dv::cvectorProxy<PolarityEvent>(&p->events),
+		ptr(std::move(p)) {
 	}
 };
 
@@ -166,7 +82,7 @@ public:
 		return (objPtr);
 	}
 
-	template<typename T> InputWrapper<T> get(const std::string &name) const {
+	template<typename T> const InputWrapper<T> get(const std::string &name) const {
 		return (getUnwrapped<T>(name));
 	}
 
