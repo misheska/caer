@@ -200,7 +200,7 @@ private:
 	static struct arraydef convertToAedat4(int16_t type, const libcaer::events::EventPacket *oldPacket) {
 		switch (type) {
 			case POLARITY_EVENT: {
-				auto typeInfo = getTypeSystem().getTypeInfo("POLA");
+				auto typeInfo = dv::Types::getTypeSystem()->getTypeInfo("POLA");
 
 				auto newPacket = static_cast<PolarityPacketT *>((*typeInfo.construct)(typeInfo.sizeOfType));
 
@@ -226,7 +226,7 @@ private:
 			}
 
 			case FRAME_EVENT: {
-				auto typeInfo = getTypeSystem().getTypeInfo("FRM8");
+				auto typeInfo = dv::Types::getTypeSystem()->getTypeInfo("FRM8");
 
 				auto newPacket = static_cast<Frame8PacketT *>((*typeInfo.construct)(typeInfo.sizeOfType));
 

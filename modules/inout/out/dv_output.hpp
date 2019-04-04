@@ -53,7 +53,7 @@ public:
 	}
 
 	std::shared_ptr<const flatbuffers::FlatBufferBuilder> processPacket(struct arraydef packet) {
-		const auto typeInfo = getTypeSystem().getTypeInfo(packet.typeId);
+		const auto typeInfo = dv::Types::getTypeSystem()->getTypeInfo(packet.typeId);
 
 		// Construct serialized flatbuffer packet.
 		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(16 * 1024);
