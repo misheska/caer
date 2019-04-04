@@ -151,6 +151,17 @@ public:
 	}
 
 	void run() {
+		const auto pol_in = inputs.get<PolarityPacket>("polarity");
+		auto pol_out      = outputs.get<PolarityPacket>("polarity");
+
+		for (const auto &evt : pol_in) {
+			if (evt.polarity() == true) {
+				pol_out.push_back(evt);
+			}
+		}
+
+		pol_out.commit();
+
 		// TODO: implement this.
 		caerFilterDVSNoiseApply(noiseFilter.get(), nullptr);
 	}
