@@ -75,30 +75,6 @@ public:
 		return (ptr->events.back());
 	}
 
-	bool operator==(const InputWrapper &rhs) const noexcept {
-		return (ptr->events == rhs.ptr->events);
-	}
-
-	bool operator!=(const InputWrapper &rhs) const noexcept {
-		return (ptr->events != rhs.ptr->events);
-	}
-
-	bool operator==(const cvector<value_type> &rhs) const noexcept {
-		return (ptr->events == rhs);
-	}
-
-	bool operator!=(const cvector<value_type> &rhs) const noexcept {
-		return (ptr->events != rhs);
-	}
-
-	bool operator==(const std::vector<value_type> &rhs) const noexcept {
-		return (ptr->events == rhs);
-	}
-
-	bool operator!=(const std::vector<value_type> &rhs) const noexcept {
-		return (ptr->events != rhs);
-	}
-
 	const_pointer data() const noexcept {
 		return (ptr->events.data());
 	}
@@ -119,35 +95,39 @@ public:
 		return (ptr->events.empty());
 	}
 
-	auto begin() const noexcept {
+	// Iterator support.
+	using const_iterator         = cPtrIterator<const_value_type>;
+	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+	const_iterator begin() const noexcept {
 		return (ptr->events.begin());
 	}
 
-	auto end() const noexcept {
+	const_iterator end() const noexcept {
 		return (ptr->events.end());
 	}
 
-	auto cbegin() const noexcept {
+	const_iterator cbegin() const noexcept {
 		return (ptr->events.cbegin());
 	}
 
-	auto cend() const noexcept {
+	const_iterator cend() const noexcept {
 		return (ptr->events.cend());
 	}
 
-	auto rbegin() const noexcept {
+	const_reverse_iterator rbegin() const noexcept {
 		return (ptr->events.rbegin());
 	}
 
-	auto rend() const noexcept {
+	const_reverse_iterator rend() const noexcept {
 		return (ptr->events.rend());
 	}
 
-	auto crbegin() const noexcept {
+	const_reverse_iterator crbegin() const noexcept {
 		return (ptr->events.crbegin());
 	}
 
-	auto crend() const noexcept {
+	const_reverse_iterator crend() const noexcept {
 		return (ptr->events.crend());
 	}
 };
