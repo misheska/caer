@@ -39,12 +39,12 @@ template<typename T> class InputWrapper : public std::shared_ptr<const typename 
 
 template<> class InputWrapper<PolarityPacket> : public dv::cvectorProxy<PolarityEvent> {
 private:
-	std::shared_ptr<const typename PolarityPacket::NativeTableType> ptr;
+	using NativeType = typename PolarityPacket::NativeTableType;
+
+	std::shared_ptr<const NativeType> ptr;
 
 public:
-	InputWrapper(std::shared_ptr<const typename PolarityPacket::NativeTableType> p) :
-		dv::cvectorProxy<PolarityEvent>(&p->events),
-		ptr(std::move(p)) {
+	InputWrapper(std::shared_ptr<const NativeType> p) : dv::cvectorProxy<PolarityEvent>(&p->events), ptr(std::move(p)) {
 	}
 };
 
@@ -68,9 +68,9 @@ public:
 		// Build shared_ptr with custom deleter first, so that in verification failure case
 		// (debug mode), memory gets properly cleaned up.
 		std::shared_ptr<const typename T::NativeTableType> objPtr{
-			typedObject->obj, [moduleData = moduleData, name, typedObject]() {
-				dvModuleInputDismiss(moduleData, name.c_str(), typedObject);
-			}};
+			static_cast<const typename T::NativeTableType *>(typedObject->obj),
+			[moduleData = moduleData, name, typedObject](
+				const typename T::NativeTableType *) { dvModuleInputDismiss(moduleData, name.c_str(), typedObject); }};
 
 #ifndef NDEBUG
 		if (typedObject->typeId != *(reinterpret_cast<const uint32_t *>(T::identifier))) {
@@ -83,7 +83,8 @@ public:
 	}
 
 	template<typename T> const InputWrapper<T> get(const std::string &name) const {
-		return (getUnwrapped<T>(name));
+		const InputWrapper<T> wrapper{getUnwrapped<T>(name)};
+		return (wrapper);
 	}
 
 	const dv::Config::Node getInfoNode(const std::string &name) const {
@@ -97,20 +98,73 @@ public:
 	}
 };
 
-template<typename T> class OutputWrapper : public std::shared_ptr<typename T::NativeTableType> {
+template<typename T> class OutputWrapper {
 private:
+	using NativeType = typename T::NativeTableType;
+
+	NativeType *ptr;
 	dvModuleData moduleData;
 	std::string name;
 
 public:
-	OutputWrapper(std::shared_ptr<typename T::NativeTableType> p, dvModuleData m, const std::string &n) :
-		std::shared_ptr<typename T::NativeTableType>(std::move(p)),
+	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) : ptr(p), moduleData(m), name(n) {
+	}
+
+	void commit() {
+		dvModuleOutputCommit(moduleData, name.c_str());
+
+		// Update with next object, in case we continue to use this.
+		auto typedObject = dvModuleOutputAllocate(moduleData, name.c_str());
+		if (typedObject == nullptr) {
+			// Actual errors will write a log message and return null.
+			// No data just returns null. So if null we simply forward that.
+			ptr = nullptr;
+		}
+		else {
+			ptr = static_cast<NativeType *>(typedObject->obj);
+		}
+	}
+
+	NativeType &operator*() const noexcept {
+		return (*ptr);
+	}
+
+	NativeType *operator->() const noexcept {
+		return (ptr);
+	}
+};
+
+template<> class OutputWrapper<PolarityPacket> : public dv::cvectorProxy<PolarityEvent> {
+private:
+	using NativeType = typename PolarityPacket::NativeTableType;
+
+	NativeType *ptr;
+	dvModuleData moduleData;
+	std::string name;
+
+public:
+	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) :
+		dv::cvectorProxy<PolarityEvent>(&p->events),
+		ptr(p),
 		moduleData(m),
 		name(n) {
 	}
 
 	void commit() {
 		dvModuleOutputCommit(moduleData, name.c_str());
+
+		// Update with next object, in case we continue to use this.
+		auto typedObject = dvModuleOutputAllocate(moduleData, name.c_str());
+		if (typedObject == nullptr) {
+			// Actual errors will write a log message and return null.
+			// No data just returns null. So if null we simply forward that.
+			ptr = nullptr;
+		}
+		else {
+			ptr = static_cast<NativeType *>(typedObject->obj);
+		}
+
+		reassign(&ptr->events);
 	}
 };
 
@@ -137,7 +191,7 @@ public:
 		}
 #endif
 
-		return (typedObject->obj);
+		return (static_cast<typename T::NativeTableType *>(typedObject->obj));
 	}
 
 	void commitUnwrapped(const std::string &name) {
@@ -145,7 +199,8 @@ public:
 	}
 
 	template<typename T> OutputWrapper<T> get(const std::string &name) {
-		return (allocateUnwrapped<T>(name), moduleData, name);
+		OutputWrapper<T> wrapper{allocateUnwrapped<T>(name), moduleData, name};
+		return (wrapper);
 	}
 
 	dv::Config::Node getInfoNode(const std::string &name) {
