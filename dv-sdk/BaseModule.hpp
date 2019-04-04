@@ -40,7 +40,8 @@ public:
 	RuntimeInputs(dvModuleData m) : moduleData(m) {
 	}
 
-	template<typename T> std::shared_ptr<const typename T::NativeTableType> get(const std::string &name) const {
+	template<typename T>
+	std::shared_ptr<const typename T::NativeTableType> getUnwrapped(const std::string &name) const {
 		auto typedObject = dvModuleInputGet(moduleData, name.c_str());
 		if (typedObject == nullptr) {
 			// Actual errors will write a log message and return null.
@@ -57,19 +58,20 @@ public:
 
 #ifndef NDEBUG
 		if (typedObject->typeId != *(reinterpret_cast<const uint32_t *>(T::identifier))) {
-			throw std::runtime_error("getInput(" + name + "): input type and given template type are not compatible.");
+			throw std::runtime_error(
+				"getUnwrapped(" + name + "): input type and given template type are not compatible.");
 		}
 #endif
 
 		return (objPtr);
 	}
 
-	const dv::Config::Node getInfoNode(const std::string &name) {
+	const dv::Config::Node getInfoNode(const std::string &name) const {
 		// const_cast and then re-add const manually. Needed for transition to C++ type.
 		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData, name.c_str())));
 	}
 
-	const dv::Config::Node getUpstreamNode(const std::string &name) {
+	const dv::Config::Node getUpstreamNode(const std::string &name) const {
 		// const_cast and then re-add const manually. Needed for transition to C++ type.
 		return (const_cast<dvConfigNode>(dvModuleInputGetUpstreamNode(moduleData, name.c_str())));
 	}
@@ -81,6 +83,28 @@ private:
 
 public:
 	RuntimeOutputs(dvModuleData m) : moduleData(m) {
+	}
+
+	template<typename T> typename T::NativeTableType *allocateUnwrapped(const std::string &name) {
+		auto typedObject = dvModuleOutputAllocate(moduleData, name.c_str());
+		if (typedObject == nullptr) {
+			// Actual errors will write a log message and return null.
+			// No data just returns null. So if null we simply forward that.
+			return (nullptr);
+		}
+
+#ifndef NDEBUG
+		if (typedObject->typeId != *(reinterpret_cast<const uint32_t *>(T::identifier))) {
+			throw std::runtime_error(
+				"allocateUnwrapped(" + name + "): output type and given template type are not compatible.");
+		}
+#endif
+
+		return (typedObject->obj);
+	}
+
+	void commitUnwrapped(const std::string &name) {
+		dvModuleOutputCommit(moduleData, name.c_str());
 	}
 
 	dv::Config::Node getInfoNode(const std::string &name) {
