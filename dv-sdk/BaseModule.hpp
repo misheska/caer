@@ -37,14 +37,16 @@ public:
 
 template<typename T> class InputWrapper : public std::shared_ptr<const typename T::NativeTableType> {};
 
-template<> class InputWrapper<PolarityPacket> : public dv::cvectorProxy<PolarityEvent> {
+template<> class InputWrapper<PolarityPacket> : public dv::cvectorConstProxy<PolarityEvent> {
 private:
 	using NativeType = typename PolarityPacket::NativeTableType;
 
 	std::shared_ptr<const NativeType> ptr;
 
 public:
-	InputWrapper(std::shared_ptr<const NativeType> p) : dv::cvectorProxy<PolarityEvent>(&p->events), ptr(std::move(p)) {
+	InputWrapper(std::shared_ptr<const NativeType> p) :
+		dv::cvectorConstProxy<PolarityEvent>(&p->events),
+		ptr(std::move(p)) {
 	}
 };
 
