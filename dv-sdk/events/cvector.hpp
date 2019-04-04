@@ -792,7 +792,7 @@ public:
 		return (append(rhs_list));
 	}
 
-	cvector operator+(const cvector &rhs) {
+	cvector operator+(const cvector &rhs) const {
 		cvector sum;
 		sum.reserve(size() + rhs.size());
 
@@ -802,7 +802,7 @@ public:
 		return (sum);
 	}
 
-	cvector operator+(const std::vector<value_type> &rhs) {
+	cvector operator+(const std::vector<value_type> &rhs) const {
 		cvector sum;
 		sum.reserve(size() + rhs.size());
 
@@ -816,7 +816,7 @@ public:
 		return (rhs.operator+(lhs));
 	}
 
-	cvector operator+(const_reference value) {
+	cvector operator+(const_reference value) const {
 		cvector sum;
 		sum.reserve(size() + 1);
 
@@ -830,7 +830,7 @@ public:
 		return (rhs.operator+(value));
 	}
 
-	cvector operator+(std::initializer_list<value_type> rhs_list) {
+	cvector operator+(std::initializer_list<value_type> rhs_list) const {
 		cvector sum;
 		sum.reserve(size() + rhs_list.size());
 

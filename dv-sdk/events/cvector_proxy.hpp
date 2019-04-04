@@ -34,8 +34,8 @@ public:
 		vec_ptr = vec;
 	}
 
-	void reassign(const cvector<T> *vec) const noexcept {
-		vec_ptr = vec;
+	void reassign(const cvector<T> *vec) noexcept {
+		vec_ptr = const_cast<cvector<T> *>(vec);
 	}
 
 	// Copy assignment.
@@ -401,15 +401,15 @@ public:
 		return (append(rhs_list));
 	}
 
-	cvector<value_type> operator+(const cvectorProxy &rhs) {
+	cvector<value_type> operator+(const cvectorProxy &rhs) const {
 		return (vec_ptr->operator+(*rhs.vec_ptr));
 	}
 
-	cvector<value_type> operator+(const cvector<value_type> &rhs) {
+	cvector<value_type> operator+(const cvector<value_type> &rhs) const {
 		return (vec_ptr->operator+(rhs));
 	}
 
-	cvector<value_type> operator+(const std::vector<value_type> &rhs) {
+	cvector<value_type> operator+(const std::vector<value_type> &rhs) const {
 		return (vec_ptr->operator+(rhs));
 	}
 
@@ -421,7 +421,7 @@ public:
 		return (rhs.operator+(lhs));
 	}
 
-	cvector<value_type> operator+(const_reference value) {
+	cvector<value_type> operator+(const_reference value) const {
 		return (vec_ptr->operator+(value));
 	}
 
@@ -429,7 +429,7 @@ public:
 		return (rhs.operator+(value));
 	}
 
-	cvector<value_type> operator+(std::initializer_list<value_type> rhs_list) {
+	cvector<value_type> operator+(std::initializer_list<value_type> rhs_list) const {
 		return (vec_ptr->operator+(rhs_list));
 	}
 
