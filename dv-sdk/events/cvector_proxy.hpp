@@ -30,6 +30,14 @@ public:
 	cvectorProxy(const cvector<T> *vec) : vec_ptr(const_cast<cvector<T> *>(vec)) {
 	}
 
+	void reassign(cvector<T> *vec) noexcept {
+		vec_ptr = vec;
+	}
+
+	void reassign(const cvector<T> *vec) const noexcept {
+		vec_ptr = vec;
+	}
+
 	// Copy assignment.
 	cvectorProxy &operator=(const cvectorProxy &rhs) {
 		return (assign(rhs));
