@@ -181,6 +181,23 @@ public:
 	}
 };
 
+template<typename T> class OutputWrapper : public std::shared_ptr<typename T::NativeTableType> {
+private:
+	dvModuleData moduleData;
+	std::string name;
+
+public:
+	OutputWrapper(std::shared_ptr<typename T::NativeTableType> p, dvModuleData m, const std::string &n) :
+		std::shared_ptr<typename T::NativeTableType>(std::move(p)),
+		moduleData(m),
+		name(n) {
+	}
+
+	void commit() {
+		dvModuleOutputCommit(moduleData, name.c_str());
+	}
+};
+
 class RuntimeOutputs {
 private:
 	dvModuleData moduleData;
@@ -209,6 +226,10 @@ public:
 
 	void commitUnwrapped(const std::string &name) {
 		dvModuleOutputCommit(moduleData, name.c_str());
+	}
+
+	template<typename T> OutputWrapper<T> get(const std::string &name) {
+		return (allocateUnwrapped<T>(name), moduleData, name);
 	}
 
 	dv::Config::Node getInfoNode(const std::string &name) {
