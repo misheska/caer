@@ -1,6 +1,6 @@
 native_include "cvector.hpp";
 
-file_identifier "FRM8";
+file_identifier "FR08";
 
 namespace dv;
 

@@ -1,0 +1,18 @@
+native_include "cvector.hpp";
+
+file_identifier "EVTS";
+
+namespace dv;
+
+struct Event {
+	timestamp: int64;
+	addressX: int16;
+	addressY: int16;
+	polarity: bool;
+}
+
+table EventPacket {
+	events: [Event] (native_inline);
+}
+
+root_type EventPacket;
