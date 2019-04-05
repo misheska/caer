@@ -104,7 +104,7 @@ struct dvTypedObject {
 static_assert(std::is_standard_layout_v<dvType>, "dvType is not standard layout");
 static_assert(std::is_standard_layout_v<dvTypedObject>, "dvTypedObject is not standard layout");
 
-#	include "dv-sdk/events/flatbuffers/flatbuffers.h"
+#	include "flatbuffers/flatbuffers.h"
 
 namespace dv::Types {
 

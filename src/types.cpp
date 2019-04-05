@@ -1,7 +1,7 @@
 #include "types.hpp"
 
-#include "dv-sdk/events/frame8.hpp"
-#include "dv-sdk/events/polarity.hpp"
+#include "dv-sdk/data/frame8.hpp"
+#include "dv-sdk/data/polarity.hpp"
 
 #include <stdexcept>
 
@@ -26,11 +26,11 @@ TypeSystem::TypeSystem() {
 
 	// Initialize system types. These are always available due to
 	// being compiled into the core.
-	auto polaType = makeTypeDefinition<PolarityPacket>("Polarity ON/OFF events.");
+	auto polaType = makeTypeDefinition<PolarityPacket>("Array of events (polarity ON/OFF).");
 	systemTypes.push_back(polaType);
 	makeTypeNode(polaType, systemTypesNode);
 
-	auto frm8Type = makeTypeDefinition<Frame8Packet>("Standard frames (8-bit images).");
+	auto frm8Type = makeTypeDefinition<Frame8>("Standard frame (8-bit image).");
 	systemTypes.push_back(frm8Type);
 	makeTypeNode(frm8Type, systemTypesNode);
 }
@@ -56,7 +56,7 @@ void TypeSystem::registerModuleType(const Module *m, const Type &t) {
 	// this type before.
 	if (userTypes.count(t.id)
 		&& findIfBool(userTypes[t.id].cbegin(), userTypes[t.id].cend(),
-			   [m](const auto &userType) { return (m == userType.first); })) {
+			[m](const auto &userType) { return (m == userType.first); })) {
 		throw std::invalid_argument("User type already registered for this module.");
 	}
 

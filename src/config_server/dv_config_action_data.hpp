@@ -3,7 +3,8 @@
 #ifndef FLATBUFFERS_GENERATED_DVCONFIGACTIONDATA_DV_H_
 #define FLATBUFFERS_GENERATED_DVCONFIGACTIONDATA_DV_H_
 
-#include "dv-sdk/events/flatbuffers/flatbuffers.h"
+#include "dv-sdk/data/cstring.hpp"
+#include "dv-sdk/data/flatbuffers/flatbuffers.h"
 
 namespace dv {
 
@@ -148,13 +149,13 @@ struct ConfigActionDataT : public flatbuffers::NativeTable {
 	ConfigNodeEvents nodeEvents;
 	ConfigAttributeEvents attrEvents;
 	uint64_t id;
-	std::string node;
-	std::string key;
+	dv::cstring node;
+	dv::cstring key;
 	ConfigType type;
-	std::string value;
-	std::string ranges;
+	dv::cstring value;
+	dv::cstring ranges;
 	int32_t flags;
-	std::string description;
+	dv::cstring description;
 	ConfigActionDataT() :
 		action(ConfigAction::ERROR),
 		nodeEvents(ConfigNodeEvents::NODE_ADDED),
@@ -228,6 +229,8 @@ struct ConfigActionData FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	}
 	ConfigActionDataT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
 	void UnPackTo(ConfigActionDataT *_o, const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+	static void UnPackToFrom(ConfigActionDataT *_o, const ConfigActionData *_fb,
+		const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<ConfigActionData> Pack(flatbuffers::FlatBufferBuilder &_fbb, const ConfigActionDataT *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 };
@@ -327,54 +330,62 @@ inline ConfigActionDataT *ConfigActionData::UnPack(const flatbuffers::resolver_f
 inline void ConfigActionData::UnPackTo(ConfigActionDataT *_o, const flatbuffers::resolver_function_t *_resolver) const {
 	(void) _o;
 	(void) _resolver;
+	UnPackToFrom(_o, this, _resolver);
+}
+
+inline void ConfigActionData::UnPackToFrom(
+	ConfigActionDataT *_o, const ConfigActionData *_fb, const flatbuffers::resolver_function_t *_resolver) {
+	(void) _o;
+	(void) _fb;
+	(void) _resolver;
 	{
-		auto _e    = action();
+		auto _e    = _fb->action();
 		_o->action = _e;
 	};
 	{
-		auto _e        = nodeEvents();
+		auto _e        = _fb->nodeEvents();
 		_o->nodeEvents = _e;
 	};
 	{
-		auto _e        = attrEvents();
+		auto _e        = _fb->attrEvents();
 		_o->attrEvents = _e;
 	};
 	{
-		auto _e = id();
+		auto _e = _fb->id();
 		_o->id  = _e;
 	};
 	{
-		auto _e = node();
+		auto _e = _fb->node();
 		if (_e)
-			_o->node = _e->str();
+			_o->node = dv::cstring(_e->c_str(), _e->size());
 	};
 	{
-		auto _e = key();
+		auto _e = _fb->key();
 		if (_e)
-			_o->key = _e->str();
+			_o->key = dv::cstring(_e->c_str(), _e->size());
 	};
 	{
-		auto _e  = type();
+		auto _e  = _fb->type();
 		_o->type = _e;
 	};
 	{
-		auto _e = value();
+		auto _e = _fb->value();
 		if (_e)
-			_o->value = _e->str();
+			_o->value = dv::cstring(_e->c_str(), _e->size());
 	};
 	{
-		auto _e = ranges();
+		auto _e = _fb->ranges();
 		if (_e)
-			_o->ranges = _e->str();
+			_o->ranges = dv::cstring(_e->c_str(), _e->size());
 	};
 	{
-		auto _e   = flags();
+		auto _e   = _fb->flags();
 		_o->flags = _e;
 	};
 	{
-		auto _e = description();
+		auto _e = _fb->description();
 		if (_e)
-			_o->description = _e->str();
+			_o->description = dv::cstring(_e->c_str(), _e->size());
 	};
 }
 

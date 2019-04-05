@@ -1,10 +1,7 @@
-#include "dv-sdk/config/dvConfig.hpp"
 #include "dv-sdk/module.hpp"
 
 #include "dv_output.hpp"
 #include "src/config_server/asio.h"
-
-#include <memory>
 
 namespace logger = libcaer::log;
 
@@ -200,7 +197,7 @@ private:
 	static struct arraydef convertToAedat4(int16_t type, const libcaer::events::EventPacket *oldPacket) {
 		switch (type) {
 			case POLARITY_EVENT: {
-				auto typeInfo = dv::Types::getTypeSystem()->getTypeInfo("POLA");
+				auto typeInfo = dvTypeSystemGetInfoByIdentifier("POLA");
 
 				auto newPacket = static_cast<PolarityPacketT *>((*typeInfo.construct)(typeInfo.sizeOfType));
 
@@ -226,7 +223,7 @@ private:
 			}
 
 			case FRAME_EVENT: {
-				auto typeInfo = dv::Types::getTypeSystem()->getTypeInfo("FRM8");
+				auto typeInfo = dvTypeSystemGetInfoByIdentifier("FRM8");
 
 				auto newPacket = static_cast<Frame8PacketT *>((*typeInfo.construct)(typeInfo.sizeOfType));
 

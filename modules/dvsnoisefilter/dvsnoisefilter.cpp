@@ -1,7 +1,6 @@
-#include "dv-sdk/events/polarity.hpp"
-
 #include <libcaercpp/filters/dvs_noise.hpp>
 
+#include "dv-sdk/data/polarity.hpp"
 #include "dv-sdk/module.hpp"
 
 namespace dvCfg  = dv::Config;
@@ -153,8 +152,8 @@ public:
 	}
 
 	void run() {
-		auto pol_in  = inputs.get<PolarityPacket>("polarity");
-		auto pol_out = outputs.get<PolarityPacket>("polarity");
+		auto pol_in  = inputs.get<dv::PolarityPacket>("polarity");
+		auto pol_out = outputs.get<dv::PolarityPacket>("polarity");
 
 		for (const auto &evt : pol_in) {
 			if (evt.polarity() == true) {

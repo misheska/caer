@@ -1,8 +1,8 @@
 #ifndef DV_SDK_MODULE_IO_HPP
 #define DV_SDK_MODULE_IO_HPP
 
-#include "events/cvector_proxy.hpp"
-#include "events/polarity.hpp"
+#include "data/cvector_proxy.hpp"
+#include "data/polarity.hpp"
 #include "module.h"
 #include "utils.h"
 

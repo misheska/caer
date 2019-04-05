@@ -6,8 +6,7 @@
 #ifndef DV_SDK_MODULE_H_
 #define DV_SDK_MODULE_H_
 
-#include "events/types.hpp"
-
+#include "data/types.hpp"
 #include "utils.h"
 
 #ifdef __cplusplus

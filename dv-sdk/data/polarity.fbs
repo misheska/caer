@@ -2,6 +2,8 @@ native_include "cvector.hpp";
 
 file_identifier "POLA";
 
+namespace dv;
+
 struct PolarityEvent {
 	timestamp: int64;
 	addressX: int16;

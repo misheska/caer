@@ -1,7 +1,7 @@
 #ifndef TYPES_HPP
 #define TYPES_HPP
 
-#include "dv-sdk/events/types.hpp"
+#include "dv-sdk/data/types.hpp"
 
 #include <mutex>
 #include <string_view>
