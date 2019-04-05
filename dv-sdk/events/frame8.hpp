@@ -493,13 +493,13 @@ inline flatbuffers::Offset<Frame8Packet> CreateFrame8Packet(
 		const flatbuffers::rehasher_function_t *__rehasher;
 	} _va = {&_fbb, _o, _rehasher};
 	(void) _va;
-	auto _events = _o->events.size()
-					   ? _fbb.CreateVector<flatbuffers::Offset<Frame8>>(_o->events.size(),
-							 [](size_t i, _VectorArgs *__va) {
-								 return CreateFrame8(*__va->__fbb, &__va->__o->events[i], __va->__rehasher);
-							 },
-							 &_va)
-					   : 0;
+	auto _events = _o->events.size() ? _fbb.CreateVector<flatbuffers::Offset<Frame8>>(
+					   _o->events.size(),
+					   [](size_t i, _VectorArgs *__va) {
+						   return CreateFrame8(*__va->__fbb, &__va->__o->events[i], __va->__rehasher);
+					   },
+					   &_va)
+									 : 0;
 	return CreateFrame8Packet(_fbb, _events);
 }
 

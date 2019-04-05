@@ -319,6 +319,7 @@ struct TestPacketT : public flatbuffers::NativeTable {
 
 struct TestPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef TestPacketT NativeTableType;
+	static const char *identifier;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return TestPacketTypeTable();
 	}
@@ -538,19 +539,19 @@ inline flatbuffers::Offset<Test> CreateTest(
 						 : 0;
 	auto _aintvec = _o->aintvec.size() ? _fbb.CreateVector(_o->aintvec.data(), _o->aintvec.size()) : 0;
 	auto _astrvec
-		= _o->astrvec.size()
-			  ? _fbb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(_o->astrvec.size(),
-					[](size_t i, _VectorArgs *__va) { return __va->__fbb->CreateString(__va->__o->astrvec[i]); }, &_va)
-			  : 0;
+		= _o->astrvec.size() ? _fbb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(
+			  _o->astrvec.size(),
+			  [](size_t i, _VectorArgs *__va) { return __va->__fbb->CreateString(__va->__o->astrvec[i]); }, &_va)
+							 : 0;
 	auto _ttab    = CreateTestTable(_fbb, &_o->ttab, _rehasher);
 	auto _tstru   = &_o->tstru;
-	auto _ttabvec = _o->ttabvec.size()
-						? _fbb.CreateVector<flatbuffers::Offset<TestTable>>(_o->ttabvec.size(),
-							  [](size_t i, _VectorArgs *__va) {
-								  return CreateTestTable(*__va->__fbb, &__va->__o->ttabvec[i], __va->__rehasher);
-							  },
-							  &_va)
-						: 0;
+	auto _ttabvec = _o->ttabvec.size() ? _fbb.CreateVector<flatbuffers::Offset<TestTable>>(
+						_o->ttabvec.size(),
+						[](size_t i, _VectorArgs *__va) {
+							return CreateTestTable(*__va->__fbb, &__va->__o->ttabvec[i], __va->__rehasher);
+						},
+						&_va)
+									   : 0;
 	auto _tstruvec = _o->tstruvec.size() ? _fbb.CreateVectorOfStructs(_o->tstruvec.data(), _o->tstruvec.size()) : 0;
 	return CreateTest(_fbb, _timestamp, _addressX, _addressY, _polarity, _astr, _aboolvec, _aintvec, _astrvec, _ttab,
 		_tstru, _ttabvec, _tstruvec);
@@ -599,13 +600,13 @@ inline flatbuffers::Offset<TestPacket> CreateTestPacket(
 		const flatbuffers::rehasher_function_t *__rehasher;
 	} _va = {&_fbb, _o, _rehasher};
 	(void) _va;
-	auto _events = _o->events.size()
-					   ? _fbb.CreateVector<flatbuffers::Offset<Test>>(_o->events.size(),
-							 [](size_t i, _VectorArgs *__va) {
-								 return CreateTest(*__va->__fbb, __va->__o->events[i].get(), __va->__rehasher);
-							 },
-							 &_va)
-					   : 0;
+	auto _events = _o->events.size() ? _fbb.CreateVector<flatbuffers::Offset<Test>>(
+					   _o->events.size(),
+					   [](size_t i, _VectorArgs *__va) {
+						   return CreateTest(*__va->__fbb, __va->__o->events[i].get(), __va->__rehasher);
+					   },
+					   &_va)
+									 : 0;
 	return CreateTestPacket(_fbb, _events);
 }
 
@@ -656,6 +657,8 @@ inline const TestPacket *GetSizePrefixedTestPacket(const void *buf) {
 inline const char *TestPacketIdentifier() {
 	return "TEST";
 }
+
+const char *TestPacket::identifier = TestPacketIdentifier();
 
 inline bool TestPacketBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, TestPacketIdentifier());
