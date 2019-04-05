@@ -5,9 +5,13 @@ file_identifier "EVTS";
 namespace dv;
 
 struct Event {
+	/// Timestamp (µs).
 	timestamp: int64;
-	addressX: int16;
-	addressY: int16;
+	// X coordinate of event.
+	x: int16;
+	// Y coordinate of event.
+	y: int16;
+	// Change polarity (1=ON/0=OFF).
 	polarity: bool;
 }
 

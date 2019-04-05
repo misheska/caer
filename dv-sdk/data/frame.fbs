@@ -1,41 +1,21 @@
 native_include "cvector.hpp";
 
-file_identifier "FR08";
+file_identifier "FRM8";
 
 namespace dv;
 
-enum FrameChannels : int8 {
+/// Format vales are compatible with OpenCV CV_8UCx.
+enum FrameFormat : int8 {
 	/// Grayscale, one channel only.
-	GRAYSCALE = 1,
+	GRAY = 0,
 	/// Red Green Blue, 3 color channels.
-	RGB = 3,
+	RGB  = 16,
 	/// Red Green Blue Alpha, 3 color channels plus transparency.
-	RGBA = 4
+	RGBA = 24
 }
 
-enum FrameColorFilters : int8 {
-	/// No color filter present, all light passes.
-	MONO = 0,
-	/// Standard Bayer color filter, 1 red 2 green 1 blue. Variation 1.
-	RGBG = 1,
-	/// Standard Bayer color filter, 1 red 2 green 1 blue. Variation 2.
-	GRGB = 2,
-	/// Standard Bayer color filter, 1 red 2 green 1 blue. Variation 3.
-	GBGR = 3,
-	/// Standard Bayer color filter, 1 red 2 green 1 blue. Variation 4.
-	BGRG = 4,
-	/// Modified Bayer color filter, with white (pass all light) instead of extra green. Variation 1.
-	RGBW = 5,
-	/// Modified Bayer color filter, with white (pass all light) instead of extra green. Variation 2.
-	GRWB = 6,
-	/// Modified Bayer color filter, with white (pass all light) instead of extra green. Variation 3.
-	WBGR = 7,
-	/// Modified Bayer color filter, with white (pass all light) instead of extra green. Variation 4.
-	BWRG = 8
-}
-
-table Frame8 {
-	/// Central timestamp, corresponds to exposure midpoint.
+table Frame {
+	/// Central timestamp (µs), corresponds to exposure midpoint.
 	timestamp: int64;
 	/// Start of Frame (SOF) timestamp.
 	timestampStartOfFrame: int64;
@@ -45,14 +25,12 @@ table Frame8 {
 	timestampStartOfExposure: int64;
 	/// End of Exposure (EOE) timestamp.
 	timestampEndOfExposure: int64;
-	/// Color channels present in frame.
-	numChannels : FrameChannels = GRAYSCALE;
-	/// Original color filter on array.
-	origColorFilter: FrameColorFilters = MONO;
+	/// Pixel format (grayscale, RGB, ...).
+	format : FrameFormat = GRAY;
 	/// X axis length in pixels.
-	lengthX: int16;
+	sizeX: int16;
 	/// Y axis length in pixels.
-	lengthY: int16;
+	sizeY: int16;
 	/// X axis position (upper left offset) in pixels.
 	positionX: int16;
 	/// Y axis position (upper left offset) in pixels.
@@ -61,4 +39,4 @@ table Frame8 {
 	pixels: [uint8];
 }
 
-root_type Frame8;
+root_type Frame;
