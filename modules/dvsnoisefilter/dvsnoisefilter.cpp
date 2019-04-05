@@ -17,7 +17,7 @@ static union dvConfigAttributeValue updateRefractoryPeriodFiltered(
 static void caerDVSNoiseFilterConfigCustom(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-class DVSNoiseFilter : public dv::BaseModule {
+class DVSNoiseFilter : public dv::ModuleBase {
 private:
 	dv::unique_ptr_deleter<struct caer_filter_dvs_noise> noiseFilter;
 

@@ -29,7 +29,7 @@ private:
 	void handleError(const boost::system::error_code &error, const char *message);
 };
 
-class NetTCPServer : public dv::BaseModule {
+class NetTCPServer : public dv::ModuleBase {
 private:
 	asio::io_service ioService;
 	asioTCP::acceptor acceptor;

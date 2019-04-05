@@ -1,16 +1,14 @@
 #ifndef DV_SDK_MODULE_HPP
 #define DV_SDK_MODULE_HPP
 
-#include "BaseModule.hpp"
-#include "module.h"
-#include "utils.h"
+#include "module_base.hpp"
 
 #include <boost/tti/has_static_member_function.hpp>
 
 /**
  * Macro that expands into the global `dvModuleGetInfo` function, exposed to the API for DV.
  * The function instantiates the `ModuleStaticDefinition` class with the given Module (A subclass)
- * of `dv::BaseModule` and returns the static info section.
+ * of `dv::ModuleBase` and returns the static info section.
  * @param MODULE
  */
 #define registerModuleClass(MODULE)                \
@@ -62,15 +60,15 @@ inline constexpr bool has_addOutputs
  * for the module class `T` to be exposed to DV. It essentially wraps the
  * the functions of the given C++ module class to the stateless
  * functions and external state of the DV interface. Template parameter T must be
- * a valid DV module, e.g. it has to extend `dv::BaseModule` and provide
+ * a valid DV module, e.g. it has to extend `dv::ModuleBase` and provide
  * certain static functions. Upon (static) instantiation, the `ModuleStatics`
  * class performs static (compile time) validations to check if `T` is a valid
  * module.
- * @tparam T A valid DV Module class that extends `dv::BaseModule`
+ * @tparam T A valid DV Module class that extends `dv::ModuleBase`
  */
 template<class T> class ModuleStatics {
 	/* Static assertions. Checks the existence of all required static members. */
-	static_assert(std::is_base_of_v<BaseModule, T>, "Your module does not inherit from dv::BaseModule.");
+	static_assert(std::is_base_of_v<ModuleBase, T>, "Your module does not inherit from dv::ModuleBase.");
 	static_assert(has_getDescription<T>,
 		"Your module does not specify a `static const char* getDescription()` function."
 		"This function should return a string with a description of the module.");
@@ -81,7 +79,7 @@ template<class T> class ModuleStatics {
 public:
 	/**
 	 * Wrapper for the `staticInit` DV function. Performs a static call to the
-	 * `configInit<T>` function of `BaseModule`, which in turn gets the config from
+	 * `configInit<T>` function of `ModuleBase`, which in turn gets the config from
 	 * the user defined module `T`. The config then gets parsed and injected as DvConfig
 	 * nodes.
 	 * @param moduleData The DV provided moduleData.
@@ -117,9 +115,9 @@ public:
 			}
 		}
 
-		BaseModule::__setStaticGetDefaultConfig(std::function<void(RuntimeConfig &)>(T::getConfigOptions));
+		ModuleBase::__setStaticGetDefaultConfig(std::function<void(RuntimeConfig &)>(T::getConfigOptions));
 
-		BaseModule::staticConfigInit(moduleData->moduleNode);
+		ModuleBase::staticConfigInit(moduleData->moduleNode);
 
 		if constexpr (has_advancedStaticInit<T>) {
 			T::advancedStaticInit(moduleData->moduleNode);
@@ -128,16 +126,16 @@ public:
 
 	/**
 	 * Wrapper for the `init` DV function. Constructs the user defined `T` module
-	 * into the module state. Configuration is updated by the BaseModule constructor.
+	 * into the module state. Configuration is updated by the ModuleBase constructor.
 	 * @param moduleData The DV provided moduleData.
 	 * @return true if construction succeeded, false if it failed.
 	 */
 	static bool init(dvModuleData moduleData) {
 		try {
 			// set the moduleData pointer thread local static prior to construction.
-			BaseModule::__setStaticModuleData(moduleData);
+			ModuleBase::__setStaticModuleData(moduleData);
 
-			// Construct T, will call BaseModule() and then T() constructors.
+			// Construct T, will call ModuleBase() and then T() constructors.
 			new (moduleData->moduleState) T();
 		}
 		catch (const std::exception &ex) {
@@ -172,7 +170,7 @@ public:
 	/**
 	 * Wrapper for the DV config function. Relays the call to the stateful
 	 * `configUpdate` function of the `T` module. If not overloaded by a the user,
-	 * the `configUpdate` function of `BaseModule` is called which reads out all
+	 * the `configUpdate` function of `ModuleBase` is called which reads out all
 	 * config from the DvConfig node and updates a runtime dict of configs.
 	 * @param moduleData The moduleData provided by DV.
 	 */
@@ -199,7 +197,7 @@ public:
  * contains the addresses to all the wrapper functions instantiated to the template
  * module `T`. This struct is then passed to DV to allow it to access the
  * functionalities inside the module.
- * @tparam T The user defined module. Must inherit from `dv::BaseModule`
+ * @tparam T The user defined module. Must inherit from `dv::ModuleBase`
  */
 template<class T>
 const dvModuleFunctionsS ModuleStatics<T>::functions = {&ModuleStatics<T>::staticInit, &ModuleStatics<T>::init,
@@ -209,8 +207,8 @@ const dvModuleFunctionsS ModuleStatics<T>::functions = {&ModuleStatics<T>::stati
  * Static definition of the info struct, which gets passed to DV.
  * DV reads this and uses the information to call into the module.
  * It gets instantiated with the template parameter T, which has to
- * be a valid module and inherit from `dv::BaseModule`.
- * @tparam T The user defined module. Must inherit from `dv::BaseModule`
+ * be a valid module and inherit from `dv::ModuleBase`.
+ * @tparam T The user defined module. Must inherit from `dv::ModuleBase`
  */
 template<class T> const dvModuleInfoS ModuleStatics<T>::info = {1, T::getDescription(), sizeof(T), &functions};
 
