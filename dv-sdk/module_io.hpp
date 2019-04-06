@@ -2,7 +2,7 @@
 #define DV_SDK_MODULE_IO_HPP
 
 #include "data/cvector_proxy.hpp"
-#include "data/polarity.hpp"
+#include "data/event.hpp"
 #include "module.h"
 #include "utils.h"
 
@@ -32,16 +32,14 @@ public:
 
 template<typename T> class InputWrapper : public std::shared_ptr<const typename T::NativeTableType> {};
 
-template<> class InputWrapper<PolarityPacket> : public dv::cvectorConstProxy<PolarityEvent> {
+template<> class InputWrapper<EventPacket> : public dv::cvectorConstProxy<Event> {
 private:
-	using NativeType = typename PolarityPacket::NativeTableType;
+	using NativeType = typename EventPacket::NativeTableType;
 
 	std::shared_ptr<const NativeType> ptr;
 
 public:
-	InputWrapper(std::shared_ptr<const NativeType> p) :
-		dv::cvectorConstProxy<PolarityEvent>(&p->events),
-		ptr(std::move(p)) {
+	InputWrapper(std::shared_ptr<const NativeType> p) : dv::cvectorConstProxy<Event>(&p->events), ptr(std::move(p)) {
 	}
 
 	std::shared_ptr<const NativeType> getBasePointer() {
@@ -139,9 +137,9 @@ public:
 	}
 };
 
-template<> class OutputWrapper<PolarityPacket> : public dv::cvectorProxy<PolarityEvent> {
+template<> class OutputWrapper<EventPacket> : public dv::cvectorProxy<Event> {
 private:
-	using NativeType = typename PolarityPacket::NativeTableType;
+	using NativeType = typename EventPacket::NativeTableType;
 
 	NativeType *ptr;
 	dvModuleData moduleData;
@@ -149,7 +147,7 @@ private:
 
 public:
 	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) :
-		dv::cvectorProxy<PolarityEvent>(&p->events),
+		dv::cvectorProxy<Event>(&p->events),
 		ptr(p),
 		moduleData(m),
 		name(n) {

@@ -1,7 +1,9 @@
 #include "types.hpp"
 
-#include "dv-sdk/data/frame8.hpp"
-#include "dv-sdk/data/polarity.hpp"
+#include "dv-sdk/data/event.hpp"
+#include "dv-sdk/data/frame.hpp"
+#include "dv-sdk/data/imu.hpp"
+#include "dv-sdk/data/trigger.hpp"
 
 #include <stdexcept>
 
@@ -26,13 +28,21 @@ TypeSystem::TypeSystem() {
 
 	// Initialize system types. These are always available due to
 	// being compiled into the core.
-	auto polaType = makeTypeDefinition<PolarityPacket>("Array of events (polarity ON/OFF).");
-	systemTypes.push_back(polaType);
-	makeTypeNode(polaType, systemTypesNode);
+	auto evtType = makeTypeDefinition<EventPacket>("Array of events (polarity ON/OFF).");
+	systemTypes.push_back(evtType);
+	makeTypeNode(evtType, systemTypesNode);
 
-	auto frm8Type = makeTypeDefinition<Frame8>("Standard frame (8-bit image).");
-	systemTypes.push_back(frm8Type);
-	makeTypeNode(frm8Type, systemTypesNode);
+	auto frmType = makeTypeDefinition<Frame>("Standard frame (8-bit image).");
+	systemTypes.push_back(frmType);
+	makeTypeNode(frmType, systemTypesNode);
+
+	auto imuType = makeTypeDefinition<IMUPacket>("Inertial Measurement Unit data samples.");
+	systemTypes.push_back(imuType);
+	makeTypeNode(imuType, systemTypesNode);
+
+	auto trigType = makeTypeDefinition<TriggerPacket>("External triggers and special signals.");
+	systemTypes.push_back(trigType);
+	makeTypeNode(trigType, systemTypesNode);
 }
 
 void TypeSystem::registerModuleType(const Module *m, const Type &t) {
@@ -56,7 +66,7 @@ void TypeSystem::registerModuleType(const Module *m, const Type &t) {
 	// this type before.
 	if (userTypes.count(t.id)
 		&& findIfBool(userTypes[t.id].cbegin(), userTypes[t.id].cend(),
-			[m](const auto &userType) { return (m == userType.first); })) {
+			   [m](const auto &userType) { return (m == userType.first); })) {
 		throw std::invalid_argument("User type already registered for this module.");
 	}
 

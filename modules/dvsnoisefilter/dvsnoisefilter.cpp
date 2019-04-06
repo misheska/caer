@@ -1,6 +1,6 @@
 #include <libcaercpp/filters/dvs_noise.hpp>
 
-#include "dv-sdk/data/polarity.hpp"
+#include "dv-sdk/data/event.hpp"
 #include "dv-sdk/module.hpp"
 
 namespace dvCfg  = dv::Config;
@@ -22,15 +22,15 @@ private:
 
 public:
 	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("polarity", "POLA", false);
+		in.emplace_back("events", dv::EventPacket::identifier, false);
 	}
 
 	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-		out.emplace_back("polarity", "POLA");
+		out.emplace_back("events", dv::EventPacket::identifier);
 	}
 
 	static const char *getDescription() {
-		return ("Filters out noise from DVS change events.");
+		return ("Filters out noise from DVS change (polarity) events.");
 	}
 
 	static void getConfigOptions(dv::RuntimeConfig &config) {
@@ -152,16 +152,16 @@ public:
 	}
 
 	void run() {
-		auto pol_in  = inputs.get<dv::PolarityPacket>("polarity");
-		auto pol_out = outputs.get<dv::PolarityPacket>("polarity");
+		auto evt_in  = inputs.get<dv::EventPacket>("events");
+		auto evt_out = outputs.get<dv::EventPacket>("events");
 
-		for (const auto &evt : pol_in) {
+		for (const auto &evt : evt_in) {
 			if (evt.polarity() == true) {
-				pol_out.push_back(evt);
+				evt_out.push_back(evt);
 			}
 		}
 
-		pol_out.commit();
+		evt_out.commit();
 
 		// TODO: implement this.
 		caerFilterDVSNoiseApply(noiseFilter.get(), nullptr);
