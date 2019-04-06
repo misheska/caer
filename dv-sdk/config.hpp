@@ -239,10 +239,6 @@ public:
 					}
 				}
 
-				if (config.attributes.autoReset) {
-					node.attributeButtonReset(key);
-				}
-
 				break;
 			}
 
@@ -368,6 +364,11 @@ public:
 				auto &config = getConfigObject<dv::Config::AttributeType::BOOL>();
 
 				config.currentValue = node.get<dv::Config::AttributeType::BOOL>(key);
+
+				// Auto-reset resets from true to false.
+				if (config.attributes.autoReset && config.currentValue) {
+					node.attributeButtonReset(key);
+				}
 
 				break;
 			}
