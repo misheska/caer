@@ -13,20 +13,21 @@ struct FrameT;
 
 inline const flatbuffers::TypeTable *FrameTypeTable();
 
-/// Format vales are compatible with OpenCV CV_8UCx.
+/// Format values are compatible with OpenCV CV_8UCx.
+/// Pixel layout follows OpenCV standard.
 enum class FrameFormat : int8_t {
 	/// Grayscale, one channel only.
-	GRAY = 0 /// Red Green Blue, 3 color channels.
+	GRAY = 0 /// Blue Green Red, 3 color channels.
 	,
-	RGB = 16 /// Red Green Blue Alpha, 3 color channels plus transparency.
+	BGR = 16 /// Blue Green Red Alpha, 3 color channels plus transparency.
 	,
-	RGBA = 24,
+	BGRA = 24,
 	MIN  = GRAY,
-	MAX  = RGBA
+	MAX  = BGRA
 };
 
 inline const FrameFormat (&EnumValuesFrameFormat())[3] {
-	static const FrameFormat values[] = {FrameFormat::GRAY, FrameFormat::RGB, FrameFormat::RGBA};
+	static const FrameFormat values[] = {FrameFormat::GRAY, FrameFormat::BGR, FrameFormat::BGRA};
 	return values;
 }
 
@@ -34,10 +35,10 @@ inline const char *EnumNameFrameFormat(FrameFormat e) {
 	switch (e) {
 		case FrameFormat::GRAY:
 			return "GRAY";
-		case FrameFormat::RGB:
-			return "RGB";
-		case FrameFormat::RGBA:
-			return "RGBA";
+		case FrameFormat::BGR:
+			return "BGR";
+		case FrameFormat::BGRA:
+			return "BGRA";
 		default:
 			return "";
 	}
@@ -330,7 +331,7 @@ inline const flatbuffers::TypeTable *FrameFormatTypeTable() {
 		= {{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}};
 	static const flatbuffers::TypeFunction type_refs[] = {FrameFormatTypeTable};
 	static const int64_t values[]                      = {0, 16, 24};
-	static const char *const names[]                   = {"GRAY", "RGB", "RGBA"};
+	static const char *const names[]                   = {"GRAY", "BGR", "BGRA"};
 	static const flatbuffers::TypeTable tt = {flatbuffers::ST_ENUM, 3, type_codes, type_refs, values, names};
 	return &tt;
 }
@@ -357,7 +358,7 @@ inline const dv::Frame *GetSizePrefixedFrame(const void *buf) {
 }
 
 inline const char *FrameIdentifier() {
-	return "FRM8";
+	return "FRME";
 }
 
 const char *Frame::identifier = FrameIdentifier();

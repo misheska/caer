@@ -1,17 +1,18 @@
 native_include "cvector.hpp";
 
-file_identifier "FRM8";
+file_identifier "FRME";
 
 namespace dv;
 
-/// Format vales are compatible with OpenCV CV_8UCx.
+/// Format values are compatible with OpenCV CV_8UCx.
+/// Pixel layout follows OpenCV standard.
 enum FrameFormat : int8 {
 	/// Grayscale, one channel only.
 	GRAY = 0,
-	/// Red Green Blue, 3 color channels.
-	RGB  = 16,
-	/// Red Green Blue Alpha, 3 color channels plus transparency.
-	RGBA = 24
+	/// Blue Green Red, 3 color channels.
+	BGR  = 16,
+	/// Blue Green Red Alpha, 3 color channels plus transparency.
+	BGRA = 24
 }
 
 table Frame {
