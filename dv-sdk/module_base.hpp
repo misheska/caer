@@ -128,12 +128,7 @@ public:
 	 * change.
 	 */
 	void configUpdate() {
-		for (auto &entry : config) {
-			auto &key = entry.first;
-			auto &cfg = entry.second;
-
-			cfg.updateValue(key, moduleNode);
-		}
+		config.update();
 
 		advancedConfigUpdate();
 	}
