@@ -96,7 +96,7 @@ public:
 	 * out and flushing the buffer.
 	 */
 	void commit() {
-		dv::Log(L, stream_.str());
+		dv::Log(L, "%s", stream_.str().c_str());
 		flush();
 	}
 
