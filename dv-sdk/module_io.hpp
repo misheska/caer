@@ -154,6 +154,11 @@ public:
 	}
 
 	void commit() {
+		// Ignore empty event packets.
+		if (empty()) {
+			return;
+		}
+
 		dvModuleOutputCommit(moduleData, name.c_str());
 
 		// Update with next object, in case we continue to use this.
