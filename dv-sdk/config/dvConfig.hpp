@@ -398,6 +398,10 @@ public:
 		dvConfigNodeClearSubTree(node, clearThisNode);
 	}
 
+	void copyTo(dv::Config::Node destination) {
+		dvConfigNodeCopy(node, static_cast<dvConfigNode>(destination));
+	}
+
 	template<AttributeType T>
 	void createAttribute(const std::string &key, const AttributeValue<T> &defaultValue,
 		const AttributeRanges<T> &ranges, AttributeFlags flags, const std::string &description) {

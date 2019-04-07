@@ -123,6 +123,8 @@ void dvConfigNodeRemoveNode(dvConfigNode node);
 void dvConfigNodeRemoveSubTree(dvConfigNode node);
 void dvConfigNodeClearSubTree(dvConfigNode startNode, bool clearStartNode);
 
+void dvConfigNodeCopy(dvConfigNode source, dvConfigNode destination);
+
 void dvConfigNodeCreateAttribute(dvConfigNode node, const char *key, enum dvConfigAttributeType type,
 	union dvConfigAttributeValue defaultValue, const struct dvConfigAttributeRanges ranges, int flags,
 	const char *description);
