@@ -1,6 +1,9 @@
 #include "dv-sdk/data/event.hpp"
 #include "dv-sdk/module.hpp"
 
+#include <array>
+#include <vector>
+
 namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
@@ -23,15 +26,15 @@ private:
 	std::vector<int32_t> hotPixelLearningMap;
 	// Hot Pixel filter (filtering).
 	std::vector<pixel_with_count> hotPixelArray;
-	uint64_t hotPixelStatOn;
-	uint64_t hotPixelStatOff;
+	int64_t hotPixelStatOn;
+	int64_t hotPixelStatOff;
 	// Background Activity filter.
-	size_t supportPixelIndexes[8];
-	uint64_t backgroundActivityStatOn;
-	uint64_t backgroundActivityStatOff;
+	std::array<size_t, 8> supportPixelIndexes;
+	int64_t backgroundActivityStatOn;
+	int64_t backgroundActivityStatOff;
 	// Refractory Period filter.
-	uint64_t refractoryPeriodStatOn;
-	uint64_t refractoryPeriodStatOff;
+	int64_t refractoryPeriodStatOn;
+	int64_t refractoryPeriodStatOff;
 	// Maps and their sizes.
 	int16_t sizeX;
 	int16_t sizeY;
@@ -62,6 +65,10 @@ public:
 			"hotPixelCount", dv::ConfigOption::intOption(
 								 "Number of events needed in a learning time period for a pixel to be considered hot.",
 								 10000, 0, 10000000));
+		config.add("hotPixelFilteredOn",
+			dv::ConfigOption::statisticOption("Number of ON events filtered out by the hot pixel filter."));
+		config.add("hotPixelFilteredOff",
+			dv::ConfigOption::statisticOption("Number of OFF events filtered out by the hot pixel filter."));
 
 		config.add("hotPixelEnable", dv::ConfigOption::boolOption("Enable the hot pixel filter.", false));
 
@@ -81,24 +88,19 @@ public:
 			dv::ConfigOption::intOption(
 				"Maximum time difference in µs for events to be considered correlated and not be filtered out.", 2000,
 				0, 10000000));
+		config.add("backgroundActivityFilteredOn",
+			dv::ConfigOption::statisticOption("Number of ON events filtered out by the background activity filter."));
+		config.add("backgroundActivityFilteredOff",
+			dv::ConfigOption::statisticOption("Number of OFF events filtered out by the background activity filter."));
 
 		config.add(
 			"refractoryPeriodEnable", dv::ConfigOption::boolOption("Enable the refractory period filter.", true));
 		config.add("refractoryPeriodTime",
 			dv::ConfigOption::intOption("Minimum time between events to not be filtered out.", 100, 0, 10000000));
-	}
-
-	static void advancedStaticInit(dv::Config::Node moduleNode) {
-		moduleNode.create<dvCfgType::LONG>("hotPixelFiltered", 0, {0, INT64_MAX},
-			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Number of events filtered out by the hot pixel filter.");
-
-		moduleNode.create<dvCfgType::LONG>("backgroundActivityFiltered", 0, {0, INT64_MAX},
-			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT,
-			"Number of events filtered out by the background activity filter.");
-
-		moduleNode.create<dvCfgType::LONG>("refractoryPeriodFiltered", 0, {0, INT64_MAX},
-			dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT,
-			"Number of events filtered out by the refractory period filter.");
+		config.add("refractoryPeriodFilteredOn",
+			dv::ConfigOption::statisticOption("Number of ON events filtered out by the refractory period filter."));
+		config.add("refractoryPeriodFilteredOff",
+			dv::ConfigOption::statisticOption("Number of OFF events filtered out by the refractory period filter."));
 	}
 
 	DVSNoiseFilter() :
@@ -123,14 +125,14 @@ public:
 
 		timestampsMap.resize(static_cast<size_t>(sizeX * sizeY));
 
-		// TODO: populate events output sizeX/sizeY.
+		// Populate event output info node, keep same as input info node.
+		info.copyTo(outputs.getInfoNode("events"));
 	}
 
 	void run() {
 		auto evt_in  = inputs.get<dv::EventPacket>("events");
 		auto evt_out = outputs.get<dv::EventPacket>("events");
 
-		bool hotPixelLearn               = config.get<dvCfgType::BOOL>("hotPixelLearn");
 		bool hotPixelEnabled             = config.get<dvCfgType::BOOL>("hotPixelEnabled");
 		bool refractoryPeriodEnabled     = config.get<dvCfgType::BOOL>("refractoryPeriodEnabled");
 		bool backgroundActivityEnabled   = config.get<dvCfgType::BOOL>("backgroundActivityEnabled");
@@ -142,7 +144,7 @@ public:
 		int32_t backgroundActivitySupportMax = config.get<dvCfgType::INT>("backgroundActivitySupportMax");
 
 		// Hot Pixel learning: initialize and store packet-level timestamp.
-		if (hotPixelLearn && !hotPixelLearningStarted) {
+		if (config.get<dvCfgType::BOOL>("hotPixelLearn") && !hotPixelLearningStarted) {
 			// Initialize hot pixel learning.
 			hotPixelLearningMap.resize(static_cast<size_t>(sizeX * sizeY));
 
@@ -174,7 +176,8 @@ public:
 					hotPixelLearningMap.shrink_to_fit();
 
 					hotPixelLearningStarted = false;
-					// TODO: reset hotPixelLearn to false.
+
+					config.set<dvCfgType::BOOL>("hotPixelLearn", false);
 
 					log.debug << "HotPixel Learning: completed on ts=" << evt.timestamp() << "." << dv::logEnd;
 				}
@@ -219,7 +222,7 @@ public:
 
 			if (backgroundActivityEnabled) {
 				size_t supportPixelNum = doBackgroundActivityLookup(
-					evt.x(), evt.y(), pixelIndex, evt.timestamp(), evt.polarity(), supportPixelIndexes);
+					evt.x(), evt.y(), pixelIndex, evt.timestamp(), evt.polarity(), supportPixelIndexes.data());
 
 				bool filteredOut = true;
 
@@ -271,7 +274,13 @@ public:
 
 		evt_out.commit();
 
-		// TODO: update statistics.
+		// Update statistics.
+		config.set<dvCfgType::LONG>("hotPixelFilteredOn", hotPixelStatOn);
+		config.set<dvCfgType::LONG>("hotPixelFilteredOff", hotPixelStatOff);
+		config.set<dvCfgType::LONG>("backgroundActivityFilteredOn", backgroundActivityStatOn);
+		config.set<dvCfgType::LONG>("backgroundActivityFilteredOff", backgroundActivityStatOff);
+		config.set<dvCfgType::LONG>("refractoryPeriodFilteredOn", refractoryPeriodStatOn);
+		config.set<dvCfgType::LONG>("refractoryPeriodFilteredOff", refractoryPeriodStatOff);
 	}
 
 	size_t doBackgroundActivityLookup(
