@@ -14,6 +14,9 @@ struct TriggerT;
 struct TriggerPacket;
 struct TriggerPacketT;
 
+bool operator==(const TriggerT &lhs, const TriggerT &rhs);
+bool operator==(const TriggerPacketT &lhs, const TriggerPacketT &rhs);
+
 inline const flatbuffers::TypeTable *TriggerTypeTable();
 
 inline const flatbuffers::TypeTable *TriggerPacketTypeTable();
@@ -69,16 +72,26 @@ inline const char *EnumNameTriggerType(TriggerType e) {
 
 struct TriggerT : public flatbuffers::NativeTable {
 	typedef Trigger TableType;
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.TriggerT";
+	}
 	int64_t timestamp;
 	TriggerType type;
 	TriggerT() : timestamp(0), type(TriggerType::TIMESTAMP_RESET) {
 	}
 };
 
+inline bool operator==(const TriggerT &lhs, const TriggerT &rhs) {
+	return (lhs.timestamp == rhs.timestamp) && (lhs.type == rhs.type);
+}
+
 struct Trigger FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef TriggerT NativeTableType;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return TriggerTypeTable();
+	}
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.Trigger";
 	}
 	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE { VT_TIMESTAMP = 4, VT_TYPE = 6 };
 	/// Timestamp (µs).
@@ -134,16 +147,26 @@ flatbuffers::Offset<Trigger> CreateTrigger(flatbuffers::FlatBufferBuilder &_fbb,
 
 struct TriggerPacketT : public flatbuffers::NativeTable {
 	typedef TriggerPacket TableType;
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.TriggerPacketT";
+	}
 	dv::cvector<TriggerT> triggers;
 	TriggerPacketT() {
 	}
 };
+
+inline bool operator==(const TriggerPacketT &lhs, const TriggerPacketT &rhs) {
+	return (lhs.triggers == rhs.triggers);
+}
 
 struct TriggerPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef TriggerPacketT NativeTableType;
 	static const char *identifier;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return TriggerPacketTypeTable();
+	}
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.TriggerPacket";
 	}
 	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE { VT_TRIGGERS = 4 };
 	const flatbuffers::Vector<flatbuffers::Offset<Trigger>> *triggers() const {

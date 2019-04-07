@@ -13,6 +13,9 @@ struct Event;
 struct EventPacket;
 struct EventPacketT;
 
+bool operator==(const Event &lhs, const Event &rhs);
+bool operator==(const EventPacketT &lhs, const EventPacketT &rhs);
+
 inline const flatbuffers::TypeTable *EventTypeTable();
 
 inline const flatbuffers::TypeTable *EventPacketTypeTable();
@@ -27,6 +30,9 @@ private:
 	int16_t padding1__;
 
 public:
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.Event";
+	}
 	Event() {
 		memset(static_cast<void *>(this), 0, sizeof(Event));
 	}
@@ -56,18 +62,33 @@ public:
 };
 FLATBUFFERS_STRUCT_END(Event, 16);
 
+inline bool operator==(const Event &lhs, const Event &rhs) {
+	return (lhs.timestamp() == rhs.timestamp()) && (lhs.x() == rhs.x()) && (lhs.y() == rhs.y())
+		   && (lhs.polarity() == rhs.polarity());
+}
+
 struct EventPacketT : public flatbuffers::NativeTable {
 	typedef EventPacket TableType;
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.EventPacketT";
+	}
 	dv::cvector<Event> events;
 	EventPacketT() {
 	}
 };
+
+inline bool operator==(const EventPacketT &lhs, const EventPacketT &rhs) {
+	return (lhs.events == rhs.events);
+}
 
 struct EventPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef EventPacketT NativeTableType;
 	static const char *identifier;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return EventPacketTypeTable();
+	}
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.EventPacket";
 	}
 	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE { VT_EVENTS = 4 };
 	const flatbuffers::Vector<const Event *> *events() const {

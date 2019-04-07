@@ -14,12 +14,18 @@ struct IMUT;
 struct IMUPacket;
 struct IMUPacketT;
 
+bool operator==(const IMUT &lhs, const IMUT &rhs);
+bool operator==(const IMUPacketT &lhs, const IMUPacketT &rhs);
+
 inline const flatbuffers::TypeTable *IMUTypeTable();
 
 inline const flatbuffers::TypeTable *IMUPacketTypeTable();
 
 struct IMUT : public flatbuffers::NativeTable {
 	typedef IMU TableType;
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.IMUT";
+	}
 	int64_t timestamp;
 	float temperature;
 	float accelerometerX;
@@ -46,10 +52,22 @@ struct IMUT : public flatbuffers::NativeTable {
 	}
 };
 
+inline bool operator==(const IMUT &lhs, const IMUT &rhs) {
+	return (lhs.timestamp == rhs.timestamp) && (lhs.temperature == rhs.temperature)
+		   && (lhs.accelerometerX == rhs.accelerometerX) && (lhs.accelerometerY == rhs.accelerometerY)
+		   && (lhs.accelerometerZ == rhs.accelerometerZ) && (lhs.gyroscopeX == rhs.gyroscopeX)
+		   && (lhs.gyroscopeY == rhs.gyroscopeY) && (lhs.gyroscopeZ == rhs.gyroscopeZ)
+		   && (lhs.magnetometerX == rhs.magnetometerX) && (lhs.magnetometerY == rhs.magnetometerY)
+		   && (lhs.magnetometerZ == rhs.magnetometerZ);
+}
+
 struct IMU FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef IMUT NativeTableType;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return IMUTypeTable();
+	}
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.IMU";
 	}
 	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
 		VT_TIMESTAMP      = 4,
@@ -195,16 +213,26 @@ flatbuffers::Offset<IMU> CreateIMU(
 
 struct IMUPacketT : public flatbuffers::NativeTable {
 	typedef IMUPacket TableType;
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.IMUPacketT";
+	}
 	dv::cvector<IMUT> samples;
 	IMUPacketT() {
 	}
 };
+
+inline bool operator==(const IMUPacketT &lhs, const IMUPacketT &rhs) {
+	return (lhs.samples == rhs.samples);
+}
 
 struct IMUPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef IMUPacketT NativeTableType;
 	static const char *identifier;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return IMUPacketTypeTable();
+	}
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.IMUPacket";
 	}
 	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE { VT_SAMPLES = 4 };
 	const flatbuffers::Vector<flatbuffers::Offset<IMU>> *samples() const {

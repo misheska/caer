@@ -11,6 +11,8 @@ namespace dv {
 struct Frame;
 struct FrameT;
 
+bool operator==(const FrameT &lhs, const FrameT &rhs);
+
 inline const flatbuffers::TypeTable *FrameTypeTable();
 
 /// Format values are compatible with OpenCV CV_8UCx.
@@ -46,6 +48,9 @@ inline const char *EnumNameFrameFormat(FrameFormat e) {
 
 struct FrameT : public flatbuffers::NativeTable {
 	typedef Frame TableType;
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.FrameT";
+	}
 	int64_t timestamp;
 	int64_t timestampStartOfFrame;
 	int64_t timestampEndOfFrame;
@@ -71,11 +76,23 @@ struct FrameT : public flatbuffers::NativeTable {
 	}
 };
 
+inline bool operator==(const FrameT &lhs, const FrameT &rhs) {
+	return (lhs.timestamp == rhs.timestamp) && (lhs.timestampStartOfFrame == rhs.timestampStartOfFrame)
+		   && (lhs.timestampEndOfFrame == rhs.timestampEndOfFrame)
+		   && (lhs.timestampStartOfExposure == rhs.timestampStartOfExposure)
+		   && (lhs.timestampEndOfExposure == rhs.timestampEndOfExposure) && (lhs.format == rhs.format)
+		   && (lhs.sizeX == rhs.sizeX) && (lhs.sizeY == rhs.sizeY) && (lhs.positionX == rhs.positionX)
+		   && (lhs.positionY == rhs.positionY) && (lhs.pixels == rhs.pixels);
+}
+
 struct Frame FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef FrameT NativeTableType;
 	static const char *identifier;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return FrameTypeTable();
+	}
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.Frame";
 	}
 	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
 		VT_TIMESTAMP                = 4,
