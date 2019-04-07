@@ -105,20 +105,22 @@ public:
 	const _AttrType initValue;
 	const _ConfigAttributes<T> attributes;
 	const dv::Config::AttributeFlags flags;
+	const bool updateReadOnly;
 	_AttrType currentValue;
 
 	_ConfigOption(const std::string &description_, _AttrType initValue_, const _ConfigAttributes<T> &attributes_,
-		dv::Config::AttributeFlags flags_) :
+		dv::Config::AttributeFlags flags_, bool updateReadOnly_ = false) :
 		description(description_),
 		initValue(initValue_),
 		attributes(attributes_),
 		flags(flags_),
+		updateReadOnly(updateReadOnly_),
 		currentValue(initValue_) {
 	}
 };
 
 /**
- * Non template class for a config option. Has a type independent shared pointer
+ * Non template class for a config option. Has a type independent unique pointer
  * that points to the actual (templated) config object.
  * Private constructor. Should only be used with static factory function.
  */
@@ -126,47 +128,64 @@ class ConfigOption {
 private:
 	dv::unique_ptr_void configOption;
 	dv::Config::AttributeType type;
+	dv::Config::Node node;
+	std::string key;
 
 	/**
 	 * __Private constructor__
 	 * Takes shared_ptr to templated `_ConfigOption` as well as the variant.
-	 * @param configOption A shared_ptr to an instantiated `_ConfigOption`
-	 * @param variant The config variant of the passed option
+	 * @param configOption_ A unique_ptr to an instantiated `_ConfigOption`
+	 * @param type_ The config variant of the passed option
 	 */
 	ConfigOption(dv::unique_ptr_void configOption_, dv::Config::AttributeType type_) :
 		configOption(std::move(configOption_)),
-		type(type_) {
+		type(type_),
+		node(nullptr) {
+	}
+
+	/**
+	 * Set link to actual node and attribute for configuration tree operations.
+	 * Must be set for tree operations (create, update etc.) to work.
+	 * @param moduleNode the module's configuration node.
+	 * @param fullKey the key under which the attribute is to be stored.
+	 */
+	void setNodeAttrLink(dv::Config::Node moduleNode, const std::string &fullKey) {
+		size_t pos = fullKey.find_last_of("/");
+
+		if (pos != std::string::npos) {
+			node = moduleNode.getRelativeNode(fullKey.substr(0, pos + 1));
+			key  = fullKey.substr(pos + 1);
+		}
+		else {
+			node = moduleNode;
+			key  = fullKey;
+		}
 	}
 
 	/**
 	 * Private base factory method.
 	 * Used as a base for all the config factories defined
 	 * Creates a new ConfigOption of the requested type. Works by first instantiating
-	 * a `_ConfigOption` with the right templated variant, then creating a `shared_ptr`
+	 * a `_ConfigOption` with the right templated variant, then creating a `unique_ptr`
 	 * and creating a `ConfigOption` to return.
 	 * @tparam T
 	 * @param description
 	 * @param defaultValue
-	 * @param attributes_
+	 * @param attributes
+	 * @param flags
+	 * @param updateReadOnly
 	 * @return
 	 */
 	template<dv::Config::AttributeType T>
 	static ConfigOption getOption(const std::string &description,
 		typename dv::Config::AttributeTypeGenerator<T>::type defaultValue, const _ConfigAttributes<T> &attributes,
-		dv::Config::AttributeFlags flags) {
-		return (
-			ConfigOption(dv::make_unique_void(new _ConfigOption<T>(description, defaultValue, attributes, flags)), T));
+		dv::Config::AttributeFlags flags, bool updateReadOnly = false) {
+		return (ConfigOption(
+			dv::make_unique_void(new _ConfigOption<T>(description, defaultValue, attributes, flags, updateReadOnly)),
+			T));
 	}
 
 public:
-	/**
-	 * Returns the type of this `ConfigOption`.
-	 * @return
-	 */
-	dv::Config::AttributeType getType() const {
-		return (type);
-	}
-
 	/**
 	 * Returns the underlying config object, casted to the specified configVariant.
 	 * The config variant can be read out with the `getVariant` method.
@@ -183,8 +202,8 @@ public:
 	 * @tparam T The config variant to be casted to.
 	 * @return The underlying _ConfigObject with the configuration data
 	 */
-	template<dv::Config::AttributeType T> _ConfigOption<T> const &getConfigObject() const {
-		return (*(static_cast<_ConfigOption<T> const *>(configOption.get())));
+	template<dv::Config::AttributeType T> const _ConfigOption<T> &getConfigObject() const {
+		return (*(static_cast<const _ConfigOption<T> *>(configOption.get())));
 	}
 
 	/**
@@ -194,31 +213,44 @@ public:
 	 * @tparam T The config variant type
 	 * @return A simple value (long, string etc) that is the current value of the config option
 	 */
-	template<dv::Config::AttributeType T> typename dv::Config::AttributeTypeGenerator<T>::type const &get() const {
-		return (static_cast<typename dv::Config::AttributeTypeGenerator<T>::type const &>(
+	template<dv::Config::AttributeType T> const typename dv::Config::AttributeTypeGenerator<T>::type &get() const {
+		return (static_cast<const typename dv::Config::AttributeTypeGenerator<T>::type &>(
 			getConfigObject<T>().currentValue));
 	}
 
 	/**
-	 * Creates a dvConfig Attribute in the dv config tree for the object.
-	 * If a the node already has been created, nothing is done.
-	 * @param key the key under which the new attribute should get stored
-	 * @param node The dvConfigNode under which the new attribute shall be created
+	 * Updates the current value of this config option. Needs a template paramenter
+	 * of the type `dv::ConfigVariant::*` to determine what type of config parameter
+	 * to return. The change is propagated to the configuration tree.
+	 * @tparam T The config variant type
+	 * @param value A simple value (long, string etc) to update the config option with
 	 */
-	void createAttribute(const std::string &fullKey, dv::Config::Node moduleNode) {
-		dv::Config::Node node = moduleNode;
-		std::string key;
+	template<dv::Config::AttributeType T> void set(const typename dv::Config::AttributeTypeGenerator<T>::type &value) {
+		auto &config = getConfigObject<T>();
 
-		size_t pos = fullKey.find_last_of("/");
+		// Update current value right away, so subsequent get()s see this.
+		config.currentValue = value;
 
-		if (pos != std::string::npos) {
-			node = moduleNode.getRelativeNode(fullKey.substr(0, pos + 1));
-			key  = fullKey.substr(pos + 1);
+		// Update configuration tree. This will also execute all attribute listeners,
+		// including the config-change one, which will force a second full update on
+		// the next run. TODO: this is inefficient.
+		if (config.updateReadOnly) {
+			node.updateReadOnly<T>(key, value);
 		}
 		else {
-			// node is already moduleNode.
-			key = fullKey;
+			node.put<T>(key, value);
 		}
+	}
+
+	/**
+	 * Creates a dvConfig Attribute in the dv config tree for the object.
+	 *
+	 * @param moduleNode the module's configuration node.
+	 * @param fullKey the key under which the attribute is to be stored. Forward
+	 * slashes (/) can be used to get sub-nodes.
+	 */
+	void createAttribute(dv::Config::Node moduleNode, const std::string &fullKey) {
+		setNodeAttrLink(moduleNode, fullKey);
 
 		switch (type) {
 			case dv::Config::AttributeType::BOOL: {
@@ -341,24 +373,8 @@ public:
 	/**
 	 * Updates the current value of the ConfigOption based on the value
 	 * that is present in the dv config tree.
-	 * @param key The key under which to find the value in the dv config tree.
-	 * @param node The node of the dv config treee under which the attribute is to be found.
 	 */
-	void updateValue(const std::string &fullKey, dv::Config::Node moduleNode) {
-		dv::Config::Node node = moduleNode;
-		std::string key;
-
-		size_t pos = fullKey.find_last_of("/");
-
-		if (pos != std::string::npos) {
-			node = moduleNode.getRelativeNode(fullKey.substr(0, pos + 1));
-			key  = fullKey.substr(pos + 1);
-		}
-		else {
-			// node is already moduleNode.
-			key = fullKey;
-		}
-
+	void updateValue() {
 		switch (type) {
 			case dv::Config::AttributeType::BOOL: {
 				auto &config = getConfigObject<dv::Config::AttributeType::BOOL>();
@@ -473,12 +489,10 @@ public:
 	 * @return A ConfigOption Object
 	 */
 	static ConfigOption intOption(const std::string &description, int32_t defaultValue) {
-		int32_t sensibleUpperRange
-			= ((std::abs(defaultValue) > 0)
-					  ? static_cast<int32_t>(
-							std::pow(10.0, std::floor(std::log10(static_cast<double>(std::abs(defaultValue))) + 1.0)))
-					  : 1)
-			  * sgn(defaultValue);
+		int32_t sensibleUpperRange = ((std::abs(defaultValue) > 0) ? static_cast<int32_t>(std::pow(10.0,
+										  std::floor(std::log10(static_cast<double>(std::abs(defaultValue))) + 1.0)))
+																   : 1)
+									 * sgn(defaultValue);
 
 		return getOption<dv::Config::AttributeType::INT>(
 			description, defaultValue, {0, sensibleUpperRange}, dv::Config::AttributeFlags::NORMAL);
@@ -505,12 +519,10 @@ public:
 	 * @return A ConfigOption Object
 	 */
 	static ConfigOption longOption(const std::string &description, int64_t defaultValue) {
-		int64_t sensibleUpperRange
-			= ((std::abs(defaultValue) > 0)
-					  ? static_cast<int64_t>(
-							std::pow(10.0, std::floor(std::log10(static_cast<double>(std::abs(defaultValue))) + 1.0)))
-					  : 1)
-			  * sgn(defaultValue);
+		int64_t sensibleUpperRange = ((std::abs(defaultValue) > 0) ? static_cast<int64_t>(std::pow(10.0,
+										  std::floor(std::log10(static_cast<double>(std::abs(defaultValue))) + 1.0)))
+																   : 1)
+									 * sgn(defaultValue);
 
 		return getOption<dv::Config::AttributeType::LONG>(
 			description, defaultValue, {0, sensibleUpperRange}, dv::Config::AttributeFlags::NORMAL);
@@ -700,6 +712,16 @@ public:
 		return getOption<dv::Config::AttributeType::STRING>(
 			description, defaultValue, attr, dv::Config::AttributeFlags::NORMAL);
 	}
+
+	/**
+	 * Factory function. Creates read-only statistics option.
+	 * @param description A description that describes the purpose of this option
+	 * @return A ConfigOption Object
+	 */
+	static ConfigOption statisticOption(const std::string &description) {
+		return getOption<dv::Config::AttributeType::LONG>(description, 0, {0, INT64_MAX},
+			dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, true);
+	}
 };
 
 class RuntimeConfig {
@@ -711,42 +733,49 @@ public:
 	RuntimeConfig(dv::Config::Node mn) : moduleNode(mn) {
 	}
 
-	void add(const std::string &key, ConfigOption cfg) {
-		configMap.insert_or_assign(key, std::move(cfg));
-		configMap.at(key).createAttribute(key, moduleNode);
+	void add(const std::string &key, ConfigOption config) {
+		configMap.insert_or_assign(key, std::move(config));
 
-		// Ensure value is up-to-date.
-		configMap.at(key).updateValue(key, moduleNode);
+		auto &cfg = configMap.at(key);
+		cfg.createAttribute(moduleNode, key);
+
+		// Ensure value is up-to-date, for example if it already exists
+		// because it was loaded from a file.
+		cfg.updateValue();
 	}
 
 	template<dv::Config::AttributeType T>
-	typename dv::Config::AttributeTypeGenerator<T>::type const &get(const std::string &key) const {
-		auto &val = configMap.at(key);
+	const typename dv::Config::AttributeTypeGenerator<T>::type &get(const std::string &key) const {
+		auto &cfg = configMap.at(key);
 
 #ifndef NDEBUG
-		if (val.getType() != T) {
+		if (cfg.getType() != T) {
 			throw std::runtime_error(
 				"RuntimeConfig.get(" + key + "): key type and given template type are not the same.");
 		}
 #endif
 
-		return (val.get<T>());
+		return (cfg.get<T>());
 	}
 
-	auto begin() {
-		return (configMap.begin());
+	template<dv::Config::AttributeType T>
+	void set(const std::string &key, const typename dv::Config::AttributeTypeGenerator<T>::type &value) {
+		auto &cfg = configMap.at(key);
+
+#ifndef NDEBUG
+		if (cfg.getType() != T) {
+			throw std::runtime_error(
+				"RuntimeConfig.set(" + key + "): key type and given template type are not the same.");
+		}
+#endif
+
+		cfg.set<T>(value);
 	}
 
-	auto end() {
-		return (configMap.end());
-	}
-
-	auto cbegin() const {
-		return (configMap.cbegin());
-	}
-
-	auto cend() const {
-		return (configMap.cend());
+	void update() {
+		for (auto &entry : configMap) {
+			entry.second.updateValue();
+		}
 	}
 };
 
