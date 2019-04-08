@@ -129,7 +129,7 @@ public:
 		info.copyTo(outputs.getInfoNode("events"));
 	}
 
-	void run() {
+	void run() override {
 		auto evt_in  = inputs.get<dv::EventPacket>("events");
 		auto evt_out = outputs.get<dv::EventPacket>("events");
 
