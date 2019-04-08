@@ -661,6 +661,26 @@ public:
 	}
 
 	/**
+	 * Factory function. Creates a list config option (list of strings).
+	 *
+	 * @param description A description that describes the purpose of this option
+	 * @param defaultChoice The index of the default choice, taken from the subsequent vector
+	 * @param choices Vector of possible choices
+	 * @param allowMultipleSelection wether to allow selecting multiple options at the same time
+	 *
+	 * @return A ConfigOption Object
+	 */
+	static ConfigOption listOption(const std::string &description, size_t defaultChoice,
+		const std::vector<std::string> &choices, bool allowMultipleSelection = false) {
+		_ConfigAttributes<dv::Config::AttributeType::STRING> attr{0, INT32_MAX, _StringAttributeType::LIST};
+		attr.listOptions                 = choices;
+		attr.listAllowMultipleSelections = allowMultipleSelection;
+
+		return getOption<dv::Config::AttributeType::STRING>(
+			description, choices.at(defaultChoice), attr, dv::Config::AttributeFlags::NORMAL);
+	}
+
+	/**
 	 * Factory function. Creates a file open config option.
 	 * @param description A description that describes the purpose of this option
 	 * @return A ConfigOption Object
