@@ -1,7 +1,9 @@
 # SDK support library.
 SET(LIBDVSDK_SRC_FILES
+	# Forward to runtime library part.
 	sdk_base.cpp
 	sdk_module.cpp
+	# Standalone library part.
 	sdk_cross.cpp
 	../config_tree/tree.cpp
 	../config_tree/helper.cpp
