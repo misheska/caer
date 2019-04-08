@@ -235,6 +235,14 @@ private:
 
 public:
 	/**
+	 * Returns the type of this `ConfigOption`.
+	 * @return the configuration's type.
+	 */
+	dv::Config::AttributeType getType() const {
+		return (type);
+	}
+
+	/**
 	 * Returns the underlying config object, casted to the specified configVariant.
 	 * The config variant can be read out with the `getVariant` method.
 	 * @tparam T The config variant to be casted to.
