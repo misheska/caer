@@ -455,3 +455,5 @@ public:
 		}
 	}
 };
+
+registerModuleClass(DVSNoiseFilter)
