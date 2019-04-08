@@ -1,3 +1,15 @@
+# FILE
+ADD_LIBRARY(output_file SHARED dv_output.hpp output_common.c file.c)
+
+SET_TARGET_PROPERTIES(output_file
+	PROPERTIES
+	PREFIX "dv_"
+)
+
+TARGET_LINK_LIBRARIES(output_file ${DV_LIBS})
+
+INSTALL(TARGETS output_file DESTINATION ${DV_MODULES_DIR})
+
 # NET_TCP_SERVER
 ADD_LIBRARY(output_net_tcp_server SHARED net_tcp_server.cpp)
 
@@ -10,28 +22,6 @@ TARGET_LINK_LIBRARIES(output_net_tcp_server ${DV_LIBS})
 
 INSTALL(TARGETS output_net_tcp_server DESTINATION ${DV_MODULES_DIR})
 
-# TODO: Currently use libuv for output support.
-PKG_CHECK_MODULES(LIBUV REQUIRED libuv>=1.7.5)
-
-SET(OUTPUT_INCDIRS ${DV_INCDIRS} ${LIBUV_INCLUDE_DIRS})
-SET(OUTPUT_LIBDIRS ${DV_LIBDIRS} ${LIBUV_LIBRARY_DIRS})
-SET(OUTPUT_LIBS ${DV_LIBS} ${LIBUV_LIBRARIES})
-
-INCLUDE_DIRECTORIES(${OUTPUT_INCDIRS})
-LINK_DIRECTORIES(${OUTPUT_LIBDIRS})
-
-# FILE
-ADD_LIBRARY(output_file SHARED dv_output.hpp output_common.c file.c)
-
-SET_TARGET_PROPERTIES(output_file
-	PROPERTIES
-	PREFIX "dv_"
-)
-
-TARGET_LINK_LIBRARIES(output_file ${OUTPUT_LIBS})
-
-INSTALL(TARGETS output_file DESTINATION ${DV_MODULES_DIR})
-
 # NET_TCP_CLIENT
 ADD_LIBRARY(output_net_tcp_client SHARED output_common.c net_tcp.c)
 
@@ -40,7 +30,7 @@ SET_TARGET_PROPERTIES(output_net_tcp_client
 	PREFIX "dv_"
 )
 
-TARGET_LINK_LIBRARIES(output_net_tcp_client ${OUTPUT_LIBS})
+TARGET_LINK_LIBRARIES(output_net_tcp_client ${DV_LIBS})
 
 INSTALL(TARGETS output_net_tcp_client DESTINATION ${DV_MODULES_DIR})
 
@@ -52,7 +42,7 @@ SET_TARGET_PROPERTIES(output_net_udp
 	PREFIX "dv_"
 )
 
-TARGET_LINK_LIBRARIES(output_net_udp ${OUTPUT_LIBS})
+TARGET_LINK_LIBRARIES(output_net_udp ${DV_LIBS})
 
 INSTALL(TARGETS output_net_udp DESTINATION ${DV_MODULES_DIR})
 
@@ -64,7 +54,7 @@ SET_TARGET_PROPERTIES(output_net_socket_server
 	PREFIX "dv_"
 )
 
-TARGET_LINK_LIBRARIES(output_net_socket_server ${OUTPUT_LIBS})
+TARGET_LINK_LIBRARIES(output_net_socket_server ${DV_LIBS})
 
 INSTALL(TARGETS output_net_socket_server DESTINATION ${DV_MODULES_DIR})
 
@@ -76,6 +66,6 @@ SET_TARGET_PROPERTIES(output_net_socket_client
 	PREFIX "dv_"
 )
 
-TARGET_LINK_LIBRARIES(output_net_socket_client ${OUTPUT_LIBS})
+TARGET_LINK_LIBRARIES(output_net_socket_client ${DV_LIBS})
 
 INSTALL(TARGETS output_net_socket_client DESTINATION ${DV_MODULES_DIR})

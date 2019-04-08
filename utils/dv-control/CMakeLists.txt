@@ -11,5 +11,5 @@ ADD_EXECUTABLE(dv-control
 	../../src/config_tree/node.cpp
 	# Executable.
 	dv-control.cpp)
-TARGET_LINK_LIBRARIES(dv-control ${DV_LIBS} dvsdk)
+TARGET_LINK_LIBRARIES(dv-control ${DV_LIBS})
 INSTALL(TARGETS dv-control DESTINATION ${CMAKE_INSTALL_BINDIR})

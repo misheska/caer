@@ -1,8 +1,8 @@
-IF (NOT VISUALIZER)
-	SET(VISUALIZER 0 CACHE BOOL "Enable the visualizer module, based on the SFML C++ library.")
+IF (NOT ENABLE_VISUALIZER)
+	SET(ENABLE_VISUALIZER 0 CACHE BOOL "Enable the visualizer module, based on the SFML C++ library.")
 ENDIF()
 
-IF (VISUALIZER)
+IF (ENABLE_VISUALIZER)
 	# Visualizer support via the SFML C++ library
 	PKG_CHECK_MODULES(SFML REQUIRED sfml-graphics>=2.3.0)
 

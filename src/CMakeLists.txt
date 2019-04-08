@@ -24,12 +24,12 @@ TARGET_LINK_LIBRARIES(dv-runtime ${DV_LIBS} dvsdk)
 INSTALL(TARGETS dv-runtime DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # TCMalloc only makes sense for the main executable
-IF (NOT USE_TCMALLOC)
-	SET(USE_TCMALLOC 0 CACHE BOOL "Link to and use TCMalloc (Google Perftools) to provide faster memory allocation.")
+IF (NOT ENABLE_TCMALLOC)
+	SET(ENABLE_TCMALLOC 0 CACHE BOOL "Link to and use TCMalloc (Google Perftools) to provide faster memory allocation.")
 ENDIF()
 
 # TCMalloc support (fast memory allocation)
-IF (USE_TCMALLOC)
+IF (ENABLE_TCMALLOC)
 	PKG_CHECK_MODULES(LIBTCMALLOC REQUIRED libtcmalloc>=2.2)
 
 	TARGET_INCLUDE_DIRECTORIES(dv-runtime PRIVATE ${LIBTCMALLOC_INCLUDE_DIRS})
