@@ -1,241 +1,296 @@
-#include <libcaer/events/frame.h>
+#include "dv-sdk/data/frame.hpp"
+#include "dv-sdk/module.hpp"
 
-#include "dv-sdk/mainloop.h"
+#include <algorithm>
+#include <opencv2/core.hpp>
+#include <opencv2/core/utility.hpp>
+#include <opencv2/imgproc.hpp>
+#include <vector>
 
-#include <libcaer/frame_utils.h>
+namespace dvCfg  = dv::Config;
+using dvCfgType  = dvCfg::AttributeType;
+using dvCfgFlags = dvCfg::AttributeFlags;
 
-struct FrameEnhancer_state {
-	bool doDemosaic;
-	enum caer_frame_utils_demosaic_types demosaicType;
-	bool doContrast;
-	enum caer_frame_utils_contrast_types contrastType;
-};
+class FrameEnhancer : public dv::ModuleBase {
+private:
+	enum class ContrastAlgorithms { NORMALIZATION, HISTOGRAM_EQUALIZATION, CLAHE } contrastAlgo;
 
-typedef struct FrameEnhancer_state *FrameEnhancerState;
-
-static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode);
-static bool caerFrameEnhancerInit(dvModuleData moduleData);
-static void caerFrameEnhancerRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void caerFrameEnhancerConfig(dvModuleData moduleData);
-static void caerFrameEnhancerExit(dvModuleData moduleData);
-
-static const struct dvModuleFunctionsS FrameEnhancerFunctions = {
-	.moduleConfigInit = &caerFrameEnhancerConfigInit,
-	.moduleInit       = &caerFrameEnhancerInit,
-	.moduleRun        = &caerFrameEnhancerRun,
-	.moduleConfig     = &caerFrameEnhancerConfig,
-	.moduleExit       = &caerFrameEnhancerExit,
-};
-
-static const struct caer_event_stream_in FrameEnhancerInputs[] = {{.type = FRAME_EVENT, .number = 1, .readOnly = true}};
-// The output frame here is a _different_ frame than the above input!
-static const struct caer_event_stream_out FrameEnhancerOutputs[] = {{.type = FRAME_EVENT}};
-
-static const struct dvModuleInfoS FrameEnhancerInfo = {
-	.version = 1,
-	.description
-	= "Applies contrast enhancement techniques to frames, or interpolates colors to get an RGB frame (demoisaicing).",
-	.type              = DV_MODULE_PROCESSOR,
-	.memSize           = sizeof(struct FrameEnhancer_state),
-	.functions         = &FrameEnhancerFunctions,
-	.inputStreams      = FrameEnhancerInputs,
-	.inputStreamsSize  = CAER_EVENT_STREAM_IN_SIZE(FrameEnhancerInputs),
-	.outputStreams     = FrameEnhancerOutputs,
-	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(FrameEnhancerOutputs),
-};
-
-dvModuleInfo dvModuleGetInfo(void) {
-	return (&FrameEnhancerInfo);
-}
-
-static void caerFrameEnhancerConfigInit(dvConfigNode moduleNode) {
-	dvConfigNodeCreateBool(
-		moduleNode, "doDemosaic", false, DVCFG_FLAGS_NORMAL, "Do demosaicing (color interpolation) on frame.");
-	dvConfigNodeCreateBool(moduleNode, "doContrast", false, DVCFG_FLAGS_NORMAL, "Do contrast enhancement on frame.");
-
-#if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
-	dvConfigNodeCreateString(moduleNode, "demosaicType", "opencv_edge_aware", 7, 17, DVCFG_FLAGS_NORMAL,
-		"Demoisaicing (color interpolation) algorithm to apply.");
-	dvConfigNodeAttributeModifierListOptions(
-		moduleNode, "demosaicType", "opencv_edge_aware,opencv_to_gray,opencv_standard,to_gray,standard", false);
-
-	dvConfigNodeCreateString(moduleNode, "contrastType", "opencv_normalization", 8, 29, DVCFG_FLAGS_NORMAL,
-		"Contrast enhancement algorithm to apply.");
-	dvConfigNodeAttributeModifierListOptions(
-		moduleNode, "contrastType", "opencv_normalization,opencv_histogram_equalization,opencv_clahe,standard", false);
-#else
-	dvConfigNodeCreateString(moduleNode, "demosaicType", "standard", 7, 8, DVCFG_FLAGS_NORMAL,
-		"Demoisaicing (color interpolation) algorithm to apply.");
-	dvConfigNodeAttributeModifierListOptions(moduleNode, "demosaicType", "to_gray,standard", false);
-
-	dvConfigNodeCreateString(
-		moduleNode, "contrastType", "standard", 8, 8, DVCFG_FLAGS_NORMAL, "Contrast enhancement algorithm to apply.");
-	dvConfigNodeAttributeModifierListOptions(moduleNode, "contrastType", "standard", false);
-#endif
-}
-
-static bool caerFrameEnhancerInit(dvModuleData moduleData) {
-	// Wait for input to be ready. All inputs, once they are up and running, will
-	// have a valid sourceInfo node to query, especially if dealing with data.
-	dvConfigNode sourceInfoSource = dvMainloopModuleGetSourceInfoForInput(moduleData->moduleID, 0);
-	if (sourceInfoSource == NULL) {
-		return (false);
+public:
+	static void addInputs(std::vector<dv::InputDefinition> &in) {
+		in.emplace_back("frames", dv::Frame::identifier, false);
 	}
 
-	int16_t sizeX = dvConfigNodeGetInt(sourceInfoSource, "dataSizeX");
-	int16_t sizeY = dvConfigNodeGetInt(sourceInfoSource, "dataSizeY");
-
-	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
-	dvConfigNodeCreateInt(sourceInfoNode, "frameSizeX", sizeX, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-		"Output frame width.");
-	dvConfigNodeCreateInt(sourceInfoNode, "frameSizeY", sizeY, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-		"Output frame height.");
-	dvConfigNodeCreateInt(sourceInfoNode, "dataSizeX", sizeX, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-		"Output data width.");
-	dvConfigNodeCreateInt(sourceInfoNode, "dataSizeY", sizeY, 1, 1024, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
-		"Output data height.");
-
-	// Initialize configuration.
-	caerFrameEnhancerConfig(moduleData);
-
-	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
-
-	// Nothing that can fail here.
-	return (true);
-}
-
-static void caerFrameEnhancerRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
-	caerFrameEventPacketConst inputFramePacket
-		= (caerFrameEventPacketConst) caerEventPacketContainerFindEventPacketByTypeConst(in, FRAME_EVENT);
-
-	// Only process packets with content.
-	if (inputFramePacket == NULL) {
-		return;
+	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
+		out.emplace_back("frames", dv::Frame::identifier);
 	}
 
-	caerFrameEventPacket outputFramePacket
-		= caerFrameEventPacketAllocateNumPixels(caerEventPacketHeaderGetEventValid(&inputFramePacket->packetHeader),
-			moduleData->moduleID, caerEventPacketHeaderGetEventTSOverflow(&inputFramePacket->packetHeader),
-			caerEventPacketHeaderGetEventSize(&inputFramePacket->packetHeader), RGBA);
-	if (outputFramePacket == NULL) {
-		return;
+	static const char *getDescription() {
+		return ("Enhance images by applying contrast enhancement algorithms.");
 	}
 
-	FrameEnhancerState state = moduleData->moduleState;
+	static void getConfigOptions(dv::RuntimeConfig &config) {
+		config.add(
+			"contrastAlgorithm", dv::ConfigOption::listOption("Contrast enhancement algorithm to apply.", 0,
+									 std::vector<std::string>{"normalization", "histogram_equalization", "clahe"}));
+	}
 
-	int32_t outIdx = 0;
-
-	for (int32_t inIdx = 0; inIdx < caerEventPacketHeaderGetEventNumber(&inputFramePacket->packetHeader); inIdx++) {
-		caerFrameEventConst inFrame = caerFrameEventPacketGetEventConst(inputFramePacket, inIdx);
-		if (!caerFrameEventIsValid(inFrame)) {
-			continue;
+	FrameEnhancer() {
+		// Wait for input to be ready. All inputs, once they are up and running, will
+		// have a valid sourceInfo node to query, especially if dealing with data.
+		// Allocate map using info from sourceInfo.
+		auto info = inputs.getInfoNode("frames");
+		if (!info) {
+			throw std::runtime_error("Frames input not ready, upstream module not running.");
 		}
 
-		caerFrameEvent outFrame = caerFrameEventPacketGetEvent(outputFramePacket, outIdx);
+		// Populate frame output info node, keep same as input info node.
+		info.copyTo(outputs.getInfoNode("frames"));
 
-		// Copy header over. This will also copy validity information, so all copied frames are valid.
-		memcpy(outFrame, inFrame, (sizeof(struct caer_frame_event) - sizeof(uint16_t)));
+		// Call once to translate string into enum properly.
+		advancedConfigUpdate();
+	}
 
-		// Verify requirements for demosaicing operation.
-		if (state->doDemosaic && (caerFrameEventGetChannelNumber(inFrame) == GRAYSCALE)
-			&& (caerFrameEventGetColorFilter(inFrame) != MONO)) {
-#if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
-			if ((state->demosaicType != DEMOSAIC_TO_GRAY) && (state->demosaicType != DEMOSAIC_OPENCV_TO_GRAY)) {
-#else
-			if (state->demosaicType != DEMOSAIC_TO_GRAY) {
-#endif
-				// Demosaicing needs output frame set to RGB. If color requested.
-				caerFrameEventSetLengthXLengthYChannelNumber(outFrame, caerFrameEventGetLengthX(inFrame),
-					caerFrameEventGetLengthY(inFrame), RGB, outputFramePacket);
-			}
+	void run() override {
+		auto frame_in  = inputs.get<dv::Frame>("frames");
+		auto frame_out = outputs.get<dv::Frame>("frames");
 
-			caerFrameUtilsDemosaic(inFrame, outFrame, state->demosaicType);
+		const cv::Size frameSize(frame_in->sizeX, frame_in->sizeY);
+		const cv::Mat input(
+			frameSize, static_cast<int>(frame_in->format), const_cast<uint8_t *>(frame_in->pixels.data()));
+		cv::Mat output(frameSize, static_cast<int>(frame_out->format), frame_out->pixels.data());
+
+		CV_Assert((input.type() == CV_16UC1) || (input.type() == CV_16UC3) || (input.type() == CV_16UC4));
+		CV_Assert((output.type() == CV_16UC1) || (output.type() == CV_16UC3) || (output.type() == CV_16UC4));
+
+		CV_Assert(input.type() == output.type());
+		CV_Assert(input.channels() == output.channels());
+
+		// This generally only works well on grayscale intensity images.
+		// So, if this is a grayscale image, good, else if its a color
+		// image we convert it to YCrCb and operate on the Y channel only.
+		cv::Mat intensity;
+		cv::Mat yCrCbPlanes[3];
+		cv::Mat rgbaAlpha;
+
+		// Grayscale, no intensity extraction needed.
+		if (input.channels() == 1) {
+			intensity = input;
 		}
 		else {
-			// Just copy data over.
-			memcpy(caerFrameEventGetPixelArrayUnsafe(outFrame), caerFrameEventGetPixelArrayUnsafeConst(inFrame),
-				caerFrameEventGetPixelsSize(inFrame));
+			// Color image, extract RGB and intensity/luminance.
+			cv::Mat rgb;
+
+			if (input.channels() == 4) {
+				// We separate Alpha from RGB first.
+				// We will restore alpha at the end.
+				rgb       = cv::Mat(input.rows, input.cols, CV_16UC3);
+				rgbaAlpha = cv::Mat(input.rows, input.cols, CV_16UC1);
+
+				cv::Mat out[] = {rgb, rgbaAlpha};
+				// rgba[0] -> rgb[0], rgba[1] -> rgb[1],
+				// rgba[2] -> rgb[2], rgba[3] -> rgbaAlpha[0]
+				int channelTransform[] = {0, 0, 1, 1, 2, 2, 3, 3};
+				mixChannels(&input, 1, out, 2, channelTransform, 4);
+			}
+			else {
+				// Already an RGB image.
+				rgb = input;
+				CV_Assert(rgb.type() == CV_16UC3);
+			}
+
+			// First we convert from RGB to a color space with
+			// separate luminance channel.
+			cv::Mat rgbYCrCb;
+			cvtColor(rgb, rgbYCrCb, cv::COLOR_RGB2YCrCb);
+
+			CV_Assert(rgbYCrCb.type() == CV_16UC3);
+
+			// Then we split it up so that we can access the luminance
+			// channel on its own separately.
+			split(rgbYCrCb, yCrCbPlanes);
+
+			// Now we have the luminance image in yCrCbPlanes[0].
+			intensity = yCrCbPlanes[0];
 		}
 
-		if (state->doContrast) {
-			caerFrameUtilsContrast(outFrame, outFrame, state->contrastType);
+		CV_Assert(intensity.type() == CV_16UC1);
+
+		// Apply contrast enhancement algorithm.
+		switch (contrastAlgo) {
+			case ContrastAlgorithms::NORMALIZATION:
+				contrastNormalize(intensity, output, 1.0);
+				break;
+
+			case ContrastAlgorithms::HISTOGRAM_EQUALIZATION:
+				contrastEqualize(intensity, output);
+				break;
+
+			case ContrastAlgorithms::CLAHE:
+				contrastCLAHE(intensity, output, 4.0, 8);
+				break;
+
+			default:
+				// Other contrast enhancement types are not available in OpenCV.
+				return;
+				break;
 		}
 
-		outIdx++;
+		// If original was a color frame, we have to mix the various
+		// components back together into an RGB(A) image.
+		if (output.channels() != 1) {
+			cv::Mat YCrCbrgb;
+			merge(yCrCbPlanes, 3, YCrCbrgb);
+
+			CV_Assert(YCrCbrgb.type() == CV_16UC3);
+
+			if (output.channels() == 4) {
+				cv::Mat rgb;
+				cvtColor(YCrCbrgb, rgb, cv::COLOR_YCrCb2RGB);
+
+				CV_Assert(rgb.type() == CV_16UC3);
+
+				// Restore original alpha.
+				cv::Mat in[] = {rgb, rgbaAlpha};
+				// rgb[0] -> rgba[0], rgb[1] -> rgba[1],
+				// rgb[2] -> rgba[2], rgbaAlpha[0] -> rgba[3]
+				int channelTransform[] = {0, 0, 1, 1, 2, 2, 3, 3};
+				mixChannels(in, 2, &output, 1, channelTransform, 4);
+			}
+			else {
+				cvtColor(YCrCbrgb, output, cv::COLOR_YCrCb2RGB);
+			}
+		}
 	}
 
-	// Set number of events in output packet correctly.
-	caerEventPacketHeaderSetEventNumber(&outputFramePacket->packetHeader, outIdx);
-	caerEventPacketHeaderSetEventValid(&outputFramePacket->packetHeader, outIdx);
+	void contrastNormalize(const cv::Mat &input, cv::Mat &output, float clipHistPercent) {
+		CV_Assert((input.type() == CV_16UC1) && (output.type() == CV_16UC1));
+		CV_Assert((clipHistPercent >= 0) && (clipHistPercent < 100));
 
-	// Make a packet container and return the result.
-	*out = caerEventPacketContainerAllocate(1);
-	if (*out == NULL) {
-		free(outputFramePacket);
-		return;
+		// O(x, y) = alpha * I(x, y) + beta, where alpha maximizes the range
+		// (contrast) and beta shifts it so lowest is zero (brightness).
+		double minValue;
+		double maxValue;
+
+		if (clipHistPercent == 0) {
+			// Determine minimum and maximum values.
+			minMaxLoc(input, &minValue, &maxValue);
+		}
+		else {
+			// Calculate histogram.
+			int histSize           = UINT16_MAX + 1;
+			float hRange[]         = {0, static_cast<float>(histSize)};
+			const float *histRange = {hRange};
+			bool uniform           = true;
+			bool accumulate        = false;
+
+			cv::Mat hist;
+			calcHist(&input, 1, nullptr, cv::Mat(), hist, 1, &histSize, &histRange, uniform, accumulate);
+
+			// Calculate cumulative distribution from the histogram.
+			for (int i = 1; i < histSize; i++) {
+				hist.at<float>(i) += hist.at<float>(i - 1);
+			}
+
+			// Locate points that cut at required value.
+			float total = hist.at<float>(histSize - 1);
+			clipHistPercent *= (total / 100.0F); // Calculate absolute value from percent.
+			clipHistPercent /= 2.0F;             // Left and right wings, so divide by two.
+
+			// Locate left cut.
+			minValue = 0;
+			while (hist.at<float>(static_cast<int>(minValue)) < clipHistPercent) {
+				minValue++;
+			}
+
+			// Locate right cut.
+			maxValue = UINT16_MAX;
+			while (hist.at<float>(static_cast<int>(maxValue)) >= (total - clipHistPercent)) {
+				maxValue--;
+			}
+		}
+
+		// Use min/max to calculate input range.
+		double range = maxValue - minValue;
+
+		// Calculate alpha (contrast).
+		double alpha = ((double) UINT16_MAX) / range;
+
+		// Calculate beta (brightness).
+		double beta = -minValue * alpha;
+
+		// Apply alpha and beta to pixels array.
+		input.convertTo(output, -1, alpha, beta);
 	}
 
-	caerEventPacketContainerSetEventPacket(*out, 0, (caerEventPacketHeader) outputFramePacket);
-}
+	void contrastEqualize(const cv::Mat &input, cv::Mat &output) {
+		CV_Assert((input.type() == CV_16UC1) && (output.type() == CV_16UC1));
 
-static void caerFrameEnhancerConfig(dvModuleData moduleData) {
-	FrameEnhancerState state = moduleData->moduleState;
+		// Calculate histogram.
+		int histSize           = UINT16_MAX + 1;
+		float hRange[]         = {0, static_cast<float>(histSize)};
+		const float *histRange = {hRange};
+		bool uniform           = true;
+		bool accumulate        = false;
 
-	state->doDemosaic = dvConfigNodeGetBool(moduleData->moduleNode, "doDemosaic");
+		cv::Mat hist;
+		calcHist(&input, 1, nullptr, cv::Mat(), hist, 1, &histSize, &histRange, uniform, accumulate);
 
-	state->doContrast = dvConfigNodeGetBool(moduleData->moduleNode, "doContrast");
+		// Calculate cumulative distribution from the histogram.
+		for (int i = 1; i < histSize; i++) {
+			hist.at<float>(i) += hist.at<float>(i - 1);
+		}
 
-	char *demosaicType = dvConfigNodeGetString(moduleData->moduleNode, "demosaicType");
+		// Total number of pixels. Must be the last value!
+		float total = hist.at<float>(histSize - 1);
 
-#if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
-	if (caerStrEquals(demosaicType, "opencv_edge_aware")) {
-		state->demosaicType = DEMOSAIC_OPENCV_EDGE_AWARE;
-	}
-	else if (caerStrEquals(demosaicType, "opencv_to_gray")) {
-		state->demosaicType = DEMOSAIC_OPENCV_TO_GRAY;
-	}
-	else if (caerStrEquals(demosaicType, "opencv_standard")) {
-		state->demosaicType = DEMOSAIC_OPENCV_STANDARD;
-	}
-	else
-#endif
-		if (caerStrEquals(demosaicType, "to_gray")) {
-		state->demosaicType = DEMOSAIC_TO_GRAY;
-	}
-	else {
-		// Standard, non-OpenCV method.
-		state->demosaicType = DEMOSAIC_STANDARD;
-	}
+		// Smallest non-zero cumulative distribution value. Must be the first non-zero value!
+		float min = 0;
+		for (int i = 0; i < histSize; i++) {
+			if (hist.at<float>(i) > 0) {
+				min = hist.at<float>(i);
+				break;
+			}
+		}
 
-	free(demosaicType);
+		// Calculate lookup table for histogram equalization.
+		hist -= static_cast<double>(min);
+		hist /= static_cast<double>(total - min);
+		hist *= static_cast<double>(UINT16_MAX);
 
-	char *contrastType = dvConfigNodeGetString(moduleData->moduleNode, "contrastType");
-
-#if defined(LIBCAER_HAVE_OPENCV) && LIBCAER_HAVE_OPENCV == 1
-	if (caerStrEquals(contrastType, "opencv_normalization")) {
-		state->contrastType = CONTRAST_OPENCV_NORMALIZATION;
-	}
-	else if (caerStrEquals(contrastType, "opencv_histogram_equalization")) {
-		state->contrastType = CONTRAST_OPENCV_HISTOGRAM_EQUALIZATION;
-	}
-	else if (caerStrEquals(contrastType, "opencv_clahe")) {
-		state->contrastType = CONTRAST_OPENCV_CLAHE;
-	}
-	else
-#endif
-	{
-		// Standard, non-OpenCV method.
-		state->contrastType = CONTRAST_STANDARD;
+		// Apply lookup table to input image.
+		int idx = 0;
+		std::for_each(input.begin<uint16_t>(), input.end<uint16_t>(), [&hist, &output, &idx](const uint16_t &elem) {
+			output.at<uint16_t>(idx++) = static_cast<uint16_t>(hist.at<float>(elem));
+		});
 	}
 
-	free(contrastType);
-}
+	void contrastCLAHE(const cv::Mat &input, cv::Mat &output, float clipLimit, int tilesGridSize) {
+		CV_Assert((input.type() == CV_16UC1) && (output.type() == CV_16UC1));
+		CV_Assert((clipLimit >= 0) && (clipLimit < 100));
+		CV_Assert((tilesGridSize >= 1) && (tilesGridSize <= 64));
 
-static void caerFrameEnhancerExit(dvModuleData moduleData) {
-	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
+		// Apply the CLAHE algorithm to the intensity channel (luminance).
+		cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+		clahe->setClipLimit(static_cast<double>(clipLimit));
+		clahe->setTilesGridSize(cv::Size(tilesGridSize, tilesGridSize));
+		clahe->apply(input, output);
+	}
 
-	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
-	dvConfigNodeClearSubTree(sourceInfoNode, true);
-}
+	void advancedConfigUpdate() override {
+		// Parse available choices into enum value.
+		auto selectedContrastAlgo = config.get<dvCfgType::STRING>("contrastAlgorithm");
+
+		if (selectedContrastAlgo == "histogram_equalization") {
+			contrastAlgo = ContrastAlgorithms::HISTOGRAM_EQUALIZATION;
+		}
+		else if (selectedContrastAlgo == "clahe") {
+			contrastAlgo = ContrastAlgorithms::CLAHE;
+		}
+		else {
+			// Default choice.
+			contrastAlgo = ContrastAlgorithms::NORMALIZATION;
+		}
+	}
+};
+
+registerModuleClass(FrameEnhancer)
