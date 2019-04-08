@@ -5,6 +5,7 @@
 #include "utils.h"
 
 #include <boost/algorithm/string/join.hpp>
+#include <chrono>
 #include <cmath>
 #include <string>
 #include <unordered_map>
@@ -94,6 +95,42 @@ template<> struct _ConfigAttributes<dv::Config::AttributeType::STRING> {
 	}
 };
 
+class _RateLimiter {
+private:
+	const float rate;                                              // unit: messages / milliseconds
+	const float allowanceLimit;                                    // unit: messages
+	float allowance;                                               // unit: messages
+	std::chrono::time_point<std::chrono::steady_clock> last_check; // unit: milliseconds (cast)
+
+public:
+	_RateLimiter(int32_t messageRate, int32_t perMilliseconds) :
+		rate(static_cast<float>(messageRate) / static_cast<float>(perMilliseconds)),
+		allowanceLimit(static_cast<float>(messageRate)),
+		allowance(1.0f), // Always allow first message through.
+		last_check(std::chrono::steady_clock::now()) {
+	}
+
+	bool pass() {
+		std::chrono::time_point<std::chrono::steady_clock> current = std::chrono::steady_clock::now();
+		const auto time_passed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current - last_check);
+		last_check                = current;
+
+		allowance += static_cast<float>(time_passed_ms.count()) * rate;
+
+		if (allowance > allowanceLimit) {
+			allowance = allowanceLimit; // throttle
+		}
+
+		if (allowance < 1.0f) {
+			return (false);
+		}
+		else {
+			allowance -= 1.0f;
+			return (true);
+		}
+	}
+};
+
 /**
  * Templated implementation class of a ConfigOption. Stores extra attributes according to the selected config type.
  */
@@ -130,6 +167,7 @@ private:
 	dv::Config::AttributeType type;
 	dv::Config::Node node;
 	std::string key;
+	std::unique_ptr<_RateLimiter> rateLimit;
 
 	/**
 	 * __Private constructor__
@@ -159,6 +197,16 @@ private:
 		else {
 			node = moduleNode;
 			key  = fullKey;
+		}
+	}
+
+	void setRateLimit(int32_t messageRate, int32_t perMilliseconds) {
+		if (messageRate <= 0 || perMilliseconds <= 0) {
+			// Disable rate limiting.
+			rateLimit = nullptr;
+		}
+		else {
+			rateLimit = std::make_unique<_RateLimiter>(messageRate, perMilliseconds);
 		}
 	}
 
@@ -233,7 +281,12 @@ public:
 
 		// Update configuration tree. This will also execute all attribute listeners,
 		// including the config-change one, which will force a second full update on
-		// the next run. TODO: this is inefficient.
+		// the next run. That is not optimal, but usually negligible. Rate limiting
+		// can be used to ameliorate the situation for often-updated variables.
+		if (rateLimit && !rateLimit->pass()) {
+			return;
+		}
+
 		if (config.updateReadOnly) {
 			node.updateReadOnly<T>(key, value);
 		}
@@ -719,8 +772,13 @@ public:
 	 * @return A ConfigOption Object
 	 */
 	static ConfigOption statisticOption(const std::string &description) {
-		return getOption<dv::Config::AttributeType::LONG>(description, 0, {0, INT64_MAX},
+		auto opt = getOption<dv::Config::AttributeType::LONG>(description, 0, {0, INT64_MAX},
 			dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, true);
+
+		// Enforce rate limiting for statistics going to the config tree of 1 per second.
+		opt.setRateLimit(1, 1000);
+
+		return (opt);
 	}
 };
 
