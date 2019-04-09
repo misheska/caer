@@ -25,7 +25,7 @@ SET(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_
 INCLUDE(GNUInstallDirs)
 
 # Custom CMake base module
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmakemod
   ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATAROOTDIR}/caer /usr/${CMAKE_INSTALL_DATAROOTDIR}/caer
   ${CMAKE_INSTALL_PREFIX}/share/caer /usr/share/caer
   /usr/local/${CMAKE_INSTALL_DATAROOTDIR}/caer /usr/local/share/caer)
@@ -33,6 +33,9 @@ SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 # Basic setup for DV-runtime (uses libcaer)
 INCLUDE(caer-base)
 CAER_SETUP(TRUE)
+
+# Setup atomics.
+INCLUDE(CheckAtomic)
 
 # Required: threads.
 SET(DV_INCDIRS "${USER_LOCAL_INCDIRS}")
