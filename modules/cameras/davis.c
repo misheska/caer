@@ -1,5 +1,3 @@
-#include <libcaer/events/sample.h>
-
 #include "davis_utils.h"
 
 static void caerInputDAVISConfigInit(dvConfigNode moduleNode);
