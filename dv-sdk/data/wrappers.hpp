@@ -237,9 +237,14 @@ private:
 	using NativeType = typename Frame::NativeTableType;
 
 	std::shared_ptr<const NativeType> ptr;
+	std::shared_ptr<const cv::Mat> matPtr;
 
 public:
 	InputWrapper(std::shared_ptr<const NativeType> p) : ptr(std::move(p)) {
+		// Use custom deleter to bind life-time of main data 'ptr' to OpenCV 'matPtr'.
+		matPtr = std::shared_ptr<const cv::Mat>{new cv::Mat(ptr->sizeX, ptr->sizeY, static_cast<int>(ptr->format),
+													const_cast<uint8_t *>(ptr->pixels.data())),
+			[ptr = ptr](const cv::Mat *mp) { delete mp; }};
 	}
 
 	std::shared_ptr<const NativeType> getBasePointer() {
@@ -252,6 +257,7 @@ public:
 	 * @return a read-only OpenCV Mat pointer
 	 */
 	std::shared_ptr<const cv::Mat> getMatPointer() {
+		return (matPtr);
 	}
 };
 
