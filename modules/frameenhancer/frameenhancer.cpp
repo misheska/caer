@@ -54,48 +54,62 @@ public:
 		auto frame_in  = inputs.get<dv::Frame>("frames");
 		auto frame_out = outputs.get<dv::Frame>("frames");
 
-		const cv::Size frameSize(frame_in->sizeX, frame_in->sizeY);
-		const cv::Mat input(
-			frameSize, static_cast<int>(frame_in->format), const_cast<uint8_t *>(frame_in->pixels.data()));
-		cv::Mat output(frameSize, static_cast<int>(frame_out->format), frame_out->pixels.data());
+		// Setup output frame. Same size.
+		frame_out->sizeX                    = frame_in->sizeX;
+		frame_out->sizeY                    = frame_in->sizeY;
+		frame_out->format                   = frame_in->format;
+		frame_out->positionX                = frame_in->positionX;
+		frame_out->positionY                = frame_in->positionY;
+		frame_out->timestamp                = frame_in->timestamp;
+		frame_out->timestampStartOfFrame    = frame_in->timestampStartOfFrame;
+		frame_out->timestampEndOfFrame      = frame_in->timestampEndOfFrame;
+		frame_out->timestampStartOfExposure = frame_in->timestampStartOfExposure;
+		frame_out->timestampEndOfExposure   = frame_in->timestampEndOfExposure;
+		frame_out->pixels.resize(frame_in->pixels.size()); // Allocate memory.
 
-		CV_Assert((input.type() == CV_16UC1) || (input.type() == CV_16UC3) || (input.type() == CV_16UC4));
-		CV_Assert((output.type() == CV_16UC1) || (output.type() == CV_16UC3) || (output.type() == CV_16UC4));
+		// Get input OpenCV Mat. Lifetime is properly managed.
+		auto input = frame_in.getMatPointer();
 
-		CV_Assert(input.type() == output.type());
-		CV_Assert(input.channels() == output.channels());
+		// Get output OpenCV Mat. Memory must have been allocated already.
+		auto output = frame_out.getMat();
+
+		CV_Assert((input->type() == CV_8UC1) || (input->type() == CV_8UC3) || (input->type() == CV_8UC4));
+		CV_Assert((output.type() == CV_8UC1) || (output.type() == CV_8UC3) || (output.type() == CV_8UC4));
+
+		CV_Assert(input->type() == output.type());
+		CV_Assert(input->channels() == output.channels());
 
 		// This generally only works well on grayscale intensity images.
 		// So, if this is a grayscale image, good, else if its a color
 		// image we convert it to YCrCb and operate on the Y channel only.
-		cv::Mat intensity;
+		const cv::Mat *intensity;
 		cv::Mat yCrCbPlanes[3];
 		cv::Mat rgbaAlpha;
 
 		// Grayscale, no intensity extraction needed.
-		if (input.channels() == 1) {
-			intensity = input;
+		if (input->channels() == 1) {
+			intensity = input.get();
 		}
 		else {
 			// Color image, extract RGB and intensity/luminance.
 			cv::Mat rgb;
 
-			if (input.channels() == 4) {
+			if (input->channels() == 4) {
 				// We separate Alpha from RGB first.
 				// We will restore alpha at the end.
-				rgb       = cv::Mat(input.rows, input.cols, CV_16UC3);
-				rgbaAlpha = cv::Mat(input.rows, input.cols, CV_16UC1);
+				rgb       = cv::Mat(input->rows, input->cols, CV_8UC3);
+				rgbaAlpha = cv::Mat(input->rows, input->cols, CV_8UC1);
 
 				cv::Mat out[] = {rgb, rgbaAlpha};
 				// rgba[0] -> rgb[0], rgba[1] -> rgb[1],
 				// rgba[2] -> rgb[2], rgba[3] -> rgbaAlpha[0]
 				int channelTransform[] = {0, 0, 1, 1, 2, 2, 3, 3};
-				mixChannels(&input, 1, out, 2, channelTransform, 4);
+				mixChannels(input.get(), 1, out, 2, channelTransform, 4);
 			}
 			else {
 				// Already an RGB image.
-				rgb = input;
-				CV_Assert(rgb.type() == CV_16UC3);
+				rgb = *input;
+				CV_Assert(rgb.type() == CV_8UC3);
 			}
 
 			// First we convert from RGB to a color space with
@@ -103,30 +117,30 @@ public:
 			cv::Mat rgbYCrCb;
 			cvtColor(rgb, rgbYCrCb, cv::COLOR_RGB2YCrCb);
 
-			CV_Assert(rgbYCrCb.type() == CV_16UC3);
+			CV_Assert(rgbYCrCb.type() == CV_8UC3);
 
 			// Then we split it up so that we can access the luminance
 			// channel on its own separately.
 			split(rgbYCrCb, yCrCbPlanes);
 
 			// Now we have the luminance image in yCrCbPlanes[0].
-			intensity = yCrCbPlanes[0];
+			intensity = &yCrCbPlanes[0];
 		}
 
-		CV_Assert(intensity.type() == CV_16UC1);
+		CV_Assert(intensity->type() == CV_8UC1);
 
 		// Apply contrast enhancement algorithm.
 		switch (contrastAlgo) {
 			case ContrastAlgorithms::NORMALIZATION:
-				contrastNormalize(intensity, output, 1.0);
+				contrastNormalize(*intensity, output, 1.0);
 				break;
 
 			case ContrastAlgorithms::HISTOGRAM_EQUALIZATION:
-				contrastEqualize(intensity, output);
+				contrastEqualize(*intensity, output);
 				break;
 
 			case ContrastAlgorithms::CLAHE:
-				contrastCLAHE(intensity, output, 4.0, 8);
+				contrastCLAHE(*intensity, output, 4.0, 8);
 				break;
 
 			default:
@@ -141,13 +155,13 @@ public:
 			cv::Mat YCrCbrgb;
 			merge(yCrCbPlanes, 3, YCrCbrgb);
 
-			CV_Assert(YCrCbrgb.type() == CV_16UC3);
+			CV_Assert(YCrCbrgb.type() == CV_8UC3);
 
 			if (output.channels() == 4) {
 				cv::Mat rgb;
 				cvtColor(YCrCbrgb, rgb, cv::COLOR_YCrCb2RGB);
 
-				CV_Assert(rgb.type() == CV_16UC3);
+				CV_Assert(rgb.type() == CV_8UC3);
 
 				// Restore original alpha.
 				cv::Mat in[] = {rgb, rgbaAlpha};
@@ -163,7 +177,7 @@ public:
 	}
 
 	void contrastNormalize(const cv::Mat &input, cv::Mat &output, float clipHistPercent) {
-		CV_Assert((input.type() == CV_16UC1) && (output.type() == CV_16UC1));
+		CV_Assert((input.type() == CV_8UC1) && (output.type() == CV_8UC1));
 		CV_Assert((clipHistPercent >= 0) && (clipHistPercent < 100));
 
 		// O(x, y) = alpha * I(x, y) + beta, where alpha maximizes the range
@@ -177,7 +191,7 @@ public:
 		}
 		else {
 			// Calculate histogram.
-			int histSize           = UINT16_MAX + 1;
+			int histSize           = UINT8_MAX + 1;
 			float hRange[]         = {0, static_cast<float>(histSize)};
 			const float *histRange = {hRange};
 			bool uniform           = true;
@@ -203,7 +217,7 @@ public:
 			}
 
 			// Locate right cut.
-			maxValue = UINT16_MAX;
+			maxValue = UINT8_MAX;
 			while (hist.at<float>(static_cast<int>(maxValue)) >= (total - clipHistPercent)) {
 				maxValue--;
 			}
@@ -213,7 +227,7 @@ public:
 		double range = maxValue - minValue;
 
 		// Calculate alpha (contrast).
-		double alpha = ((double) UINT16_MAX) / range;
+		double alpha = (static_cast<double>(UINT8_MAX)) / range;
 
 		// Calculate beta (brightness).
 		double beta = -minValue * alpha;
@@ -223,10 +237,10 @@ public:
 	}
 
 	void contrastEqualize(const cv::Mat &input, cv::Mat &output) {
-		CV_Assert((input.type() == CV_16UC1) && (output.type() == CV_16UC1));
+		CV_Assert((input.type() == CV_8UC1) && (output.type() == CV_8UC1));
 
 		// Calculate histogram.
-		int histSize           = UINT16_MAX + 1;
+		int histSize           = UINT8_MAX + 1;
 		float hRange[]         = {0, static_cast<float>(histSize)};
 		const float *histRange = {hRange};
 		bool uniform           = true;
@@ -255,17 +269,17 @@ public:
 		// Calculate lookup table for histogram equalization.
 		hist -= static_cast<double>(min);
 		hist /= static_cast<double>(total - min);
-		hist *= static_cast<double>(UINT16_MAX);
+		hist *= static_cast<double>(UINT8_MAX);
 
 		// Apply lookup table to input image.
 		int idx = 0;
-		std::for_each(input.begin<uint16_t>(), input.end<uint16_t>(), [&hist, &output, &idx](const uint16_t &elem) {
-			output.at<uint16_t>(idx++) = static_cast<uint16_t>(hist.at<float>(elem));
+		std::for_each(input.begin<uint8_t>(), input.end<uint8_t>(), [&hist, &output, &idx](const uint8_t &elem) {
+			output.at<uint8_t>(idx++) = static_cast<uint8_t>(hist.at<float>(elem));
 		});
 	}
 
 	void contrastCLAHE(const cv::Mat &input, cv::Mat &output, float clipLimit, int tilesGridSize) {
-		CV_Assert((input.type() == CV_16UC1) && (output.type() == CV_16UC1));
+		CV_Assert((input.type() == CV_8UC1) && (output.type() == CV_8UC1));
 		CV_Assert((clipLimit >= 0) && (clipLimit < 100));
 		CV_Assert((tilesGridSize >= 1) && (tilesGridSize <= 64));
 

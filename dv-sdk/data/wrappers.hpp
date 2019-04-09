@@ -415,6 +415,46 @@ public:
 	const NativeType *operator->() const noexcept {
 		return (ptr);
 	}
+
+	/**
+	 * Return an OpenCV Mat representing this frame.
+	 * Please note the actual backing memory comes from the Frame->pixels vector.
+	 * If the underlying vector changes, due to resize or commit, this Mat becomes
+	 * invalid and should not be used anymore.
+	 * Also, for this to work, the pixels array must already have its memory allocated
+	 * such that Frame->pixels.size() >= (Frame->sizeX * Frame->sizeY). If that is not
+	 * the case, a std::out_of_range exception is thrown.
+	 *
+	 * @return an OpenCV Mat
+	 */
+	cv::Mat getMat() {
+		// Verify size.
+		if (ptr->pixels.size() < static_cast<size_t>(ptr->sizeX * ptr->sizeY)) {
+			throw std::out_of_range("getMat(): Frame->pixels.size() smaller than (Frame->sizeX * Frame->sizeY).");
+		}
+
+		return (cv::Mat{ptr->sizeX, ptr->sizeY, static_cast<int>(ptr->format), ptr->pixels.data()});
+	}
+
+	/**
+	 * Return a read-only OpenCV Mat representing this frame.
+	 * Please note the actual backing memory comes from the Frame->pixels vector.
+	 * If the underlying vector changes, due to resize or commit, this Mat becomes
+	 * invalid and should not be used anymore.
+	 * Also, for this to work, the pixels array must already have its memory allocated
+	 * such that Frame->pixels.size() >= (Frame->sizeX * Frame->sizeY). If that is not
+	 * the case, a std::out_of_range exception is thrown.
+	 *
+	 * @return a read-only OpenCV Mat
+	 */
+	const cv::Mat getMat() const {
+		// Verify size.
+		if (ptr->pixels.size() < static_cast<size_t>(ptr->sizeX * ptr->sizeY)) {
+			throw std::out_of_range("getMat(): Frame->pixels.size() smaller than (Frame->sizeX * Frame->sizeY).");
+		}
+
+		return (cv::Mat{ptr->sizeX, ptr->sizeY, static_cast<int>(ptr->format), ptr->pixels.data()});
+	}
 };
 
 } // namespace dv
