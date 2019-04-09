@@ -204,10 +204,6 @@ public:
 		this->vec_ptr = vec;
 	}
 
-	void reassign(const cvector<T> *vec) noexcept {
-		this->vec_ptr = const_cast<cvector<T> *>(vec);
-	}
-
 	// Copy assignment.
 	cvectorProxy &operator=(const cvectorProxy &rhs) {
 		return (assign(rhs));

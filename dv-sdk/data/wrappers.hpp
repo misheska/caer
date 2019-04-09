@@ -14,7 +14,32 @@
 
 namespace dv {
 
-template<typename T> class InputWrapper : public std::shared_ptr<const typename T::NativeTableType> {};
+template<typename T> class InputWrapper {
+private:
+	using NativeType = typename T::NativeTableType;
+
+	std::shared_ptr<const NativeType> ptr;
+
+public:
+	InputWrapper(std::shared_ptr<const NativeType> p) : ptr(std::move(p)) {
+	}
+
+	explicit operator bool() const noexcept {
+		return (ptr.get() != nullptr);
+	}
+
+	std::shared_ptr<const NativeType> getBasePointer() const noexcept {
+		return (ptr);
+	}
+
+	const NativeType &operator*() const noexcept {
+		return (*(ptr.get()));
+	}
+
+	const NativeType *operator->() const noexcept {
+		return (ptr.get());
+	}
+};
 
 template<typename T> class OutputWrapper {
 private:
@@ -28,7 +53,7 @@ public:
 	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) : ptr(p), moduleData(m), name(n) {
 	}
 
-	void commit() {
+	void commit() noexcept {
 		dvModuleOutputCommit(moduleData, name.c_str());
 
 		// Update with next object, in case we continue to use this.
@@ -43,15 +68,31 @@ public:
 		}
 	}
 
-	NativeType *getBasePointer() {
+	explicit operator bool() const noexcept {
+		return (ptr != nullptr);
+	}
+
+	NativeType *getBasePointer() noexcept {
 		return (ptr);
 	}
 
-	NativeType &operator*() const noexcept {
+	const NativeType *getBasePointer() const noexcept {
+		return (ptr);
+	}
+
+	NativeType &operator*() noexcept {
 		return (*ptr);
 	}
 
-	NativeType *operator->() const noexcept {
+	const NativeType &operator*() const noexcept {
+		return (*ptr);
+	}
+
+	NativeType *operator->() noexcept {
+		return (ptr);
+	}
+
+	const NativeType *operator->() const noexcept {
 		return (ptr);
 	}
 };
@@ -63,10 +104,16 @@ private:
 	std::shared_ptr<const NativeType> ptr;
 
 public:
-	InputWrapper(std::shared_ptr<const NativeType> p) : dv::cvectorConstProxy<Event>(&p->events), ptr(std::move(p)) {
+	InputWrapper(std::shared_ptr<const NativeType> p) :
+		dv::cvectorConstProxy<Event>((p) ? (&p->events) : (nullptr)),
+		ptr(std::move(p)) {
 	}
 
-	std::shared_ptr<const NativeType> getBasePointer() {
+	explicit operator bool() const noexcept {
+		return (ptr.get() != nullptr);
+	}
+
+	std::shared_ptr<const NativeType> getBasePointer() const noexcept {
 		return (ptr);
 	}
 };
@@ -81,15 +128,15 @@ private:
 
 public:
 	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) :
-		dv::cvectorProxy<Event>(&p->events),
+		dv::cvectorProxy<Event>((p) ? (&p->events) : (nullptr)),
 		ptr(p),
 		moduleData(m),
 		name(n) {
 	}
 
-	void commit() {
+	void commit() noexcept {
 		// Ignore empty event packets.
-		if (empty()) {
+		if ((ptr == nullptr) || empty()) {
 			return;
 		}
 
@@ -101,15 +148,23 @@ public:
 			// Actual errors will write a log message and return null.
 			// No data just returns null. So if null we simply forward that.
 			ptr = nullptr;
+			reassign(nullptr);
 		}
 		else {
 			ptr = static_cast<NativeType *>(typedObject->obj);
+			reassign(&ptr->events);
 		}
-
-		reassign(&ptr->events);
 	}
 
-	NativeType *getBasePointer() {
+	explicit operator bool() const noexcept {
+		return (ptr != nullptr);
+	}
+
+	NativeType *getBasePointer() noexcept {
+		return (ptr);
+	}
+
+	const NativeType *getBasePointer() const noexcept {
 		return (ptr);
 	}
 };
@@ -121,10 +176,16 @@ private:
 	std::shared_ptr<const NativeType> ptr;
 
 public:
-	InputWrapper(std::shared_ptr<const NativeType> p) : dv::cvectorConstProxy<IMUT>(&p->samples), ptr(std::move(p)) {
+	InputWrapper(std::shared_ptr<const NativeType> p) :
+		dv::cvectorConstProxy<IMUT>((p) ? (&p->samples) : (nullptr)),
+		ptr(std::move(p)) {
 	}
 
-	std::shared_ptr<const NativeType> getBasePointer() {
+	explicit operator bool() const noexcept {
+		return (ptr.get() != nullptr);
+	}
+
+	std::shared_ptr<const NativeType> getBasePointer() const noexcept {
 		return (ptr);
 	}
 };
@@ -139,15 +200,15 @@ private:
 
 public:
 	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) :
-		dv::cvectorProxy<IMUT>(&p->samples),
+		dv::cvectorProxy<IMUT>((p) ? (&p->samples) : (nullptr)),
 		ptr(p),
 		moduleData(m),
 		name(n) {
 	}
 
-	void commit() {
-		// Ignore empty event packets.
-		if (empty()) {
+	void commit() noexcept {
+		// Ignore empty IMU packets.
+		if ((ptr == nullptr) || empty()) {
 			return;
 		}
 
@@ -159,15 +220,23 @@ public:
 			// Actual errors will write a log message and return null.
 			// No data just returns null. So if null we simply forward that.
 			ptr = nullptr;
+			reassign(nullptr);
 		}
 		else {
 			ptr = static_cast<NativeType *>(typedObject->obj);
+			reassign(&ptr->samples);
 		}
-
-		reassign(&ptr->samples);
 	}
 
-	NativeType *getBasePointer() {
+	explicit operator bool() const noexcept {
+		return (ptr != nullptr);
+	}
+
+	NativeType *getBasePointer() noexcept {
+		return (ptr);
+	}
+
+	const NativeType *getBasePointer() const noexcept {
 		return (ptr);
 	}
 };
@@ -180,11 +249,15 @@ private:
 
 public:
 	InputWrapper(std::shared_ptr<const NativeType> p) :
-		dv::cvectorConstProxy<TriggerT>(&p->triggers),
+		dv::cvectorConstProxy<TriggerT>((p) ? (&p->triggers) : (nullptr)),
 		ptr(std::move(p)) {
 	}
 
-	std::shared_ptr<const NativeType> getBasePointer() {
+	explicit operator bool() const noexcept {
+		return (ptr.get() != nullptr);
+	}
+
+	std::shared_ptr<const NativeType> getBasePointer() const noexcept {
 		return (ptr);
 	}
 };
@@ -199,15 +272,15 @@ private:
 
 public:
 	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) :
-		dv::cvectorProxy<TriggerT>(&p->triggers),
+		dv::cvectorProxy<TriggerT>((p) ? (&p->triggers) : (nullptr)),
 		ptr(p),
 		moduleData(m),
 		name(n) {
 	}
 
-	void commit() {
-		// Ignore empty event packets.
-		if (empty()) {
+	void commit() noexcept {
+		// Ignore empty trigger packets.
+		if ((ptr == nullptr) || empty()) {
 			return;
 		}
 
@@ -219,15 +292,23 @@ public:
 			// Actual errors will write a log message and return null.
 			// No data just returns null. So if null we simply forward that.
 			ptr = nullptr;
+			reassign(nullptr);
 		}
 		else {
 			ptr = static_cast<NativeType *>(typedObject->obj);
+			reassign(&ptr->triggers);
 		}
-
-		reassign(&ptr->triggers);
 	}
 
-	NativeType *getBasePointer() {
+	explicit operator bool() const noexcept {
+		return (ptr != nullptr);
+	}
+
+	NativeType *getBasePointer() noexcept {
+		return (ptr);
+	}
+
+	const NativeType *getBasePointer() const noexcept {
 		return (ptr);
 	}
 };
@@ -242,13 +323,27 @@ private:
 public:
 	InputWrapper(std::shared_ptr<const NativeType> p) : ptr(std::move(p)) {
 		// Use custom deleter to bind life-time of main data 'ptr' to OpenCV 'matPtr'.
-		matPtr = std::shared_ptr<const cv::Mat>{new cv::Mat(ptr->sizeX, ptr->sizeY, static_cast<int>(ptr->format),
-													const_cast<uint8_t *>(ptr->pixels.data())),
-			[ptr = ptr](const cv::Mat *mp) { delete mp; }};
+		if (ptr) {
+			matPtr = std::shared_ptr<const cv::Mat>{new cv::Mat(ptr->sizeX, ptr->sizeY, static_cast<int>(ptr->format),
+														const_cast<uint8_t *>(ptr->pixels.data())),
+				[ptr = ptr](const cv::Mat *mp) { delete mp; }};
+		}
 	}
 
-	std::shared_ptr<const NativeType> getBasePointer() {
+	explicit operator bool() const noexcept {
+		return (ptr.get() != nullptr);
+	}
+
+	std::shared_ptr<const NativeType> getBasePointer() const noexcept {
 		return (ptr);
+	}
+
+	const NativeType &operator*() const noexcept {
+		return (*(ptr.get()));
+	}
+
+	const NativeType *operator->() const noexcept {
+		return (ptr.get());
 	}
 
 	/**
@@ -256,7 +351,7 @@ public:
 	 *
 	 * @return a read-only OpenCV Mat pointer
 	 */
-	std::shared_ptr<const cv::Mat> getMatPointer() {
+	std::shared_ptr<const cv::Mat> getMatPointer() const noexcept {
 		return (matPtr);
 	}
 };
@@ -273,7 +368,12 @@ public:
 	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) : ptr(p), moduleData(m), name(n) {
 	}
 
-	void commit() {
+	void commit() noexcept {
+		// Ignore frames with no pixels.
+		if ((ptr == nullptr) || ptr->pixels.empty()) {
+			return;
+		}
+
 		dvModuleOutputCommit(moduleData, name.c_str());
 
 		// Update with next object, in case we continue to use this.
@@ -288,7 +388,31 @@ public:
 		}
 	}
 
-	NativeType *getBasePointer() {
+	explicit operator bool() const noexcept {
+		return (ptr != nullptr);
+	}
+
+	NativeType *getBasePointer() noexcept {
+		return (ptr);
+	}
+
+	const NativeType *getBasePointer() const noexcept {
+		return (ptr);
+	}
+
+	NativeType &operator*() noexcept {
+		return (*ptr);
+	}
+
+	const NativeType &operator*() const noexcept {
+		return (*ptr);
+	}
+
+	NativeType *operator->() noexcept {
+		return (ptr);
+	}
+
+	const NativeType *operator->() const noexcept {
 		return (ptr);
 	}
 };
