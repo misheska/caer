@@ -20,14 +20,13 @@ SET(CMAKE_INSTALL_RPATH ${USER_LOCAL_PREFIX}/${CMAKE_INSTALL_BINDIR})
 
 # Compile main dv-runtime executable.
 ADD_EXECUTABLE(dv-runtime ${DV_SRC_FILES})
-TARGET_LINK_LIBRARIES(dv-runtime ${DV_LIBS} dvsdk)
+TARGET_LINK_LIBRARIES(dv-runtime PUBLIC ${DV_LIBS} dvsdk)
 INSTALL(TARGETS dv-runtime DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Atomics support for older architectures/systems.
 IF (NEED_LIBATOMIC)
 	MESSAGE(STATUS "Using libatomic for std::atomic.")
 
-	TARGET_INCLUDE_DIRECTORIES(dv-runtime PRIVATE atomic)
 	TARGET_LINK_LIBRARIES(dv-runtime PRIVATE atomic)
 ENDIF()
 
