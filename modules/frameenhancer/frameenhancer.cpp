@@ -2,8 +2,6 @@
 #include "dv-sdk/module.hpp"
 
 #include <algorithm>
-#include <opencv2/core.hpp>
-#include <opencv2/core/utility.hpp>
 #include <opencv2/imgproc.hpp>
 #include <vector>
 
@@ -65,7 +63,7 @@ public:
 		frame_out->timestampEndOfFrame      = frame_in->timestampEndOfFrame;
 		frame_out->timestampStartOfExposure = frame_in->timestampStartOfExposure;
 		frame_out->timestampEndOfExposure   = frame_in->timestampEndOfExposure;
-		frame_out->pixels.resize(frame_in->pixels.size()); // Allocate memory.
+		frame_out->pixels.resize(static_cast<size_t>(frame_out->sizeX * frame_out->sizeY)); // Allocate memory.
 
 		// Get input OpenCV Mat. Lifetime is properly managed.
 		auto input = frame_in.getMatPointer();
@@ -174,6 +172,9 @@ public:
 				cvtColor(YCrCbrgb, output, cv::COLOR_YCrCb2RGB);
 			}
 		}
+
+		// Done.
+		frame_out.commit();
 	}
 
 	void contrastNormalize(const cv::Mat &input, cv::Mat &output, float clipHistPercent) {

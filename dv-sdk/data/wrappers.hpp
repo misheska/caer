@@ -11,6 +11,7 @@
 #include "trigger.hpp"
 
 #include <opencv2/core.hpp>
+#include <opencv2/core/utility.hpp>
 
 namespace dv {
 
@@ -324,7 +325,7 @@ public:
 	InputWrapper(std::shared_ptr<const NativeType> p) : ptr(std::move(p)) {
 		// Use custom deleter to bind life-time of main data 'ptr' to OpenCV 'matPtr'.
 		if (ptr) {
-			matPtr = std::shared_ptr<const cv::Mat>{new cv::Mat(ptr->sizeX, ptr->sizeY, static_cast<int>(ptr->format),
+			matPtr = std::shared_ptr<const cv::Mat>{new cv::Mat(ptr->sizeY, ptr->sizeX, static_cast<int>(ptr->format),
 														const_cast<uint8_t *>(ptr->pixels.data())),
 				[ptr = ptr](const cv::Mat *mp) { delete mp; }};
 		}
@@ -433,7 +434,7 @@ public:
 			throw std::out_of_range("getMat(): Frame->pixels.size() smaller than (Frame->sizeX * Frame->sizeY).");
 		}
 
-		return (cv::Mat{ptr->sizeX, ptr->sizeY, static_cast<int>(ptr->format), ptr->pixels.data()});
+		return (cv::Mat{ptr->sizeY, ptr->sizeX, static_cast<int>(ptr->format), ptr->pixels.data()});
 	}
 
 	/**
@@ -453,7 +454,7 @@ public:
 			throw std::out_of_range("getMat(): Frame->pixels.size() smaller than (Frame->sizeX * Frame->sizeY).");
 		}
 
-		return (cv::Mat{ptr->sizeX, ptr->sizeY, static_cast<int>(ptr->format), ptr->pixels.data()});
+		return (cv::Mat{ptr->sizeY, ptr->sizeX, static_cast<int>(ptr->format), ptr->pixels.data()});
 	}
 };
 
