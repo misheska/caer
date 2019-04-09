@@ -54,8 +54,9 @@ public:
 		hist_out->sizeX     = static_cast<int16_t>(numBins);
 		hist_out->sizeY     = static_cast<int16_t>(numBins / 2);
 		hist_out->format    = dv::FrameFormat::GRAY;
-		hist_out->timestamp = frame_in->timestamp;                                       // Only set main timestamp.
-		hist_out->pixels.resize(static_cast<size_t>(hist_out->sizeX * hist_out->sizeY)); // Allocate memory.
+		hist_out->timestamp = frame_in->timestamp; // Only set main timestamp.
+		hist_out->pixels.resize(
+			static_cast<size_t>(hist_out->sizeX * hist_out->sizeY)); // Allocate memory (1 channel, grayscale).
 
 		// Calculate histogram, full uint8 range.
 		const float range[]    = {0, 256};

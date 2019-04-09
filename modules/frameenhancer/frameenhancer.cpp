@@ -63,7 +63,7 @@ public:
 		frame_out->timestampEndOfFrame      = frame_in->timestampEndOfFrame;
 		frame_out->timestampStartOfExposure = frame_in->timestampStartOfExposure;
 		frame_out->timestampEndOfExposure   = frame_in->timestampEndOfExposure;
-		frame_out->pixels.resize(static_cast<size_t>(frame_out->sizeX * frame_out->sizeY)); // Allocate memory.
+		frame_out->pixels.resize(frame_in->pixels.size()); // Allocate memory (same number of channels, same size).
 
 		// Get input OpenCV Mat. Lifetime is properly managed.
 		auto input = frame_in.getMatPointer();

@@ -423,15 +423,17 @@ public:
 	 * If the underlying vector changes, due to resize or commit, this Mat becomes
 	 * invalid and should not be used anymore.
 	 * Also, for this to work, the pixels array must already have its memory allocated
-	 * such that Frame->pixels.size() >= (Frame->sizeX * Frame->sizeY). If that is not
-	 * the case, a std::out_of_range exception is thrown.
+	 * such that Frame.pixels.size() >= (Frame.sizeX * Frame.sizeY * Frame.numChannels).
+	 * If that is not the case, a std::out_of_range exception is thrown.
 	 *
 	 * @return an OpenCV Mat
 	 */
 	cv::Mat getMat() {
 		// Verify size.
-		if (ptr->pixels.size() < static_cast<size_t>(ptr->sizeX * ptr->sizeY)) {
-			throw std::out_of_range("getMat(): Frame->pixels.size() smaller than (Frame->sizeX * Frame->sizeY).");
+		auto channels = (static_cast<int>(ptr->format) / 8) + 1;
+		if (ptr->pixels.size() < static_cast<size_t>(ptr->sizeX * ptr->sizeY * channels)) {
+			throw std::out_of_range(
+				"getMat(): Frame.pixels.size() smaller than (Frame.sizeX * Frame.sizeY * Frame.numChannels).");
 		}
 
 		return (cv::Mat{ptr->sizeY, ptr->sizeX, static_cast<int>(ptr->format), ptr->pixels.data()});
@@ -443,15 +445,17 @@ public:
 	 * If the underlying vector changes, due to resize or commit, this Mat becomes
 	 * invalid and should not be used anymore.
 	 * Also, for this to work, the pixels array must already have its memory allocated
-	 * such that Frame->pixels.size() >= (Frame->sizeX * Frame->sizeY). If that is not
-	 * the case, a std::out_of_range exception is thrown.
+	 * such that Frame.pixels.size() >= (Frame.sizeX * Frame.sizeY * Frame.numChannels).
+	 * If that is not the case, a std::out_of_range exception is thrown.
 	 *
 	 * @return a read-only OpenCV Mat
 	 */
 	const cv::Mat getMat() const {
 		// Verify size.
-		if (ptr->pixels.size() < static_cast<size_t>(ptr->sizeX * ptr->sizeY)) {
-			throw std::out_of_range("getMat(): Frame->pixels.size() smaller than (Frame->sizeX * Frame->sizeY).");
+		auto channels = (static_cast<int>(ptr->format) / 8) + 1;
+		if (ptr->pixels.size() < static_cast<size_t>(ptr->sizeX * ptr->sizeY * channels)) {
+			throw std::out_of_range(
+				"getMat(): Frame.pixels.size() smaller than (Frame.sizeX * Frame.sizeY * Frame.numChannels).");
 		}
 
 		return (cv::Mat{ptr->sizeY, ptr->sizeX, static_cast<int>(ptr->format), ptr->pixels.data()});
