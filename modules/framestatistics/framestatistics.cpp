@@ -1,146 +1,84 @@
-#include <libcaercpp/events/frame.hpp>
+#include "dv-sdk/data/frame.hpp"
+#include "dv-sdk/module.hpp"
 
-#include "dv-sdk/mainloop.h"
-
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+#include <algorithm>
+#include <opencv2/imgproc.hpp>
+#include <vector>
 
 namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
-struct caer_frame_statistics_state {
-	int numBins;
-	int roiRegion;
-};
-
-typedef struct caer_frame_statistics_state *caerFrameStatisticsState;
-
-static void caerFrameStatisticsConfigInit(dvConfigNode moduleNode);
-static bool caerFrameStatisticsInit(dvModuleData moduleData);
-static void caerFrameStatisticsRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
-static void caerFrameStatisticsExit(dvModuleData moduleData);
-static void caerFrameStatisticsConfig(dvModuleData moduleData);
-
-static const struct dvModuleFunctionsS FrameStatisticsFunctions = {
-	.moduleConfigInit = &caerFrameStatisticsConfigInit,
-	.moduleInit       = &caerFrameStatisticsInit,
-	.moduleRun        = &caerFrameStatisticsRun,
-	.moduleConfig     = &caerFrameStatisticsConfig,
-	.moduleExit       = &caerFrameStatisticsExit,
-};
-
-static const struct caer_event_stream_in FrameStatisticsInputs[]
-	= {{.type = FRAME_EVENT, .number = 1, .readOnly = true}};
-
-static const struct dvModuleInfoS FrameStatisticsInfo = {
-	.version           = 1,
-	.description       = "Display statistics on frames (histogram).",
-	.type              = DV_MODULE_OUTPUT,
-	.memSize           = sizeof(struct caer_frame_statistics_state),
-	.functions         = &FrameStatisticsFunctions,
-	.inputStreamsSize  = CAER_EVENT_STREAM_IN_SIZE(FrameStatisticsInputs),
-	.inputStreams      = FrameStatisticsInputs,
-	.outputStreamsSize = 0,
-	.outputStreams     = NULL,
-};
-
-dvModuleInfo dvModuleGetInfo(void) {
-	return (&FrameStatisticsInfo);
-}
-
-static void caerFrameStatisticsConfigInit(dvConfigNode moduleNode) {
-	dvCfg::Node cfg(moduleNode);
-
-	cfg.create<dvCfgType::INT>(
-		"numBins", 1024, {4, UINT16_MAX + 1}, dvCfgFlags::NORMAL, "Number of bins in which to divide values up.");
-	cfg.create<dvCfgType::INT>("roiRegion", 0, {0, 7}, dvCfgFlags::NORMAL, "Selects which ROI region to display.");
-	cfg.create<dvCfgType::INT>(
-		"windowPositionX", 20, {0, UINT16_MAX}, dvCfgFlags::NORMAL, "Position of window on screen (X coordinate).");
-	cfg.create<dvCfgType::INT>(
-		"windowPositionY", 20, {0, UINT16_MAX}, dvCfgFlags::NORMAL, "Position of window on screen (Y coordinate).");
-}
-
-static bool caerFrameStatisticsInit(dvModuleData moduleData) {
-	// Get configuration.
-	caerFrameStatisticsConfig(moduleData);
-
-	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	dvConfigNodeAddAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
-
-	cv::namedWindow(moduleData->moduleSubSystemString,
-		cv::WindowFlags::WINDOW_AUTOSIZE | cv::WindowFlags::WINDOW_KEEPRATIO | cv::WindowFlags::WINDOW_GUI_EXPANDED);
-
-	return (true);
-}
-
-static void caerFrameStatisticsRun(
-	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
-	UNUSED_ARGUMENT(out);
-
-	caerFrameEventPacket inPacket
-		= reinterpret_cast<caerFrameEventPacket>(caerEventPacketContainerGetEventPacket(in, 0));
-
-	// Only process packets with content.
-	if (inPacket == nullptr) {
-		return;
+class FrameStatistics : public dv::ModuleBase {
+public:
+	static void addInputs(std::vector<dv::InputDefinition> &in) {
+		in.emplace_back("frames", dv::Frame::identifier, false);
 	}
 
-	const libcaer::events::FrameEventPacket frames(inPacket, false);
+	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
+		out.emplace_back("histograms", dv::Frame::identifier);
+	}
 
-	caerFrameStatisticsState state = static_cast<caerFrameStatisticsState>(moduleData->moduleState);
+	static const char *getDescription() {
+		return ("Display statistics on frames (histogram).");
+	}
 
-	for (const auto &frame : frames) {
-		if ((!frame.isValid()) || (frame.getROIIdentifier() != state->roiRegion)) {
-			continue;
+	static void getConfigOptions(dv::RuntimeConfig &config) {
+		config.add("numBins", dv::ConfigOption::intOption("Number of bins in which to divide values up.", 256, 4, 256));
+	}
+
+	FrameStatistics() {
+		// Wait for input to be ready. All inputs, once they are up and running, will
+		// have a valid sourceInfo node to query, especially if dealing with data.
+		// Allocate map using info from sourceInfo.
+		auto info = inputs.getInfoNode("frames");
+		if (!info) {
+			throw std::runtime_error("Frames input not ready, upstream module not running.");
 		}
 
-		const cv::Mat frameOpenCV = frame.getOpenCVMat(false);
+		// Populate frame output info node. Must have generated statistics histogram frame
+		// maximum size. Max size is 256 x 128 due to max number of bins being 256.
+		auto outInfoNode = outputs.getInfoNode("histograms");
+		outInfoNode.create<dvCfgType::INT>(
+			"sizeX", 256, {256, 256}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Maximum X axis size of frame.");
+		outInfoNode.create<dvCfgType::INT>(
+			"sizeY", 128, {128, 128}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Maximum Y axis size of frame.");
+	}
 
-		// Calculate histogram, full uint16 range.
-		const float range[]    = {0, UINT16_MAX + 1};
+	void run() override {
+		auto frame_in = inputs.get<dv::Frame>("frames");
+		auto hist_out = outputs.get<dv::Frame>("histograms");
+
+		auto numBins = config.get<dvCfgType::INT>("numBins");
+
+		hist_out->sizeX     = static_cast<int16_t>(numBins);
+		hist_out->sizeY     = static_cast<int16_t>(numBins / 2);
+		hist_out->format    = dv::FrameFormat::GRAY;
+		hist_out->timestamp = frame_in->timestamp;                                       // Only set main timestamp.
+		hist_out->pixels.resize(static_cast<size_t>(hist_out->sizeX * hist_out->sizeY)); // Allocate memory.
+
+		// Calculate histogram, full uint8 range.
+		const float range[]    = {0, 256};
 		const float *histRange = {range};
 
 		cv::Mat hist;
-		cv::calcHist(&frameOpenCV, 1, nullptr, cv::Mat(), hist, 1, &state->numBins, &histRange, true, false);
+		cv::calcHist(frame_in.getMatPointer().get(), 1, nullptr, cv::Mat(), hist, 1, &numBins, &histRange, true, false);
 
-		// Generate histogram image, with N x N/3 pixels.
-		int hist_w = state->numBins;
-		int hist_h = state->numBins / 3;
-
-		cv::Mat histImage(hist_h, hist_w, CV_8UC1, cv::Scalar(0));
+		// Generate histogram image, with N x N/2 pixels.
+		auto histImage = hist_out.getMat();
 
 		// Normalize the result to [0, histImage.rows].
 		cv::normalize(hist, hist, 0, histImage.rows, cv::NORM_MINMAX, -1, cv::Mat());
 
 		// Draw the histogram.
-		for (int i = 1; i < state->numBins; i++) {
-			cv::line(histImage, cv::Point(i - 1, hist_h - cvRound(hist.at<float>(i - 1))),
-				cv::Point(i, hist_h - cvRound(hist.at<float>(i))), cv::Scalar(255, 255, 255), 2, 8, 0);
+		for (int i = 1; i < histImage.cols; i++) {
+			cv::line(histImage, cv::Point(i - 1, histImage.rows - cvRound(hist.at<float>(i - 1))),
+				cv::Point(i, histImage.rows - cvRound(hist.at<float>(i))), cv::Scalar(255, 255, 255), 1, cv::LINE_8, 0);
 		}
 
-		// Simple display, just use OpenCV GUI.
-		cv::imshow(moduleData->moduleSubSystemString, histImage);
-		cv::waitKey(1);
+		// Send histogram out.
+		hist_out.commit();
 	}
-}
+};
 
-static void caerFrameStatisticsExit(dvModuleData moduleData) {
-	cv::destroyWindow(moduleData->moduleSubSystemString);
-
-	// Remove listener, which can reference invalid memory in userData.
-	dvConfigNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &dvModuleDefaultConfigListener);
-}
-
-static void caerFrameStatisticsConfig(dvModuleData moduleData) {
-	caerFrameStatisticsState state = (caerFrameStatisticsState) moduleData->moduleState;
-	dvCfg::Node cfg(moduleData->moduleNode);
-
-	state->numBins   = cfg.get<dvCfgType::INT>("numBins");
-	state->roiRegion = cfg.get<dvCfgType::INT>("roiRegion");
-
-	int posX = cfg.get<dvCfgType::INT>("windowPositionX");
-	int posY = cfg.get<dvCfgType::INT>("windowPositionY");
-
-	cv::moveWindow(moduleData->moduleSubSystemString, posX, posY);
-}
+registerModuleClass(FrameStatistics)
