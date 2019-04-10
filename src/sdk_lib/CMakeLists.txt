@@ -28,7 +28,8 @@ TARGET_LINK_LIBRARIES(dvsdk
 	PRIVATE
 		Boost::system
 		Boost::filesystem
-		Boost::iostreams)
+		Boost::iostreams
+		${SYSTEM_THREAD_LIBS})
 
 IF (OS_WINDOWS)
 	INSTALL(TARGETS dvsdk EXPORT dv-exports RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

@@ -3,6 +3,9 @@ IF (NOT ENABLE_VISUALIZER)
 ENDIF()
 
 IF (ENABLE_VISUALIZER)
+	# Search for external libraries with pkg-config.
+	INCLUDE(FindPkgConfig)
+
 	# Visualizer support via the SFML C++ library
 	PKG_CHECK_MODULES(SFML REQUIRED sfml-graphics>=2.3.0)
 

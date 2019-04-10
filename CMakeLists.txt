@@ -50,9 +50,12 @@ SET(DV_PKGCONFIG_REQUIRES_PRIVATE "libcaer >= 3.1.9")
 # Boost support for C++
 FIND_PACKAGE(Boost 1.50 REQUIRED COMPONENTS system filesystem iostreams program_options)
 
+# boost.ASIO needs threading
+SET(BOOST_ASIO_LIBS ${SYSTEM_THREAD_LIBS})
+
 # Windows boost.ASIO needs extra libraries
 IF (OS_WINDOWS)
-	SET(BOOST_ASIO_LIBS wsock32 ws2_32)
+	SET(BOOST_ASIO_LIBS ${BOOST_ASIO_LIBS} wsock32 ws2_32)
 ENDIF()
 
 # boost.ASIO SSL needs OpenSSL too

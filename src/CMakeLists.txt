@@ -23,12 +23,10 @@ ADD_EXECUTABLE(dv-runtime ${DV_SRC_FILES})
 
 TARGET_LINK_LIBRARIES(dv-runtime
 	PRIVATE
-		libcaer::caer
 		dvsdk
 		Boost::boost
 		Boost::system
 		Boost::filesystem
-		Boost::iostreams
 		Boost::program_options
 		${BOOST_ASIO_LIBS})
 TARGET_INCLUDE_DIRECTORIES(dv-runtime
@@ -59,8 +57,11 @@ ENDIF()
 
 # TCMalloc support (fast memory allocation)
 IF (ENABLE_TCMALLOC)
-	PKG_CHECK_MODULES(LIBTCMALLOC REQUIRED libtcmalloc>=2.2)
+	# Search for external libraries with pkg-config.
+	INCLUDE(FindPkgConfig)
 
-	TARGET_LINK_LIBRARIES(dv-runtime PRIVATE ${LIBTCMALLOC_LIBRARIES})
-	TARGET_INCLUDE_DIRECTORIES(dv-runtime PRIVATE ${LIBTCMALLOC_INCLUDE_DIRS})
+	PKG_CHECK_MODULES(tcmalloc REQUIRED IMPORTED_TARGET libtcmalloc>=2.2)
+
+	TARGET_LINK_LIBRARIES(dv-runtime PRIVATE PkgConfig::tcmalloc)
+	TARGET_INCLUDE_DIRECTORIES(dv-runtime PRIVATE PkgConfig::tcmalloc)
 ENDIF()

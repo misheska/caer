@@ -12,7 +12,17 @@ ADD_EXECUTABLE(dv-control
 	# Executable.
 	dv-control.cpp)
 
-TARGET_LINK_LIBRARIES(dv-control PRIVATE ${DV_LIBS})
-TARGET_INCLUDE_DIRECTORIES(dv-control PRIVATE ${DV_INCDIRS})
+TARGET_LINK_LIBRARIES(dv-control
+	PRIVATE
+		libcaer::caer
+		Boost::boost
+		Boost::system
+		Boost::filesystem
+		Boost::iostreams
+		Boost::program_options
+		${BOOST_ASIO_LIBS})
+TARGET_INCLUDE_DIRECTORIES(dv-control
+	PRIVATE
+		${BOOST_ASIO_INCLUDE_DIRS})
 
 INSTALL(TARGETS dv-control DESTINATION ${CMAKE_INSTALL_BINDIR})
