@@ -117,4 +117,4 @@ UNSET(include_dirs)
 UNSET(export_destination)
 
 # Install CMake file for modules
-INSTALL(FILES dv-modules.cmake DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/dv)
+INSTALL(FILES cmakemod/dv-modules.cmake DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/dv)
