@@ -39,7 +39,6 @@ INCLUDE(CheckAtomic)
 
 # Required: threads.
 SET(DV_INCDIRS "${USER_LOCAL_INCDIRS}")
-SET(DV_LIBDIRS "${USER_LOCAL_LIBDIRS}")
 SET(DV_LIBS ${SYSTEM_THREAD_LIBS})
 
 # Search for external libraries with pkg-config.
@@ -50,14 +49,12 @@ PKG_CHECK_MODULES(LIBCAER REQUIRED libcaer>=3.1.9)
 SET(DV_PKGCONFIG_REQUIRES_PRIVATE "libcaer >= 3.1.9")
 
 SET(DV_INCDIRS ${DV_INCDIRS} ${LIBCAER_INCLUDE_DIRS})
-SET(DV_LIBDIRS ${DV_LIBDIRS} ${LIBCAER_LIBRARY_DIRS})
 SET(DV_LIBS ${DV_LIBS} ${LIBCAER_LIBRARIES})
 
 # Boost support for C++
 FIND_PACKAGE(Boost 1.50 REQUIRED COMPONENTS system filesystem iostreams program_options)
 
 SET(DV_INCDIRS ${DV_INCDIRS} ${Boost_INCLUDE_DIRS})
-SET(DV_LIBDIRS ${DV_LIBDIRS} ${Boost_LIBRARY_DIRS})
 SET(DV_LIBS ${DV_LIBS} ${Boost_LIBRARIES})
 
 IF ((NOT (Boost_MAJOR_VERSION EQUAL 1 AND Boost_MINOR_VERSION GREATER_EQUAL 61))
@@ -80,7 +77,7 @@ SET(DV_INCDIRS ${DV_INCDIRS} ${OPENSSL_INCLUDE_DIR})
 SET(DV_LIBS ${DV_LIBS} ${OPENSSL_LIBRARIES})
 
 # OpenCV support.
-FIND_PACKAGE(OpenCV REQUIRED)
+FIND_PACKAGE(OpenCV REQUIRED COMPONENTS core imgproc)
 IF (OpenCV_VERSION VERSION_LESS "3.1.0")
 	MESSAGE(FATAL_ERROR "Cannot find OpenCV 3.1.0 or newer.")
 ENDIF()
@@ -90,14 +87,9 @@ SET(DV_LIBS ${DV_LIBS} ${OpenCV_LIBS})
 
 # Add local directory to include and library paths
 SET(DV_INCDIRS ${DV_INCDIRS} ${CMAKE_SOURCE_DIR}/)
-SET(DV_LIBDIRS ${DV_LIBDIRS} ${CMAKE_SOURCE_DIR}/)
 
-# Set include/library paths for successive compilation.
-INCLUDE_DIRECTORIES(${DV_INCDIRS})
-LINK_DIRECTORIES(${DV_LIBDIRS})
-
-MESSAGE(STATUS "Include directories: ${DV_INCDIRS}")
-MESSAGE(STATUS "Link directories: ${DV_LIBDIRS}")
+MESSAGE(STATUS "Base libraries: ${DV_LIBS}")
+MESSAGE(STATUS "Base include directories: ${DV_INCDIRS}")
 
 # Define module installation paths.
 SET(DV_MODULES_DIR ${CMAKE_INSTALL_DATAROOTDIR}/dv/modules)
