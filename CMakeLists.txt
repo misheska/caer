@@ -17,7 +17,6 @@ ENDIF()
 # Project name and version
 PROJECT(dv-runtime
 	VERSION 1.9.9
-	HOMEPAGE_URL "https://gitlab.com/inivation/caer/"
 	LANGUAGES C CXX)
 SET(CMAKE_C_STANDARD 11)
 SET(CMAKE_C_STANDARD_REQUIRED ON)

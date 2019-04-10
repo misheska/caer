@@ -1,21 +1,10 @@
 IF (NOT ENABLE_VISUALIZER)
-	SET(ENABLE_VISUALIZER 0 CACHE BOOL "Enable the visualizer module, based on the SFML C++ library.")
+	SET(ENABLE_VISUALIZER 0 CACHE BOOL "Enable the visualizer module. This is deprecated in favor of dv-gui!")
 ENDIF()
 
 IF (ENABLE_VISUALIZER)
-	# Search for external libraries with pkg-config.
-	INCLUDE(FindPkgConfig)
-
-	# Visualizer support via the SFML C++ library
-	PKG_CHECK_MODULES(SFML REQUIRED sfml-graphics>=2.3.0)
-
-	SET(VISUALIZER_LIBS ${DV_LIBS} ${SFML_LIBRARIES})
-	SET(VISUALIZER_INCDIRS ${DV_INCDIRS} ${SFML_INCLUDE_DIRS})
-
-	PKG_CHECK_MODULES(GLEW REQUIRED glew>=1.10.0)
-
-	SET(VISUALIZER_LIBS ${VISUALIZER_LIBS} ${GLEW_LIBRARIES})
-	SET(VISUALIZER_INCDIRS ${VISUALIZER_INCDIRS} ${GLEW_INCLUDE_DIRS})
+	FIND_PACKAGE(SFML 2.3.0 REQUIRED COMPONENTS graphics)
+	FIND_PACKAGE(GLEW 1.10.0 REQUIRED)
 
 	ADD_LIBRARY(visualizer SHARED visualizer.cpp visualizer_renderers.cpp)
 
@@ -24,8 +13,11 @@ IF (ENABLE_VISUALIZER)
 		PREFIX "dv_"
 	)
 
-	TARGET_LINK_LIBRARIES(visualizer PRIVATE ${VISUALIZER_LIBS})
-	TARGET_INCLUDE_DIRECTORIES(visualizer PRIVATE ${VISUALIZER_INCDIRS})
+	TARGET_LINK_LIBRARIES(visualizer
+		PRIVATE
+			dvsdk
+			sfml-graphics
+			GLEW::GLEW)
 
 	INSTALL(TARGETS visualizer DESTINATION ${DV_MODULES_DIR})
 ENDIF()

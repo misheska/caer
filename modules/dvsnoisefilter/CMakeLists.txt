@@ -5,7 +5,9 @@ SET_TARGET_PROPERTIES(dvsnoisefilter
 	PREFIX "dv_"
 )
 
-TARGET_LINK_LIBRARIES(dvsnoisefilter PRIVATE ${DV_LIBS})
-TARGET_INCLUDE_DIRECTORIES(dvsnoisefilter PRIVATE ${DV_INCDIRS})
+TARGET_LINK_LIBRARIES(dvsnoisefilter
+	PRIVATE
+		dvsdk
+		Boost::boost)
 
 INSTALL(TARGETS dvsnoisefilter DESTINATION ${DV_MODULES_DIR})

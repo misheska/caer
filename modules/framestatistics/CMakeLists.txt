@@ -5,7 +5,13 @@ SET_TARGET_PROPERTIES(framestatistics
 	PREFIX "dv_"
 )
 
-TARGET_LINK_LIBRARIES(framestatistics PRIVATE ${DV_LIBS})
-TARGET_INCLUDE_DIRECTORIES(framestatistics PRIVATE ${DV_INCDIRS})
+TARGET_LINK_LIBRARIES(framestatistics
+	PRIVATE
+		dvsdk
+		Boost::boost
+		${OpenCV_LIBS})
+TARGET_INCLUDE_DIRECTORIES(framestatistics
+	PRIVATE
+		${OpenCV_INCLUDE_DIRS})
 
 INSTALL(TARGETS framestatistics DESTINATION ${DV_MODULES_DIR})
