@@ -1,0 +1,15 @@
+libcaer::caer
+
+Boost::boost
+Boost::system
+Boost::filesystem
+Boost::iostreams
+Boost::program_options
+
+BOOST_ASIO_LIBS
+BOOST_ASIO_INCLUDE_DIRS
+
+OpenCV_INCLUDE_DIRS
+OpenCV_LIBS
+
+dvsdk
