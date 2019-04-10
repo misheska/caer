@@ -56,7 +56,7 @@ IF (libcaer_VERSION VERSION_LESS "3.1.9")
 	MESSAGE(FATAL_ERROR "Cannot find libcaer 3.1.9 or newer.")
 ENDIF()
 
-SET(DV_LIBS ${libcaer_LIBS})
+SET(DV_LIBS libcaer::caer)
 SET(DV_INCLUDE_DIRS ${libcaer_INCLUDE_DIRS})
 
 # DV SDK support.
@@ -65,13 +65,13 @@ IF (dv_VERSION VERSION_LESS "1.9.9")
 	MESSAGE(FATAL_ERROR "Cannot find libdvsdk 1.9.9 or newer.")
 ENDIF()
 
-SET(DV_LIBS ${DV_LIBS} ${dv_LIBS})
+SET(DV_LIBS ${DV_LIBS} dv::dvsdk)
 SET(DV_INCLUDE_DIRS ${DV_INCLUDE_DIRS} ${dv_INCLUDE_DIRS})
 
 # Boost support for C++
 FIND_PACKAGE(Boost 1.50 REQUIRED COMPONENTS system filesystem)
 
-SET(DV_LIBS ${DV_LIBS} ${Boost_LIBRARIES})
+SET(DV_LIBS ${DV_LIBS} Boost::boost Boost::system Boost::filesystem)
 SET(DV_INCLUDE_DIRS ${DV_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 # OpenCV support.
