@@ -1,9 +1,9 @@
-#ifndef MODULES_VISUALIZER_VISUALIZER_RENDERERS_H_
-#define MODULES_VISUALIZER_VISUALIZER_RENDERERS_H_
+#ifndef VISUALIZER_RENDERERS_HPP_
+#define VISUALIZER_RENDERERS_HPP_
 
 #include "visualizer.hpp"
 
-typedef bool (*caerVisualizerRenderer)(caerVisualizerPublicState state, caerEventPacketContainer container);
+typedef bool (*caerVisualizerRenderer)(caerVisualizerPublicState state, void *packets);
 
 typedef void *(*caerVisualizerRendererStateInit)(caerVisualizerPublicState state);
 typedef void (*caerVisualizerRendererStateExit)(caerVisualizerPublicState state);
@@ -11,15 +11,13 @@ typedef void (*caerVisualizerRendererStateExit)(caerVisualizerPublicState state)
 struct caer_visualizer_renderer_info {
 	const std::string name;
 	caerVisualizerRenderer renderer;
-	bool needsOpenGL3;
 	caerVisualizerRendererStateInit stateInit;
 	caerVisualizerRendererStateExit stateExit;
 
-	caer_visualizer_renderer_info(const std::string &n, caerVisualizerRenderer r, bool opengl3 = false,
+	caer_visualizer_renderer_info(const std::string &n, caerVisualizerRenderer r,
 		caerVisualizerRendererStateInit stInit = nullptr, caerVisualizerRendererStateExit stExit = nullptr) :
 		name(n),
 		renderer(r),
-		needsOpenGL3(opengl3),
 		stateInit(stInit),
 		stateExit(stExit) {
 	}
@@ -31,4 +29,4 @@ extern const std::string caerVisualizerRendererListOptionsString;
 extern const struct caer_visualizer_renderer_info caerVisualizerRendererList[];
 extern const size_t caerVisualizerRendererListLength;
 
-#endif /* MODULES_VISUALIZER_VISUALIZER_RENDERERS_H_ */
+#endif /* VISUALIZER_RENDERERS_HPP_ */

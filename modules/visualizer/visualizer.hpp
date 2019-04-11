@@ -1,17 +1,13 @@
-#ifndef VISUALIZER_H_
-#define VISUALIZER_H_
-
-#include <libcaer/events/packetContainer.h>
+#ifndef VISUALIZER_HPP_
+#define VISUALIZER_HPP_
 
 #include "dv-sdk/utils.h"
 
 #include <GL/glew.h>
 #include <SFML/Graphics.hpp>
 #include <atomic>
-#include <climits>
 
 struct caer_visualizer_public_state {
-	dv::Config::Node eventSourceConfigNode;
 	dv::Config::Node visualizerConfigNode;
 	uint32_t renderSizeX;
 	uint32_t renderSizeY;
@@ -23,10 +19,7 @@ struct caer_visualizer_public_state {
 
 typedef struct caer_visualizer_public_state *caerVisualizerPublicState;
 
-// This function is intended to be called by Renderer State Init functions only!
-void caerVisualizerResetRenderSize(caerVisualizerPublicState pubState, uint32_t newX, uint32_t newY);
-
 // This define is for Render State Init functions that allocate no memory, to use as return value.
-#define DV_VISUALIZER_RENDER_INIT_NO_MEM ((void *) 0x01)
+#define DV_VISUALIZER_RENDER_INIT_NO_MEM static_cast<void *>(0x01)
 
-#endif /* VISUALIZER_H_ */
+#endif /* VISUALIZER_HPP_ */

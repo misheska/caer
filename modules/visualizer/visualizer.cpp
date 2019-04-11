@@ -1,19 +1,13 @@
 #include "visualizer.hpp"
 
-#include <libcaer/ringbuffer.h>
-
-#include "dv-sdk/cross/portable_threads.h"
-#include "dv-sdk/mainloop.h"
+#include "dv-sdk/module.hpp"
 
 #include "ext/fonts/LiberationSans-Bold.h"
 #include "ext/sfml/helpers.hpp"
 #include "ext/sfml/line.hpp"
-#include "modules/statistics/statistics.h"
-#include "visualizer_handlers.hpp"
 #include "visualizer_renderers.hpp"
 
 #include <mutex>
-#include <thread>
 
 #if defined(OS_LINUX) && OS_LINUX == 1
 #	include <X11/Xlib.h>
@@ -48,30 +42,6 @@ static uint32_t STATISTICS_HEIGHT = 0;
 // Track system init.
 static std::once_flag visualizerSystemIsInitialized;
 
-struct caer_visualizer_state {
-	dvCfg::Node eventSourceConfigNode;
-	dvCfg::Node visualizerConfigNode;
-	uint32_t renderSizeX;
-	uint32_t renderSizeY;
-	std::atomic<float> renderZoomFactor;
-	void *renderState; // Reserved for renderers to put their internal state into.
-	sf::RenderWindow *renderWindow;
-	sf::Font *font;
-	std::atomic_bool running;
-	std::atomic_bool windowResize;
-	std::atomic_bool windowMove;
-	caerRingBuffer dataTransfer;
-	std::thread *renderingThread;
-	caerVisualizerRendererInfo renderer;
-	caerVisualizerEventHandlerInfo eventHandler;
-	bool showStatistics;
-	struct caer_statistics_string_state packetStatistics;
-	std::atomic_uint_fast32_t packetSubsampleRendering;
-	uint32_t packetSubsampleCount;
-};
-
-typedef struct caer_visualizer_state *caerVisualizerState;
-
 static void caerVisualizerConfigInit(dvConfigNode moduleNode);
 static bool caerVisualizerInit(dvModuleData moduleData);
 static void caerVisualizerExit(dvModuleData moduleData);
@@ -90,133 +60,124 @@ static void handleEvents(dvModuleData moduleData);
 static void renderScreen(dvModuleData moduleData);
 static void renderThread(dvModuleData moduleData);
 
-static const struct dvModuleFunctionsS VisualizerFunctions = {
-	.moduleConfigInit = &caerVisualizerConfigInit,
-	.moduleInit       = &caerVisualizerInit,
-	.moduleRun        = &caerVisualizerRun,
-	.moduleConfig     = nullptr,
-	.moduleExit       = &caerVisualizerExit,
-};
+class Visualizer : public dv::ModuleBase {
+private:
+	uint32_t renderSizeX;
+	uint32_t renderSizeY;
+	std::atomic<float> renderZoomFactor;
+	void *renderState; // Reserved for renderers to put their internal state into.
+	sf::RenderWindow *renderWindow;
+	sf::Font *font;
+	std::atomic_bool running;
+	std::atomic_bool windowResize;
+	std::atomic_bool windowMove;
+	caerVisualizerRendererInfo renderer;
+	std::atomic_uint_fast32_t packetSubsampleRendering;
+	uint32_t packetSubsampleCount;
 
-static const struct caer_event_stream_in VisualizerInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
-
-static const struct dvModuleInfoS VisualizerInfo = {
-	.version           = 1,
-	.description       = "Visualize data in various ways.",
-	.type              = DV_MODULE_OUTPUT,
-	.memSize           = sizeof(struct caer_visualizer_state),
-	.functions         = &VisualizerFunctions,
-	.inputStreamsSize  = CAER_EVENT_STREAM_IN_SIZE(VisualizerInputs),
-	.inputStreams      = VisualizerInputs,
-	.outputStreamsSize = 0,
-	.outputStreams     = nullptr,
-};
-
-dvModuleInfo dvModuleGetInfo(void) {
-	return (&VisualizerInfo);
-}
-
-static void caerVisualizerConfigInit(dvConfigNode mn) {
-	dvCfg::Node moduleNode(mn);
-
-	moduleNode.create<dvCfgType::STRING>(
-		"renderer", "", {0, 500}, dvCfgFlags::NORMAL, "Renderer to use to generate content.");
-	moduleNode.attributeModifierListOptions("renderer", caerVisualizerRendererListOptionsString, true);
-	moduleNode.create<dvCfgType::STRING>(
-		"eventHandler", "", {0, 500}, dvCfgFlags::NORMAL, "Event handler to handle mouse and keyboard events.");
-	moduleNode.attributeModifierListOptions("eventHandler", caerVisualizerEventHandlerListOptionsString, true);
-
-	moduleNode.create<dvCfgType::INT>("subsampleRendering", 1, {1, 100000}, dvCfgFlags::NORMAL,
-		"Speed-up rendering by only taking every Nth EventPacketContainer to render.");
-	moduleNode.create<dvCfgType::BOOL>(
-		"showStatistics", true, {}, dvCfgFlags::NORMAL, "Show useful statistics below content (bottom of window).");
-	moduleNode.create<dvCfgType::FLOAT>("zoomFactor", VISUALIZER_ZOOM_DEF, {VISUALIZER_ZOOM_MIN, VISUALIZER_ZOOM_MAX},
-		dvCfgFlags::NORMAL, "Content zoom factor.");
-	moduleNode.create<dvCfgType::INT>("windowPositionX", VISUALIZER_POSITION_X_DEF, {0, UINT16_MAX}, dvCfgFlags::NORMAL,
-		"Position of window on screen (X coordinate).");
-	moduleNode.create<dvCfgType::INT>("windowPositionY", VISUALIZER_POSITION_Y_DEF, {0, UINT16_MAX}, dvCfgFlags::NORMAL,
-		"Position of window on screen (Y coordinate).");
-}
-
-static bool caerVisualizerInit(dvModuleData moduleData) {
-	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
-
-	// Initialize visualizer framework (global font sizes). Do only once per startup!
-	std::call_once(visualizerSystemIsInitialized, &initSystemOnce, moduleData);
-
-	state->visualizerConfigNode  = moduleData->moduleNode;
-	state->eventSourceConfigNode = dvMainloopModuleGetSourceNodeForInput(moduleData->moduleID, 0);
-
-	// Initialize visualizer. Needs size information from the source.
-	if (!initRenderSize(moduleData)) {
-		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize render sizes from source.");
-
-		return (false);
+public:
+	static void addInputs(std::vector<dv::InputDefinition> &in) {
+		in.emplace_back("visualize", "ANYT", false);
 	}
 
-	initRenderersHandlers(moduleData);
-
-	state->packetSubsampleRendering.store(U32T(state->visualizerConfigNode.get<dvCfgType::INT>("subsampleRendering")));
-
-	// Enable packet statistics.
-	if (!caerStatisticsStringInit(&state->packetStatistics)) {
-		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize statistics string.");
-		return (false);
+	static const char *getDescription() {
+		return ("Visualize data in various simple ways. Please use dv-gui instead!");
 	}
 
-	// Initialize ring-buffer to transfer data to render thread.
-	state->dataTransfer = caerRingBufferInit(64);
-	if (state->dataTransfer == nullptr) {
-		caerStatisticsStringExit(&state->packetStatistics);
+	static void getConfigOptions(dv::RuntimeConfig &config) {
+		config.add("subsampleRendering",
+			dv::ConfigOption::intOption(
+				"Speed-up rendering by only taking every Nth EventPacketContainer to render.", 1, 1, 10000));
 
-		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize transfer ring-buffer.");
-		return (false);
+		config.add("windowPositionX", dv::ConfigOption::intOption("Position of window on screen (X coordinate).",
+										  VISUALIZER_POSITION_X_DEF, 0, UINT16_MAX));
+		config.add("windowPositionY", dv::ConfigOption::intOption("Position of window on screen (Y coordinate).",
+										  VISUALIZER_POSITION_Y_DEF, 0, UINT16_MAX));
+		config.add("zoomFactor", dv::ConfigOption::floatOption("Content zoom factor.", VISUALIZER_ZOOM_DEF,
+									 VISUALIZER_ZOOM_MIN, VISUALIZER_ZOOM_MAX));
 	}
+
+	Visualizer() {
+		// Initialize visualizer framework (global font sizes). Do only once per startup!
+		std::call_once(visualizerSystemIsInitialized, &initSystemOnce, moduleData);
+
+		// Initialize visualizer. Needs size information from the source.
+		if (!initRenderSize(moduleData)) {
+			dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize render sizes from source.");
+
+			return (false);
+		}
+
+		initRenderersHandlers(moduleData);
+
+		state->packetSubsampleRendering.store(
+			U32T(state->visualizerConfigNode.get<dvCfgType::INT>("subsampleRendering")));
+
+		// Enable packet statistics.
+		if (!caerStatisticsStringInit(&state->packetStatistics)) {
+			dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize statistics string.");
+			return (false);
+		}
+
+		// Initialize ring-buffer to transfer data to render thread.
+		state->dataTransfer = caerRingBufferInit(64);
+		if (state->dataTransfer == nullptr) {
+			caerStatisticsStringExit(&state->packetStatistics);
+
+			dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize transfer ring-buffer.");
+			return (false);
+		}
 
 #if VISUALIZER_HANDLE_EVENTS_MAIN == 1
-	// Initialize graphics on main thread.
-	// On OS X, creation (and destruction) of the window, as well as its event
-	// handling must happen on the main thread. Only drawing can be separate.
-	if (!initGraphics(moduleData)) {
-		caerRingBufferFree(state->dataTransfer);
-		caerStatisticsStringExit(&state->packetStatistics);
+		// Initialize graphics on main thread.
+		// On OS X, creation (and destruction) of the window, as well as its event
+		// handling must happen on the main thread. Only drawing can be separate.
+		if (!initGraphics(moduleData)) {
+			caerRingBufferFree(state->dataTransfer);
+			caerStatisticsStringExit(&state->packetStatistics);
 
-		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize rendering window.");
-		return (false);
-	}
+			dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to initialize rendering window.");
+			return (false);
+		}
 
-	// Disable OpenGL context to pass it to thread.
-	state->renderWindow->setActive(false);
+		// Disable OpenGL context to pass it to thread.
+		state->renderWindow->setActive(false);
 #endif
 
-	// Start separate rendering thread. Decouples presentation from
-	// data processing and preparation. Communication over ring-buffer.
-	state->running.store(true);
+		// Start separate rendering thread. Decouples presentation from
+		// data processing and preparation. Communication over ring-buffer.
+		state->running.store(true);
 
-	try {
-		state->renderingThread = new std::thread(&renderThread, moduleData);
-	}
-	catch (const std::system_error &ex) {
+		try {
+			state->renderingThread = new std::thread(&renderThread, moduleData);
+		}
+		catch (const std::system_error &ex) {
 #if VISUALIZER_HANDLE_EVENTS_MAIN == 1
-		exitGraphics(moduleData);
+			exitGraphics(moduleData);
 #endif
-		caerRingBufferFree(state->dataTransfer);
-		caerStatisticsStringExit(&state->packetStatistics);
+			caerRingBufferFree(state->dataTransfer);
+			caerStatisticsStringExit(&state->packetStatistics);
 
-		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to start rendering thread. Error: '%s' (%d).", ex.what(),
-			ex.code().value());
-		return (false);
+			dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to start rendering thread. Error: '%s' (%d).", ex.what(),
+				ex.code().value());
+			return (false);
+		}
+
+		// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
+		state->visualizerConfigNode.addAttributeListener(state, &caerVisualizerConfigListener);
+
+		dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initialized successfully.");
+
+		return (true);
 	}
 
-	// Add config listeners last, to avoid having them dangling if Init doesn't succeed.
-	state->visualizerConfigNode.addAttributeListener(state, &caerVisualizerConfigListener);
+	void run() override {
+	}
+};
 
-	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initialized successfully.");
+registerModuleClass(Visualizer)
 
-	return (true);
-}
-
-static void caerVisualizerExit(dvModuleData moduleData) {
+	static void caerVisualizerExit(dvModuleData moduleData) {
 	caerVisualizerState state = (caerVisualizerState) moduleData->moduleState;
 
 	// Remove listener, which can reference invalid memory in userData.
