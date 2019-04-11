@@ -26,6 +26,15 @@ static inline void makeTypeNode(const Type &t, dvCfg::Node n) {
 TypeSystem::TypeSystem() {
 	auto systemTypesNode = dvCfg::GLOBAL.getNode("/system/types/system/");
 
+	// Initialize placeholder types.
+	auto nullType = Type("NULL", "Placeholder for errors.", 0, nullptr, nullptr, nullptr, nullptr);
+	systemTypes.push_back(nullType);
+	makeTypeNode(nullType, systemTypesNode);
+
+	auto anyType = Type("ANYT", "Placeholder for any valid type.", 0, nullptr, nullptr, nullptr, nullptr);
+	systemTypes.push_back(anyType);
+	makeTypeNode(anyType, systemTypesNode);
+
 	// Initialize system types. These are always available due to
 	// being compiled into the core.
 	auto evtType = makeTypeDefinition<EventPacket>("Array of events (polarity ON/OFF).");

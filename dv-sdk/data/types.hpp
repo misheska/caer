@@ -4,6 +4,14 @@
 #include "../utils.h"
 
 #ifdef __cplusplus
+constexpr static uint32_t dvTypeIdentifierToId(const char *x) {
+	uint32_t ret = static_cast<uint8_t>(x[3]);
+	ret |= static_cast<uint32_t>(static_cast<uint8_t>(x[2]) << 8);
+	ret |= static_cast<uint32_t>(static_cast<uint8_t>(x[1]) << 16);
+	ret |= static_cast<uint32_t>(static_cast<uint8_t>(x[0]) << 24);
+	return (ret);
+}
+
 extern "C" {
 #endif
 
@@ -23,8 +31,9 @@ struct dvType {
 	dvTypeDestructPtr destruct;
 
 #ifdef __cplusplus
-	dvType(const char *_identifier, const char *_description, size_t _sizeOfType, dvTypePackFuncPtr _pack,
+	constexpr dvType(const char *_identifier, const char *_description, size_t _sizeOfType, dvTypePackFuncPtr _pack,
 		dvTypeUnpackFuncPtr _unpack, dvTypeConstructPtr _construct, dvTypeDestructPtr _destruct) :
+		id(dvTypeIdentifierToId(_identifier)),
 		identifier(_identifier),
 		description(_description),
 		sizeOfType(_sizeOfType),
@@ -43,14 +52,6 @@ struct dvType {
 		if ((description == nullptr) || (strlen(description) == 0)) {
 			throw std::invalid_argument("Type description must be defined.");
 		}
-
-		if (sizeOfType == 0) {
-			throw std::invalid_argument("Type size must be bigger than zero.");
-		}
-
-		// Transform into 32bit integer for fast comparison.
-		// Does not have to be endian-neutral, only used internally.
-		id = *(reinterpret_cast<const uint32_t *>(identifier));
 	}
 
 	bool operator==(const dvType &rhs) const noexcept {
@@ -108,6 +109,12 @@ static_assert(std::is_standard_layout_v<dvTypedObject>, "dvTypedObject is not st
 
 namespace dv::Types {
 
+constexpr static const char *nullIdentifier = "NULL";
+constexpr static const uint32_t nullId      = dvTypeIdentifierToId(nullIdentifier);
+
+constexpr static const char *anyIdentifier = "ANYT";
+constexpr static const uint32_t anyId      = dvTypeIdentifierToId(anyIdentifier);
+
 using Type        = dvType;
 using TypedObject = dvTypedObject;
 
@@ -116,20 +123,20 @@ using UnpackFuncPtr = dvTypeUnpackFuncPtr;
 using ConstructPtr  = dvTypeConstructPtr;
 using DestructPtr   = dvTypeDestructPtr;
 
-template<typename FBType> static uint32_t Packer(void *toBuffer, const void *fromObject) {
+template<typename FBType> constexpr static uint32_t Packer(void *toBuffer, const void *fromObject) {
 	using ObjectAPIType = typename FBType::NativeTableType;
 
 	return (FBType::Pack(*(static_cast<flatbuffers::FlatBufferBuilder *>(toBuffer)),
 		static_cast<const ObjectAPIType *>(fromObject), nullptr)
 				.o);
 }
-template<typename FBType> static void Unpacker(void *toObject, const void *fromBuffer) {
+template<typename FBType> constexpr static void Unpacker(void *toObject, const void *fromBuffer) {
 	using ObjectAPIType = typename FBType::NativeTableType;
 
 	FBType::UnPackToFrom(static_cast<ObjectAPIType *>(toObject), static_cast<const FBType *>(fromBuffer), nullptr);
 }
 
-template<typename FBType> static void *Constructor(size_t sizeOfObject) {
+template<typename FBType> constexpr static void *Constructor(size_t sizeOfObject) {
 	using ObjectAPIType = typename FBType::NativeTableType;
 
 	ObjectAPIType *obj = static_cast<ObjectAPIType *>(malloc(sizeOfObject));
@@ -141,7 +148,7 @@ template<typename FBType> static void *Constructor(size_t sizeOfObject) {
 
 	return (obj);
 }
-template<typename FBType> static void Destructor(void *object) {
+template<typename FBType> constexpr static void Destructor(void *object) {
 	using ObjectAPIType = typename FBType::NativeTableType;
 
 	ObjectAPIType *obj = static_cast<ObjectAPIType *>(object);
@@ -154,7 +161,7 @@ template<typename FBType> static void Destructor(void *object) {
 	free(obj);
 }
 
-template<typename FBType> static Type makeTypeDefinition(const char *description) {
+template<typename FBType> constexpr static Type makeTypeDefinition(const char *description) {
 	using ObjectAPIType = typename FBType::NativeTableType;
 
 	static_assert(std::is_standard_layout_v<ObjectAPIType>, "ObjectAPIType is not standard layout");

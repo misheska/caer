@@ -15,7 +15,7 @@ const struct dvType dvTypeSystemGetInfoByIdentifier(const char *tIdentifier) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
 
 		// Return empty placeholder.
-		return (dvType("NULL", "Empty placeholder type.", 0, nullptr, nullptr, nullptr, nullptr));
+		return (glMainDataPtr->typeSystem.getTypeInfo("NULL", nullptr));
 	}
 }
 
@@ -27,7 +27,7 @@ const struct dvType dvTypeSystemGetInfoByID(uint32_t tId) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
 
 		// Return empty placeholder.
-		return (dvType("NULL", "Empty placeholder type.", 0, nullptr, nullptr, nullptr, nullptr));
+		return (glMainDataPtr->typeSystem.getTypeInfo("NULL", nullptr));
 	}
 }
 

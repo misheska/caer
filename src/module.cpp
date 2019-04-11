@@ -280,7 +280,8 @@ bool dv::Module::inputConnectivityInitialize() {
 		}
 
 		// Lastly, check the type.
-		if (input.second.type.id != moduleOutput->type.id) {
+		// If the expected type is ANYT, we accept anything.
+		if ((std::string(input.second.type.identifier) != "ANYT") && (input.second.type.id != moduleOutput->type.id)) {
 			auto msg = boost::format("Input '%s': invalid connectivity attribute, output '%s' in module '%s' has type "
 									 "'%s', but this input requires type '%s'.")
 					   % input.first % outputName % moduleName % moduleOutput->type.identifier % input.second.type.id;
@@ -422,7 +423,8 @@ void dv::Module::handleModuleInitFailure() {
 	// Schedule retry on next update-handler pass, if module should
 	// automatically retry starting up and initializing.
 	if (moduleConfigNode.get<dvCfgType::BOOL>("autoStartup")) {
-		moduleConfigNode.attributeUpdaterAdd("running", dvCfgType::BOOL,
+		moduleConfigNode.attributeUpdaterAdd(
+			"running", dvCfgType::BOOL,
 			[](void *, const char *, enum dvConfigAttributeType) {
 				dvConfigAttributeValue val;
 				val.boolean = true;
