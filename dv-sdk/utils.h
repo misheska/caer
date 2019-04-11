@@ -18,6 +18,9 @@ void dvLog(enum caer_log_level level, const char *format, ...) ATTRIBUTE_FORMAT(
 #ifdef __cplusplus
 }
 
+// Disable libcaer frame getMat(), we don't want to depend on OpenCV here.
+#	define LIBCAER_FRAMECPP_OPENCV_INSTALLED 0
+
 #	include <libcaercpp/libcaer.hpp>
 
 #	include "config/dvConfig.hpp"
