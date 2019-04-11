@@ -1,9 +1,9 @@
 #include "types.hpp"
 
-#include "dv-sdk/data/event.hpp"
-#include "dv-sdk/data/frame.hpp"
-#include "dv-sdk/data/imu.hpp"
-#include "dv-sdk/data/trigger.hpp"
+#include "dv-sdk/data/event_base.hpp"
+#include "dv-sdk/data/frame_base.hpp"
+#include "dv-sdk/data/imu_base.hpp"
+#include "dv-sdk/data/trigger_base.hpp"
 
 #include <stdexcept>
 
@@ -66,7 +66,7 @@ void TypeSystem::registerModuleType(const Module *m, const Type &t) {
 	// this type before.
 	if (userTypes.count(t.id)
 		&& findIfBool(userTypes[t.id].cbegin(), userTypes[t.id].cend(),
-			   [m](const auto &userType) { return (m == userType.first); })) {
+			[m](const auto &userType) { return (m == userType.first); })) {
 		throw std::invalid_argument("User type already registered for this module.");
 	}
 

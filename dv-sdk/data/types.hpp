@@ -1,7 +1,7 @@
 #ifndef DV_SDK_TYPES_HPP
 #define DV_SDK_TYPES_HPP
 
-#include "dv-sdk/utils.h"
+#include "../utils.h"
 
 #ifdef __cplusplus
 extern "C" {
