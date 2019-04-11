@@ -10,9 +10,12 @@ build_mac:
     - cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DOPENSSL_LIBRARIES=/usr/local/opt/openssl/lib -DENABLE_OPENCV=1 .
     - make -j2
     - macpack -v -d libs src/dv-runtime
+    - mkdir -p deploy
+    - cp src/dv-runtime deploy/
+    - cp -r src/libs deploy/
 
   artifacts:
+    name: dv-runtime-packaged-mac
     paths:
-      - src/dv-runtime
-      - src/libs
+      - deploy
     expire_in: 1 day
