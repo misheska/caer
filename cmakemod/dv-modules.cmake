@@ -56,7 +56,7 @@ IF (libcaer_VERSION VERSION_LESS "3.1.9")
 	MESSAGE(FATAL_ERROR "Cannot find libcaer 3.1.9 or newer.")
 ENDIF()
 
-SET(DV_LIBS libcaer::caer)
+SET(DV_LIBRARIES libcaer::caer)
 SET(DV_INCLUDE_DIRS ${libcaer_INCLUDE_DIRS})
 
 # DV SDK support.
@@ -65,13 +65,13 @@ IF (dv_VERSION VERSION_LESS "1.9.9")
 	MESSAGE(FATAL_ERROR "Cannot find libdvsdk 1.9.9 or newer.")
 ENDIF()
 
-SET(DV_LIBS ${DV_LIBS} dv::dvsdk)
+SET(DV_LIBRARIES ${DV_LIBRARIES} dv::dvsdk)
 SET(DV_INCLUDE_DIRS ${DV_INCLUDE_DIRS} ${dv_INCLUDE_DIRS})
 
 # Boost support for C++
 FIND_PACKAGE(Boost 1.50 REQUIRED COMPONENTS system filesystem)
 
-SET(DV_LIBS ${DV_LIBS} Boost::boost Boost::system Boost::filesystem)
+SET(DV_LIBRARIES ${DV_LIBRARIES} Boost::boost Boost::system Boost::filesystem)
 SET(DV_INCLUDE_DIRS ${DV_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 # OpenCV support.
@@ -80,13 +80,13 @@ IF (OpenCV_VERSION VERSION_LESS "3.1.0")
 	MESSAGE(FATAL_ERROR "Cannot find OpenCV 3.1.0 or newer.")
 ENDIF()
 
-SET(DV_LIBS ${DV_LIBS} ${OpenCV_LIBS})
+SET(DV_LIBRARIES ${DV_LIBRARIES} ${OpenCV_LIBS})
 SET(DV_INCLUDE_DIRS ${DV_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
 # Add local source directory to include path
 SET(DV_INCLUDE_DIRS ${DV_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/)
 
-MESSAGE(STATUS "Base libraries: ${DV_LIBS}")
+MESSAGE(STATUS "Base libraries: ${DV_LIBRARIES}")
 MESSAGE(STATUS "Base include directories: ${DV_INCLUDE_DIRS}")
 
 # Define module installation paths.
@@ -95,7 +95,7 @@ MESSAGE(STATUS "Final modules installation directory is: ${CMAKE_INSTALL_PREFIX}
 ADD_DEFINITIONS(-DDV_MODULES_DIR=${USER_LOCAL_PREFIX}/${DV_MODULES_DIR})
 
 # Set build variables in parent scope
-SET(DV_LIBS ${DV_LIBS} PARENT_SCOPE)
+SET(DV_LIBRARIES ${DV_LIBRARIES} PARENT_SCOPE)
 SET(DV_INCLUDE_DIRS ${DV_INCLUDE_DIRS} PARENT_SCOPE)
 SET(DV_MODULES_DIR ${DV_MODULES_DIR} PARENT_SCOPE)
 
