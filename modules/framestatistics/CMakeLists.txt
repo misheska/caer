@@ -10,8 +10,5 @@ TARGET_LINK_LIBRARIES(framestatistics
 		dvsdk
 		Boost::boost
 		${OpenCV_LIBS})
-TARGET_INCLUDE_DIRECTORIES(framestatistics
-	PRIVATE
-		${OpenCV_INCLUDE_DIRS})
 
 INSTALL(TARGETS framestatistics DESTINATION ${DV_MODULES_DIR})

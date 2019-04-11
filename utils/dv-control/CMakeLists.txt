@@ -20,9 +20,6 @@ TARGET_LINK_LIBRARIES(dv-control
 		Boost::filesystem
 		Boost::iostreams
 		Boost::program_options
-		${BOOST_ASIO_LIBS})
-TARGET_INCLUDE_DIRECTORIES(dv-control
-	PRIVATE
-		${BOOST_ASIO_INCLUDE_DIRS})
+		${BOOST_ASIO_LIBRARIES})
 
 INSTALL(TARGETS dv-control DESTINATION ${CMAKE_INSTALL_BINDIR})

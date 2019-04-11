@@ -1,5 +1,5 @@
-# Init CMake (require at least version 3.8.0)
-CMAKE_MINIMUM_REQUIRED(VERSION 3.8.0)
+# Init CMake (require at least version 3.12.0)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.12.0)
 
 # General build settings
 IF (NOT CMAKE_BUILD_TYPE)
@@ -50,19 +50,18 @@ SET(DV_PKGCONFIG_REQUIRES_PRIVATE "libcaer >= 3.1.9")
 FIND_PACKAGE(Boost 1.50 REQUIRED COMPONENTS system filesystem iostreams program_options)
 
 # boost.ASIO needs threading
-SET(BOOST_ASIO_LIBS ${SYSTEM_THREAD_LIBS})
+SET(BOOST_ASIO_LIBRARIES ${SYSTEM_THREAD_LIBS})
 
 # Windows boost.ASIO needs extra libraries
 IF (OS_WINDOWS)
-	SET(BOOST_ASIO_LIBS ${BOOST_ASIO_LIBS} wsock32 ws2_32)
+	SET(BOOST_ASIO_LIBRARIES ${BOOST_ASIO_LIBRARIES} wsock32 ws2_32)
 ENDIF()
 
 # boost.ASIO SSL needs OpenSSL too
 # Use -DOPENSSL_ROOT_DIR=x to select a specific installation.
 FIND_PACKAGE(OpenSSL REQUIRED)
 
-SET(BOOST_ASIO_LIBS ${BOOST_ASIO_LIBS} ${OPENSSL_LIBRARIES})
-SET(BOOST_ASIO_INCLUDE_DIRS ${OPENSSL_INCLUDE_DIR})
+SET(BOOST_ASIO_LIBRARIES ${BOOST_ASIO_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto)
 
 # OpenCV support.
 FIND_PACKAGE(OpenCV REQUIRED COMPONENTS core imgproc)

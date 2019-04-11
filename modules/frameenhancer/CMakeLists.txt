@@ -10,8 +10,5 @@ TARGET_LINK_LIBRARIES(frameenhancer
 		dvsdk
 		Boost::boost
 		${OpenCV_LIBS})
-TARGET_INCLUDE_DIRECTORIES(frameenhancer
-	PRIVATE
-		${OpenCV_INCLUDE_DIRS})
 
 INSTALL(TARGETS frameenhancer DESTINATION ${DV_MODULES_DIR})

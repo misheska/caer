@@ -28,10 +28,7 @@ TARGET_LINK_LIBRARIES(dv-runtime
 		Boost::system
 		Boost::filesystem
 		Boost::program_options
-		${BOOST_ASIO_LIBS})
-TARGET_INCLUDE_DIRECTORIES(dv-runtime
-	PRIVATE
-		${BOOST_ASIO_INCLUDE_DIRS})
+		${BOOST_ASIO_LIBRARIES})
 
 INSTALL(TARGETS dv-runtime DESTINATION ${CMAKE_INSTALL_BINDIR})
 
@@ -63,5 +60,4 @@ IF (ENABLE_TCMALLOC)
 	PKG_CHECK_MODULES(tcmalloc REQUIRED IMPORTED_TARGET libtcmalloc>=2.2)
 
 	TARGET_LINK_LIBRARIES(dv-runtime PRIVATE PkgConfig::tcmalloc)
-	TARGET_INCLUDE_DIRECTORIES(dv-runtime PRIVATE PkgConfig::tcmalloc)
 ENDIF()
