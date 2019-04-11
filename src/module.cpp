@@ -281,7 +281,7 @@ bool dv::Module::inputConnectivityInitialize() {
 
 		// Lastly, check the type.
 		// If the expected type is ANYT, we accept anything.
-		if ((std::string(input.second.type.identifier) != "ANYT") && (input.second.type.id != moduleOutput->type.id)) {
+		if ((input.second.type.id != dv::Types::anyId) && (input.second.type.id != moduleOutput->type.id)) {
 			auto msg = boost::format("Input '%s': invalid connectivity attribute, output '%s' in module '%s' has type "
 									 "'%s', but this input requires type '%s'.")
 					   % input.first % outputName % moduleName % moduleOutput->type.identifier % input.second.type.id;

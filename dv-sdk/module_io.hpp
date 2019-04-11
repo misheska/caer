@@ -54,7 +54,7 @@ public:
 				const typename T::NativeTableType *) { dvModuleInputDismiss(moduleData, name.c_str(), typedObject); }};
 
 #ifndef NDEBUG
-		if (typedObject->typeId != *(reinterpret_cast<const uint32_t *>(T::identifier))) {
+		if (typedObject->typeId != dvTypeIdentifierToId(T::identifier)) {
 			throw std::runtime_error(
 				"getUnwrapped(" + name + "): input type and given template type are not compatible.");
 		}
@@ -96,7 +96,7 @@ public:
 		}
 
 #ifndef NDEBUG
-		if (typedObject->typeId != *(reinterpret_cast<const uint32_t *>(T::identifier))) {
+		if (typedObject->typeId != dvTypeIdentifierToId(T::identifier)) {
 			throw std::runtime_error(
 				"allocateUnwrapped(" + name + "): output type and given template type are not compatible.");
 		}

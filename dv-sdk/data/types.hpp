@@ -45,11 +45,12 @@ struct dvType {
 			throw std::invalid_argument("Type identifier must be defined.");
 		}
 
-		if (strlen(identifier) != 4) {
+		if ((identifier[0] == 0) || (identifier[1] == 0) || (identifier[2] == 0) || (identifier[3] == 0)
+			|| (identifier[4] != 0)) {
 			throw std::invalid_argument("Type identifier must be exactly four characters long.");
 		}
 
-		if ((description == nullptr) || (strlen(description) == 0)) {
+		if ((description == nullptr) || (description[0] == 0)) {
 			throw std::invalid_argument("Type description must be defined.");
 		}
 	}

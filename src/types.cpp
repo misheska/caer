@@ -27,11 +27,11 @@ TypeSystem::TypeSystem() {
 	auto systemTypesNode = dvCfg::GLOBAL.getNode("/system/types/system/");
 
 	// Initialize placeholder types.
-	auto nullType = Type("NULL", "Placeholder for errors.", 0, nullptr, nullptr, nullptr, nullptr);
+	auto nullType = Type(nullIdentifier, "Placeholder for errors.", 0, nullptr, nullptr, nullptr, nullptr);
 	systemTypes.push_back(nullType);
 	makeTypeNode(nullType, systemTypesNode);
 
-	auto anyType = Type("ANYT", "Placeholder for any valid type.", 0, nullptr, nullptr, nullptr, nullptr);
+	auto anyType = Type(anyIdentifier, "Placeholder for any valid type.", 0, nullptr, nullptr, nullptr, nullptr);
 	systemTypes.push_back(anyType);
 	makeTypeNode(anyType, systemTypesNode);
 
@@ -103,9 +103,12 @@ void TypeSystem::unregisterModuleTypes(const Module *m) {
 		if (it->second.empty()) {
 			// Empty vector means no survivors of this type, so we can remove
 			// it from the global registry too.
-			uint32_t id       = it->first;
-			const char *idStr = reinterpret_cast<const char *>(&id);
-			std::string identifier{idStr, 4};
+			uint32_t id = it->first;
+			std::string identifier{};
+			identifier.push_back(static_cast<char>((id >> 24) & 0xFF));
+			identifier.push_back(static_cast<char>((id >> 16) & 0xFF));
+			identifier.push_back(static_cast<char>((id >> 8) & 0xFF));
+			identifier.push_back(static_cast<char>(id & 0xFF));
 
 			auto userTypesNode = dvCfg::GLOBAL.getNode("/system/types/user/");
 			userTypesNode.getRelativeNode(identifier + "/").removeNode();
@@ -123,7 +126,7 @@ const Type TypeSystem::getTypeInfo(std::string_view tIdentifier, const Module *m
 		throw std::invalid_argument("Identifier must be 4 characters long.");
 	}
 
-	uint32_t id = *(reinterpret_cast<const uint32_t *>(tIdentifier.data()));
+	uint32_t id = dvTypeIdentifierToId(tIdentifier.data());
 
 	return (getTypeInfo(id, m));
 }
@@ -133,7 +136,7 @@ const Type TypeSystem::getTypeInfo(const char *tIdentifier, const Module *m) con
 		throw std::invalid_argument("Identifier must be 4 characters long.");
 	}
 
-	uint32_t id = *(reinterpret_cast<const uint32_t *>(tIdentifier));
+	uint32_t id = dvTypeIdentifierToId(tIdentifier);
 
 	return (getTypeInfo(id, m));
 }
