@@ -1,6 +1,7 @@
 #include "module.hpp"
 
 #include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_threads.h"
 
 #include "main.hpp"
 
@@ -438,6 +439,10 @@ void dv::Module::runThread() {
 	// Set thread-local logger once at startup.
 	dv::LoggerSet(&logger);
 
+	// Set thread name.
+	portable_thread_set_name(logger.logPrefix.c_str());
+
+	// Run state machine as long as module is running.
 	while (threadAlive.load(std::memory_order_relaxed)) {
 		runStateMachine();
 	}
