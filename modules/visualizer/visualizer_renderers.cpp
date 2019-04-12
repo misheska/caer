@@ -33,10 +33,8 @@ static const struct caer_visualizer_renderer_info rendererPolarityAndFrameEvents
 	&caerVisualizerRendererPolarityAndFrameEvents, false, &caerVisualizerRendererPolarityAndFrameEventsStateInit,
 	&caerVisualizerRendererPolarityAndFrameEventsStateExit);
 
-const std::string caerVisualizerRendererListOptionsString = "Polarity,Frame,IMU_6-axes,Polarity_and_Frames";
-
-const struct caer_visualizer_renderer_info caerVisualizerRendererList[] = {
-	{"None", nullptr}, rendererPolarityEvents, rendererFrameEvents, rendererIMU6Events, rendererPolarityAndFrameEvents};
+const struct caer_visualizer_renderer_info caerVisualizerRendererList[]
+	= {rendererPolarityEvents, rendererFrameEvents, rendererIMU6Events};
 
 const size_t caerVisualizerRendererListLength
 	= (sizeof(caerVisualizerRendererList) / sizeof(struct caer_visualizer_renderer_info));

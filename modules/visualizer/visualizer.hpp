@@ -20,6 +20,6 @@ struct caer_visualizer_public_state {
 typedef struct caer_visualizer_public_state *caerVisualizerPublicState;
 
 // This define is for Render State Init functions that allocate no memory, to use as return value.
-#define DV_VISUALIZER_RENDER_INIT_NO_MEM static_cast<void *>(0x01)
+#define DV_VISUALIZER_RENDER_INIT_NO_MEM reinterpret_cast<void *>(0x01)
 
 #endif /* VISUALIZER_HPP_ */
