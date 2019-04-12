@@ -5,6 +5,7 @@
 #include <cmath>
 
 namespace sfml {
+
 class Line : public sf::Drawable {
 private:
 	sf::Vertex vertices[4];
@@ -36,6 +37,7 @@ public:
 		target.draw(vertices, 4, sf::Quads);
 	}
 };
+
 } // namespace sfml
 
 #endif /* EXT_SFML_LINE_HPP_ */
