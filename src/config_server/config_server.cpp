@@ -254,7 +254,8 @@ void ConfigServer::serviceStop() {
 }
 
 void ConfigServer::acceptStart() {
-	acceptor.async_accept(acceptorNewSocket,
+	acceptor.async_accept(
+		acceptorNewSocket,
 		[this](const boost::system::error_code &error) {
 			if (error) {
 				// Ignore cancel error, normal on shutdown.
@@ -287,7 +288,7 @@ void dv::ConfigServerStart() {
 	serverNode.attributeModifierButton("restart", "ONOFF");
 	serverNode.addAttributeListener(nullptr, &configServerRestartListener);
 
-	serverNode.create<dvCfgType::INT>("logLevel", caerLogLevelGet(), {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
+	serverNode.create<dvCfgType::INT>("logLevel", CAER_LOG_NOTICE, {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
 		dvCfgFlags::NORMAL, "Configuration server log-level.");
 
 	// Ensure default values are present for IP/Port.

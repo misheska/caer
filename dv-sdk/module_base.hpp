@@ -117,7 +117,10 @@ public:
 		// Add standard config.
 		config.add("logLevel",
 			dv::ConfigOption::intOption(moduleNode.getAttributeDescription<dv::Config::AttributeType::INT>("logLevel"),
-				moduleNode.get<dv::Config::AttributeType::INT>("logLevel"), CAER_LOG_EMERGENCY, CAER_LOG_DEBUG));
+				CAER_LOG_NOTICE, CAER_LOG_EMERGENCY, CAER_LOG_DEBUG));
+		config.add(
+			"running", dv::ConfigOption::boolOption(
+						   moduleNode.getAttributeDescription<dv::Config::AttributeType::BOOL>("running"), true));
 	}
 
 	virtual ~ModuleBase() {

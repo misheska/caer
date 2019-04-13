@@ -107,7 +107,7 @@ void dv::Module::LoggingInit() {
 	logger.logPrefix = name;
 
 	// Per-module log level support. Initialize with global log level value.
-	moduleConfigNode.create<dvCfgType::INT>("logLevel", caerLogLevelGet(), {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
+	moduleConfigNode.create<dvCfgType::INT>("logLevel", CAER_LOG_NOTICE, {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
 		dvCfgFlags::NORMAL, "Module-specific log-level.");
 
 	moduleConfigNode.addAttributeListener(&logger.logLevel, &moduleLogLevelListener);
