@@ -4,9 +4,8 @@ ENDIF()
 
 IF (ENABLE_VISUALIZER)
 	FIND_PACKAGE(SFML 2.3.0 REQUIRED COMPONENTS graphics)
-	FIND_PACKAGE(GLEW 1.10.0 REQUIRED)
 
-	ADD_LIBRARY(visualizer SHARED visualizer.cpp visualizer_renderers.cpp)
+	ADD_LIBRARY(visualizer SHARED visualizer.cpp)
 
 	SET_TARGET_PROPERTIES(visualizer
 		PROPERTIES
@@ -16,8 +15,7 @@ IF (ENABLE_VISUALIZER)
 	TARGET_LINK_LIBRARIES(visualizer
 		PRIVATE
 			dvsdk
-			sfml-graphics
-			GLEW::GLEW)
+			sfml-graphics)
 
 	INSTALL(TARGETS visualizer DESTINATION ${DV_MODULES_DIR})
 ENDIF()
