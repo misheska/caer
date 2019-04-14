@@ -119,3 +119,16 @@ dvConfigNodeConst dvModuleInputGetInfoNode(dvModuleData moduleData, const char *
 		return (nullptr);
 	}
 }
+
+bool dvModuleInputIsConnected(dvModuleData moduleData, const char *name) {
+	auto module = static_cast<dv::Module *>(moduleData);
+
+	try {
+		return (module->inputIsConnected(name));
+	}
+	catch (const std::exception &ex) {
+		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
+
+		return (false);
+	}
+}

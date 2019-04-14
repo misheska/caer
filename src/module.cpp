@@ -779,6 +779,32 @@ const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) 
 	return (infoNode);
 }
 
+/**
+ * Check if an input is connected properly and can get data at runtime.
+ * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
+ * moduleInit() and moduleExit(). Most useful in moduleInit() to verify status
+ * of optional inputs connections.
+ *
+ * @param inputName name of input.
+ * @return true if input is connected and valid, false otherwise.
+ */
+bool dv::Module::inputIsConnected(std::string_view inputName) {
+	auto input = getModuleInput(std::string(inputName));
+	if (input == nullptr) {
+		// Not found.
+		auto msg = boost::format("Input with name '%s' doesn't exist.") % inputName;
+		throw std::out_of_range(msg.str());
+	}
+
+	auto outputLink = input->source.linkedOutput;
+	if (outputLink == nullptr) {
+		// Input can be unconnected.
+		return (false);
+	}
+
+	return (true);
+}
+
 void dv::Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);

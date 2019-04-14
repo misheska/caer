@@ -77,6 +77,10 @@ public:
 		// const_cast and then re-add const manually. Needed for transition to C++ type.
 		return (const_cast<dvConfigNode>(dvModuleInputGetUpstreamNode(moduleData, name.c_str())));
 	}
+
+	bool isConnected(const std::string &name) const {
+		return (dvModuleInputIsConnected(moduleData, name.c_str()));
+	}
 };
 
 class RuntimeOutputs {

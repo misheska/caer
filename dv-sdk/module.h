@@ -65,6 +65,7 @@ void dvModuleInputDismiss(dvModuleData moduleData, const char *name, const struc
 dvConfigNode dvModuleOutputGetInfoNode(dvModuleData moduleData, const char *name);
 dvConfigNodeConst dvModuleInputGetUpstreamNode(dvModuleData moduleData, const char *name);
 dvConfigNodeConst dvModuleInputGetInfoNode(dvModuleData moduleData, const char *name);
+bool dvModuleInputIsConnected(dvModuleData moduleData, const char *name);
 
 #ifdef __cplusplus
 }

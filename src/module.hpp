@@ -147,6 +147,7 @@ public:
 	dv::Config::Node outputGetInfoNode(std::string_view outputName);
 	const dv::Config::Node inputGetUpstreamNode(std::string_view inputName);
 	const dv::Config::Node inputGetInfoNode(std::string_view inputName);
+	bool inputIsConnected(std::string_view inputName);
 
 private:
 	void LoggingInit();
