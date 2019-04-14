@@ -8,7 +8,6 @@ SET_TARGET_PROPERTIES(framestatistics
 TARGET_LINK_LIBRARIES(framestatistics
 	PRIVATE
 		dvsdk
-		Boost::boost
 		${OpenCV_LIBS})
 
 INSTALL(TARGETS framestatistics DESTINATION ${DV_MODULES_DIR})

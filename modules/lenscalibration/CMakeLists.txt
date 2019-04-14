@@ -14,7 +14,6 @@ SET_TARGET_PROPERTIES(lenscalibration
 TARGET_LINK_LIBRARIES(lenscalibration
 	PRIVATE
 		dvsdk
-		Boost::boost
 		${OpenCV_LIBS})
 
 INSTALL(TARGETS lenscalibration DESTINATION ${DV_MODULES_DIR})
