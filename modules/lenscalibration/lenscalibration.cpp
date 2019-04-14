@@ -32,6 +32,10 @@ public:
 		in.emplace_back("frames", dv::Frame::identifier, false);
 	}
 
+	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
+		out.emplace_back("patternCorners", dv::Frame::identifier);
+	}
+
 	static const char *getDescription() {
 		return ("Lens distortion calibration (use module 'dv_Undistort' to apply undistortion).");
 	}
@@ -73,6 +77,8 @@ public:
 		}
 
 		imageSize = cv::Size(info.get<dv::CfgType::INT>("sizeX"), info.get<dv::CfgType::INT>("sizeY"));
+
+		info.copyTo(outputs.getInfoNode("patternCorners"));
 
 		advancedConfigUpdate();
 	}
@@ -127,6 +133,8 @@ public:
 	void run() override {
 		auto frame_in = inputs.get<dv::Frame>("frames");
 
+		auto corners_out = outputs.get<dv::Frame>("patternCorners");
+
 		// Calibration is done only using frames.
 		if (!calibrationCompleted) {
 			// Only work on new frames if enough time has passed between this and the last used one.
@@ -136,7 +144,7 @@ public:
 			if ((currTimestamp - lastFrameTimestamp) >= config.get<dv::CfgType::INT>("captureInterval")) {
 				lastFrameTimestamp = currTimestamp;
 
-				bool foundPoint = findNewPoints(frame_in);
+				bool foundPoint = findNewPoints(frame_in, corners_out);
 				log.warning << "Searching for new point set, result = " << foundPoint << "." << dv::logEnd;
 			}
 
@@ -155,7 +163,7 @@ public:
 		}
 	}
 
-	bool findNewPoints(dv::InputWrapper<dv::Frame> &frame) {
+	bool findNewPoints(dv::InputWrapper<dv::Frame> &frame, dv::OutputWrapper<dv::Frame> &corners) {
 		auto view = frame.getMatPointer();
 
 		int chessBoardFlags = cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE;
@@ -210,6 +218,28 @@ public:
 			}
 
 			imagePoints.push_back(pointBuf);
+
+			// Setup output frame. Same size.
+			corners->sizeX                    = frame->sizeX;
+			corners->sizeY                    = frame->sizeY;
+			corners->format                   = frame->format;
+			corners->positionX                = frame->positionX;
+			corners->positionY                = frame->positionY;
+			corners->timestamp                = frame->timestamp;
+			corners->timestampStartOfFrame    = frame->timestampStartOfFrame;
+			corners->timestampEndOfFrame      = frame->timestampEndOfFrame;
+			corners->timestampStartOfExposure = frame->timestampStartOfExposure;
+			corners->timestampEndOfExposure   = frame->timestampEndOfExposure;
+
+			// Copy image.
+			corners->pixels = frame->pixels;
+
+			auto corners_paint = corners.getMat();
+
+			// Draw the corners.
+			cv::drawChessboardCorners(corners_paint, boardSize, cv::Mat(pointBuf), found);
+
+			corners.commit();
 		}
 
 		return (found);
