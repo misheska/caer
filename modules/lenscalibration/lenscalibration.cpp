@@ -266,12 +266,12 @@ public:
 			double err = cv::norm(imagePoints[i], imagePoints2, cv::NORM_L2);
 
 			size_t n         = objectPoints[i].size();
-			perViewErrors[i] = static_cast<float>(std::sqrt(err * err / n));
+			perViewErrors[i] = static_cast<float>(std::sqrt(err * err / static_cast<double>(n)));
 			totalErr += err * err;
 			totalPoints += n;
 		}
 
-		return (std::sqrt(totalErr / totalPoints));
+		return (std::sqrt(totalErr / static_cast<double>(totalPoints)));
 	}
 
 	void calcBoardCornerPositions(std::vector<cv::Point3f> &corners) {
@@ -284,7 +284,8 @@ public:
 			case CalibrationPatterns::CIRCLES_GRID:
 				for (int y = 0; y < boardSize.height; y++) {
 					for (int x = 0; x < boardSize.width; x++) {
-						corners.push_back(cv::Point3f(x * squareSize, y * squareSize, 0));
+						corners.push_back(
+							cv::Point3f(static_cast<float>(x) * squareSize, static_cast<float>(y) * squareSize, 0));
 					}
 				}
 				break;
@@ -292,7 +293,8 @@ public:
 			case CalibrationPatterns::ASYMMETRIC_CIRCLES_GRID:
 				for (int y = 0; y < boardSize.height; y++) {
 					for (int x = 0; x < boardSize.width; x++) {
-						corners.push_back(cv::Point3f((2 * x + y % 2) * squareSize, y * squareSize, 0));
+						corners.push_back(cv::Point3f(
+							static_cast<float>(2 * x + y % 2) * squareSize, static_cast<float>(y) * squareSize, 0));
 					}
 				}
 				break;
