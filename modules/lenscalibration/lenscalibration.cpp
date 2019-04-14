@@ -1,6 +1,6 @@
+#include "dv-sdk/cross/portable_time.h"
 #include "dv-sdk/data/frame.hpp"
 #include "dv-sdk/module.hpp"
-#include <dv-sdk/cross/portable_time.h>
 
 #include <cstdio>
 #include <ctime>
@@ -11,39 +11,19 @@
 #include <opencv2/imgproc.hpp>
 #include <sstream>
 
-namespace dvCfg  = dv::Config;
-using dvCfgType  = dvCfg::AttributeType;
-using dvCfgFlags = dvCfg::AttributeFlags;
-
 class LensCalibration : public dv::ModuleBase {
 private:
-	enum CameraCalibrationPattern { CAMCALIB_CHESSBOARD, CAMCALIB_CIRCLES_GRID, CAMCALIB_ASYMMETRIC_CIRCLES_GRID };
-
-	bool doCalibration;
-	char *saveFileName;
-	uint32_t captureDelay;
-	uint32_t minNumberOfPoints;
-	float maxTotalError;
-	enum CameraCalibrationPattern calibrationPattern;
-	uint32_t boardWidth;
-	uint32_t boardHeigth;
-	float boardSquareSize;
-	float aspectRatio;
-	bool assumeZeroTangentialDistortion;
-	bool fixPrincipalPointAtCenter;
-	bool useFisheyeModel;
-
-	uint32_t imageWidth;
-	uint32_t imageHeigth;
-
-	int flag = 0;
+	cv::Size imageSize;
 	cv::Size boardSize;
+	int flag;
+
+	enum class CalibrationPatterns { CHESSBOARD, CIRCLES_GRID, ASYMMETRIC_CIRCLES_GRID } calibrationPattern;
 
 	std::vector<std::vector<cv::Point2f>> imagePoints;
 	cv::Mat cameraMatrix;
 	cv::Mat distCoeffs;
 
-	uint64_t lastFrameTimestamp;
+	int64_t lastFrameTimestamp;
 	size_t lastFoundPoints;
 	bool calibrationCompleted;
 
@@ -57,183 +37,149 @@ public:
 	}
 
 	static void getConfigOptions(dv::RuntimeConfig &config) {
-		config.add("hotPixelLearn",
-			dv::ConfigOption::boolOption(
-				"Learn the position of current hot (abnormally active) pixels, so they can be filtered out.", false,
-				dv::ButtonMode::EXECUTE));
-
-		dvConfigNodeCreateBool(
-			moduleNode, "doCalibration", false, DVCFG_FLAGS_NORMAL, "Do calibration using live images.");
-		dvConfigNodeCreateString(moduleNode, "saveFileName", "camera_calib.xml", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
-			"The name of the file where to write the calculated calibration settings.");
-		dvConfigNodeCreateInt(moduleNode, "captureDelay", 500000, 0, 60000000, DVCFG_FLAGS_NORMAL,
-			"Only use a frame for calibration if at least this much time has passed.");
-		dvConfigNodeCreateInt(moduleNode, "minNumberOfPoints", 20, 3, 100, DVCFG_FLAGS_NORMAL,
-			"Minimum number of points to start calibration with.");
-		dvConfigNodeCreateFloat(moduleNode, "maxTotalError", 0.30f, 0.0f, 1.0f, DVCFG_FLAGS_NORMAL,
-			"Maximum total average error allowed (in pixels).");
-		dvConfigNodeCreateString(moduleNode, "calibrationPattern", "chessboard", 10, 21, DVCFG_FLAGS_NORMAL,
-			"Pattern to run calibration with.");
-		dvConfigNodeAttributeModifierListOptions(
-			moduleNode, "calibrationPattern", "chessboard,circlesGrid,asymmetricCirclesGrid", false);
-		dvConfigNodeCreateInt(moduleNode, "boardWidth", 9, 1, 64, DVCFG_FLAGS_NORMAL, "The size of the board (width).");
-		dvConfigNodeCreateInt(
-			moduleNode, "boardHeigth", 5, 1, 64, DVCFG_FLAGS_NORMAL, "The size of the board (heigth).");
-		dvConfigNodeCreateFloat(moduleNode, "boardSquareSize", 1.0f, 0.0f, 1000.0f, DVCFG_FLAGS_NORMAL,
-			"The size of a square in your defined unit (point, millimeter, etc.).");
-		dvConfigNodeCreateFloat(moduleNode, "aspectRatio", 0.0f, 0.0f, 1.0f, DVCFG_FLAGS_NORMAL, "The aspect ratio.");
-		dvConfigNodeCreateBool(moduleNode, "assumeZeroTangentialDistortion", false, DVCFG_FLAGS_NORMAL,
-			"Assume zero tangential distortion.");
-		dvConfigNodeCreateBool(moduleNode, "fixPrincipalPointAtCenter", false, DVCFG_FLAGS_NORMAL,
-			"Fix the principal point at the center.");
-		dvConfigNodeCreateBool(
-			moduleNode, "useFisheyeModel", false, DVCFG_FLAGS_NORMAL, "Use fisheye camera model for calibration.");
+		config.add("calibrationFile",
+			dv::ConfigOption::fileOpenOption(
+				"The name of the file from which to load the calibration settings for undistortion.", "xml"));
+		config.add(
+			"calibrationPattern", dv::ConfigOption::listOption("Pattern to run calibration with.", 0,
+									  std::vector<std::string>{"chessboard", "circlesGrid", "asymmetricCirclesGrid"}));
+		config.add("boardWidth", dv::ConfigOption::intOption("The cv::Size of the board (width).", 9, 1, 64));
+		config.add("boardHeigth", dv::ConfigOption::intOption("The cv::Size of the board (height).", 5, 1, 64));
+		config.add("boardSquareSize",
+			dv::ConfigOption::floatOption(
+				"The cv::Size of a square in your defined unit (point, millimeter, etc.).", 1.0f, 0.0f, 1000.0f));
+		config.add("aspectRatio", dv::ConfigOption::floatOption("The aspect ratio.", 0.0f, 0.0f, 1.0f));
+		config.add("maxTotalError",
+			dv::ConfigOption::floatOption("Maximum total average error allowed (in pixels).", 0.30f, 0.0f, 1.0f));
+		config.add("assumeZeroTangentialDistortion",
+			dv::ConfigOption::boolOption("Assume zero tangential distortion.", false));
+		config.add(
+			"fixPrincipalPointAtCenter", dv::ConfigOption::boolOption("Fix the principal point at the center.", false));
+		config.add("useFisheyeModel", dv::ConfigOption::boolOption("Use fisheye camera model for calibration.", false));
+		config.add("captureInterval",
+			dv::ConfigOption::intOption(
+				"Only use a frame for calibration if at least this much time has passed, in µs.", 500000, 0, 60000000));
+		config.add("minNumberOfPoints",
+			dv::ConfigOption::intOption("Minimum number of points to start calibration with.", 20, 3, 100));
 	}
 
 	LensCalibration() {
 		// Wait for input to be ready. All inputs, once they are up and running, will
 		// have a valid sourceInfo node to query, especially if dealing with data.
 		// Allocate map using info from sourceInfo.
-		auto info = inputs.getInfoNode("events");
+		auto info = inputs.getInfoNode("frames");
 		if (!info) {
-			throw std::runtime_error("Change events input not ready, upstream module not running.");
+			throw std::runtime_error("Frame input not ready, upstream module not running.");
 		}
 
-		sizeX = static_cast<int16_t>(info.get<dvCfgType::INT>("sizeX"));
-		sizeY = static_cast<int16_t>(info.get<dvCfgType::INT>("sizeY"));
+		imageSize = cv::Size(info.get<dv::CfgType::INT>("sizeX"), info.get<dv::CfgType::INT>("sizeY"));
 
-		// Populate event output info node, keep same as input info node.
-		info.copyTo(outputs.getInfoNode("events"));
+		advancedConfigUpdate();
 	}
 
 	void advancedConfigUpdate() override {
-		// Parse calibration pattern string.
-		char *calibPattern = dvConfigNodeGetString(moduleData->moduleNode, "calibrationPattern");
+		// Parse available choices into enum value.
+		auto selectedCalibrationPattern = config.get<dv::CfgType::STRING>("calibrationPattern");
 
-		if (caerStrEquals(calibPattern, "chessboard")) {
-			state->settings.calibrationPattern = CAMCALIB_CHESSBOARD;
+		if (selectedCalibrationPattern == "circlesGrid") {
+			calibrationPattern = CalibrationPatterns::CIRCLES_GRID;
 		}
-		else if (caerStrEquals(calibPattern, "circlesGrid")) {
-			state->settings.calibrationPattern = CAMCALIB_CIRCLES_GRID;
-		}
-		else if (caerStrEquals(calibPattern, "asymmetricCirclesGrid")) {
-			state->settings.calibrationPattern = CAMCALIB_ASYMMETRIC_CIRCLES_GRID;
+		else if (selectedCalibrationPattern == "asymmetricCirclesGrid") {
+			calibrationPattern = CalibrationPatterns::ASYMMETRIC_CIRCLES_GRID;
 		}
 		else {
-			dvModuleLog(moduleData, CAER_LOG_ERROR,
-				"Invalid calibration pattern defined. Select one of: 'chessboard', "
-				"'circlesGrid' or 'asymmetricCirclesGrid'. Defaulting to "
-				"'chessboard'.");
-
-			state->settings.calibrationPattern = CAMCALIB_CHESSBOARD;
+			// Default choice.
+			calibrationPattern = CalibrationPatterns::CHESSBOARD;
 		}
+
+		if (config.get<dv::CfgType::BOOL>("useFisheyeModel")) {
+			// The fisheye model has its own enum, so overwrite the flags.
+			flag = cv::fisheye::CALIB_FIX_SKEW | cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC | cv::fisheye::CALIB_FIX_K2
+				   | cv::fisheye::CALIB_FIX_K3 | cv::fisheye::CALIB_FIX_K4;
+		}
+		else {
+			flag = cv::CALIB_FIX_K4 | cv::CALIB_FIX_K5;
+
+			if (config.get<dv::CfgType::FLOAT>("aspectRatio") != 0.0f) {
+				flag |= cv::CALIB_FIX_ASPECT_RATIO;
+			}
+
+			if (config.get<dv::CfgType::BOOL>("assumeZeroTangentialDistortion")) {
+				flag |= cv::CALIB_ZERO_TANGENT_DIST;
+			}
+		}
+
+		if (config.get<dv::CfgType::BOOL>("fixPrincipalPointAtCenter")) {
+			flag |= cv::CALIB_FIX_PRINCIPAL_POINT;
+		}
+
+		boardSize = cv::Size(config.get<dv::CfgType::INT>("boardWidth"), config.get<dv::CfgType::INT>("boardHeight"));
 
 		// Reset calibration status after any config change.
-		state->lastFrameTimestamp   = 0;
-		state->lastFoundPoints      = 0;
-		state->calibrationCompleted = false;
-		state->calibrationLoaded    = false;
-
-		if (settings->useFisheyeModel) {
-			// The fisheye model has its own enum, so overwrite the flags.
-			flag = fisheye::CALIB_FIX_SKEW | fisheye::CALIB_RECOMPUTE_EXTRINSIC | fisheye::CALIB_FIX_K2
-				   | fisheye::CALIB_FIX_K3 | fisheye::CALIB_FIX_K4;
-		}
-		else {
-			flag = CALIB_FIX_K4 | CALIB_FIX_K5;
-
-			if (settings->aspectRatio == 0.0f) {
-				flag |= CALIB_FIX_ASPECT_RATIO;
-			}
-
-			if (settings->assumeZeroTangentialDistortion) {
-				flag |= CALIB_ZERO_TANGENT_DIST;
-			}
-
-			if (settings->fixPrincipalPointAtCenter) {
-				flag |= CALIB_FIX_PRINCIPAL_POINT;
-			}
-		}
-
-		// Update board size.
-		boardSize.width  = settings->boardWidth;
-		boardSize.height = settings->boardHeigth;
+		lastFrameTimestamp   = 0;
+		lastFoundPoints      = 0;
+		calibrationCompleted = false;
 
 		// Clear current image points.
 		imagePoints.clear();
 	}
 
 	void run() override {
-		auto evt_in  = inputs.get<dv::EventPacket>("events");
-		auto evt_out = outputs.get<dv::EventPacket>("events");
-
-		bool hotPixelEnabled = config.get<dvCfgType::BOOL>("hotPixelEnabled");
+		auto frame_in = inputs.get<dv::Frame>("frames");
 
 		// Calibration is done only using frames.
-		if (state->settings.doCalibration && !state->calibrationCompleted && frame != NULL) {
-			CAER_FRAME_ITERATOR_VALID_START(frame)
+		if (!calibrationCompleted) {
 			// Only work on new frames if enough time has passed between this and the last used one.
-			uint64_t currTimestamp = U64T(caerFrameEventGetTSStartOfFrame64(caerFrameIteratorElement, frame));
+			int64_t currTimestamp = frame_in->timestamp;
 
 			// If enough time has passed, try to add a new point set.
-			if ((currTimestamp - state->lastFrameTimestamp) >= state->settings.captureDelay) {
-				state->lastFrameTimestamp = currTimestamp;
+			if ((currTimestamp - lastFrameTimestamp) >= config.get<dv::CfgType::INT>("captureInterval")) {
+				lastFrameTimestamp = currTimestamp;
 
-				bool foundPoint = calibration_findNewPoints(state->cpp_class, caerFrameIteratorElement);
-				dvModuleLog(moduleData, CAER_LOG_WARNING, "Searching for new point set, result = %d.", foundPoint);
+				bool foundPoint = findNewPoints(frame_in);
+				log.warning << "Searching for new point set, result = " << foundPoint << "." << dv::logEnd;
 			}
-			CAER_FRAME_ITERATOR_VALID_END
 
 			// If enough points have been found in this round, try doing calibration.
-			size_t foundPoints = calibration_foundPoints(state->cpp_class);
+			size_t foundPoints = imagePoints.size();
 
-			if (foundPoints >= state->settings.minNumberOfPoints && foundPoints > state->lastFoundPoints) {
-				state->lastFoundPoints = foundPoints;
+			if (foundPoints >= static_cast<size_t>(config.get<dv::CfgType::INT>("minNumberOfPoints"))
+				&& foundPoints > lastFoundPoints) {
+				lastFoundPoints = foundPoints;
 
 				double totalAvgError;
-				state->calibrationCompleted = calibration_runCalibrationAndSave(state->cpp_class, &totalAvgError);
-				dvModuleLog(moduleData, CAER_LOG_WARNING, "Executing calibration, result = %d, error = %f.",
-					state->calibrationCompleted, totalAvgError);
+				calibrationCompleted = runCalibrationAndSave(&totalAvgError);
+				log.warning << "Executing calibration, result = " << calibrationCompleted
+							<< ", error = " << totalAvgError << "." << dv::logEnd;
 			}
 		}
 	}
 
-	bool findNewPoints(caerFrameEvent frame) {
-		if (frame == NULL || !caerFrameEventIsValid(frame)) {
-			return (false);
-		}
+	bool findNewPoints(dv::InputWrapper<dv::Frame> &frame) {
+		auto view = frame.getMatPointer();
 
-		// Initialize OpenCV Mat based on caerFrameEvent data directly (no image copy).
-		Size frameSize(caerFrameEventGetLengthX(frame), caerFrameEventGetLengthY(frame));
-		Mat orig(frameSize, CV_16UC(caerFrameEventGetChannelNumber(frame)), caerFrameEventGetPixelArrayUnsafe(frame));
+		int chessBoardFlags = cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE;
 
-		// Create a new Mat that has only 8 bit depth from the original 16 bit one.
-		// findCorner functions in OpenCV only support 8 bit depth.
-		Mat view;
-		orig.convertTo(view, CV_8UC(orig.channels()), 1.0 / 256.0);
-
-		int chessBoardFlags = CALIB_CB_ADAPTIVE_THRESH | CALIB_CB_NORMALIZE_IMAGE;
-
-		if (!settings->useFisheyeModel) {
+		if (!config.get<dv::CfgType::BOOL>("useFisheyeModel")) {
 			// Fast check erroneously fails with high distortions like fisheye lens.
-			chessBoardFlags |= CALIB_CB_FAST_CHECK;
+			chessBoardFlags |= cv::CALIB_CB_FAST_CHECK;
 		}
 
 		// Find feature points on the input image.
-		vector<Point2f> pointBuf;
+		std::vector<cv::Point2f> pointBuf;
 		bool found;
 
-		switch (settings->calibrationPattern) {
-			case CAMCALIB_CHESSBOARD:
-				found = findChessboardCorners(view, boardSize, pointBuf, chessBoardFlags);
+		switch (calibrationPattern) {
+			case CalibrationPatterns::CHESSBOARD:
+				found = cv::findChessboardCorners(*view, boardSize, pointBuf, chessBoardFlags);
 				break;
 
-			case CAMCALIB_CIRCLES_GRID:
-				found = findCirclesGrid(view, boardSize, pointBuf);
+			case CalibrationPatterns::CIRCLES_GRID:
+				found = cv::findCirclesGrid(*view, boardSize, pointBuf);
 				break;
 
-			case CAMCALIB_ASYMMETRIC_CIRCLES_GRID:
-				found = findCirclesGrid(view, boardSize, pointBuf, CALIB_CB_ASYMMETRIC_GRID);
+			case CalibrationPatterns::ASYMMETRIC_CIRCLES_GRID:
+				found = cv::findCirclesGrid(*view, boardSize, pointBuf, cv::CALIB_CB_ASYMMETRIC_GRID);
 				break;
 
 			default:
@@ -243,24 +189,24 @@ public:
 
 		if (found) {
 			// Improve the found corners' coordinate accuracy for chessboard pattern.
-			if (settings->calibrationPattern == CAMCALIB_CHESSBOARD) {
-				Mat viewGray;
+			if (calibrationPattern == CalibrationPatterns::CHESSBOARD) {
+				cv::Mat viewGray;
 
 				// Only convert color if not grayscale already.
-				if (view.channels() == GRAYSCALE) {
-					viewGray = view;
+				if (view->channels() == 1) {
+					viewGray = *view;
 				}
 				else {
-					if (view.channels() == RGB) {
-						cvtColor(view, viewGray, COLOR_RGB2GRAY);
+					if (view->channels() == 3) {
+						cv::cvtColor(*view, viewGray, cv::COLOR_BGR2GRAY);
 					}
-					else if (view.channels() == RGBA) {
-						cvtColor(view, viewGray, COLOR_RGBA2GRAY);
+					else if (view->channels() == 4) {
+						cv::cvtColor(*view, viewGray, cv::COLOR_BGRA2GRAY);
 					}
 				}
 
-				cornerSubPix(viewGray, pointBuf, Size(5, 5), Size(-1, -1),
-					TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 30, 0.1));
+				cv::cornerSubPix(viewGray, pointBuf, cv::Size(11, 11), cv::Size(-1, -1),
+					cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 30, 0.1));
 			}
 
 			imagePoints.push_back(pointBuf);
@@ -269,32 +215,28 @@ public:
 		return (found);
 	}
 
-	size_t foundPoints(void) {
-		return (imagePoints.size());
-	}
-
-	double computeReprojectionErrors(const vector<vector<Point3f>> &objectPoints,
-		const vector<vector<Point2f>> &imagePoints, const vector<Mat> &rvecs, const vector<Mat> &tvecs,
-		const Mat &cameraMatrix, const Mat &distCoeffs, vector<float> &perViewErrors, bool fisheye) {
-		vector<Point2f> imagePoints2;
+	static double computeReprojectionErrors(const std::vector<std::vector<cv::Point3f>> &objectPoints,
+		const std::vector<std::vector<cv::Point2f>> &imagePoints, const std::vector<cv::Mat> &rvecs,
+		const std::vector<cv::Mat> &tvecs, const cv::Mat &cameraMatrix, const cv::Mat &distCoeffs,
+		std::vector<float> &perViewErrors, bool fisheye) {
+		std::vector<cv::Point2f> imagePoints2;
 		size_t totalPoints = 0;
 		double totalErr    = 0;
-		double err;
 
 		perViewErrors.resize(objectPoints.size());
 
 		for (size_t i = 0; i < objectPoints.size(); i++) {
 			if (fisheye) {
-				fisheye::projectPoints(objectPoints[i], imagePoints2, rvecs[i], tvecs[i], cameraMatrix, distCoeffs);
+				cv::fisheye::projectPoints(objectPoints[i], imagePoints2, rvecs[i], tvecs[i], cameraMatrix, distCoeffs);
 			}
 			else {
-				projectPoints(objectPoints[i], rvecs[i], tvecs[i], cameraMatrix, distCoeffs, imagePoints2);
+				cv::projectPoints(objectPoints[i], rvecs[i], tvecs[i], cameraMatrix, distCoeffs, imagePoints2);
 			}
 
-			err = norm(imagePoints[i], imagePoints2, NORM_L2);
+			double err = cv::norm(imagePoints[i], imagePoints2, cv::NORM_L2);
 
 			size_t n         = objectPoints[i].size();
-			perViewErrors[i] = (float) std::sqrt(err * err / n);
+			perViewErrors[i] = static_cast<float>(std::sqrt(err * err / n));
 			totalErr += err * err;
 			totalPoints += n;
 		}
@@ -302,24 +244,25 @@ public:
 		return (std::sqrt(totalErr / totalPoints));
 	}
 
-	void calcBoardCornerPositions(
-		Size boardSize, float squareSize, vector<Point3f> &corners, enum CameraCalibrationPattern patternType) {
+	void calcBoardCornerPositions(std::vector<cv::Point3f> &corners) {
 		corners.clear();
 
-		switch (patternType) {
-			case CAMCALIB_CHESSBOARD:
-			case CAMCALIB_CIRCLES_GRID:
+		float squareSize = config.get<dv::CfgType::FLOAT>("boardSquareSize");
+
+		switch (calibrationPattern) {
+			case CalibrationPatterns::CHESSBOARD:
+			case CalibrationPatterns::CIRCLES_GRID:
 				for (int y = 0; y < boardSize.height; y++) {
 					for (int x = 0; x < boardSize.width; x++) {
-						corners.push_back(Point3f(x * squareSize, y * squareSize, 0));
+						corners.push_back(cv::Point3f(x * squareSize, y * squareSize, 0));
 					}
 				}
 				break;
 
-			case CAMCALIB_ASYMMETRIC_CIRCLES_GRID:
+			case CalibrationPatterns::ASYMMETRIC_CIRCLES_GRID:
 				for (int y = 0; y < boardSize.height; y++) {
 					for (int x = 0; x < boardSize.width; x++) {
-						corners.push_back(Point3f((2 * x + y % 2) * squareSize, y * squareSize, 0));
+						corners.push_back(cv::Point3f((2 * x + y % 2) * squareSize, y * squareSize, 0));
 					}
 				}
 				break;
@@ -329,59 +272,59 @@ public:
 		}
 	}
 
-	bool runCalibration(Size &imageSize, Mat &cameraMatrix, Mat &distCoeffs, vector<vector<Point2f>> imagePoints,
-		vector<float> &reprojErrs, double &totalAvgErr) {
+	bool runCalibration(std::vector<float> &reprojErrs, double &totalAvgErr) {
 		// 3x3 camera matrix to fill in.
-		cameraMatrix = Mat::eye(3, 3, CV_64F);
+		cameraMatrix = cv::Mat::eye(3, 3, CV_64F);
 
-		if (flag & CALIB_FIX_ASPECT_RATIO) {
-			cameraMatrix.at<double>(0, 0) = settings->aspectRatio;
+		if (flag & cv::CALIB_FIX_ASPECT_RATIO) {
+			cameraMatrix.at<double>(0, 0) = static_cast<double>(config.get<dv::CfgType::FLOAT>("aspectRatio"));
 		}
 
-		if (settings->useFisheyeModel) {
-			distCoeffs = Mat::zeros(4, 1, CV_64F);
+		if (config.get<dv::CfgType::BOOL>("useFisheyeModel")) {
+			distCoeffs = cv::Mat::zeros(4, 1, CV_64F);
 		}
 		else {
-			distCoeffs = Mat::zeros(8, 1, CV_64F);
+			distCoeffs = cv::Mat::zeros(8, 1, CV_64F);
 		}
 
-		vector<vector<Point3f>> objectPoints(1);
+		std::vector<std::vector<cv::Point3f>> objectPoints(1);
 
-		calcBoardCornerPositions(boardSize, settings->boardSquareSize, objectPoints[0], settings->calibrationPattern);
+		calcBoardCornerPositions(objectPoints[0]);
 
 		objectPoints.resize(imagePoints.size(), objectPoints[0]);
 
 		// Find intrinsic and extrinsic camera parameters.
-		vector<Mat> rvecs, tvecs;
+		std::vector<cv::Mat> rvecs, tvecs;
 
-		if (settings->useFisheyeModel) {
-			Mat _rvecs, _tvecs;
-			fisheye::calibrate(objectPoints, imagePoints, imageSize, cameraMatrix, distCoeffs, _rvecs, _tvecs, flag);
+		if (config.get<dv::CfgType::BOOL>("useFisheyeModel")) {
+			cv::Mat _rvecs, _tvecs;
+			cv::fisheye::calibrate(
+				objectPoints, imagePoints, imageSize, cameraMatrix, distCoeffs, _rvecs, _tvecs, flag);
 
-			rvecs.reserve(_rvecs.rows);
-			tvecs.reserve(_tvecs.rows);
+			rvecs.reserve(static_cast<size_t>(_rvecs.rows));
+			tvecs.reserve(static_cast<size_t>(_tvecs.rows));
 
 			for (size_t i = 0; i < objectPoints.size(); i++) {
-				rvecs.push_back(_rvecs.row(i));
-				tvecs.push_back(_tvecs.row(i));
+				rvecs.push_back(_rvecs.row(static_cast<int>(i)));
+				tvecs.push_back(_tvecs.row(static_cast<int>(i)));
 			}
 		}
 		else {
-			calibrateCamera(objectPoints, imagePoints, imageSize, cameraMatrix, distCoeffs, rvecs, tvecs, flag);
+			cv::calibrateCamera(objectPoints, imagePoints, imageSize, cameraMatrix, distCoeffs, rvecs, tvecs, flag);
 		}
 
-		totalAvgErr = computeReprojectionErrors(
-			objectPoints, imagePoints, rvecs, tvecs, cameraMatrix, distCoeffs, reprojErrs, settings->useFisheyeModel);
+		totalAvgErr = computeReprojectionErrors(objectPoints, imagePoints, rvecs, tvecs, cameraMatrix, distCoeffs,
+			reprojErrs, config.get<dv::CfgType::BOOL>("useFisheyeModel"));
 
-		bool ok = checkRange(cameraMatrix) && checkRange(distCoeffs) && totalAvgErr < settings->maxTotalError;
+		bool ok = cv::checkRange(cameraMatrix) && cv::checkRange(distCoeffs)
+				  && (totalAvgErr < static_cast<double>(config.get<dv::CfgType::FLOAT>("maxTotalError")));
 
 		return (ok);
 	}
 
 	// Print camera parameters to the output file
-	bool saveCameraParams(
-		Size &imageSize, Mat &cameraMatrix, Mat &distCoeffs, const vector<float> &reprojErrs, double totalAvgErr) {
-		FileStorage fs(settings->saveFileName, FileStorage::WRITE);
+	bool saveCameraParams(const std::vector<float> &reprojErrs, double totalAvgErr) {
+		cv::FileStorage fs(config.get<dv::CfgType::STRING>("calibrationFile"), cv::FileStorage::WRITE);
 
 		// Check file.
 		if (!fs.isOpened()) {
@@ -396,47 +339,49 @@ public:
 		fs << "calibration_time" << buf;
 
 		if (!reprojErrs.empty()) {
-			fs << "nr_of_frames" << (int) reprojErrs.size();
+			fs << "nr_of_frames" << reprojErrs.size();
 		}
 
 		fs << "image_width" << imageSize.width;
 		fs << "image_height" << imageSize.height;
 		fs << "board_width" << boardSize.width;
 		fs << "board_height" << boardSize.height;
-		fs << "square_size" << settings->boardSquareSize;
+		fs << "square_size" << config.get<dv::CfgType::FLOAT>("boardSquareSize");
 
-		if (flag & CALIB_FIX_ASPECT_RATIO) {
-			fs << "aspect_ratio" << settings->aspectRatio;
+		if (flag & cv::CALIB_FIX_ASPECT_RATIO) {
+			fs << "aspect_ratio" << config.get<dv::CfgType::FLOAT>("aspectRatio");
 		}
 
 		if (flag) {
-			if (settings->useFisheyeModel) {
-				sprintf(buf, "flags:%s%s%s%s%s%s", flag & fisheye::CALIB_FIX_SKEW ? " +fix_skew" : "",
-					flag & fisheye::CALIB_FIX_K1 ? " +fix_k1" : "", flag & fisheye::CALIB_FIX_K2 ? " +fix_k2" : "",
-					flag & fisheye::CALIB_FIX_K3 ? " +fix_k3" : "", flag & fisheye::CALIB_FIX_K4 ? " +fix_k4" : "",
-					flag & fisheye::CALIB_RECOMPUTE_EXTRINSIC ? " +recompute_extrinsic" : "");
+			if (config.get<dv::CfgType::BOOL>("useFisheyeModel")) {
+				sprintf(buf, "flags:%s%s%s%s%s%s", (flag & cv::fisheye::CALIB_FIX_SKEW) ? " +fix_skew" : "",
+					(flag & cv::fisheye::CALIB_FIX_K1) ? " +fix_k1" : "",
+					(flag & cv::fisheye::CALIB_FIX_K2) ? " +fix_k2" : "",
+					(flag & cv::fisheye::CALIB_FIX_K3) ? " +fix_k3" : "",
+					(flag & cv::fisheye::CALIB_FIX_K4) ? " +fix_k4" : "",
+					(flag & cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC) ? " +recompute_extrinsic" : "");
 			}
 			else {
 				sprintf(buf, "flags:%s%s%s%s%s%s%s%s%s%s",
-					flag & CALIB_USE_INTRINSIC_GUESS ? " +use_intrinsic_guess" : "",
-					flag & CALIB_FIX_ASPECT_RATIO ? " +fix_aspect_ratio" : "",
-					flag & CALIB_FIX_PRINCIPAL_POINT ? " +fix_principal_point" : "",
-					flag & CALIB_ZERO_TANGENT_DIST ? " +zero_tangent_dist" : "", flag & CALIB_FIX_K1 ? " +fix_k1" : "",
-					flag & CALIB_FIX_K2 ? " +fix_k2" : "", flag & CALIB_FIX_K3 ? " +fix_k3" : "",
-					flag & CALIB_FIX_K4 ? " +fix_k4" : "", flag & CALIB_FIX_K5 ? " +fix_k5" : "",
-					flag & CALIB_FIX_K6 ? " +fix_k6" : "");
+					(flag & cv::CALIB_USE_INTRINSIC_GUESS) ? " +use_intrinsic_guess" : "",
+					(flag & cv::CALIB_FIX_ASPECT_RATIO) ? " +fix_aspect_ratio" : "",
+					(flag & cv::CALIB_FIX_PRINCIPAL_POINT) ? " +fix_principal_point" : "",
+					(flag & cv::CALIB_ZERO_TANGENT_DIST) ? " +zero_tangent_dist" : "",
+					(flag & cv::CALIB_FIX_K1) ? " +fix_k1" : "", (flag & cv::CALIB_FIX_K2) ? " +fix_k2" : "",
+					(flag & cv::CALIB_FIX_K3) ? " +fix_k3" : "", (flag & cv::CALIB_FIX_K4) ? " +fix_k4" : "",
+					(flag & cv::CALIB_FIX_K5) ? " +fix_k5" : "", (flag & cv::CALIB_FIX_K6) ? " +fix_k6" : "");
 			}
 
-#if (CV_VERSION_MAJOR >= 4) || (CV_VERSION_MAJOR == 3 && CV_VERSION_MINOR >= 2)
-			fs.writeComment(buf, 0);
-#else
+#if (CV_VERSION_MAJOR == 3 && CV_VERSION_MINOR <= 1)
 			cvWriteComment(*fs, buf, 0);
+#else
+			fs.writeComment(buf, 0);
 #endif
 		}
 
 		fs << "flags" << flag;
 
-		fs << "use_fisheye_model" << settings->useFisheyeModel;
+		fs << "use_fisheye_model" << config.get<dv::CfgType::BOOL>("useFisheyeModel");
 
 		fs << "camera_matrix" << cameraMatrix;
 		fs << "distortion_coefficients" << distCoeffs;
@@ -444,7 +389,7 @@ public:
 		fs << "avg_reprojection_error" << totalAvgErr;
 
 		if (!reprojErrs.empty()) {
-			fs << "per_view_reprojection_errors" << Mat(reprojErrs);
+			fs << "per_view_reprojection_errors" << cv::Mat(reprojErrs);
 		}
 
 		// Close file.
@@ -454,24 +399,13 @@ public:
 	}
 
 	bool runCalibrationAndSave(double *totalAvgError) {
-		// Only run if enough valid points have been accumulated.
-		if (imagePoints.size() < settings->minNumberOfPoints) {
-			return (false);
-		}
-
-		// Check that image size is properly defined.
-		if (settings->imageWidth <= 0 || settings->imageHeigth <= 0) {
-			return (false);
-		}
-
-		Size imageSize(settings->imageWidth, settings->imageHeigth);
-		vector<float> reprojErrs;
+		std::vector<float> reprojErrs;
 		*totalAvgError = 0;
 
-		bool ok = runCalibration(imageSize, cameraMatrix, distCoeffs, imagePoints, reprojErrs, *totalAvgError);
+		bool ok = runCalibration(reprojErrs, *totalAvgError);
 
 		if (ok) {
-			ok = saveCameraParams(imageSize, cameraMatrix, distCoeffs, reprojErrs, *totalAvgError);
+			ok = saveCameraParams(reprojErrs, *totalAvgError);
 		}
 
 		return (ok);
