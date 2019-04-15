@@ -4,8 +4,15 @@
 #include "frame_base.hpp"
 #include "wrappers.hpp"
 
-#include <opencv2/core.hpp>
-#include <opencv2/core/utility.hpp>
+// Allow disabling of OpenCV requirement.
+#ifndef DV_FRAME_OPENCV_SUPPORT
+#	define DV_FRAME_OPENCV_SUPPORT 1
+#endif
+
+#if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
+#	include <opencv2/core.hpp>
+#	include <opencv2/core/utility.hpp>
+#endif
 
 namespace dv {
 
@@ -14,16 +21,20 @@ private:
 	using NativeType = typename Frame::NativeTableType;
 
 	std::shared_ptr<const NativeType> ptr;
+#if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
 	std::shared_ptr<const cv::Mat> matPtr;
+#endif
 
 public:
 	InputWrapper(std::shared_ptr<const NativeType> p) : ptr(std::move(p)) {
+#if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
 		// Use custom deleter to bind life-time of main data 'ptr' to OpenCV 'matPtr'.
 		if (ptr) {
 			matPtr = std::shared_ptr<const cv::Mat>{new cv::Mat(ptr->sizeY, ptr->sizeX, static_cast<int>(ptr->format),
 														const_cast<uint8_t *>(ptr->pixels.data())),
 				[ptr = ptr](const cv::Mat *mp) { delete mp; }};
 		}
+#endif
 	}
 
 	explicit operator bool() const noexcept {
@@ -42,6 +53,7 @@ public:
 		return (ptr.get());
 	}
 
+#if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
 	/**
 	 * Return a read-only OpenCV Mat representing this frame.
 	 *
@@ -50,6 +62,7 @@ public:
 	std::shared_ptr<const cv::Mat> getMatPointer() const noexcept {
 		return (matPtr);
 	}
+#endif
 };
 
 template<> class OutputWrapper<Frame> {
@@ -112,6 +125,7 @@ public:
 		return (ptr);
 	}
 
+#if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
 	/**
 	 * Return an OpenCV Mat representing this frame.
 	 * Please note the actual backing memory comes from the Frame->pixels vector.
@@ -155,6 +169,7 @@ public:
 
 		return (cv::Mat{ptr->sizeY, ptr->sizeX, static_cast<int>(ptr->format), ptr->pixels.data()});
 	}
+#endif
 };
 
 } // namespace dv
