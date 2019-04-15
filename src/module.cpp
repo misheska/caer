@@ -403,7 +403,16 @@ void dv::Module::cleanupOutputInfoNodes() {
 	}
 }
 
-void dv::Module::handleModuleInitFailure() {
+void dv::Module::shutdownProcedure(bool doModuleExit) {
+	if (doModuleExit && info->functions->moduleExit != nullptr) {
+		try {
+			info->functions->moduleExit(this);
+		}
+		catch (const std::exception &ex) {
+			dv::Log(dv::logLevel::ERROR, "moduleExit(): '%s'.", ex.what());
+		}
+	}
+
 	// Free state memory.
 	if (info->memSize != 0) {
 		// Only deallocate if we were the original allocator.
@@ -416,6 +425,10 @@ void dv::Module::handleModuleInitFailure() {
 
 	// Cleanup output info nodes, if any exist.
 	cleanupOutputInfoNodes();
+}
+
+void dv::Module::handleModuleInitFailure(bool doModuleExit) {
+	shutdownProcedure(doModuleExit);
 
 	auto moduleConfigNode = dvCfg::Node(moduleNode);
 
@@ -518,7 +531,7 @@ void dv::Module::runStateMachine() {
 			if (moduleState == nullptr) {
 				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "memory allocation failure");
 
-				handleModuleInitFailure();
+				handleModuleInitFailure(false);
 				return;
 			}
 		}
@@ -532,7 +545,7 @@ void dv::Module::runStateMachine() {
 		if (!inputConnectivityInitialize()) {
 			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "input connectivity failure");
 
-			handleModuleInitFailure();
+			handleModuleInitFailure(false);
 			return;
 		}
 
@@ -551,7 +564,7 @@ void dv::Module::runStateMachine() {
 			catch (const std::exception &ex) {
 				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", ex.what());
 
-				handleModuleInitFailure();
+				handleModuleInitFailure(false);
 				return;
 			}
 		}
@@ -560,7 +573,7 @@ void dv::Module::runStateMachine() {
 		if (!verifyOutputInfoNodes()) {
 			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "incomplete ouput information");
 
-			handleModuleInitFailure();
+			handleModuleInitFailure(true);
 			return;
 		}
 
@@ -571,27 +584,8 @@ void dv::Module::runStateMachine() {
 		// Serialize module start/stop globally.
 		std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
-		if (info->functions->moduleExit != nullptr) {
-			try {
-				info->functions->moduleExit(this);
-			}
-			catch (const std::exception &ex) {
-				dv::Log(dv::logLevel::ERROR, "moduleExit(): '%s'.", ex.what());
-			}
-		}
-
-		// Free state memory.
-		if (info->memSize != 0) {
-			// Only deallocate if we were the original allocator.
-			free(moduleState);
-		}
-		moduleState = nullptr;
-
-		// Disconnect from other modules.
-		inputConnectivityDestroy();
-
-		// Cleanup output info nodes, if any exist.
-		cleanupOutputInfoNodes();
+		// Full shutdown.
+		shutdownProcedure(true);
 
 		isRunning = false;
 		moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
