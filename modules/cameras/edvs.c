@@ -175,6 +175,13 @@ static bool caerInputEDVSInit(dvModuleData moduleData) {
 	dvConfigNodeCreateString(sourceInfoNode, "source", sourceString, I32T(sourceStringLength), I32T(sourceStringLength),
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device source information.");
 
+	dvConfigNodeCreateString(outEventsNode, "source", sourceString, I32T(sourceStringLength), I32T(sourceStringLength),
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device source information.");
+
+	dvConfigNodeCreateString(dvConfigNodeGetRelativeNode(moduleData->moduleNode, "outputs/triggers/info/"), "source",
+		sourceString, I32T(sourceStringLength), I32T(sourceStringLength), DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
+		"Device source information.");
+
 	// Ensure good defaults for data acquisition settings.
 	// No blocking behavior due to mainloop notification, and no auto-start of
 	// all producers to ensure cAER settings are respected.
