@@ -1,30 +1,22 @@
 #include "davis_utils.h"
 
-static void caerInputDAVISConfigInit(dvConfigNode moduleNode);
+static void caerInputDAVISStaticInit(dvModuleData moduleData);
 static bool caerInputDAVISInit(dvModuleData moduleData);
 static void caerInputDAVISExit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS DAVISFunctions = {
-	.moduleConfigInit = &caerInputDAVISConfigInit,
+	.moduleStaticInit = &caerInputDAVISStaticInit,
 	.moduleInit       = &caerInputDAVISInit,
 	.moduleRun        = &caerInputDAVISCommonRun,
 	.moduleConfig     = NULL,
 	.moduleExit       = &caerInputDAVISExit,
 };
 
-static const struct caer_event_stream_out DAVISOutputs[]
-	= {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}, {.type = FRAME_EVENT}, {.type = IMU6_EVENT}};
-
 static const struct dvModuleInfoS DAVISInfo = {
-	.version           = 1,
-	.description       = "Connects to a DAVIS camera to get data.",
-	.type              = DV_MODULE_INPUT,
-	.memSize           = 0,
-	.functions         = &DAVISFunctions,
-	.inputStreams      = NULL,
-	.inputStreamsSize  = 0,
-	.outputStreams     = DAVISOutputs,
-	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(DAVISOutputs),
+	.version     = 1,
+	.description = "Connects to a DAVIS camera to get data.",
+	.memSize     = 0,
+	.functions   = &DAVISFunctions,
 };
 
 dvModuleInfo dvModuleGetInfo(void) {
@@ -38,7 +30,9 @@ static void usbConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void usbConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-static void caerInputDAVISConfigInit(dvConfigNode moduleNode) {
+static void caerInputDAVISStaticInit(dvModuleData moduleData) {
+	dvConfigNode moduleNode = moduleData->moduleNode;
+
 	// USB port/bus/SN settings/restrictions.
 	// These can be used to force connection to one specific device at startup.
 	dvConfigNodeCreateInt(moduleNode, "busNumber", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB bus number restriction.");
@@ -51,11 +45,11 @@ static void caerInputDAVISConfigInit(dvConfigNode moduleNode) {
 	dvConfigNodeCreateBool(
 		moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL, "Automatically restart module after shutdown.");
 
-	caerInputDAVISCommonSystemConfigInit(moduleNode);
+	caerInputDAVISCommonSystemConfigInit(moduleData);
 }
 
 static bool caerInputDAVISInit(dvModuleData moduleData) {
-	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).

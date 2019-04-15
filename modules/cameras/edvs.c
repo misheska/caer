@@ -4,35 +4,28 @@
 
 #include <libcaer/devices/edvs.h>
 
-#include "dv-sdk/mainloop.h"
+#include "dv-sdk/module.h"
 
-static void caerInputEDVSConfigInit(dvConfigNode moduleNode);
+static void caerInputEDVSStaticInit(dvModuleData moduleData);
 static bool caerInputEDVSInit(dvModuleData moduleData);
-static void caerInputEDVSRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerInputEDVSRun(dvModuleData moduleData);
 // CONFIG: Nothing to do here in the main thread!
 // All configuration is asynchronous through config listeners.
 static void caerInputEDVSExit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS EDVSFunctions = {
-	.moduleConfigInit = &caerInputEDVSConfigInit,
+	.moduleStaticInit = &caerInputEDVSStaticInit,
 	.moduleInit       = &caerInputEDVSInit,
 	.moduleRun        = &caerInputEDVSRun,
 	.moduleConfig     = NULL,
 	.moduleExit       = &caerInputEDVSExit,
 };
 
-static const struct caer_event_stream_out EDVSOutputs[] = {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}};
-
 static const struct dvModuleInfoS EDVSInfo = {
-	.version           = 1,
-	.description       = "Connects to an eDVS/minieDVS camera to get data.",
-	.type              = DV_MODULE_INPUT,
-	.memSize           = 0,
-	.functions         = &EDVSFunctions,
-	.inputStreams      = NULL,
-	.inputStreamsSize  = 0,
-	.outputStreams     = EDVSOutputs,
-	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(EDVSOutputs),
+	.version     = 1,
+	.description = "Connects to an eDVS/minieDVS camera to get data.",
+	.memSize     = 0,
+	.functions   = &EDVSFunctions,
 };
 
 dvModuleInfo dvModuleGetInfo(void) {
@@ -56,7 +49,13 @@ static void systemConfigListener(dvConfigNode node, void *userData, enum dvConfi
 static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
+static void caerInputEDVSStaticInit(dvModuleData moduleData) {
+	// Add outputs.
+	dvModuleRegisterOutput(moduleData, "events", "EVTS");
+	dvModuleRegisterOutput(moduleData, "triggers", "TRIG");
+
+	dvConfigNode moduleNode = moduleData->moduleNode;
+
 	// Serial port settings.
 	dvConfigNodeCreateString(
 		moduleNode, "serialPort", "/dev/ttyUSB0", 0, 128, DVCFG_FLAGS_NORMAL, "Serial port to connect to.");
@@ -127,7 +126,7 @@ static void caerInputEDVSConfigInit(dvConfigNode moduleNode) {
 }
 
 static bool caerInputEDVSInit(dvModuleData moduleData) {
-	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).

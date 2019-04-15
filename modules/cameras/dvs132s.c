@@ -5,38 +5,26 @@
 
 #include <libcaer/devices/dvs132s.h>
 
-#include <dv-sdk/cross/c11threads_posix.h>
-#include <dv-sdk/mainloop.h>
+#include "dv-sdk/module.h"
 
-static void caerInputDVS132SConfigInit(dvConfigNode moduleNode);
+static void caerInputDVS132SStaticInit(dvModuleData moduleData);
 static bool caerInputDVS132SInit(dvModuleData moduleData);
-static void caerInputDVS132SRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerInputDVS132SRun(dvModuleData moduleData);
 static void caerInputDVS132SExit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS DVS132SFunctions = {
-	.moduleConfigInit = &caerInputDVS132SConfigInit,
+	.moduleStaticInit = &caerInputDVS132SStaticInit,
 	.moduleInit       = &caerInputDVS132SInit,
 	.moduleRun        = &caerInputDVS132SRun,
 	.moduleConfig     = NULL,
 	.moduleExit       = &caerInputDVS132SExit,
 };
 
-static const struct caer_event_stream_out DVS132SOutputs[] = {
-	{.type = SPECIAL_EVENT},
-	{.type = POLARITY_EVENT},
-	{.type = IMU6_EVENT},
-};
-
 static const struct dvModuleInfoS DVS132SInfo = {
-	.version           = 1,
-	.description       = "Connects to a DVS132S camera to get data.",
-	.type              = DV_MODULE_INPUT,
-	.memSize           = 0,
-	.functions         = &DVS132SFunctions,
-	.inputStreams      = NULL,
-	.inputStreamsSize  = 0,
-	.outputStreams     = DVS132SOutputs,
-	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(DVS132SOutputs),
+	.version     = 1,
+	.description = "Connects to a DVS132S camera to get data.",
+	.memSize     = 0,
+	.functions   = &DVS132SFunctions,
 };
 
 dvModuleInfo dvModuleGetInfo(void) {
@@ -76,7 +64,14 @@ static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAtt
 
 static union dvConfigAttributeValue statisticsUpdater(void *userData, const char *key, enum dvConfigAttributeType type);
 
-static void caerInputDVS132SConfigInit(dvConfigNode moduleNode) {
+static void caerInputDVS132SStaticInit(dvModuleData moduleData) {
+	// Add outputs.
+	dvModuleRegisterOutput(moduleData, "events", "EVTS");
+	dvModuleRegisterOutput(moduleData, "triggers", "TRIG");
+	dvModuleRegisterOutput(moduleData, "imu", "IMUS");
+
+	dvConfigNode moduleNode = moduleData->moduleNode;
+
 	// USB port/bus/SN settings/restrictions.
 	// These can be used to force connection to one specific device at startup.
 	dvConfigNodeCreateInt(moduleNode, "busNumber", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB bus number restriction.");
@@ -107,7 +102,7 @@ static void caerInputDVS132SConfigInit(dvConfigNode moduleNode) {
 }
 
 static bool caerInputDVS132SInit(dvModuleData moduleData) {
-	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and
 	// module of exceptional shutdown cases (device pulled, ...).
@@ -265,7 +260,7 @@ static void caerInputDVS132SRun(dvModuleData moduleData, caerEventPacketContaine
 
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
-				   != NULL)) {
+				!= NULL)) {
 			// Update master/slave information.
 			struct caer_dvs132s_info devInfo = caerDVS132SInfoGet(moduleData->moduleState);
 

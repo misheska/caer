@@ -1,30 +1,22 @@
 #include "davis_utils.h"
 
-static void caerInputDAVISRPiConfigInit(dvConfigNode moduleNode);
+static void caerInputDAVISRPiStaticInit(dvModuleData moduleData);
 static bool caerInputDAVISRPiInit(dvModuleData moduleData);
 static void caerInputDAVISRPiExit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS DAVISRPiFunctions = {
-	.moduleConfigInit = &caerInputDAVISRPiConfigInit,
+	.moduleStaticInit = &caerInputDAVISRPiStaticInit,
 	.moduleInit       = &caerInputDAVISRPiInit,
 	.moduleRun        = &caerInputDAVISCommonRun,
 	.moduleConfig     = NULL,
 	.moduleExit       = &caerInputDAVISRPiExit,
 };
 
-static const struct caer_event_stream_out DAVISRPiOutputs[]
-	= {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}, {.type = FRAME_EVENT}, {.type = IMU6_EVENT}};
-
 static const struct dvModuleInfoS DAVISRPiInfo = {
-	.version           = 1,
-	.description       = "Connects to a DAVIS Raspberry-Pi camera module to get data.",
-	.type              = DV_MODULE_INPUT,
-	.memSize           = 0,
-	.functions         = &DAVISRPiFunctions,
-	.inputStreams      = NULL,
-	.inputStreamsSize  = 0,
-	.outputStreams     = DAVISRPiOutputs,
-	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(DAVISRPiOutputs),
+	.version     = 1,
+	.description = "Connects to a DAVIS Raspberry-Pi camera module to get data.",
+	.memSize     = 0,
+	.functions   = &DAVISRPiFunctions,
 };
 
 dvModuleInfo dvModuleGetInfo(void) {
@@ -38,12 +30,12 @@ static void aerConfigSend(dvConfigNode node, dvModuleData moduleData);
 static void aerConfigListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-static void caerInputDAVISRPiConfigInit(dvConfigNode moduleNode) {
-	caerInputDAVISCommonSystemConfigInit(moduleNode);
+static void caerInputDAVISRPiStaticInit(dvModuleData moduleData) {
+	caerInputDAVISCommonSystemConfigInit(moduleData);
 }
 
 static bool caerInputDAVISRPiInit(dvModuleData moduleData) {
-	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).

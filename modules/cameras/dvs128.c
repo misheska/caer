@@ -4,35 +4,30 @@
 
 #include <libcaer/devices/dvs128.h>
 
-#include "dv-sdk/mainloop.h"
+#include "dv-sdk/module.h"
 
-static void caerInputDVS128ConfigInit(dvConfigNode moduleNode);
+#include "aedat4_convert.h"
+
+static void caerInputDVS128StaticInit(dvModuleData moduleData);
 static bool caerInputDVS128Init(dvModuleData moduleData);
-static void caerInputDVS128Run(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerInputDVS128Run(dvModuleData moduleData);
 // CONFIG: Nothing to do here in the main thread!
 // All configuration is asynchronous through config listeners.
 static void caerInputDVS128Exit(dvModuleData moduleData);
 
 static const struct dvModuleFunctionsS DVS128Functions = {
-	.moduleConfigInit = &caerInputDVS128ConfigInit,
+	.moduleStaticInit = &caerInputDVS128StaticInit,
 	.moduleInit       = &caerInputDVS128Init,
 	.moduleRun        = &caerInputDVS128Run,
 	.moduleConfig     = NULL,
 	.moduleExit       = &caerInputDVS128Exit,
 };
 
-static const struct caer_event_stream_out DVS128Outputs[] = {{.type = SPECIAL_EVENT}, {.type = POLARITY_EVENT}};
-
 static const struct dvModuleInfoS DVS128Info = {
-	.version           = 1,
-	.description       = "Connects to a DVS128 camera to get data.",
-	.type              = DV_MODULE_INPUT,
-	.memSize           = 0,
-	.functions         = &DVS128Functions,
-	.inputStreams      = NULL,
-	.inputStreamsSize  = 0,
-	.outputStreams     = DVS128Outputs,
-	.outputStreamsSize = CAER_EVENT_STREAM_OUT_SIZE(DVS128Outputs),
+	.version     = 1,
+	.description = "Connects to a DVS128 camera to get data.",
+	.memSize     = 0,
+	.functions   = &DVS128Functions,
 };
 
 dvModuleInfo dvModuleGetInfo(void) {
@@ -56,7 +51,13 @@ static void systemConfigListener(dvConfigNode node, void *userData, enum dvConfi
 static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-static void caerInputDVS128ConfigInit(dvConfigNode moduleNode) {
+static void caerInputDVS128StaticInit(dvModuleData moduleData) {
+	// Add outputs.
+	dvModuleRegisterOutput(moduleData, "events", "EVTS");
+	dvModuleRegisterOutput(moduleData, "triggers", "TRIG");
+
+	dvConfigNode moduleNode = moduleData->moduleNode;
+
 	// USB port/bus/SN settings/restrictions.
 	// These can be used to force connection to one specific device at startup.
 	dvConfigNodeCreateInt(moduleNode, "busNumber", 0, 0, INT16_MAX, DVCFG_FLAGS_NORMAL, "USB bus number restriction.");
@@ -132,7 +133,7 @@ static void caerInputDVS128ConfigInit(dvConfigNode moduleNode) {
 }
 
 static bool caerInputDVS128Init(dvModuleData moduleData) {
-	dvModuleLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).
@@ -291,7 +292,7 @@ static void caerInputDVS128Run(dvModuleData moduleData, caerEventPacketContainer
 
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
-				   != NULL)) {
+				!= NULL)) {
 			// Update master/slave information.
 			struct caer_dvs128_info devInfo = caerDVS128InfoGet(moduleData->moduleState);
 

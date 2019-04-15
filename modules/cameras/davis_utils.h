@@ -9,12 +9,11 @@
 
 #include <libcaer/devices/davis.h>
 
-#include "dv-sdk/mainloop.h"
+#include "dv-sdk/module.h"
 
-static void caerInputDAVISCommonSystemConfigInit(dvConfigNode moduleNode);
+static void caerInputDAVISCommonSystemConfigInit(dvModuleData moduleData);
 static void caerInputDAVISCommonInit(dvModuleData moduleData, struct caer_davis_info *devInfo);
-static void caerInputDAVISCommonRun(
-	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerInputDAVISCommonRun(dvModuleData moduleData);
 static void moduleShutdownNotify(void *p);
 
 static void createDefaultBiasConfiguration(dvModuleData moduleData, const char *nodePrefix, int16_t chipID);
@@ -107,7 +106,15 @@ static inline const char *chipIDToName(int16_t chipID, bool withEndSlash) {
 	return ((withEndSlash) ? ("Unsupported/") : ("Unsupported"));
 }
 
-static void caerInputDAVISCommonSystemConfigInit(dvConfigNode moduleNode) {
+static void caerInputDAVISCommonSystemConfigInit(dvModuleData moduleData) {
+	// Add outputs.
+	dvModuleRegisterOutput(moduleData, "events", "EVTS");
+	dvModuleRegisterOutput(moduleData, "frames", "FRME");
+	dvModuleRegisterOutput(moduleData, "triggers", "TRIG");
+	dvModuleRegisterOutput(moduleData, "imu", "IMUS");
+
+	dvConfigNode moduleNode = moduleData->moduleNode;
+
 	dvConfigNode sysNode = dvConfigNodeGetRelativeNode(moduleNode, "system/");
 
 	// Packet settings (size (in events) and time interval (in µs)).
@@ -226,7 +233,7 @@ static void caerInputDAVISCommonRun(
 
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
-				   != NULL)) {
+				!= NULL)) {
 			// Update master/slave information.
 			struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 
