@@ -206,6 +206,19 @@ static void mainRunner() {
 	// After shutting down the updater, also shutdown the config server thread.
 	dv::ConfigServerStop();
 
+	// We don't remove modules here, as that would delete their configuration.
+	// But we do make sure they're all properly shut down.
+	for (auto &child : mainloopNode.getChildren()) {
+		child.put<dvCfgType::BOOL>("running", false);
+	}
+
+	// Wait for termination ...
+	for (const auto &child : mainloopNode.getChildren()) {
+		while (child.get<dvCfgType::BOOL>("isRunning")) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+	}
+
 	// Remove attribute listeners for clean shutdown.
 	systemNode.removeAttributeListener(nullptr, &systemRunningListener);
 	systemNode.removeAttributeListener(nullptr, &dv::ConfigWriteBackListener);
