@@ -44,7 +44,7 @@ private:
 
 #if defined(OS_LINUX) && OS_LINUX == 1
 	// Track system init.
-	static std::once_flag visualizerSystemIsInitialized;
+	inline static std::once_flag visualizerSystemIsInitialized{};
 #endif
 
 public:
