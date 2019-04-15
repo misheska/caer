@@ -208,9 +208,12 @@ static void mainRunner() {
 
 	// Remove attribute listeners for clean shutdown.
 	systemNode.removeAttributeListener(nullptr, &systemRunningListener);
-	modulesNode.removeAttributeListener(nullptr, &dv::ConfigWriteBackListener);
+	systemNode.removeAttributeListener(nullptr, &dv::ConfigWriteBackListener);
 	modulesNode.removeAttributeListener(nullptr, &dv::ModulesUpdateInformationListener);
 	devicesNode.removeAttributeListener(nullptr, &dv::DevicesUpdateListener);
+
+	// Write config back on shutdown.
+	dv::ConfigWriteBack();
 }
 
 static void mainSegfaultHandler(int signum) {
