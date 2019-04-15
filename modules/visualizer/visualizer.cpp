@@ -1,3 +1,5 @@
+#define DV_FRAME_OPENCV_SUPPORT 0
+
 #include "dv-sdk/data/event.hpp"
 #include "dv-sdk/data/frame.hpp"
 #include "dv-sdk/data/imu.hpp"
@@ -40,8 +42,10 @@ private:
 	bool windowMove;
 	int32_t packetSubsampleCount;
 
+#if defined(OS_LINUX) && OS_LINUX == 1
 	// Track system init.
 	static std::once_flag visualizerSystemIsInitialized;
+#endif
 
 public:
 	static void addInputs(std::vector<dv::InputDefinition> &in) {
@@ -65,16 +69,18 @@ public:
 									 VISUALIZER_ZOOM_MIN, VISUALIZER_ZOOM_MAX));
 	}
 
-	static void initSystemOnce() {
-// Call XInitThreads() on Linux.
 #if defined(OS_LINUX) && OS_LINUX == 1
+	static void initSystemOnce() {
+		// Call XInitThreads() on Linux.
 		XInitThreads();
-#endif
 	}
+#endif
 
 	Visualizer() : windowResize(false), windowMove(false), packetSubsampleCount(0) {
+#if defined(OS_LINUX) && OS_LINUX == 1
 		// Initialize visualizer framework (global font sizes). Do only once per startup!
 		std::call_once(visualizerSystemIsInitialized, &initSystemOnce);
+#endif
 
 		// Initialize visualizer. Needs size information from the source.
 		auto info = inputs.getInfoNode("visualize");
@@ -185,8 +191,8 @@ public:
 			static_cast<unsigned int>(renderSizeX), static_cast<unsigned int>(renderSizeY));
 
 		// Apply zoom to rendered content only, not statistics.
-		newRenderWindowSize.x = static_cast<unsigned int>(newRenderWindowSize.x * zoomFactor);
-		newRenderWindowSize.y = static_cast<unsigned int>(newRenderWindowSize.y * zoomFactor);
+		newRenderWindowSize.x = static_cast<unsigned int>(static_cast<float>(newRenderWindowSize.x) * zoomFactor);
+		newRenderWindowSize.y = static_cast<unsigned int>(static_cast<float>(newRenderWindowSize.y) * zoomFactor);
 
 		// Set window size to zoomed area (only if value changed!).
 		sf::Vector2u oldSize = renderWindow.getSize();
@@ -195,7 +201,8 @@ public:
 			renderWindow.setSize(newRenderWindowSize);
 
 			// Set view size to render area.
-			renderWindow.setView(sf::View(sf::FloatRect(0, 0, newRenderWindowSize.x, newRenderWindowSize.y)));
+			renderWindow.setView(sf::View(sf::FloatRect(
+				0, 0, static_cast<float>(newRenderWindowSize.x), static_cast<float>(newRenderWindowSize.y))));
 		}
 	}
 

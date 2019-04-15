@@ -34,6 +34,8 @@ public:
 	}
 
 	void draw(sf::RenderTarget &target, sf::RenderStates states) const {
+		(void) states; // Unused.
+
 		target.draw(vertices, 4, sf::Quads);
 	}
 };
