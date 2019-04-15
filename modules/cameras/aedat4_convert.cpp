@@ -28,6 +28,8 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 			const libcaer::events::PolarityEventPacket oldPacketPolarity(
 				const_cast<caerEventPacketHeader>(oldPacket), false);
 
+			newEventPacket->events.reserve(static_cast<size_t>(oldPacketPolarity.getEventValid()));
+
 			for (const auto &evt : oldPacketPolarity) {
 				if (!evt.isValid()) {
 					continue;
@@ -37,7 +39,9 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 					evt.getTimestamp64(oldPacketPolarity), evt.getX(), evt.getY(), evt.getPolarity());
 			}
 
-			dvModuleOutputCommit(moduleData, "events");
+			if (newEventPacket->events.size() > 0) {
+				dvModuleOutputCommit(moduleData, "events");
+			}
 
 			break;
 		}
@@ -104,7 +108,9 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 					}
 				}
 
-				dvModuleOutputCommit(moduleData, "frames");
+				if (newFrame->pixels.size() > 0) {
+					dvModuleOutputCommit(moduleData, "frames");
+				}
 			}
 
 			break;
@@ -116,15 +122,29 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 
 			const libcaer::events::IMU6EventPacket oldPacketIMU(const_cast<caerEventPacketHeader>(oldPacket), false);
 
+			newIMUPacket->samples.reserve(static_cast<size_t>(oldPacketIMU.getEventValid()));
+
 			for (const auto &evt : oldPacketIMU) {
 				if (!evt.isValid()) {
 					continue;
 				}
 
-				newIMUPacket->samples.emplace_back();
+				dv::IMU::NativeTableType imu{};
+				imu.timestamp      = evt.getTimestamp64(oldPacketIMU);
+				imu.temperature    = evt.getTemp();
+				imu.accelerometerX = evt.getAccelX();
+				imu.accelerometerY = evt.getAccelY();
+				imu.accelerometerZ = evt.getAccelZ();
+				imu.gyroscopeX     = evt.getGyroX();
+				imu.gyroscopeY     = evt.getGyroY();
+				imu.gyroscopeZ     = evt.getGyroZ();
+
+				newIMUPacket->samples.push_back(imu);
 			}
 
-			dvModuleOutputCommit(moduleData, "imu");
+			if (newIMUPacket->samples.size() > 0) {
+				dvModuleOutputCommit(moduleData, "imu");
+			}
 
 			break;
 		}
@@ -136,15 +156,57 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 			const libcaer::events::SpecialEventPacket oldPacketSpecial(
 				const_cast<caerEventPacketHeader>(oldPacket), false);
 
+			newTriggerPacket->triggers.reserve(static_cast<size_t>(oldPacketSpecial.getEventValid()));
+
 			for (const auto &evt : oldPacketSpecial) {
 				if (!evt.isValid()) {
 					continue;
 				}
 
-				newTriggerPacket->triggers.emplace_back();
+				dv::Trigger::NativeTableType trigger{};
+
+				if (evt.getType() == TIMESTAMP_RESET) {
+					trigger.type = dv::TriggerType::TIMESTAMP_RESET;
+				}
+				else if (evt.getType() == EXTERNAL_INPUT_RISING_EDGE) {
+					trigger.type = dv::TriggerType::EXTERNAL_SIGNAL_RISING_EDGE;
+				}
+				else if (evt.getType() == EXTERNAL_INPUT_FALLING_EDGE) {
+					trigger.type = dv::TriggerType::EXTERNAL_SIGNAL_FALLING_EDGE;
+				}
+				else if (evt.getType() == EXTERNAL_INPUT_PULSE) {
+					trigger.type = dv::TriggerType::EXTERNAL_SIGNAL_PULSE;
+				}
+				else if (evt.getType() == EXTERNAL_GENERATOR_RISING_EDGE) {
+					trigger.type = dv::TriggerType::EXTERNAL_GENERATOR_RISING_EDGE;
+				}
+				else if (evt.getType() == EXTERNAL_GENERATOR_FALLING_EDGE) {
+					trigger.type = dv::TriggerType::EXTERNAL_GENERATOR_FALLING_EDGE;
+				}
+				else if (evt.getType() == APS_FRAME_START) {
+					trigger.type = dv::TriggerType::APS_FRAME_START;
+				}
+				else if (evt.getType() == APS_FRAME_END) {
+					trigger.type = dv::TriggerType::APS_FRAME_END;
+				}
+				else if (evt.getType() == APS_EXPOSURE_START) {
+					trigger.type = dv::TriggerType::APS_EXPOSURE_START;
+				}
+				else if (evt.getType() == APS_EXPOSURE_END) {
+					trigger.type = dv::TriggerType::APS_EXPOSURE_END;
+				}
+				else {
+					continue;
+				}
+
+				trigger.timestamp = evt.getTimestamp64(oldPacketSpecial);
+
+				newTriggerPacket->triggers.push_back(trigger);
 			}
 
-			dvModuleOutputCommit(moduleData, "triggers");
+			if (newTriggerPacket->triggers.size() > 0) {
+				dvModuleOutputCommit(moduleData, "triggers");
+			}
 
 			break;
 		}
