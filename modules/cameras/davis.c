@@ -49,14 +49,14 @@ static void caerInputDAVISStaticInit(dvModuleData moduleData) {
 }
 
 static bool caerInputDAVISInit(dvModuleData moduleData) {
-	dvLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvLog(CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).
-	char *serialNumber      = dvConfigNodeGetString(moduleData->moduleNode, "serialNumber");
-	moduleData->moduleState = caerDeviceOpen(U16T(moduleData->moduleID), CAER_DEVICE_DAVIS,
-		U8T(dvConfigNodeGetInt(moduleData->moduleNode, "busNumber")),
-		U8T(dvConfigNodeGetInt(moduleData->moduleNode, "devAddress")), serialNumber);
+	char *serialNumber = dvConfigNodeGetString(moduleData->moduleNode, "serialNumber");
+	moduleData->moduleState
+		= caerDeviceOpen(0, CAER_DEVICE_DAVIS, U8T(dvConfigNodeGetInt(moduleData->moduleNode, "busNumber")),
+			U8T(dvConfigNodeGetInt(moduleData->moduleNode, "devAddress")), serialNumber);
 	free(serialNumber);
 
 	if (moduleData->moduleState == NULL) {
@@ -68,25 +68,6 @@ static bool caerInputDAVISInit(dvModuleData moduleData) {
 
 	caerInputDAVISCommonInit(moduleData, &devInfo);
 
-	// Generate sub-system string for module.
-	char *prevAdditionStart = strchr(moduleData->moduleSubSystemString, '[');
-
-	if (prevAdditionStart != NULL) {
-		*prevAdditionStart = '\0';
-	}
-
-	size_t subSystemStringLength
-		= (size_t) snprintf(NULL, 0, "%s[SN %s, %" PRIu8 ":%" PRIu8 "]", moduleData->moduleSubSystemString,
-			devInfo.deviceSerialNumber, devInfo.deviceUSBBusNumber, devInfo.deviceUSBDeviceAddress);
-
-	char subSystemString[subSystemStringLength + 1];
-	snprintf(subSystemString, subSystemStringLength + 1, "%s[SN %s, %" PRIu8 ":%" PRIu8 "]",
-		moduleData->moduleSubSystemString, devInfo.deviceSerialNumber, devInfo.deviceUSBBusNumber,
-		devInfo.deviceUSBDeviceAddress);
-	subSystemString[subSystemStringLength] = '\0';
-
-	dvModuleSetLogString(moduleData, subSystemString);
-
 	// Create default settings and send them to the device.
 	createDefaultBiasConfiguration(moduleData, chipIDToName(devInfo.chipID, true), devInfo.chipID);
 	createDefaultLogicConfiguration(moduleData, chipIDToName(devInfo.chipID, true), &devInfo);
@@ -94,8 +75,8 @@ static bool caerInputDAVISInit(dvModuleData moduleData) {
 	sendDefaultConfiguration(moduleData, &devInfo);
 
 	// Start data acquisition.
-	bool ret = caerDeviceDataStart(moduleData->moduleState, &dvMainloopDataNotifyIncrease,
-		&dvMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
+	bool ret
+		= caerDeviceDataStart(moduleData->moduleState, NULL, NULL, NULL, &moduleShutdownNotify, moduleData->moduleNode);
 
 	if (!ret) {
 		// Failed to start data acquisition, close device and exit.

@@ -35,11 +35,11 @@ static void caerInputDAVISRPiStaticInit(dvModuleData moduleData) {
 }
 
 static bool caerInputDAVISRPiInit(dvModuleData moduleData) {
-	dvLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvLog(CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).
-	moduleData->moduleState = caerDeviceOpen(U16T(moduleData->moduleID), CAER_DEVICE_DAVIS_RPI, 0, 0, NULL);
+	moduleData->moduleState = caerDeviceOpen(0, CAER_DEVICE_DAVIS_RPI, 0, 0, NULL);
 
 	if (moduleData->moduleState == NULL) {
 		// Failed to open device.
@@ -57,8 +57,8 @@ static bool caerInputDAVISRPiInit(dvModuleData moduleData) {
 	sendDefaultConfiguration(moduleData, &devInfo);
 
 	// Start data acquisition.
-	bool ret = caerDeviceDataStart(moduleData->moduleState, &dvMainloopDataNotifyIncrease,
-		&dvMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
+	bool ret
+		= caerDeviceDataStart(moduleData->moduleState, NULL, NULL, NULL, &moduleShutdownNotify, moduleData->moduleNode);
 
 	if (!ret) {
 		// Failed to start data acquisition, close device and exit.

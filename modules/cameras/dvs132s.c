@@ -7,6 +7,10 @@
 
 #include "dv-sdk/module.h"
 
+#include "aedat4_convert.h"
+
+#include <time.h>
+
 static void caerInputDVS132SStaticInit(dvModuleData moduleData);
 static bool caerInputDVS132SInit(dvModuleData moduleData);
 static void caerInputDVS132SRun(dvModuleData moduleData);
@@ -102,14 +106,14 @@ static void caerInputDVS132SStaticInit(dvModuleData moduleData) {
 }
 
 static bool caerInputDVS132SInit(dvModuleData moduleData) {
-	dvLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvLog(CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and
 	// module of exceptional shutdown cases (device pulled, ...).
-	char *serialNumber      = dvConfigNodeGetString(moduleData->moduleNode, "serialNumber");
-	moduleData->moduleState = caerDeviceOpen(U16T(moduleData->moduleID), CAER_DEVICE_DVS132S,
-		U8T(dvConfigNodeGetInt(moduleData->moduleNode, "busNumber")),
-		U8T(dvConfigNodeGetInt(moduleData->moduleNode, "devAddress")), serialNumber);
+	char *serialNumber = dvConfigNodeGetString(moduleData->moduleNode, "serialNumber");
+	moduleData->moduleState
+		= caerDeviceOpen(0, CAER_DEVICE_DVS132S, U8T(dvConfigNodeGetInt(moduleData->moduleNode, "busNumber")),
+			U8T(dvConfigNodeGetInt(moduleData->moduleNode, "devAddress")), serialNumber);
 	free(serialNumber);
 
 	if (moduleData->moduleState == NULL) {
@@ -119,7 +123,7 @@ static bool caerInputDVS132SInit(dvModuleData moduleData) {
 
 	// Initialize per-device log-level to module log-level.
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_LOG, CAER_HOST_CONFIG_LOG_LEVEL,
-		atomic_load(&moduleData->moduleLogLevel));
+		U32T(dvConfigNodeGetInt(moduleData->moduleNode, "logLevel")));
 
 	// Put global source information into config.
 	struct caer_dvs132s_info devInfo = caerDVS132SInfoGet(moduleData->moduleState);
@@ -142,10 +146,6 @@ static bool caerInputDVS132SInit(dvModuleData moduleData) {
 
 	dvConfigNodeCreateBool(sourceInfoNode, "deviceIsMaster", devInfo.deviceIsMaster,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Timestamp synchronization support: device master status.");
-	dvConfigNodeCreateInt(sourceInfoNode, "polaritySizeX", devInfo.dvsSizeX, devInfo.dvsSizeX, devInfo.dvsSizeX,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Polarity events width.");
-	dvConfigNodeCreateInt(sourceInfoNode, "polaritySizeY", devInfo.dvsSizeY, devInfo.dvsSizeY, devInfo.dvsSizeY,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Polarity events height.");
 
 	// Extra features.
 	dvConfigNodeCreateBool(sourceInfoNode, "muxHasStatistics", devInfo.muxHasStatistics,
@@ -156,45 +156,29 @@ static bool caerInputDVS132SInit(dvModuleData moduleData) {
 	dvConfigNodeCreateBool(sourceInfoNode, "dvsHasStatistics", devInfo.dvsHasStatistics,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device supports FPGA DVS statistics.");
 
-	// Put source information for generic visualization, to be used to display and
-	// debug filter information.
-	int16_t dataSizeX = devInfo.dvsSizeX;
-	int16_t dataSizeY = devInfo.dvsSizeY;
-
-	dvConfigNodeCreateInt(sourceInfoNode, "dataSizeX", dataSizeX, dataSizeX, dataSizeX,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Data width.");
-	dvConfigNodeCreateInt(sourceInfoNode, "dataSizeY", dataSizeY, dataSizeY, dataSizeY,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Data height.");
+	dvConfigNode outEventsNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "outputs/events/info/");
+	dvConfigNodeCreateInt(outEventsNode, "sizeX", devInfo.dvsSizeX, devInfo.dvsSizeX, devInfo.dvsSizeX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Events width (X resolution).");
+	dvConfigNodeCreateInt(outEventsNode, "sizeY", devInfo.dvsSizeY, devInfo.dvsSizeY, devInfo.dvsSizeY,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Events height (Y resolution).");
 
 	// Generate source string for output modules.
-	size_t sourceStringLength
-		= (size_t) snprintf(NULL, 0, "#Source %" PRIu16 ": %s\r\n", moduleData->moduleID, "DVS132S");
+	size_t sourceStringLength = (size_t) snprintf(NULL, 0, "%s[SN %s, %" PRIu8 ":%" PRIu8 "]", "DVS132S",
+		devInfo.deviceSerialNumber, devInfo.deviceUSBBusNumber, devInfo.deviceUSBDeviceAddress);
 
 	char sourceString[sourceStringLength + 1];
-	snprintf(sourceString, sourceStringLength + 1, "#Source %" PRIu16 ": %s\r\n", moduleData->moduleID, "DVS132S");
+	snprintf(sourceString, sourceStringLength + 1, "%s[SN %s, %" PRIu8 ":%" PRIu8 "]", "DVS132S",
+		devInfo.deviceSerialNumber, devInfo.deviceUSBBusNumber, devInfo.deviceUSBDeviceAddress);
 	sourceString[sourceStringLength] = '\0';
 
-	dvConfigNodeCreateString(sourceInfoNode, "sourceString", sourceString, sourceStringLength, sourceStringLength,
+	dvConfigNodeCreateString(sourceInfoNode, "source", sourceString, I32T(sourceStringLength), I32T(sourceStringLength),
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device source information.");
-
-	// Generate sub-system string for module.
-	size_t subSystemStringLength
-		= (size_t) snprintf(NULL, 0, "%s[SN %s, %" PRIu8 ":%" PRIu8 "]", moduleData->moduleSubSystemString,
-			devInfo.deviceSerialNumber, devInfo.deviceUSBBusNumber, devInfo.deviceUSBDeviceAddress);
-
-	char subSystemString[subSystemStringLength + 1];
-	snprintf(subSystemString, subSystemStringLength + 1, "%s[SN %s, %" PRIu8 ":%" PRIu8 "]",
-		moduleData->moduleSubSystemString, devInfo.deviceSerialNumber, devInfo.deviceUSBBusNumber,
-		devInfo.deviceUSBDeviceAddress);
-	subSystemString[subSystemStringLength] = '\0';
-
-	dvModuleSetLogString(moduleData, subSystemString);
 
 	// Ensure good defaults for data acquisition settings.
 	// No blocking behavior due to mainloop notification, and no auto-start of
 	// all producers to ensure cAER settings are respected.
 	caerDeviceConfigSet(
-		moduleData->moduleState, CAER_HOST_CONFIG_DATAEXCHANGE, CAER_HOST_CONFIG_DATAEXCHANGE_BLOCKING, false);
+		moduleData->moduleState, CAER_HOST_CONFIG_DATAEXCHANGE, CAER_HOST_CONFIG_DATAEXCHANGE_BLOCKING, true);
 	caerDeviceConfigSet(
 		moduleData->moduleState, CAER_HOST_CONFIG_DATAEXCHANGE, CAER_HOST_CONFIG_DATAEXCHANGE_START_PRODUCERS, false);
 	caerDeviceConfigSet(
@@ -206,8 +190,8 @@ static bool caerInputDVS132SInit(dvModuleData moduleData) {
 	createDefaultUSBConfiguration(moduleData);
 
 	// Start data acquisition.
-	bool ret = caerDeviceDataStart(moduleData->moduleState, &dvMainloopDataNotifyIncrease,
-		&dvMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
+	bool ret
+		= caerDeviceDataStart(moduleData->moduleState, NULL, NULL, NULL, &moduleShutdownNotify, moduleData->moduleNode);
 
 	if (!ret) {
 		// Failed to start data acquisition, close device and exit.
@@ -249,14 +233,12 @@ static bool caerInputDVS132SInit(dvModuleData moduleData) {
 	return (true);
 }
 
-static void caerInputDVS132SRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
-	UNUSED_ARGUMENT(in);
+static void caerInputDVS132SRun(dvModuleData moduleData) {
+	caerEventPacketContainer out = caerDeviceDataGet(moduleData->moduleState);
 
-	*out = caerDeviceDataGet(moduleData->moduleState);
-
-	if (*out != NULL) {
+	if (out != NULL) {
 		// Detect timestamp reset and call all reset functions for processors and outputs.
-		caerEventPacketHeader special = caerEventPacketContainerGetEventPacket(*out, SPECIAL_EVENT);
+		caerEventPacketHeader special = caerEventPacketContainerGetEventPacket(out, SPECIAL_EVENT);
 
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
@@ -268,6 +250,10 @@ static void caerInputDVS132SRun(dvModuleData moduleData, caerEventPacketContaine
 			dvConfigNodeUpdateReadOnlyAttribute(sourceInfoNode, "deviceIsMaster", DVCFG_TYPE_BOOL,
 				(union dvConfigAttributeValue){.boolean = devInfo.deviceIsMaster});
 		}
+
+		dvConvertToAedat4(special, moduleData);
+		dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, POLARITY_EVENT), moduleData);
+		dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, 2), moduleData); // IMU6_EVENT is 2 here.
 	}
 }
 
@@ -511,7 +497,7 @@ static void sendDefaultConfiguration(dvModuleData moduleData, const struct caer_
 
 	// Wait 200 ms for biases to stabilize.
 	struct timespec biasEnSleep = {.tv_sec = 0, .tv_nsec = 200000000};
-	thrd_sleep(&biasEnSleep, NULL);
+	nanosleep(&biasEnSleep, NULL);
 
 	systemConfigSend(dvConfigNodeGetRelativeNode(moduleData->moduleNode, "system/"), moduleData);
 	usbConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "usb/"), moduleData);
@@ -519,7 +505,7 @@ static void sendDefaultConfiguration(dvModuleData moduleData, const struct caer_
 
 	// Wait 50 ms for data transfer to be ready.
 	struct timespec noDataSleep = {.tv_sec = 0, .tv_nsec = 50000000};
-	thrd_sleep(&noDataSleep, NULL);
+	nanosleep(&noDataSleep, NULL);
 
 	dvsConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "dvs/"), moduleData);
 	imuConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "imu/"), moduleData);
@@ -766,7 +752,7 @@ static void dvsConfigSend(dvConfigNode node, dvModuleData moduleData) {
 
 	// Wait 5 ms for row/column enables to have been sent out.
 	struct timespec enableSleep = {.tv_sec = 0, .tv_nsec = 5000000};
-	thrd_sleep(&enableSleep, NULL);
+	nanosleep(&enableSleep, NULL);
 
 	caerDeviceConfigSet(
 		moduleData->moduleState, DVS132S_CONFIG_DVS, DVS132S_CONFIG_DVS_RUN, dvConfigNodeGetBool(node, "Run"));

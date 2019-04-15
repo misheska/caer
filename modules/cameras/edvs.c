@@ -6,6 +6,8 @@
 
 #include "dv-sdk/module.h"
 
+#include "aedat4_convert.h"
+
 static void caerInputEDVSStaticInit(dvModuleData moduleData);
 static bool caerInputEDVSInit(dvModuleData moduleData);
 static void caerInputEDVSRun(dvModuleData moduleData);
@@ -126,13 +128,13 @@ static void caerInputEDVSStaticInit(dvModuleData moduleData) {
 }
 
 static bool caerInputEDVSInit(dvModuleData moduleData) {
-	dvLog(moduleData, CAER_LOG_DEBUG, "Initializing module ...");
+	dvLog(CAER_LOG_DEBUG, "Initializing module ...");
 
 	// Start data acquisition, and correctly notify mainloop of new data and module of exceptional
 	// shutdown cases (device pulled, ...).
 	char *serialPortName    = dvConfigNodeGetString(moduleData->moduleNode, "serialPort");
-	moduleData->moduleState = caerDeviceOpenSerial(U16T(moduleData->moduleID), CAER_DEVICE_EDVS, serialPortName,
-		U32T(dvConfigNodeGetInt(moduleData->moduleNode, "baudRate")));
+	moduleData->moduleState = caerDeviceOpenSerial(
+		0, CAER_DEVICE_EDVS, serialPortName, U32T(dvConfigNodeGetInt(moduleData->moduleNode, "baudRate")));
 	free(serialPortName);
 
 	if (moduleData->moduleState == NULL) {
@@ -142,7 +144,7 @@ static bool caerInputEDVSInit(dvModuleData moduleData) {
 
 	// Initialize per-device log-level to module log-level.
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_LOG, CAER_HOST_CONFIG_LOG_LEVEL,
-		atomic_load(&moduleData->moduleLogLevel));
+		U32T(dvConfigNodeGetInt(moduleData->moduleNode, "logLevel")));
 
 	// Put global source information into config.
 	struct caer_edvs_info devInfo = caerEDVSInfoGet(moduleData->moduleState);
@@ -157,32 +159,27 @@ static bool caerInputEDVSInit(dvModuleData moduleData) {
 	dvConfigNodeCreateBool(sourceInfoNode, "deviceIsMaster", devInfo.deviceIsMaster,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Timestamp synchronization support: device master status.");
 
-	dvConfigNodeCreateInt(sourceInfoNode, "polaritySizeX", devInfo.dvsSizeX, devInfo.dvsSizeX, devInfo.dvsSizeX,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Polarity events width.");
-	dvConfigNodeCreateInt(sourceInfoNode, "polaritySizeY", devInfo.dvsSizeY, devInfo.dvsSizeY, devInfo.dvsSizeY,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Polarity events height.");
-
-	// Put source information for generic visualization, to be used to display and debug filter information.
-	dvConfigNodeCreateInt(sourceInfoNode, "dataSizeX", devInfo.dvsSizeX, devInfo.dvsSizeX, devInfo.dvsSizeX,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Data width.");
-	dvConfigNodeCreateInt(sourceInfoNode, "dataSizeY", devInfo.dvsSizeY, devInfo.dvsSizeY, devInfo.dvsSizeY,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Data height.");
+	dvConfigNode outEventsNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "outputs/events/info/");
+	dvConfigNodeCreateInt(outEventsNode, "sizeX", devInfo.dvsSizeX, devInfo.dvsSizeX, devInfo.dvsSizeX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Events width (X resolution).");
+	dvConfigNodeCreateInt(outEventsNode, "sizeY", devInfo.dvsSizeY, devInfo.dvsSizeY, devInfo.dvsSizeY,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Events height (Y resolution).");
 
 	// Generate source string for output modules.
-	size_t sourceStringLength = (size_t) snprintf(NULL, 0, "#Source %" PRIu16 ": eDVS4337\r\n", moduleData->moduleID);
+	size_t sourceStringLength = (size_t) snprintf(NULL, 0, "%s[%s]", "eDVS4337", devInfo.serialPortName);
 
 	char sourceString[sourceStringLength + 1];
-	snprintf(sourceString, sourceStringLength + 1, "#Source %" PRIu16 ": eDVS4337\r\n", moduleData->moduleID);
+	snprintf(sourceString, sourceStringLength + 1, "%s[%s]", "eDVS4337", devInfo.serialPortName);
 	sourceString[sourceStringLength] = '\0';
 
-	dvConfigNodeCreateString(sourceInfoNode, "sourceString", sourceString, sourceStringLength, sourceStringLength,
+	dvConfigNodeCreateString(sourceInfoNode, "source", sourceString, I32T(sourceStringLength), I32T(sourceStringLength),
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device source information.");
 
 	// Ensure good defaults for data acquisition settings.
 	// No blocking behavior due to mainloop notification, and no auto-start of
 	// all producers to ensure cAER settings are respected.
 	caerDeviceConfigSet(
-		moduleData->moduleState, CAER_HOST_CONFIG_DATAEXCHANGE, CAER_HOST_CONFIG_DATAEXCHANGE_BLOCKING, false);
+		moduleData->moduleState, CAER_HOST_CONFIG_DATAEXCHANGE, CAER_HOST_CONFIG_DATAEXCHANGE_BLOCKING, true);
 	caerDeviceConfigSet(
 		moduleData->moduleState, CAER_HOST_CONFIG_DATAEXCHANGE, CAER_HOST_CONFIG_DATAEXCHANGE_START_PRODUCERS, false);
 	caerDeviceConfigSet(
@@ -192,8 +189,8 @@ static bool caerInputEDVSInit(dvModuleData moduleData) {
 	sendDefaultConfiguration(moduleData);
 
 	// Start data acquisition.
-	bool ret = caerDeviceDataStart(moduleData->moduleState, &dvMainloopDataNotifyIncrease,
-		&dvMainloopDataNotifyDecrease, NULL, &moduleShutdownNotify, moduleData->moduleNode);
+	bool ret
+		= caerDeviceDataStart(moduleData->moduleState, NULL, NULL, NULL, &moduleShutdownNotify, moduleData->moduleNode);
 
 	if (!ret) {
 		// Failed to start data acquisition, close device and exit.
@@ -250,10 +247,11 @@ static void caerInputEDVSExit(dvModuleData moduleData) {
 	}
 }
 
-static void caerInputEDVSRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
-	UNUSED_ARGUMENT(in);
+static void caerInputEDVSRun(dvModuleData moduleData) {
+	caerEventPacketContainer out = caerDeviceDataGet(moduleData->moduleState);
 
-	*out = caerDeviceDataGet(moduleData->moduleState);
+	dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, SPECIAL_EVENT), moduleData);
+	dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, POLARITY_EVENT), moduleData);
 }
 
 static void sendDefaultConfiguration(dvModuleData moduleData) {
