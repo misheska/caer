@@ -130,22 +130,21 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 		}
 
 		case SPECIAL_EVENT: {
-			auto newObject      = dvModuleOutputAllocate(moduleData, "events");
-			auto newEventPacket = static_cast<dv::EventPacket::NativeTableType *>(newObject->obj);
+			auto newObject        = dvModuleOutputAllocate(moduleData, "triggers");
+			auto newTriggerPacket = static_cast<dv::TriggerPacket::NativeTableType *>(newObject->obj);
 
-			const libcaer::events::PolarityEventPacket oldPacketPolarity(
+			const libcaer::events::SpecialEventPacket oldPacketSpecial(
 				const_cast<caerEventPacketHeader>(oldPacket), false);
 
-			for (const auto &evt : oldPacketPolarity) {
+			for (const auto &evt : oldPacketSpecial) {
 				if (!evt.isValid()) {
 					continue;
 				}
 
-				newEventPacket->events.emplace_back(
-					evt.getTimestamp64(oldPacketPolarity), evt.getX(), evt.getY(), evt.getPolarity());
+				newTriggerPacket->triggers.emplace_back();
 			}
 
-			dvModuleOutputCommit(moduleData, "events");
+			dvModuleOutputCommit(moduleData, "triggers");
 
 			break;
 		}
