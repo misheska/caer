@@ -7,7 +7,7 @@ void dv::SDKLibInit(MainData *setMainDataPtr) {
 	glMainDataPtr = setMainDataPtr;
 }
 
-const struct dvType dvTypeSystemGetInfoByIdentifier(const char *tIdentifier) {
+struct dvType dvTypeSystemGetInfoByIdentifier(const char *tIdentifier) {
 	try {
 		return (glMainDataPtr->typeSystem.getTypeInfo(tIdentifier, nullptr));
 	}
@@ -19,7 +19,7 @@ const struct dvType dvTypeSystemGetInfoByIdentifier(const char *tIdentifier) {
 	}
 }
 
-const struct dvType dvTypeSystemGetInfoByID(uint32_t tId) {
+struct dvType dvTypeSystemGetInfoByID(uint32_t tId) {
 	try {
 		return (glMainDataPtr->typeSystem.getTypeInfo(tId, nullptr));
 	}

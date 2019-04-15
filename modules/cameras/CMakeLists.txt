@@ -14,7 +14,7 @@ TARGET_LINK_LIBRARIES(dvs128
 INSTALL(TARGETS dvs128 DESTINATION ${DV_MODULES_DIR})
 
 # eDVS4337
-ADD_LIBRARY(edvs SHARED edvs.c)
+ADD_LIBRARY(edvs SHARED edvs.c aedat4_convert.cpp)
 
 SET_TARGET_PROPERTIES(edvs
 	PROPERTIES
@@ -29,7 +29,7 @@ TARGET_LINK_LIBRARIES(edvs
 INSTALL(TARGETS edvs DESTINATION ${DV_MODULES_DIR})
 
 # DAVIS
-ADD_LIBRARY(davis SHARED davis.c)
+ADD_LIBRARY(davis SHARED davis.c aedat4_convert.cpp)
 
 SET_TARGET_PROPERTIES(davis
 	PROPERTIES
@@ -45,7 +45,7 @@ INSTALL(TARGETS davis DESTINATION ${DV_MODULES_DIR})
 
 IF (OS_LINUX)
 	# Raspberry-Pi camera module support (Linux-only).
-	ADD_LIBRARY(davis_rpi SHARED davis_rpi.c)
+	ADD_LIBRARY(davis_rpi SHARED davis_rpi.c aedat4_convert.cpp)
 
 	SET_TARGET_PROPERTIES(davis_rpi
 		PROPERTIES
@@ -61,7 +61,7 @@ IF (OS_LINUX)
 ENDIF()
 
 # DVS132S
-ADD_LIBRARY(dvs132s SHARED dvs132s.c)
+ADD_LIBRARY(dvs132s SHARED dvs132s.c aedat4_convert.cpp)
 
 SET_TARGET_PROPERTIES(dvs132s
     PROPERTIES

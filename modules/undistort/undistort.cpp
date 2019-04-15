@@ -206,7 +206,8 @@ public:
 			// Check that new coordinates are still within view boundary. If yes, use new remapped coordinates.
 			if (eventUndistort.x >= 0 && eventUndistort.x < eventSizeX && eventUndistort.y >= 0
 				&& eventUndistort.y < eventSizeY) {
-				out.emplace_back(evt.timestamp(), eventUndistort.x, eventUndistort.y, evt.polarity());
+				out.emplace_back(evt.timestamp(), static_cast<int16_t>(eventUndistort.x),
+					static_cast<int16_t>(eventUndistort.y), evt.polarity());
 			}
 		}
 

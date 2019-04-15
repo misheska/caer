@@ -66,8 +66,8 @@ struct dvType {
 #endif
 };
 
-const struct dvType dvTypeSystemGetInfoByIdentifier(const char *tIdentifier);
-const struct dvType dvTypeSystemGetInfoByID(uint32_t tId);
+struct dvType dvTypeSystemGetInfoByIdentifier(const char *tIdentifier);
+struct dvType dvTypeSystemGetInfoByID(uint32_t tId);
 
 struct dvTypedObject {
 	uint32_t typeId;
@@ -86,7 +86,7 @@ struct dvTypedObject {
 	}
 
 	~dvTypedObject() noexcept {
-		const dvType t = dvTypeSystemGetInfoByID(typeId);
+		const auto t = dvTypeSystemGetInfoByID(typeId);
 		(*t.destruct)(obj);
 	}
 
