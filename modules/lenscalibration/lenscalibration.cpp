@@ -366,12 +366,16 @@ public:
 		struct tm currentTimeStruct = portable_clock_localtime();
 
 		char buf[1024];
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-y2k"
 		strftime(buf, sizeof(buf) - 1, "%c", &currentTimeStruct);
+#pragma GCC diagnostic pop
 
 		fs << "calibration_time" << buf;
 
 		if (!reprojErrs.empty()) {
-			fs << "nr_of_frames" << reprojErrs.size();
+			fs << "nr_of_frames" << static_cast<int>(reprojErrs.size());
 		}
 
 		fs << "image_width" << imageSize.width;
