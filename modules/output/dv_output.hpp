@@ -4,12 +4,6 @@
 #include "dv-sdk/data/types.hpp"
 #include "dv-sdk/utils.h"
 
-struct arraydef {
-	uint32_t typeId;
-	void *ptr;
-	size_t size;
-};
-
 struct dvOutputStatistics {
 	uint64_t packetsNumber;
 	uint64_t packetsSize;
@@ -48,18 +42,15 @@ public:
 		return (compressionFlags);
 	}
 
-	std::shared_ptr<const flatbuffers::FlatBufferBuilder> processPacket(struct arraydef packet) {
-		const auto typeInfo = dvTypeSystemGetInfoByID(packet.typeId);
+	std::shared_ptr<const flatbuffers::FlatBufferBuilder> processPacket(const dv::Types::TypedObject *packet) {
+		const auto typeInfo = dvTypeSystemGetInfoByID(packet->typeId);
 
 		// Construct serialized flatbuffer packet.
 		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(16 * 1024);
 
-		auto offset = (*typeInfo.pack)(msgBuild.get(), packet.ptr);
+		auto offset = (*typeInfo.pack)(msgBuild.get(), packet->obj);
 
 		msgBuild->FinishSizePrefixed(flatbuffers::Offset<void>(offset), typeInfo.identifier);
-
-		// Free old memory.
-		(*typeInfo.destruct)(packet.ptr);
 
 		uint8_t *data   = msgBuild->GetBufferPointer();
 		size_t dataSize = msgBuild->GetSize();

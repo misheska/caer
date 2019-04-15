@@ -74,16 +74,22 @@ public:
 			config.set<dv::CfgType::INT>("portNumber", local.port());
 		}
 
-		logger::log(logger::logLevel::INFO, "TCP OUTPUT", "Output server ready on %s:%d.",
-			config["ipAddress"].getValue<dv::ConfigVariant::STRING>().c_str(),
-			config["portNumber"].getValue<dv::ConfigVariant::INTEGER>());
+		auto inputInfoNode = inputs.getInfoNode("output0");
+		auto inputNode     = inputInfoNode.getParent();
 
-		makeSourceInfo(moduleData->moduleNode);
+		auto outputNode     = moduleNode.getRelativeNode("outputs/output0/");
+		auto outputInfoNode = outputNode.getRelativeNode("info/");
+
+		inputNode.copyTo(outputNode);
+		inputInfoNode.copyTo(outputInfoNode);
 
 		acceptStart();
+
+		log.info << boost::format("Output server ready on %s:%d.") % config.get<dv::CfgType::STRING>("ipAddress")
+						% config.get<dv::CfgType::INT>("portNumber");
 	}
 
-	~NetTCPServer() {
+	~NetTCPServer() override {
 		acceptor.close();
 
 		// Post 'close all connections' to end of async queue,
@@ -112,28 +118,17 @@ public:
 	}
 
 	void run() override {
-		if (!in.empty()) {
-			for (const auto &pkt : in) {
-				struct arraydef inData;
+		auto input0 = dvModuleInputGet(moduleData, "output0");
 
-				if (pkt->getEventType() == POLARITY_EVENT) {
-					inData = convertToAedat4(POLARITY_EVENT, pkt.get());
-				}
-				else if (pkt->getEventType() == FRAME_EVENT) {
-					inData = convertToAedat4(FRAME_EVENT, pkt.get());
-				}
-				else {
-					// Skip unknown packet.
-					continue;
-				}
+		if (input0 != nullptr) {
+			// outData.size is in bytes, not elements.
+			auto outMessage = output.processPacket(input0);
 
-				// outData.size is in bytes, not elements.
-				auto outMessage = output.processPacket(inData);
-
-				for (const auto client : clients) {
-					client->writeMessage(outMessage);
-				}
+			for (const auto client : clients) {
+				client->writeMessage(outMessage);
 			}
+
+			dvModuleInputDismiss(moduleData, "output0", input0);
 		}
 
 		ioService.poll();
@@ -146,137 +141,28 @@ public:
 
 private:
 	void acceptStart() {
-		acceptor.async_accept(acceptorNewSocket, [this](const boost::system::error_code &error) {
-			if (error) {
-				// Ignore cancel error, normal on shutdown.
-				if (error != asio::error::operation_aborted) {
-					logger::log(logger::logLevel::ERROR, "TCP OUTPUT", "Failed to accept connection. Error: %s (%d).",
-						error.message().c_str(), error.value());
-				}
-			}
-			else {
-				auto client = std::make_shared<Connection>(std::move(acceptorNewSocket), tlsEnabled, &tlsContext, this);
-
-				clients.push_back(client.get());
-
-				client->start();
-
-				acceptStart();
-			}
-		});
-	}
-
-	// TODO: this is all manual for now.
-	void makeSourceInfo(dv::Config::Node moduleNode) {
-		auto sourceInfoNode = moduleNode.getRelativeNode("sourceInfo/");
-
-		// First stream for now.
-		auto streamInfoNode = sourceInfoNode.getRelativeNode("0/");
-
-		if (moduleNode.getName() == "_visualizer_event") {
-			streamInfoNode.create<dv::Config::AttributeType::STRING>("type", "POLA", {0, UINT16_MAX},
-				dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Type of data.");
-		}
-		else if (moduleNode.getName() == "_visualizer_frame") {
-			streamInfoNode.create<dv::Config::AttributeType::STRING>("type", "FRM8", {0, UINT16_MAX},
-				dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Type of data.");
-		}
-		else {
-			streamInfoNode.create<dv::Config::AttributeType::STRING>("type", "UNKN", {0, UINT16_MAX},
-				dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Type of data.");
-		}
-
-		// Fixed at 346x260 for now.
-		streamInfoNode.create<dv::Config::AttributeType::INT>("width", 346, {0, UINT16_MAX},
-			dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Data width.");
-		streamInfoNode.create<dv::Config::AttributeType::INT>("height", 260, {0, UINT16_MAX},
-			dv::Config::AttributeFlags::READ_ONLY | dv::Config::AttributeFlags::NO_EXPORT, "Data height.");
-	}
-
-	static struct arraydef convertToAedat4(int16_t type, const libcaer::events::EventPacket *oldPacket) {
-		switch (type) {
-			case POLARITY_EVENT: {
-				auto typeInfo = dvTypeSystemGetInfoByIdentifier("POLA");
-
-				auto newPacket = static_cast<PolarityPacketT *>((*typeInfo.construct)(typeInfo.sizeOfType));
-
-				auto oldPacketPolarity = dynamic_cast<const libcaer::events::PolarityEventPacket *>(oldPacket);
-
-				for (const auto &evt : *oldPacketPolarity) {
-					if (!evt.isValid()) {
-						continue;
+		acceptor.async_accept(
+			acceptorNewSocket,
+			[this](const boost::system::error_code &error) {
+				if (error) {
+					// Ignore cancel error, normal on shutdown.
+					if (error != asio::error::operation_aborted) {
+						log.error << boost::format("Failed to accept connection. Error: %s (%d).") % error.message()
+										 % error.value();
 					}
-
-					newPacket->events.emplace_back(
-						evt.getTimestamp64(*oldPacketPolarity), evt.getX(), evt.getY(), evt.getPolarity());
 				}
+				else {
+					auto client
+						= std::make_shared<Connection>(std::move(acceptorNewSocket), tlsEnabled, &tlsContext, this);
 
-				struct arraydef outData;
+					clients.push_back(client.get());
 
-				outData.typeId = typeInfo.id;
-				outData.ptr    = newPacket;
-				outData.size   = newPacket->events.size();
+					client->start();
 
-				return (outData);
-				break;
-			}
-
-			case FRAME_EVENT: {
-				auto typeInfo = dvTypeSystemGetInfoByIdentifier("FRM8");
-
-				auto newPacket = static_cast<Frame8PacketT *>((*typeInfo.construct)(typeInfo.sizeOfType));
-
-				auto oldPacketFrame = dynamic_cast<const libcaer::events::FrameEventPacket *>(oldPacket);
-
-				for (const auto &evt : *oldPacketFrame) {
-					if (!evt.isValid()) {
-						continue;
-					}
-
-					Frame8T newFrame{};
-
-					newFrame.timestamp                = evt.getTimestamp64(*oldPacketFrame);
-					newFrame.timestampStartOfFrame    = evt.getTSStartOfFrame64(*oldPacketFrame);
-					newFrame.timestampStartOfExposure = evt.getTSStartOfExposure64(*oldPacketFrame);
-					newFrame.timestampEndOfExposure   = evt.getTSEndOfExposure64(*oldPacketFrame);
-					newFrame.timestampEndOfFrame      = evt.getTSEndOfFrame64(*oldPacketFrame);
-
-					newFrame.origColorFilter = static_cast<FrameColorFilters>(evt.getColorFilter());
-					newFrame.numChannels     = static_cast<FrameChannels>(evt.getChannelNumber());
-
-					newFrame.lengthX   = static_cast<int16_t>(evt.getLengthX());
-					newFrame.lengthY   = static_cast<int16_t>(evt.getLengthY());
-					newFrame.positionX = static_cast<int16_t>(evt.getPositionX());
-					newFrame.positionY = static_cast<int16_t>(evt.getPositionY());
-
-					for (size_t px = 0; px < evt.getPixelsMaxIndex(); px++) {
-						newFrame.pixels.push_back(static_cast<uint8_t>(evt.getPixelArrayUnsafe()[px] >> 8));
-					}
-
-					newPacket->events.emplace_back(newFrame);
+					acceptStart();
 				}
-
-				struct arraydef outData;
-
-				outData.typeId = typeInfo.id;
-				outData.ptr    = newPacket;
-				outData.size   = newPacket->events.size();
-
-				return (outData);
-				break;
-			}
-
-			default:
-				// Unknown data.
-				struct arraydef outData;
-
-				outData.typeId = 0;
-				outData.ptr    = nullptr;
-				outData.size   = 0;
-
-				return (outData);
-				break;
-		}
+			},
+			nullptr);
 	}
 };
 
@@ -284,15 +170,15 @@ Connection::Connection(asioTCP::socket s, bool tlsEnabled, asioSSL::context *tls
 	parent(server),
 	socket(std::move(s), tlsEnabled, tlsContext),
 	keepAliveReadSpace(0) {
-	logger::log(logger::logLevel::INFO, "TCP OUTPUT", "New connection from client %s:%d.",
-		socket.remote_address().to_string().c_str(), socket.remote_port());
+	parent->log.info << boost::format("New connection from client %s:%d.") % socket.remote_address().to_string()
+							% socket.remote_port();
 }
 
 Connection::~Connection() {
 	parent->removeClient(this);
 
-	logger::log(logger::logLevel::INFO, "TCP OUTPUT", "Closing connection from client %s:%d.",
-		socket.remote_address().to_string().c_str(), socket.remote_port());
+	parent->log.info << boost::format("Closing connection from client %s:%d.") % socket.remote_address().to_string()
+							% socket.remote_port();
 }
 
 void Connection::start() {
@@ -342,13 +228,12 @@ void Connection::keepAliveByReading() {
 void Connection::handleError(const boost::system::error_code &error, const char *message) {
 	if (error == asio::error::eof) {
 		// Handle EOF separately.
-		logger::log(logger::logLevel::INFO, "TCP OUTPUT", "Client %s:%d: connection closed.",
-			socket.remote_address().to_string().c_str(), socket.remote_port());
+		parent->log.info << boost::format("Client %s:%d: connection closed.") % socket.remote_address().to_string()
+								% socket.remote_port();
 	}
 	else {
-		logger::log(logger::logLevel::ERROR, "TCP OUTPUT", "Client %s:%d: %s. Error: %s (%d).",
-			socket.remote_address().to_string().c_str(), socket.remote_port(), message, error.message().c_str(),
-			error.value());
+		parent->log.error << boost::format("Client %s:%d: %s. Error: %s (%d).") % socket.remote_address().to_string()
+								 % socket.remote_port() % message % error.message() % error.value();
 	}
 }
 
