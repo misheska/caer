@@ -26,9 +26,9 @@ dv::Module::Module(std::string_view _name, std::string_view _library) :
 		std::tie(library, info) = dv::ModulesLoadLibrary(_library);
 	}
 	catch (const std::exception &ex) {
-		boost::format exMsg = boost::format("%s: module library load failed, error '%s'.") % name % ex.what();
+		auto exMsg = boost::format("%s: module library load failed, error '%s'.") % name % ex.what();
 		dv::Log(dv::logLevel::ERROR, exMsg);
-		throw std::invalid_argument(exMsg.str().c_str());
+		throw std::invalid_argument(exMsg.str());
 	}
 
 	// Set configuration node (so it's user accessible).
@@ -153,9 +153,9 @@ void dv::Module::StaticInit() {
 			info->functions->moduleStaticInit(this);
 		}
 		catch (const std::exception &ex) {
-			boost::format exMsg = boost::format("%s: moduleStaticInit() failed, error '%s'.") % name % ex.what();
+			auto exMsg = boost::format("%s: moduleStaticInit() failed, error '%s'.") % name % ex.what();
 			dv::Log(dv::logLevel::ERROR, exMsg);
-			throw std::invalid_argument(exMsg.str().c_str());
+			throw std::invalid_argument(exMsg.str());
 		}
 	}
 
@@ -380,7 +380,8 @@ void dv::Module::inputConnectivityDestroy() {
 bool dv::Module::verifyOutputInfoNodes() {
 	for (const auto &out : outputs) {
 		if (out.second.infoNode.getAttributeKeys().size() == 0) {
-			dv::Log(dv::logLevel::ERROR, "Output '%s' has no informative attributes in info node.", out.first);
+			auto msg = boost::format("Output '%s' has no informative attributes in info node.") % out.first;
+			dv::Log(dv::logLevel::ERROR, msg);
 
 			return (false);
 		}
