@@ -64,10 +64,6 @@ static void caerInputEDVSStaticInit(dvModuleData moduleData) {
 	dvConfigNodeCreateInt(moduleNode, "baudRate", CAER_HOST_CONFIG_SERIAL_BAUD_RATE_12M, 0, 20000000,
 		DVCFG_FLAGS_NORMAL, "Baud-rate for serial port.");
 
-	// Add auto-restart setting.
-	dvConfigNodeCreateBool(
-		moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL, "Automatically restart module after shutdown.");
-
 	// Set default biases, from EDVSFast.xml settings.
 	dvConfigNode biasNode = dvConfigNodeGetRelativeNode(moduleNode, "bias/");
 
@@ -247,11 +243,6 @@ static void caerInputEDVSExit(dvModuleData moduleData) {
 	// Clear sourceInfo node.
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	dvConfigNodeRemoveAllAttributes(sourceInfoNode);
-
-	if (dvConfigNodeGetBool(moduleData->moduleNode, "autoRestart")) {
-		// Prime input module again so that it will try to restart if new devices detected.
-		dvConfigNodePutBool(moduleData->moduleNode, "running", true);
-	}
 }
 
 static void caerInputEDVSRun(dvModuleData moduleData) {

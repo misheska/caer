@@ -66,10 +66,6 @@ static void caerInputDVS128StaticInit(dvModuleData moduleData) {
 	dvConfigNodeCreateString(
 		moduleNode, "serialNumber", "", 0, 8, DVCFG_FLAGS_NORMAL, "USB serial number restriction.");
 
-	// Add auto-restart setting.
-	dvConfigNodeCreateBool(
-		moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL, "Automatically restart module after shutdown.");
-
 	// Set default biases, from DVS128Fast.xml settings.
 	dvConfigNode biasNode = dvConfigNodeGetRelativeNode(moduleNode, "bias/");
 
@@ -259,11 +255,6 @@ static void caerInputDVS128Exit(dvModuleData moduleData) {
 	// Clear sourceInfo node.
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	dvConfigNodeRemoveAllAttributes(sourceInfoNode);
-
-	if (dvConfigNodeGetBool(moduleData->moduleNode, "autoRestart")) {
-		// Prime input module again so that it will try to restart if new devices detected.
-		dvConfigNodePutBool(moduleData->moduleNode, "running", true);
-	}
 }
 
 static void caerInputDVS128Run(dvModuleData moduleData) {

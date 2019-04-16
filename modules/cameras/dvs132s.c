@@ -84,10 +84,6 @@ static void caerInputDVS132SStaticInit(dvModuleData moduleData) {
 	dvConfigNodeCreateString(
 		moduleNode, "serialNumber", "", 0, 8, DVCFG_FLAGS_NORMAL, "USB serial number restriction.");
 
-	// Add auto-restart setting.
-	dvConfigNodeCreateBool(
-		moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL, "Automatically restart module after shutdown.");
-
 	dvConfigNode sysNode = dvConfigNodeGetRelativeNode(moduleNode, "system/");
 
 	// Packet settings (size (in events) and time interval (in µs)).
@@ -309,12 +305,6 @@ static void caerInputDVS132SExit(dvModuleData moduleData) {
 	// Clear sourceInfo node.
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	dvConfigNodeRemoveAllAttributes(sourceInfoNode);
-
-	if (dvConfigNodeGetBool(moduleData->moduleNode, "autoRestart")) {
-		// Prime input module again so that it will try to restart if new devices
-		// detected.
-		dvConfigNodePutBool(moduleData->moduleNode, "running", true);
-	}
 }
 
 static void moduleShutdownNotify(void *p) {

@@ -41,10 +41,6 @@ static void caerInputDAVISStaticInit(dvModuleData moduleData) {
 	dvConfigNodeCreateString(
 		moduleNode, "serialNumber", "", 0, 8, DVCFG_FLAGS_NORMAL, "USB serial number restriction.");
 
-	// Add auto-restart setting.
-	dvConfigNodeCreateBool(
-		moduleNode, "autoRestart", true, DVCFG_FLAGS_NORMAL, "Automatically restart module after shutdown.");
-
 	caerInputDAVISCommonSystemConfigInit(moduleData);
 }
 
@@ -196,11 +192,6 @@ static void caerInputDAVISExit(dvModuleData moduleData) {
 	// Clear sourceInfo node.
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 	dvConfigNodeRemoveAllAttributes(sourceInfoNode);
-
-	if (dvConfigNodeGetBool(moduleData->moduleNode, "autoRestart")) {
-		// Prime input module again so that it will try to restart if new devices detected.
-		dvConfigNodePutBool(moduleData->moduleNode, "running", true);
-	}
 }
 
 static void createDefaultUSBConfiguration(dvModuleData moduleData, const char *nodePrefix) {
