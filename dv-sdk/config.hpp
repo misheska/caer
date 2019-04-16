@@ -167,6 +167,7 @@ private:
 	dv::Config::AttributeType type;
 	dv::Config::Node node;
 	std::string key;
+	bool valueChanged;
 	std::unique_ptr<_RateLimiter> rateLimit;
 
 	/**
@@ -178,7 +179,8 @@ private:
 	ConfigOption(dv::unique_ptr_void configOption_, dv::Config::AttributeType type_) :
 		configOption(std::move(configOption_)),
 		type(type_),
-		node(nullptr) {
+		node(nullptr),
+		valueChanged(false) {
 	}
 
 	/**
@@ -284,8 +286,14 @@ public:
 	template<dv::Config::AttributeType T> void set(const typename dv::Config::AttributeTypeGenerator<T>::type &value) {
 		auto &config = getConfigObject<T>();
 
+		// No change, no update.
+		if (value == config.currentValue) {
+			return;
+		}
+
 		// Update current value right away, so subsequent get()s see this.
 		config.currentValue = value;
+		valueChanged        = true;
 
 		// Update configuration tree. This will also execute all attribute listeners,
 		// including the config-change one, which will force a second full update on
@@ -301,6 +309,10 @@ public:
 		else {
 			node.put<T>(key, value);
 		}
+	}
+
+	bool changed() {
+		return (valueChanged);
 	}
 
 	/**
@@ -436,11 +448,18 @@ public:
 	 * that is present in the dv config tree.
 	 */
 	void updateValue() {
+		valueChanged = false;
+
 		switch (type) {
 			case dv::Config::AttributeType::BOOL: {
 				auto &config = getConfigObject<dv::Config::AttributeType::BOOL>();
 
-				config.currentValue = node.get<dv::Config::AttributeType::BOOL>(key);
+				auto newValue = node.get<dv::Config::AttributeType::BOOL>(key);
+
+				if (newValue != config.currentValue) {
+					config.currentValue = newValue;
+					valueChanged        = true;
+				}
 
 				// Auto-reset resets from true to false.
 				if (config.attributes.autoReset && config.currentValue) {
@@ -453,7 +472,12 @@ public:
 			case dv::Config::AttributeType::INT: {
 				auto &config = getConfigObject<dv::Config::AttributeType::INT>();
 
-				config.currentValue = node.get<dv::Config::AttributeType::INT>(key);
+				auto newValue = node.get<dv::Config::AttributeType::INT>(key);
+
+				if (newValue != config.currentValue) {
+					config.currentValue = newValue;
+					valueChanged        = true;
+				}
 
 				break;
 			}
@@ -461,7 +485,12 @@ public:
 			case dv::Config::AttributeType::LONG: {
 				auto &config = getConfigObject<dv::Config::AttributeType::LONG>();
 
-				config.currentValue = node.get<dv::Config::AttributeType::LONG>(key);
+				auto newValue = node.get<dv::Config::AttributeType::LONG>(key);
+
+				if (newValue != config.currentValue) {
+					config.currentValue = newValue;
+					valueChanged        = true;
+				}
 
 				break;
 			}
@@ -469,7 +498,12 @@ public:
 			case dv::Config::AttributeType::FLOAT: {
 				auto &config = getConfigObject<dv::Config::AttributeType::FLOAT>();
 
-				config.currentValue = node.get<dv::Config::AttributeType::FLOAT>(key);
+				auto newValue = node.get<dv::Config::AttributeType::FLOAT>(key);
+
+				if (newValue != config.currentValue) {
+					config.currentValue = newValue;
+					valueChanged        = true;
+				}
 
 				break;
 			}
@@ -477,7 +511,12 @@ public:
 			case dv::Config::AttributeType::DOUBLE: {
 				auto &config = getConfigObject<dv::Config::AttributeType::DOUBLE>();
 
-				config.currentValue = node.get<dv::Config::AttributeType::DOUBLE>(key);
+				auto newValue = node.get<dv::Config::AttributeType::DOUBLE>(key);
+
+				if (newValue != config.currentValue) {
+					config.currentValue = newValue;
+					valueChanged        = true;
+				}
 
 				break;
 			}
@@ -485,7 +524,12 @@ public:
 			case dv::Config::AttributeType::STRING: {
 				auto &config = getConfigObject<dv::Config::AttributeType::STRING>();
 
-				config.currentValue = node.get<dv::Config::AttributeType::STRING>(key);
+				auto newValue = node.get<dv::Config::AttributeType::STRING>(key);
+
+				if (newValue != config.currentValue) {
+					config.currentValue = newValue;
+					valueChanged        = true;
+				}
 
 				break;
 			}
@@ -864,6 +908,16 @@ public:
 #endif
 
 		cfg.set<T>(value);
+	}
+
+	bool changed(const std::string &key) {
+		if (configMap.count(key) == 0) {
+			throw std::out_of_range("RuntimeConfig.changed(\"" + key + "\"): key doesn't exist.");
+		}
+
+		auto &cfg = configMap.at(key);
+
+		return (cfg.changed());
 	}
 
 	void update() {

@@ -164,8 +164,13 @@ public:
 		// Here we don't know what changed, just that something changed,
 		// so we force both resize and move updates, if nothing really
 		// changed, they're both pretty cheap.
-		windowResize = true;
-		windowMove   = true;
+		if (config.changed("zoomFactor")) {
+			windowResize = true;
+		}
+
+		if (config.changed("windowPositionX") || config.changed("windowPositionY")) {
+			windowMove = true;
+		}
 	}
 
 	void updateDisplaySize() {
@@ -319,7 +324,7 @@ public:
 		// Handle resize and move first, so that when drawing the window is up-to-date.
 		// Handle display resize due to zoom.
 		if (windowResize) {
-			// Update statistics flag and resize display appropriately.
+			// Resize display appropriately.
 			updateDisplaySize();
 		}
 
