@@ -832,6 +832,10 @@ public:
 
 	template<dv::Config::AttributeType T>
 	const typename dv::Config::AttributeTypeGenerator<T>::type &get(const std::string &key) const {
+		if (configMap.count(key) == 0) {
+			throw std::out_of_range("RuntimeConfig.get(" + key + "): key doesn't exist.");
+		}
+
 		auto &cfg = configMap.at(key);
 
 #ifndef NDEBUG
@@ -846,6 +850,10 @@ public:
 
 	template<dv::Config::AttributeType T>
 	void set(const std::string &key, const typename dv::Config::AttributeTypeGenerator<T>::type &value) {
+		if (configMap.count(key) == 0) {
+			throw std::out_of_range("RuntimeConfig.set(" + key + "): key doesn't exist.");
+		}
+
 		auto &cfg = configMap.at(key);
 
 #ifndef NDEBUG
