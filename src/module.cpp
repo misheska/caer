@@ -494,7 +494,7 @@ void dv::Module::runStateMachine() {
 				}
 				catch (const std::exception &ex) {
 					dv::Log(dv::logLevel::ERROR, "moduleConfig(): '%s :: %s', disabling module.",
-						boost::core::demangle(typeid(ex).name()), ex.what());
+						boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
 
 					moduleConfigNode.put<dvCfgType::BOOL>("running", false);
 					return;
@@ -518,7 +518,7 @@ void dv::Module::runStateMachine() {
 			}
 			catch (const std::exception &ex) {
 				dv::Log(dv::logLevel::ERROR, "moduleRun(): '%s :: %s', disabling module.",
-					boost::core::demangle(typeid(ex).name()), ex.what());
+					boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
 
 				moduleConfigNode.put<dvCfgType::BOOL>("running", false);
 				return;
@@ -567,7 +567,7 @@ void dv::Module::runStateMachine() {
 			}
 			catch (const std::exception &ex) {
 				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s :: %s', disabling module.",
-					boost::core::demangle(typeid(ex).name()), ex.what());
+					boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
 
 				handleModuleInitFailure(false);
 				return;

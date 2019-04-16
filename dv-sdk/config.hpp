@@ -833,7 +833,7 @@ public:
 	template<dv::Config::AttributeType T>
 	const typename dv::Config::AttributeTypeGenerator<T>::type &get(const std::string &key) const {
 		if (configMap.count(key) == 0) {
-			throw std::out_of_range("RuntimeConfig.get(" + key + "): key doesn't exist.");
+			throw std::out_of_range("RuntimeConfig.get(\"" + key + "\"): key doesn't exist.");
 		}
 
 		auto &cfg = configMap.at(key);
@@ -841,7 +841,7 @@ public:
 #ifndef NDEBUG
 		if (cfg.getType() != T) {
 			throw std::runtime_error(
-				"RuntimeConfig.get(" + key + "): key type and given template type are not the same.");
+				"RuntimeConfig.get(\"" + key + "\"): key type and given template type are not the same.");
 		}
 #endif
 
@@ -851,7 +851,7 @@ public:
 	template<dv::Config::AttributeType T>
 	void set(const std::string &key, const typename dv::Config::AttributeTypeGenerator<T>::type &value) {
 		if (configMap.count(key) == 0) {
-			throw std::out_of_range("RuntimeConfig.set(" + key + "): key doesn't exist.");
+			throw std::out_of_range("RuntimeConfig.set(\"" + key + "\"): key doesn't exist.");
 		}
 
 		auto &cfg = configMap.at(key);
@@ -859,7 +859,7 @@ public:
 #ifndef NDEBUG
 		if (cfg.getType() != T) {
 			throw std::runtime_error(
-				"RuntimeConfig.set(" + key + "): key type and given template type are not the same.");
+				"RuntimeConfig.set(\"" + key + "\"): key type and given template type are not the same.");
 		}
 #endif
 
