@@ -42,11 +42,6 @@ private:
 	bool windowMove;
 	int32_t packetSubsampleCount;
 
-#if defined(OS_LINUX) && OS_LINUX == 1
-	// Track system init.
-	inline static std::once_flag visualizerSystemIsInitialized{};
-#endif
-
 public:
 	static void addInputs(std::vector<dv::InputDefinition> &in) {
 		in.emplace_back("visualize", "ANYT", false);
@@ -69,17 +64,9 @@ public:
 									 VISUALIZER_ZOOM_MIN, VISUALIZER_ZOOM_MAX));
 	}
 
-#if defined(OS_LINUX) && OS_LINUX == 1
-	static void initSystemOnce() {
-		// Call XInitThreads() on Linux.
-		XInitThreads();
-	}
-#endif
-
 	Visualizer() : windowResize(false), windowMove(false), packetSubsampleCount(0) {
 #if defined(OS_LINUX) && OS_LINUX == 1
-		// Initialize visualizer framework (global font sizes). Do only once per startup!
-		std::call_once(visualizerSystemIsInitialized, &initSystemOnce);
+		XInitThreads();
 #endif
 
 		// Initialize visualizer. Needs size information from the source.

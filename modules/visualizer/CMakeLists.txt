@@ -1,3 +1,9 @@
+IF (OS_MACOSX)
+	# This cannot work on MacOS X anymore, due to graphics not being
+	# confined to the main thread anymore.
+	RETURN()
+ENDIF()
+
 IF (NOT ENABLE_VISUALIZER)
 	SET(ENABLE_VISUALIZER 0 CACHE BOOL "Enable the visualizer module. This is deprecated in favor of dv-gui!")
 ENDIF()
