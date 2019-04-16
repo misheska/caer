@@ -133,9 +133,9 @@ public:
 		auto evt_in  = inputs.get<dv::EventPacket>("events");
 		auto evt_out = outputs.get<dv::EventPacket>("events");
 
-		bool hotPixelEnabled             = config.get<dvCfgType::BOOL>("hotPixelEnabled");
-		bool refractoryPeriodEnabled     = config.get<dvCfgType::BOOL>("refractoryPeriodEnabled");
-		bool backgroundActivityEnabled   = config.get<dvCfgType::BOOL>("backgroundActivityEnabled");
+		bool hotPixelEnabled             = config.get<dvCfgType::BOOL>("hotPixelEnable");
+		bool refractoryPeriodEnabled     = config.get<dvCfgType::BOOL>("refractoryPeriodEnable");
+		bool backgroundActivityEnabled   = config.get<dvCfgType::BOOL>("backgroundActivityEnable");
 		bool backgroundActivityTwoLevels = config.get<dvCfgType::BOOL>("backgroundActivityTwoLevels");
 
 		int32_t hotPixelTime                 = config.get<dvCfgType::INT>("hotPixelTime");
