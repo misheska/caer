@@ -136,7 +136,8 @@ public:
 	 */
 	static bool init(dvModuleData moduleData) {
 		try {
-			// set the moduleData pointer thread local static prior to construction.
+			// Set the static fields prior to construction.
+			ModuleBase::__setStaticGetDefaultConfig(std::function<void(RuntimeConfig &)>(T::getConfigOptions));
 			ModuleBase::__setStaticModuleData(moduleData);
 
 			// Construct T, will call ModuleBase() and then T() constructors.

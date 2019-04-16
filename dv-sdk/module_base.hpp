@@ -19,8 +19,8 @@ namespace dv {
  */
 class ModuleBase {
 private:
-	inline static thread_local dvModuleData __moduleData                  = nullptr;
-	inline static std::function<void(RuntimeConfig &)> __getDefaultConfig = nullptr;
+	inline static thread_local dvModuleData __moduleData                               = nullptr;
+	inline static thread_local std::function<void(RuntimeConfig &)> __getDefaultConfig = nullptr;
 
 public:
 	/**
