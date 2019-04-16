@@ -54,6 +54,8 @@ dv::Module::Module(std::string_view _name, std::string_view _library) :
 	// Ensure static configuration is created on each module initialization.
 	StaticInit();
 
+	dv::Log(dv::logLevel::DEBUG, "%s", "Module initialized.");
+
 	// Start module thread.
 	threadAlive.store(true);
 	thread = std::thread(&dv::Module::runThread, this);
@@ -90,6 +92,9 @@ dv::Module::~Module() {
 			dvCfg::Node(dest.linkedInput->relatedModule->moduleNode).put<dvCfgType::BOOL>("running", false);
 		}
 
+		dv::Log(dv::logLevel::DEBUG, "Output '%s': %d destinations unlinked.", output.first.c_str(),
+			output.second.destinations.size());
+
 		output.second.destinations.clear();
 	}
 
@@ -97,6 +102,8 @@ dv::Module::~Module() {
 	dvCfg::Node(moduleNode).removeNode();
 
 	MainData::getGlobal().typeSystem.unregisterModuleTypes(this);
+
+	dv::Log(dv::logLevel::DEBUG, "%s", "Module destroyed.");
 
 	// Last, unload the shared library plugin.
 	dv::ModulesUnloadLibrary(library);
@@ -197,6 +204,9 @@ void dv::Module::registerInput(std::string_view inputName, std::string_view type
 	// Add connectivity configuration attribute.
 	inputNode.create<dvCfgType::STRING>(
 		"from", "", {0, 256}, dvCfgFlags::NORMAL, "From which 'moduleName[outputName]' to get data.");
+
+	dv::Log(dv::logLevel::DEBUG, "Input '%s' registered with type '%s' (optional=%d).", inputNameString.c_str(),
+		typeInfo.identifier, optional);
 }
 
 void dv::Module::registerOutput(std::string_view outputName, std::string_view typeName) {
@@ -222,6 +232,9 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 
 	// Add info to internal data structure.
 	outputs.try_emplace(outputNameString, this, infoNode, typeInfo);
+
+	dv::Log(
+		dv::logLevel::DEBUG, "Output '%s' registered with type '%s'.", outputNameString.c_str(), typeInfo.identifier);
 }
 
 static const std::regex inputConnRegex("^([a-zA-Z-_\\d\\.]+)\\[([a-zA-Z-_\\d\\.]+)\\]$");
@@ -458,10 +471,14 @@ void dv::Module::runThread() {
 	// Set thread name.
 	portable_thread_set_name(logger.logPrefix.c_str());
 
+	dv::Log(dv::logLevel::DEBUG, "%s", "Module thread running.");
+
 	// Run state machine as long as module is running.
 	while (threadAlive.load(std::memory_order_relaxed)) {
 		runStateMachine();
 	}
+
+	dv::Log(dv::logLevel::DEBUG, "%s", "Module thread stopped.");
 }
 
 void dv::Module::runStateMachine() {
