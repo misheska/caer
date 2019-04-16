@@ -6,9 +6,11 @@
 #include "main.hpp"
 
 #include <algorithm>
+#include <boost/core/demangle.hpp>
 #include <boost/format.hpp>
 #include <chrono>
 #include <regex>
+#include <typeinfo>
 
 namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
@@ -491,7 +493,8 @@ void dv::Module::runStateMachine() {
 					info->functions->moduleConfig(this);
 				}
 				catch (const std::exception &ex) {
-					dv::Log(dv::logLevel::ERROR, "moduleConfig(): '%s', disabling module.", ex.what());
+					dv::Log(dv::logLevel::ERROR, "moduleConfig(): '%s :: %s', disabling module.",
+						boost::core::demangle(typeid(ex).name()), ex.what());
 
 					moduleConfigNode.put<dvCfgType::BOOL>("running", false);
 					return;
@@ -514,7 +517,8 @@ void dv::Module::runStateMachine() {
 				info->functions->moduleRun(this);
 			}
 			catch (const std::exception &ex) {
-				dv::Log(dv::logLevel::ERROR, "moduleRun(): '%s', disabling module.", ex.what());
+				dv::Log(dv::logLevel::ERROR, "moduleRun(): '%s :: %s', disabling module.",
+					boost::core::demangle(typeid(ex).name()), ex.what());
 
 				moduleConfigNode.put<dvCfgType::BOOL>("running", false);
 				return;
@@ -562,7 +566,8 @@ void dv::Module::runStateMachine() {
 				}
 			}
 			catch (const std::exception &ex) {
-				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", ex.what());
+				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s :: %s', disabling module.",
+					boost::core::demangle(typeid(ex).name()), ex.what());
 
 				handleModuleInitFailure(false);
 				return;
