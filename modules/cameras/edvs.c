@@ -257,8 +257,21 @@ static void caerInputEDVSExit(dvModuleData moduleData) {
 static void caerInputEDVSRun(dvModuleData moduleData) {
 	caerEventPacketContainer out = caerDeviceDataGet(moduleData->moduleState);
 
-	dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, SPECIAL_EVENT), moduleData);
-	dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, POLARITY_EVENT), moduleData);
+	if (out != NULL) {
+		// Detect timestamp reset and call all reset functions for processors and outputs.
+		caerEventPacketHeader special = caerEventPacketContainerGetEventPacket(out, SPECIAL_EVENT);
+
+		dvConvertToAedat4(special, moduleData);
+
+		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
+			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
+				!= NULL)) {
+			// Ignore.
+		}
+		else {
+			dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, POLARITY_EVENT), moduleData);
+		}
+	}
 }
 
 static void sendDefaultConfiguration(dvModuleData moduleData) {

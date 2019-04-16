@@ -273,6 +273,8 @@ static void caerInputDVS128Run(dvModuleData moduleData) {
 		// Detect timestamp reset and call all reset functions for processors and outputs.
 		caerEventPacketHeader special = caerEventPacketContainerGetEventPacket(out, SPECIAL_EVENT);
 
+		dvConvertToAedat4(special, moduleData);
+
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
 				!= NULL)) {
@@ -283,9 +285,9 @@ static void caerInputDVS128Run(dvModuleData moduleData) {
 			dvConfigNodeUpdateReadOnlyAttribute(sourceInfoNode, "deviceIsMaster", DVCFG_TYPE_BOOL,
 				(union dvConfigAttributeValue){.boolean = devInfo.deviceIsMaster});
 		}
-
-		dvConvertToAedat4(special, moduleData);
-		dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, POLARITY_EVENT), moduleData);
+		else {
+			dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, POLARITY_EVENT), moduleData);
+		}
 	}
 }
 
