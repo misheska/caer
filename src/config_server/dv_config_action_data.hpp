@@ -507,7 +507,7 @@ inline const char *ConfigActionDataIdentifier() {
 	return "CFGA";
 }
 
-const char *ConfigActionData::identifier = ConfigActionDataIdentifier();
+inline const char *ConfigActionData::identifier = ConfigActionDataIdentifier();
 
 inline bool ConfigActionDataBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, ConfigActionDataIdentifier());

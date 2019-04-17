@@ -358,7 +358,7 @@ inline const char *TriggerPacketIdentifier() {
 	return "TRIG";
 }
 
-const char *TriggerPacket::identifier = TriggerPacketIdentifier();
+inline const char *TriggerPacket::identifier = TriggerPacketIdentifier();
 
 inline bool TriggerPacketBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, TriggerPacketIdentifier());

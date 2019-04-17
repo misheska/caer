@@ -215,7 +215,7 @@ inline const char *EventPacketIdentifier() {
 	return "EVTS";
 }
 
-const char *EventPacket::identifier = EventPacketIdentifier();
+inline const char *EventPacket::identifier = EventPacketIdentifier();
 
 inline bool EventPacketBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, EventPacketIdentifier());

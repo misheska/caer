@@ -378,7 +378,7 @@ inline const char *FrameIdentifier() {
 	return "FRME";
 }
 
-const char *Frame::identifier = FrameIdentifier();
+inline const char *Frame::identifier = FrameIdentifier();
 
 inline bool FrameBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, FrameIdentifier());

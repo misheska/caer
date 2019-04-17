@@ -459,7 +459,7 @@ inline const char *IMUPacketIdentifier() {
 	return "IMUS";
 }
 
-const char *IMUPacket::identifier = IMUPacketIdentifier();
+inline const char *IMUPacket::identifier = IMUPacketIdentifier();
 
 inline bool IMUPacketBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, IMUPacketIdentifier());
