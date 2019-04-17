@@ -410,7 +410,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	}
 
 	// Let's get the action code first thing.
-	dv::ConfigAction action = dv::ConfigAction::ERROR;
+	dv::ConfigAction action = dv::ConfigAction::CFG_ERROR;
 
 	for (const auto &act : actions) {
 		if (act.name == commandParts[CMD_PART_ACTION]) {
@@ -656,7 +656,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 
 	// Display results.
 	switch (resp->action()) {
-		case dv::ConfigAction::ERROR:
+		case dv::ConfigAction::CFG_ERROR:
 			// Return error in 'value'.
 			std::cerr << "ERROR on " << dv::EnumNameConfigAction(action) << ": " << resp->value()->string_view()
 					  << std::endl;
@@ -727,7 +727,7 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 	}
 
 	// Let's get the action code first thing.
-	dv::ConfigAction action = dv::ConfigAction::ERROR;
+	dv::ConfigAction action = dv::ConfigAction::CFG_ERROR;
 
 	for (const auto &act : actions) {
 		if (act.name == commandParts[CMD_PART_ACTION]) {
@@ -847,7 +847,7 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		return;
 	}
 
-	if (resp->action() == dv::ConfigAction::ERROR) {
+	if (resp->action() == dv::ConfigAction::CFG_ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -896,7 +896,7 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 		return;
 	}
 
-	if (resp->action() == dv::ConfigAction::ERROR) {
+	if (resp->action() == dv::ConfigAction::CFG_ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -945,7 +945,7 @@ static void typeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		return;
 	}
 
-	if (resp->action() == dv::ConfigAction::ERROR) {
+	if (resp->action() == dv::ConfigAction::CFG_ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -1017,7 +1017,7 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 		return;
 	}
 
-	if (resp->action() == dv::ConfigAction::ERROR) {
+	if (resp->action() == dv::ConfigAction::CFG_ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}

@@ -38,7 +38,7 @@ static inline void sendError(
 
 		dv::ConfigActionDataBuilder msg(*msgBuild);
 
-		msg.add_action(dv::ConfigAction::ERROR);
+		msg.add_action(dv::ConfigAction::CFG_ERROR);
 		msg.add_id(receivedID);
 		msg.add_value(valStr);
 
