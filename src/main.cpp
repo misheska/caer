@@ -64,8 +64,27 @@ void dv::removeModule(const std::string &name) {
 }
 
 static void mainRunner() {
-	// Setup internal mainloop pointer for public support library.
-	dv::SDKLibInit(&dv::MainData::getGlobal());
+	// Setup internal function pointers for public support library.
+	auto libFuncPtrs = &dv::MainData::getGlobal().libFunctionPointers;
+
+	libFuncPtrs->getTypeInfoCharString = [typeSystem = &dv::MainData::getGlobal().typeSystem](const char *cs,
+											 const dv::Module *m) { return (typeSystem->getTypeInfo(cs, m)); };
+	libFuncPtrs->getTypeInfoIntegerID  = [typeSystem = &dv::MainData::getGlobal().typeSystem](uint32_t ii,
+                                            const dv::Module *m) { return (typeSystem->getTypeInfo(ii, m)); };
+
+	libFuncPtrs->registerType         = &dv::Module::registerType;
+	libFuncPtrs->registerOutput       = &dv::Module::registerOutput;
+	libFuncPtrs->registerInput        = &dv::Module::registerInput;
+	libFuncPtrs->outputAllocate       = &dv::Module::outputAllocate;
+	libFuncPtrs->outputCommit         = &dv::Module::outputCommit;
+	libFuncPtrs->inputGet             = &dv::Module::inputGet;
+	libFuncPtrs->inputDismiss         = &dv::Module::inputDismiss;
+	libFuncPtrs->outputGetInfoNode    = &dv::Module::outputGetInfoNode;
+	libFuncPtrs->inputGetUpstreamNode = &dv::Module::inputGetUpstreamNode;
+	libFuncPtrs->inputGetInfoNode     = &dv::Module::inputGetInfoNode;
+	libFuncPtrs->inputIsConnected     = &dv::Module::inputIsConnected;
+
+	dv::SDKLibInit(libFuncPtrs);
 
 // Install signal handler for global shutdown.
 #if defined(OS_WINDOWS)

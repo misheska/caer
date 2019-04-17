@@ -1,10 +1,12 @@
-#include "../module.hpp"
+#include "dv-sdk/module.h"
+
+#include "../main.hpp"
 
 void dvModuleRegisterType(dvModuleData moduleData, const struct dvType type) {
-	auto module = static_cast<dv::Module *>(moduleData);
+	auto module = reinterpret_cast<dv::Module *>(moduleData);
 
 	try {
-		module->registerType(type);
+		dv::glLibFuncPtr->registerType(module, type);
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
@@ -12,10 +14,10 @@ void dvModuleRegisterType(dvModuleData moduleData, const struct dvType type) {
 }
 
 void dvModuleRegisterOutput(dvModuleData moduleData, const char *name, const char *typeName) {
-	auto module = static_cast<dv::Module *>(moduleData);
+	auto module = reinterpret_cast<dv::Module *>(moduleData);
 
 	try {
-		module->registerOutput(name, typeName);
+		dv::glLibFuncPtr->registerOutput(module, name, typeName);
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
@@ -23,10 +25,10 @@ void dvModuleRegisterOutput(dvModuleData moduleData, const char *name, const cha
 }
 
 void dvModuleRegisterInput(dvModuleData moduleData, const char *name, const char *typeName, bool optional) {
-	auto module = static_cast<dv::Module *>(moduleData);
+	auto module = reinterpret_cast<dv::Module *>(moduleData);
 
 	try {
-		module->registerInput(name, typeName, optional);
+		dv::glLibFuncPtr->registerInput(module, name, typeName, optional);
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
@@ -34,10 +36,10 @@ void dvModuleRegisterInput(dvModuleData moduleData, const char *name, const char
 }
 
 struct dvTypedObject *dvModuleOutputAllocate(dvModuleData moduleData, const char *name) {
-	auto module = static_cast<dv::Module *>(moduleData);
+	auto module = reinterpret_cast<dv::Module *>(moduleData);
 
 	try {
-		return (module->outputAllocate(name));
+		return (dv::glLibFuncPtr->outputAllocate(module, name));
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
@@ -47,10 +49,10 @@ struct dvTypedObject *dvModuleOutputAllocate(dvModuleData moduleData, const char
 }
 
 void dvModuleOutputCommit(dvModuleData moduleData, const char *name) {
-	auto module = static_cast<dv::Module *>(moduleData);
+	auto module = reinterpret_cast<dv::Module *>(moduleData);
 
 	try {
-		module->outputCommit(name);
+		dv::glLibFuncPtr->outputCommit(module, name);
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
@@ -58,10 +60,10 @@ void dvModuleOutputCommit(dvModuleData moduleData, const char *name) {
 }
 
 const struct dvTypedObject *dvModuleInputGet(dvModuleData moduleData, const char *name) {
-	auto module = static_cast<dv::Module *>(moduleData);
+	auto module = reinterpret_cast<dv::Module *>(moduleData);
 
 	try {
-		return (module->inputGet(name));
+		return (dv::glLibFuncPtr->inputGet(module, name));
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
@@ -71,10 +73,10 @@ const struct dvTypedObject *dvModuleInputGet(dvModuleData moduleData, const char
 }
 
 void dvModuleInputDismiss(dvModuleData moduleData, const char *name, const struct dvTypedObject *data) {
-	auto module = static_cast<dv::Module *>(moduleData);
+	auto module = reinterpret_cast<dv::Module *>(moduleData);
 
 	try {
-		module->inputDismiss(name, data);
+		dv::glLibFuncPtr->inputDismiss(module, name, data);
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
@@ -82,10 +84,10 @@ void dvModuleInputDismiss(dvModuleData moduleData, const char *name, const struc
 }
 
 dvConfigNode dvModuleOutputGetInfoNode(dvModuleData moduleData, const char *name) {
-	auto module = static_cast<dv::Module *>(moduleData);
+	auto module = reinterpret_cast<dv::Module *>(moduleData);
 
 	try {
-		return (static_cast<dvConfigNode>(module->outputGetInfoNode(name)));
+		return (static_cast<dvConfigNode>(dv::glLibFuncPtr->outputGetInfoNode(module, name)));
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
@@ -95,10 +97,10 @@ dvConfigNode dvModuleOutputGetInfoNode(dvModuleData moduleData, const char *name
 }
 
 dvConfigNodeConst dvModuleInputGetUpstreamNode(dvModuleData moduleData, const char *name) {
-	auto module = static_cast<dv::Module *>(moduleData);
+	auto module = reinterpret_cast<dv::Module *>(moduleData);
 
 	try {
-		return (static_cast<dvConfigNodeConst>(module->inputGetUpstreamNode(name)));
+		return (static_cast<dvConfigNodeConst>(dv::glLibFuncPtr->inputGetUpstreamNode(module, name)));
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
@@ -108,10 +110,10 @@ dvConfigNodeConst dvModuleInputGetUpstreamNode(dvModuleData moduleData, const ch
 }
 
 dvConfigNodeConst dvModuleInputGetInfoNode(dvModuleData moduleData, const char *name) {
-	auto module = static_cast<dv::Module *>(moduleData);
+	auto module = reinterpret_cast<dv::Module *>(moduleData);
 
 	try {
-		return (static_cast<dvConfigNodeConst>(module->inputGetInfoNode(name)));
+		return (static_cast<dvConfigNodeConst>(dv::glLibFuncPtr->inputGetInfoNode(module, name)));
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
@@ -121,10 +123,10 @@ dvConfigNodeConst dvModuleInputGetInfoNode(dvModuleData moduleData, const char *
 }
 
 bool dvModuleInputIsConnected(dvModuleData moduleData, const char *name) {
-	auto module = static_cast<dv::Module *>(moduleData);
+	auto module = reinterpret_cast<dv::Module *>(moduleData);
 
 	try {
-		return (module->inputIsConnected(name));
+		return (dv::glLibFuncPtr->inputIsConnected(module, name));
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());

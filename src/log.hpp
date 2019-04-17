@@ -18,9 +18,8 @@ struct LogBlock {
 void LoggerInit(void);
 
 // Part of SDK due to dvLog() having to be part of it.
-void LoggerSet(LogBlock *logger);
-LogBlock *LoggerGet();
-void LoggerVA(enum caer_log_level level, const char *format, va_list argumentList);
+void LoggerSet(const LogBlock *logger);
+const LogBlock *LoggerGet();
 
 } // namespace dv
 
