@@ -88,28 +88,28 @@ static void mainRunner() {
 
 // Install signal handler for global shutdown.
 #if defined(OS_WINDOWS)
-	if (signal(SIGTERM, &mainloopShutdownHandler) == SIG_ERR) {
-		dv::Log(dv::logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGTERM. Error: %d.", errno);
+	if (signal(SIGTERM, &mainShutdownHandler) == SIG_ERR) {
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to set signal handler for SIGTERM. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
-	if (signal(SIGINT, &mainloopShutdownHandler) == SIG_ERR) {
-		dv::Log(dv::logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGINT. Error: %d.", errno);
+	if (signal(SIGINT, &mainShutdownHandler) == SIG_ERR) {
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to set signal handler for SIGINT. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
-	if (signal(SIGBREAK, &mainloopShutdownHandler) == SIG_ERR) {
-		dv::Log(dv::logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGBREAK. Error: %d.", errno);
+	if (signal(SIGBREAK, &mainShutdownHandler) == SIG_ERR) {
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to set signal handler for SIGBREAK. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
-	if (signal(SIGSEGV, &mainloopSegfaultHandler) == SIG_ERR) {
-		dv::Log(dv::logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGSEGV. Error: %d.", errno);
+	if (signal(SIGSEGV, &mainShutdownHandler) == SIG_ERR) {
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to set signal handler for SIGSEGV. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
-	if (signal(SIGABRT, &mainloopSegfaultHandler) == SIG_ERR) {
-		dv::Log(dv::logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGABRT. Error: %d.", errno);
+	if (signal(SIGABRT, &mainShutdownHandler) == SIG_ERR) {
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to set signal handler for SIGABRT. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
@@ -135,12 +135,12 @@ static void mainRunner() {
 	sigaddset(&shutdown.sa_mask, SIGINT);
 
 	if (sigaction(SIGTERM, &shutdown, nullptr) == -1) {
-		dv::Log(dv::logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGTERM. Error: %d.", errno);
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to set signal handler for SIGTERM. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
 	if (sigaction(SIGINT, &shutdown, nullptr) == -1) {
-		dv::Log(dv::logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGINT. Error: %d.", errno);
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to set signal handler for SIGINT. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
@@ -153,12 +153,12 @@ static void mainRunner() {
 	sigaddset(&segfault.sa_mask, SIGABRT);
 
 	if (sigaction(SIGSEGV, &segfault, nullptr) == -1) {
-		dv::Log(dv::logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGSEGV. Error: %d.", errno);
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to set signal handler for SIGSEGV. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
 	if (sigaction(SIGABRT, &segfault, nullptr) == -1) {
-		dv::Log(dv::logLevel::EMERGENCY, "Mainloop", "Failed to set signal handler for SIGABRT. Error: %d.", errno);
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to set signal handler for SIGABRT. Error: %d.", errno);
 		exit(EXIT_FAILURE);
 	}
 
