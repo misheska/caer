@@ -5,7 +5,7 @@ file_identifier "CFGA";
 namespace dv;
 
 enum ConfigAction : int8 {
-	ERROR              = 0,
+	CFG_ERROR          = 0,
 	NODE_EXISTS        = 1,
 	ATTR_EXISTS        = 2,
 	GET_CHILDREN       = 3,
@@ -51,7 +51,7 @@ enum ConfigAttributeEvents : int8 {
 }
 
 table ConfigActionData {
-	action: ConfigAction = ERROR;
+	action: ConfigAction = CFG_ERROR;
 	nodeEvents: ConfigNodeEvents; // Node related.
 	attrEvents: ConfigAttributeEvents; // Attribute related.
 	id: uint64;

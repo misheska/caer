@@ -16,7 +16,7 @@ bool operator==(const ConfigActionDataT &lhs, const ConfigActionDataT &rhs);
 inline const flatbuffers::TypeTable *ConfigActionDataTypeTable();
 
 enum class ConfigAction : int8_t {
-	ERROR              = 0,
+	CFG_ERROR          = 0,
 	NODE_EXISTS        = 1,
 	ATTR_EXISTS        = 2,
 	GET_CHILDREN       = 3,
@@ -37,13 +37,13 @@ enum class ConfigAction : int8_t {
 	DUMP_TREE_NODE     = 18,
 	DUMP_TREE_ATTR     = 19,
 	GET_CLIENT_ID      = 20,
-	MIN                = ERROR,
+	MIN                = CFG_ERROR,
 	MAX                = GET_CLIENT_ID
 };
 
 inline const ConfigAction (&EnumValuesConfigAction())[21] {
 	static const ConfigAction values[]
-		= {ConfigAction::ERROR, ConfigAction::NODE_EXISTS, ConfigAction::ATTR_EXISTS, ConfigAction::GET_CHILDREN,
+		= {ConfigAction::CFG_ERROR, ConfigAction::NODE_EXISTS, ConfigAction::ATTR_EXISTS, ConfigAction::GET_CHILDREN,
 			ConfigAction::GET_ATTRIBUTES, ConfigAction::GET_TYPE, ConfigAction::GET_RANGES, ConfigAction::GET_FLAGS,
 			ConfigAction::GET_DESCRIPTION, ConfigAction::GET, ConfigAction::PUT, ConfigAction::ADD_MODULE,
 			ConfigAction::REMOVE_MODULE, ConfigAction::ADD_PUSH_CLIENT, ConfigAction::REMOVE_PUSH_CLIENT,
@@ -53,7 +53,7 @@ inline const ConfigAction (&EnumValuesConfigAction())[21] {
 }
 
 inline const char *const *EnumNamesConfigAction() {
-	static const char *const names[] = {"ERROR", "NODE_EXISTS", "ATTR_EXISTS", "GET_CHILDREN", "GET_ATTRIBUTES",
+	static const char *const names[] = {"CFG_ERROR", "NODE_EXISTS", "ATTR_EXISTS", "GET_CHILDREN", "GET_ATTRIBUTES",
 		"GET_TYPE", "GET_RANGES", "GET_FLAGS", "GET_DESCRIPTION", "GET", "PUT", "ADD_MODULE", "REMOVE_MODULE",
 		"ADD_PUSH_CLIENT", "REMOVE_PUSH_CLIENT", "PUSH_MESSAGE_NODE", "PUSH_MESSAGE_ATTR", "DUMP_TREE",
 		"DUMP_TREE_NODE", "DUMP_TREE_ATTR", "GET_CLIENT_ID", nullptr};
@@ -61,7 +61,7 @@ inline const char *const *EnumNamesConfigAction() {
 }
 
 inline const char *EnumNameConfigAction(ConfigAction e) {
-	if (e < ConfigAction::ERROR || e > ConfigAction::GET_CLIENT_ID)
+	if (e < ConfigAction::CFG_ERROR || e > ConfigAction::GET_CLIENT_ID)
 		return "";
 	const size_t index = static_cast<int>(e);
 	return EnumNamesConfigAction()[index];
@@ -162,7 +162,7 @@ struct ConfigActionDataT : public flatbuffers::NativeTable {
 	int32_t flags;
 	dv::cstring description;
 	ConfigActionDataT() :
-		action(ConfigAction::ERROR),
+		action(ConfigAction::CFG_ERROR),
 		nodeEvents(ConfigNodeEvents::NODE_ADDED),
 		attrEvents(ConfigAttributeEvents::ATTRIBUTE_ADDED),
 		id(0),
@@ -180,7 +180,7 @@ inline bool operator==(const ConfigActionDataT &lhs, const ConfigActionDataT &rh
 
 struct ConfigActionData FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef ConfigActionDataT NativeTableType;
-	static FLATBUFFERS_CONSTEXPR const char *identifier = "CFGA";
+	static const char *identifier;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return ConfigActionDataTypeTable();
 	}
@@ -299,7 +299,7 @@ struct ConfigActionDataBuilder {
 };
 
 inline flatbuffers::Offset<ConfigActionData> CreateConfigActionData(flatbuffers::FlatBufferBuilder &_fbb,
-	ConfigAction action = ConfigAction::ERROR, ConfigNodeEvents nodeEvents = ConfigNodeEvents::NODE_ADDED,
+	ConfigAction action = ConfigAction::CFG_ERROR, ConfigNodeEvents nodeEvents = ConfigNodeEvents::NODE_ADDED,
 	ConfigAttributeEvents attrEvents = ConfigAttributeEvents::ATTRIBUTE_ADDED, uint64_t id = 0,
 	flatbuffers::Offset<flatbuffers::String> node = 0, flatbuffers::Offset<flatbuffers::String> key = 0,
 	ConfigType type = ConfigType::UNKNOWN, flatbuffers::Offset<flatbuffers::String> value = 0,
@@ -321,7 +321,7 @@ inline flatbuffers::Offset<ConfigActionData> CreateConfigActionData(flatbuffers:
 }
 
 inline flatbuffers::Offset<ConfigActionData> CreateConfigActionDataDirect(flatbuffers::FlatBufferBuilder &_fbb,
-	ConfigAction action = ConfigAction::ERROR, ConfigNodeEvents nodeEvents = ConfigNodeEvents::NODE_ADDED,
+	ConfigAction action = ConfigAction::CFG_ERROR, ConfigNodeEvents nodeEvents = ConfigNodeEvents::NODE_ADDED,
 	ConfigAttributeEvents attrEvents = ConfigAttributeEvents::ATTRIBUTE_ADDED, uint64_t id = 0,
 	const char *node = nullptr, const char *key = nullptr, ConfigType type = ConfigType::UNKNOWN,
 	const char *value = nullptr, const char *ranges = nullptr, int32_t flags = 0, const char *description = nullptr) {
@@ -445,10 +445,10 @@ inline const flatbuffers::TypeTable *ConfigActionTypeTable() {
 			{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0},
 			{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}};
 	static const flatbuffers::TypeFunction type_refs[] = {ConfigActionTypeTable};
-	static const char *const names[]       = {"ERROR", "NODE_EXISTS", "ATTR_EXISTS", "GET_CHILDREN", "GET_ATTRIBUTES",
-        "GET_TYPE", "GET_RANGES", "GET_FLAGS", "GET_DESCRIPTION", "GET", "PUT", "ADD_MODULE", "REMOVE_MODULE",
-        "ADD_PUSH_CLIENT", "REMOVE_PUSH_CLIENT", "PUSH_MESSAGE_NODE", "PUSH_MESSAGE_ATTR", "DUMP_TREE",
-        "DUMP_TREE_NODE", "DUMP_TREE_ATTR", "GET_CLIENT_ID"};
+	static const char *const names[] = {"CFG_ERROR", "NODE_EXISTS", "ATTR_EXISTS", "GET_CHILDREN", "GET_ATTRIBUTES",
+		"GET_TYPE", "GET_RANGES", "GET_FLAGS", "GET_DESCRIPTION", "GET", "PUT", "ADD_MODULE", "REMOVE_MODULE",
+		"ADD_PUSH_CLIENT", "REMOVE_PUSH_CLIENT", "PUSH_MESSAGE_NODE", "PUSH_MESSAGE_ATTR", "DUMP_TREE",
+		"DUMP_TREE_NODE", "DUMP_TREE_ATTR", "GET_CLIENT_ID"};
 	static const flatbuffers::TypeTable tt = {flatbuffers::ST_ENUM, 21, type_codes, type_refs, nullptr, names};
 	return &tt;
 }
@@ -503,9 +503,11 @@ inline const dv::ConfigActionData *GetSizePrefixedConfigActionData(const void *b
 	return flatbuffers::GetSizePrefixedRoot<dv::ConfigActionData>(buf);
 }
 
-inline FLATBUFFERS_CONSTEXPR const char *ConfigActionDataIdentifier() {
-	return dv::ConfigActionData::identifier;
+inline const char *ConfigActionDataIdentifier() {
+	return "CFGA";
 }
+
+const char *ConfigActionData::identifier = ConfigActionDataIdentifier();
 
 inline bool ConfigActionDataBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, ConfigActionDataIdentifier());
