@@ -1,5 +1,7 @@
 native_include "dv-sdk/data/cstring.hpp";
 
+file_identifier "CFGA";
+
 namespace dv;
 
 enum ConfigAction : int8 {

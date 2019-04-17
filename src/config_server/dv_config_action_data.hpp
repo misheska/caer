@@ -11,6 +11,8 @@ namespace dv {
 struct ConfigActionData;
 struct ConfigActionDataT;
 
+bool operator==(const ConfigActionDataT &lhs, const ConfigActionDataT &rhs);
+
 inline const flatbuffers::TypeTable *ConfigActionDataTypeTable();
 
 enum class ConfigAction : int8_t {
@@ -145,6 +147,9 @@ inline const char *EnumNameConfigAttributeEvents(ConfigAttributeEvents e) {
 
 struct ConfigActionDataT : public flatbuffers::NativeTable {
 	typedef ConfigActionData TableType;
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.ConfigActionDataT";
+	}
 	ConfigAction action;
 	ConfigNodeEvents nodeEvents;
 	ConfigAttributeEvents attrEvents;
@@ -166,10 +171,21 @@ struct ConfigActionDataT : public flatbuffers::NativeTable {
 	}
 };
 
+inline bool operator==(const ConfigActionDataT &lhs, const ConfigActionDataT &rhs) {
+	return (lhs.action == rhs.action) && (lhs.nodeEvents == rhs.nodeEvents) && (lhs.attrEvents == rhs.attrEvents)
+		   && (lhs.id == rhs.id) && (lhs.node == rhs.node) && (lhs.key == rhs.key) && (lhs.type == rhs.type)
+		   && (lhs.value == rhs.value) && (lhs.ranges == rhs.ranges) && (lhs.flags == rhs.flags)
+		   && (lhs.description == rhs.description);
+}
+
 struct ConfigActionData FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef ConfigActionDataT NativeTableType;
+	static const char *identifier;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return ConfigActionDataTypeTable();
+	}
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.ConfigActionData";
 	}
 	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
 		VT_ACTION      = 4,
@@ -487,22 +503,32 @@ inline const dv::ConfigActionData *GetSizePrefixedConfigActionData(const void *b
 	return flatbuffers::GetSizePrefixedRoot<dv::ConfigActionData>(buf);
 }
 
+inline const char *ConfigActionDataIdentifier() {
+	return "CFGA";
+}
+
+const char *ConfigActionData::identifier = ConfigActionDataIdentifier();
+
+inline bool ConfigActionDataBufferHasIdentifier(const void *buf) {
+	return flatbuffers::BufferHasIdentifier(buf, ConfigActionDataIdentifier());
+}
+
 inline bool VerifyConfigActionDataBuffer(flatbuffers::Verifier &verifier) {
-	return verifier.VerifyBuffer<dv::ConfigActionData>(nullptr);
+	return verifier.VerifyBuffer<dv::ConfigActionData>(ConfigActionDataIdentifier());
 }
 
 inline bool VerifySizePrefixedConfigActionDataBuffer(flatbuffers::Verifier &verifier) {
-	return verifier.VerifySizePrefixedBuffer<dv::ConfigActionData>(nullptr);
+	return verifier.VerifySizePrefixedBuffer<dv::ConfigActionData>(ConfigActionDataIdentifier());
 }
 
 inline void FinishConfigActionDataBuffer(
 	flatbuffers::FlatBufferBuilder &fbb, flatbuffers::Offset<dv::ConfigActionData> root) {
-	fbb.Finish(root);
+	fbb.Finish(root, ConfigActionDataIdentifier());
 }
 
 inline void FinishSizePrefixedConfigActionDataBuffer(
 	flatbuffers::FlatBufferBuilder &fbb, flatbuffers::Offset<dv::ConfigActionData> root) {
-	fbb.FinishSizePrefixed(root);
+	fbb.FinishSizePrefixed(root, ConfigActionDataIdentifier());
 }
 
 inline std::unique_ptr<ConfigActionDataT> UnPackConfigActionData(
