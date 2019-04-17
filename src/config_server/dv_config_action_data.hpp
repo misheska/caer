@@ -180,7 +180,7 @@ inline bool operator==(const ConfigActionDataT &lhs, const ConfigActionDataT &rh
 
 struct ConfigActionData FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef ConfigActionDataT NativeTableType;
-	static const char *identifier;
+	static FLATBUFFERS_CONSTEXPR const char *identifier = "CFGA";
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return ConfigActionDataTypeTable();
 	}
@@ -503,11 +503,9 @@ inline const dv::ConfigActionData *GetSizePrefixedConfigActionData(const void *b
 	return flatbuffers::GetSizePrefixedRoot<dv::ConfigActionData>(buf);
 }
 
-inline const char *ConfigActionDataIdentifier() {
-	return "CFGA";
+inline FLATBUFFERS_CONSTEXPR const char *ConfigActionDataIdentifier() {
+	return dv::ConfigActionData::identifier;
 }
-
-const char *ConfigActionData::identifier = ConfigActionDataIdentifier();
 
 inline bool ConfigActionDataBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, ConfigActionDataIdentifier());
