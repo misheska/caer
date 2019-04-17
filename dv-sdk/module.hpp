@@ -18,10 +18,6 @@
 
 namespace dv {
 
-namespace Cfg  = dv::Config;
-using CfgType  = dv::Config::AttributeType;
-using CfgFlags = dv::Config::AttributeFlags;
-
 /**
  * Trait for the existence of a static getDescription method with const char* return value
  * @tparam T The class to be tested

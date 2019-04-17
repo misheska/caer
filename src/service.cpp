@@ -6,10 +6,6 @@
 #	include <sys/types.h>
 #	include <unistd.h>
 
-namespace dvCfg  = dv::Config;
-using dvCfgType  = dvCfg::AttributeType;
-using dvCfgFlags = dvCfg::AttributeFlags;
-
 static void unixDaemonize();
 
 static void unixDaemonize() {
@@ -82,10 +78,10 @@ static void unixDaemonize() {
 void dv::ServiceInit(void (*runner)()) {
 	auto systemNode = dv::Config::GLOBAL.getNode("/system/");
 
-	systemNode.create<dvCfgType::BOOL>(
-		"backgroundService", false, {}, dvCfgFlags::READ_ONLY, "Start program as a background service.");
+	systemNode.create<dv::CfgType::BOOL>(
+		"backgroundService", false, {}, dv::CfgFlags::READ_ONLY, "Start program as a background service.");
 
-	bool backgroundService = systemNode.get<dvCfgType::BOOL>("backgroundService");
+	bool backgroundService = systemNode.get<dv::CfgType::BOOL>("backgroundService");
 
 	if (backgroundService) {
 #if defined(OS_WINDOWS)

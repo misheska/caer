@@ -33,6 +33,10 @@ void dvLog(enum caer_log_level level, const char *format, ...) ATTRIBUTE_FORMAT(
 
 namespace dv {
 
+namespace Cfg  = dv::Config;
+using CfgType  = dv::Config::AttributeType;
+using CfgFlags = dv::Config::AttributeFlags;
+
 template<typename T> using unique_ptr_deleter = std::unique_ptr<T, void (*)(T *)>;
 
 using unique_ptr_void = unique_ptr_deleter<void>;
