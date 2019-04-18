@@ -11,12 +11,14 @@
 #include "service.hpp"
 
 #include <algorithm>
+#include <boost/core/demangle.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <chrono>
 #include <csignal>
 #include <iostream>
 #include <mutex>
+#include <typeinfo>
 
 // If Boost version recent enough, enable better stack traces on segfault.
 #include <boost/version.hpp>
@@ -51,7 +53,14 @@ void dv::addModule(const std::string &name, const std::string &library) {
 	std::scoped_lock lock(dv::MainData::getGlobal().modulesLock);
 
 	auto restoreLogger = dv::LoggerGet();
-	dv::MainData::getGlobal().modules.try_emplace(name, std::make_shared<dv::Module>(name, library));
+	try {
+		dv::MainData::getGlobal().modules.try_emplace(name, std::make_shared<dv::Module>(name, library));
+	}
+	catch (const std::exception &ex) {
+		dv::Log(dv::logLevel::CRITICAL, "addModule(): '%s :: %s', cannot create module.",
+			boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
+	}
+
 	dv::LoggerSet(restoreLogger);
 }
 
