@@ -4,21 +4,15 @@ ADD_EXECUTABLE(dv-control
 	../ext/linenoise-ng/ConvertUTF.cpp
 	../ext/linenoise-ng/wcwidth.cpp
 	../ext/linenoise-ng/linenoise.cpp
-	# Standalone library part.
-	../../src/sdk_lib/sdk_cross.cpp
-	../../src/config_tree/tree.cpp
-	../../src/config_tree/helper.cpp
-	../../src/config_tree/node.cpp
 	# Executable.
 	dv-control.cpp)
 
 TARGET_LINK_LIBRARIES(dv-control
 	PRIVATE
-		libcaer::caer
+		dvsdk
 		Boost::boost
 		Boost::system
 		Boost::filesystem
-		Boost::iostreams
 		Boost::program_options
 		${BOOST_ASIO_LIBRARIES})
 
