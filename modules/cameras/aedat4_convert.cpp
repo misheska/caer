@@ -28,7 +28,7 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 			auto newEventPacket = static_cast<dv::EventPacket::NativeTableType *>(newObject->obj);
 
 			const libcaer::events::PolarityEventPacket oldPacketPolarity(
-				const_cast<caerEventPacketHeader>(oldPacket), false);
+				const_cast<caerEventPacketHeader>(oldPacket), true);
 
 			newEventPacket->events.reserve(static_cast<size_t>(oldPacketPolarity.getEventValid()));
 
@@ -49,7 +49,7 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 		}
 
 		case FRAME_EVENT: {
-			const libcaer::events::FrameEventPacket oldPacketFrame(const_cast<caerEventPacketHeader>(oldPacket), false);
+			const libcaer::events::FrameEventPacket oldPacketFrame(const_cast<caerEventPacketHeader>(oldPacket), true);
 
 			for (const auto &evt : oldPacketFrame) {
 				if (!evt.isValid()) {
@@ -122,7 +122,7 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 			auto newObject    = dvModuleOutputAllocate(moduleData, "imu");
 			auto newIMUPacket = static_cast<dv::IMUPacket::NativeTableType *>(newObject->obj);
 
-			const libcaer::events::IMU6EventPacket oldPacketIMU(const_cast<caerEventPacketHeader>(oldPacket), false);
+			const libcaer::events::IMU6EventPacket oldPacketIMU(const_cast<caerEventPacketHeader>(oldPacket), true);
 
 			newIMUPacket->samples.reserve(static_cast<size_t>(oldPacketIMU.getEventValid()));
 
@@ -156,7 +156,7 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 			auto newTriggerPacket = static_cast<dv::TriggerPacket::NativeTableType *>(newObject->obj);
 
 			const libcaer::events::SpecialEventPacket oldPacketSpecial(
-				const_cast<caerEventPacketHeader>(oldPacket), false);
+				const_cast<caerEventPacketHeader>(oldPacket), true);
 
 			newTriggerPacket->triggers.reserve(static_cast<size_t>(oldPacketSpecial.getEventValid()));
 
