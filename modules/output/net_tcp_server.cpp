@@ -59,6 +59,20 @@ public:
 		acceptorNewSocket(ioService),
 		tlsContext(asioSSL::context::tlsv12_server),
 		tlsEnabled(false) {
+		// First check that input is possible.
+		auto inputInfoNode = inputs.getInfoNode("output0");
+		if (!inputInfoNode) {
+			throw std::runtime_error("Input not ready, upstream module not running.");
+		}
+
+		auto inputNode = inputInfoNode.getParent();
+
+		auto outputNode     = moduleNode.getRelativeNode("outputs/output0/");
+		auto outputInfoNode = outputNode.getRelativeNode("info/");
+
+		inputNode.copyTo(outputNode);
+		inputInfoNode.copyTo(outputInfoNode);
+
 		// Configure acceptor.
 		auto endpoint = asioTCP::endpoint(asioIP::address::from_string(config.get<dv::CfgType::STRING>("ipAddress")),
 			static_cast<uint16_t>(config.get<dv::CfgType::INT>("portNumber")));
@@ -73,15 +87,6 @@ public:
 			const auto local = acceptor.local_endpoint();
 			config.set<dv::CfgType::INT>("portNumber", local.port());
 		}
-
-		auto inputInfoNode = inputs.getInfoNode("output0");
-		auto inputNode     = inputInfoNode.getParent();
-
-		auto outputNode     = moduleNode.getRelativeNode("outputs/output0/");
-		auto outputInfoNode = outputNode.getRelativeNode("info/");
-
-		inputNode.copyTo(outputNode);
-		inputInfoNode.copyTo(outputInfoNode);
 
 		acceptStart();
 
