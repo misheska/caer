@@ -133,15 +133,17 @@ public:
 		auto evt_in  = inputs.get<dv::EventPacket>("events");
 		auto evt_out = outputs.get<dv::EventPacket>("events");
 
-		bool hotPixelEnabled             = config.get<dvCfgType::BOOL>("hotPixelEnable");
-		bool refractoryPeriodEnabled     = config.get<dvCfgType::BOOL>("refractoryPeriodEnable");
-		bool backgroundActivityEnabled   = config.get<dvCfgType::BOOL>("backgroundActivityEnable");
-		bool backgroundActivityTwoLevels = config.get<dvCfgType::BOOL>("backgroundActivityTwoLevels");
+		bool hotPixelEnabled           = config.get<dvCfgType::BOOL>("hotPixelEnable");
+		bool refractoryPeriodEnabled   = config.get<dvCfgType::BOOL>("refractoryPeriodEnable");
+		bool backgroundActivityEnabled = config.get<dvCfgType::BOOL>("backgroundActivityEnable");
 
 		int32_t hotPixelTime                 = config.get<dvCfgType::INT>("hotPixelTime");
 		int32_t refractoryPeriodTime         = config.get<dvCfgType::INT>("refractoryPeriodTime");
 		int32_t backgroundActivitySupportMin = config.get<dvCfgType::INT>("backgroundActivitySupportMin");
 		int32_t backgroundActivitySupportMax = config.get<dvCfgType::INT>("backgroundActivitySupportMax");
+		int32_t backgroundActivityTime       = config.get<dvCfgType::INT>("backgroundActivityTime");
+		bool backgroundActivityCheckPolarity = config.get<dvCfgType::BOOL>("backgroundActivityCheckPolarity");
+		bool backgroundActivityTwoLevels     = config.get<dvCfgType::BOOL>("backgroundActivityTwoLevels");
 
 		// Hot Pixel learning: initialize and store packet-level timestamp.
 		if (config.get<dvCfgType::BOOL>("hotPixelLearn") && !hotPixelLearningStarted) {
@@ -221,8 +223,9 @@ public:
 			}
 
 			if (backgroundActivityEnabled) {
-				size_t supportPixelNum = doBackgroundActivityLookup(
-					evt.x(), evt.y(), pixelIndex, evt.timestamp(), evt.polarity(), supportPixelIndexes.data());
+				size_t supportPixelNum
+					= doBackgroundActivityLookup(evt.x(), evt.y(), pixelIndex, evt.timestamp(), evt.polarity(),
+						supportPixelIndexes.data(), backgroundActivityTime, backgroundActivityCheckPolarity);
 
 				bool filteredOut = true;
 
@@ -238,7 +241,8 @@ public:
 								= static_cast<int16_t>(supportPixelIndex / static_cast<size_t>(sizeX));
 
 							if (doBackgroundActivityLookup(supportPixelX, supportPixelY, supportPixelIndex,
-									evt.timestamp(), evt.polarity(), nullptr)
+									evt.timestamp(), evt.polarity(), nullptr, backgroundActivityTime,
+									backgroundActivityCheckPolarity)
 								> 0) {
 								filteredOut = false;
 								break;
@@ -283,16 +287,13 @@ public:
 		config.set<dvCfgType::LONG>("refractoryPeriodFilteredOff", refractoryPeriodStatOff);
 	}
 
-	size_t doBackgroundActivityLookup(
-		int16_t x, int16_t y, size_t pixelIndex, int64_t timestamp, bool polarity, size_t *supportIndexes) {
+	inline size_t doBackgroundActivityLookup(int16_t x, int16_t y, size_t pixelIndex, int64_t timestamp, bool polarity,
+		size_t *supportIndexes, int32_t backgroundActivityTime, bool backgroundActivityCheckPolarity) {
 		// Compute map limits.
 		bool notBorderLeft  = (x != 0);
 		bool notBorderDown  = (y != (sizeY - 1));
 		bool notBorderRight = (x != (sizeX - 1));
 		bool notBorderUp    = (y != 0);
-
-		int32_t backgroundActivityTime       = config.get<dvCfgType::INT>("backgroundActivityTime");
-		bool backgroundActivityCheckPolarity = config.get<dvCfgType::BOOL>("backgroundActivityCheckPolarity");
 
 		// Background Activity filter: if difference between current timestamp
 		// and stored neighbor timestamp is smaller than given time limit, it
