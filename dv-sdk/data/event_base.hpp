@@ -83,7 +83,7 @@ inline bool operator==(const EventPacketT &lhs, const EventPacketT &rhs) {
 
 struct EventPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef EventPacketT NativeTableType;
-	static const char *identifier;
+	static FLATBUFFERS_CONSTEXPR const char *identifier = "EVTS";
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return EventPacketTypeTable();
 	}
@@ -214,8 +214,6 @@ inline const dv::EventPacket *GetSizePrefixedEventPacket(const void *buf) {
 inline const char *EventPacketIdentifier() {
 	return "EVTS";
 }
-
-inline const char *EventPacket::identifier = EventPacketIdentifier();
 
 inline bool EventPacketBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, EventPacketIdentifier());

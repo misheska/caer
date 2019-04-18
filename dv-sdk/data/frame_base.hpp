@@ -87,7 +87,7 @@ inline bool operator==(const FrameT &lhs, const FrameT &rhs) {
 
 struct Frame FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef FrameT NativeTableType;
-	static const char *identifier;
+	static FLATBUFFERS_CONSTEXPR const char *identifier = "FRME";
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return FrameTypeTable();
 	}
@@ -377,8 +377,6 @@ inline const dv::Frame *GetSizePrefixedFrame(const void *buf) {
 inline const char *FrameIdentifier() {
 	return "FRME";
 }
-
-inline const char *Frame::identifier = FrameIdentifier();
 
 inline bool FrameBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, FrameIdentifier());

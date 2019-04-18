@@ -161,7 +161,7 @@ inline bool operator==(const TriggerPacketT &lhs, const TriggerPacketT &rhs) {
 
 struct TriggerPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef TriggerPacketT NativeTableType;
-	static const char *identifier;
+	static FLATBUFFERS_CONSTEXPR const char *identifier = "TRIG";
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return TriggerPacketTypeTable();
 	}
@@ -357,8 +357,6 @@ inline const dv::TriggerPacket *GetSizePrefixedTriggerPacket(const void *buf) {
 inline const char *TriggerPacketIdentifier() {
 	return "TRIG";
 }
-
-inline const char *TriggerPacket::identifier = TriggerPacketIdentifier();
 
 inline bool TriggerPacketBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, TriggerPacketIdentifier());

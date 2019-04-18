@@ -227,7 +227,7 @@ inline bool operator==(const IMUPacketT &lhs, const IMUPacketT &rhs) {
 
 struct IMUPacket FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef IMUPacketT NativeTableType;
-	static const char *identifier;
+	static FLATBUFFERS_CONSTEXPR const char *identifier = "IMUS";
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return IMUPacketTypeTable();
 	}
@@ -458,8 +458,6 @@ inline const dv::IMUPacket *GetSizePrefixedIMUPacket(const void *buf) {
 inline const char *IMUPacketIdentifier() {
 	return "IMUS";
 }
-
-inline const char *IMUPacket::identifier = IMUPacketIdentifier();
 
 inline bool IMUPacketBufferHasIdentifier(const void *buf) {
 	return flatbuffers::BufferHasIdentifier(buf, IMUPacketIdentifier());
