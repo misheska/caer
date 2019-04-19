@@ -2,9 +2,7 @@
 
 #include "config_server.h"
 #include "config_server_actions.h"
-#include "config_server_main.h"
-
-namespace logger = libcaer::log;
+#include "config_server_main.hpp"
 
 // Start at 1, 0 is reserved for system.
 std::atomic_uint64_t ConfigServerConnection::clientIDGenerator{1};
@@ -17,7 +15,7 @@ ConfigServerConnection::ConfigServerConnection(
 
 	parent->setCurrentClientID(clientID);
 
-	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "New connection from client %lld (%s:%d).", clientID,
+	dv::Log(dv::logLevel::INFO, "New connection from client %lld (%s:%d).", clientID,
 		socket.remote_address().to_string().c_str(), socket.remote_port());
 }
 
@@ -26,7 +24,7 @@ ConfigServerConnection::~ConfigServerConnection() {
 
 	parent->removeClient(this);
 
-	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Closing connection from client %lld (%s:%d).", clientID,
+	dv::Log(dv::logLevel::INFO, "Closing connection from client %lld (%s:%d).", clientID,
 		socket.remote_address().to_string().c_str(), socket.remote_port());
 }
 
@@ -105,8 +103,8 @@ void ConfigServerConnection::readMessageSize() {
 				// Check for wrong (excessive) message length.
 				// Close connection by falling out of scope.
 				if (incomingMessageSize > DV_CONFIG_SERVER_MAX_INCOMING_SIZE) {
-					logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME,
-						"Client %lld: message length error (%d bytes).", clientID, incomingMessageSize);
+					dv::Log(dv::logLevel::INFO, "Client %lld: message length error (%d bytes).", clientID,
+						incomingMessageSize);
 					return;
 				}
 
@@ -139,12 +137,11 @@ void ConfigServerConnection::readMessage() {
 
 				if (!dv::VerifyConfigActionDataBuffer(verifyMessage)) {
 					// Failed verification, close connection by falling out of scope.
-					logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Client %lld: message verification error.",
-						clientID);
+					dv::Log(dv::logLevel::INFO, "Client %lld: message verification error.", clientID);
 					return;
 				}
 
-				dvConfigServerHandleRequest(self, std::move(messageBuffer));
+				ConfigServerHandleRequest(self, std::move(messageBuffer));
 			}
 		});
 }
@@ -154,10 +151,10 @@ void ConfigServerConnection::handleError(const boost::system::error_code &error,
 
 	if (error == asio::error::eof) {
 		// Handle EOF separately.
-		logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Client %lld: connection closed.", clientID);
+		dv::Log(dv::logLevel::INFO, "Client %lld: connection closed.", clientID);
 	}
 	else {
-		logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME, "Client %lld: %s. Error: %s (%d).", clientID, message,
-			error.message().c_str(), error.value());
+		dv::Log(dv::logLevel::ERROR, "Client %lld: %s. Error: %s (%d).", clientID, message, error.message().c_str(),
+			error.value());
 	}
 }

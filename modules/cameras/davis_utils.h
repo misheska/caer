@@ -9,12 +9,13 @@
 
 #include <libcaer/devices/davis.h>
 
-#include "dv-sdk/mainloop.h"
+#include "dv-sdk/module.h"
 
-static void caerInputDAVISCommonSystemConfigInit(dvConfigNode moduleNode);
+#include "aedat4_convert.h"
+
+static void caerInputDAVISCommonSystemConfigInit(dvModuleData moduleData);
 static void caerInputDAVISCommonInit(dvModuleData moduleData, struct caer_davis_info *devInfo);
-static void caerInputDAVISCommonRun(
-	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+static void caerInputDAVISCommonRun(dvModuleData moduleData);
 static void moduleShutdownNotify(void *p);
 
 static void createDefaultBiasConfiguration(dvModuleData moduleData, const char *nodePrefix, int16_t chipID);
@@ -107,7 +108,15 @@ static inline const char *chipIDToName(int16_t chipID, bool withEndSlash) {
 	return ((withEndSlash) ? ("Unsupported/") : ("Unsupported"));
 }
 
-static void caerInputDAVISCommonSystemConfigInit(dvConfigNode moduleNode) {
+static void caerInputDAVISCommonSystemConfigInit(dvModuleData moduleData) {
+	// Add outputs.
+	dvModuleRegisterOutput(moduleData, "events", "EVTS");
+	dvModuleRegisterOutput(moduleData, "frames", "FRME");
+	dvModuleRegisterOutput(moduleData, "triggers", "TRIG");
+	dvModuleRegisterOutput(moduleData, "imu", "IMUS");
+
+	dvConfigNode moduleNode = moduleData->moduleNode;
+
 	dvConfigNode sysNode = dvConfigNodeGetRelativeNode(moduleNode, "system/");
 
 	// Packet settings (size (in events) and time interval (in µs)).
@@ -125,7 +134,7 @@ static void caerInputDAVISCommonSystemConfigInit(dvConfigNode moduleNode) {
 static void caerInputDAVISCommonInit(dvModuleData moduleData, struct caer_davis_info *devInfo) {
 	// Initialize per-device log-level to module log-level.
 	caerDeviceConfigSet(moduleData->moduleState, CAER_HOST_CONFIG_LOG, CAER_HOST_CONFIG_LOG_LEVEL,
-		atomic_load(&moduleData->moduleLogLevel));
+		U32T(dvConfigNodeGetInt(moduleData->moduleNode, "logLevel")));
 
 	// Put global source information into config.
 	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
@@ -151,10 +160,6 @@ static void caerInputDAVISCommonInit(dvModuleData moduleData, struct caer_davis_
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"Device supports FPGA Multiplexer statistics (USB event drops).");
 
-	dvConfigNodeCreateInt(sourceInfoNode, "polaritySizeX", devInfo->dvsSizeX, devInfo->dvsSizeX, devInfo->dvsSizeX,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Polarity events width.");
-	dvConfigNodeCreateInt(sourceInfoNode, "polaritySizeY", devInfo->dvsSizeY, devInfo->dvsSizeY, devInfo->dvsSizeY,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Polarity events height.");
 	dvConfigNodeCreateBool(sourceInfoNode, "dvsHasPixelFilter", devInfo->dvsHasPixelFilter,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device supports FPGA DVS Pixel-level filter.");
 	dvConfigNodeCreateBool(sourceInfoNode, "dvsHasBackgroundActivityFilter", devInfo->dvsHasBackgroundActivityFilter,
@@ -169,10 +174,6 @@ static void caerInputDAVISCommonInit(dvModuleData moduleData, struct caer_davis_
 	dvConfigNodeCreateBool(sourceInfoNode, "dvsHasStatistics", devInfo->dvsHasStatistics,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device supports FPGA DVS statistics.");
 
-	dvConfigNodeCreateInt(sourceInfoNode, "frameSizeX", devInfo->apsSizeX, devInfo->apsSizeX, devInfo->apsSizeX,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Frame events width.");
-	dvConfigNodeCreateInt(sourceInfoNode, "frameSizeY", devInfo->apsSizeY, devInfo->apsSizeY, devInfo->apsSizeY,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Frame events height.");
 	dvConfigNodeCreateInt(sourceInfoNode, "apsColorFilter", I8T(devInfo->apsColorFilter), I8T(devInfo->apsColorFilter),
 		I8T(devInfo->apsColorFilter), DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
 		"APS sensor color-filter pattern.");
@@ -182,57 +183,80 @@ static void caerInputDAVISCommonInit(dvModuleData moduleData, struct caer_davis_
 	dvConfigNodeCreateBool(sourceInfoNode, "extInputHasGenerator", devInfo->extInputHasGenerator,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device supports generating pulses on output signal jack.");
 
-	// Put source information for generic visualization, to be used to display and debug filter information.
-	int16_t dataSizeX = (devInfo->dvsSizeX > devInfo->apsSizeX) ? (devInfo->dvsSizeX) : (devInfo->apsSizeX);
-	int16_t dataSizeY = (devInfo->dvsSizeY > devInfo->apsSizeY) ? (devInfo->dvsSizeY) : (devInfo->apsSizeY);
+	dvConfigNode outEventsNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "outputs/events/info/");
+	dvConfigNodeCreateInt(outEventsNode, "sizeX", devInfo->dvsSizeX, devInfo->dvsSizeX, devInfo->dvsSizeX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Events width (X resolution).");
+	dvConfigNodeCreateInt(outEventsNode, "sizeY", devInfo->dvsSizeY, devInfo->dvsSizeY, devInfo->dvsSizeY,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Events height (Y resolution).");
 
-	dvConfigNodeCreateInt(sourceInfoNode, "dataSizeX", dataSizeX, dataSizeX, dataSizeX,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Data width.");
-	dvConfigNodeCreateInt(sourceInfoNode, "dataSizeY", dataSizeY, dataSizeY, dataSizeY,
-		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Data height.");
+	dvConfigNode outFramesNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "outputs/frames/info/");
+	dvConfigNodeCreateInt(outFramesNode, "sizeX", devInfo->apsSizeX, devInfo->apsSizeX, devInfo->apsSizeX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Frame width (X resolution).");
+	dvConfigNodeCreateInt(outFramesNode, "sizeY", devInfo->apsSizeY, devInfo->apsSizeY, devInfo->apsSizeY,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Frame height (Y resolution).");
 
 	// Generate source string for output modules.
-	size_t sourceStringLength = (size_t) snprintf(
-		NULL, 0, "#Source %" PRIu16 ": %s\r\n", moduleData->moduleID, chipIDToName(devInfo->chipID, false));
+	size_t sourceStringLength
+		= (size_t) snprintf(NULL, 0, "%s[SN %s, %" PRIu8 ":%" PRIu8 "]", chipIDToName(devInfo->chipID, false),
+			devInfo->deviceSerialNumber, devInfo->deviceUSBBusNumber, devInfo->deviceUSBDeviceAddress);
 
 	char sourceString[sourceStringLength + 1];
-	snprintf(sourceString, sourceStringLength + 1, "#Source %" PRIu16 ": %s\r\n", moduleData->moduleID,
-		chipIDToName(devInfo->chipID, false));
+	snprintf(sourceString, sourceStringLength + 1, "%s[SN %s, %" PRIu8 ":%" PRIu8 "]",
+		chipIDToName(devInfo->chipID, false), devInfo->deviceSerialNumber, devInfo->deviceUSBBusNumber,
+		devInfo->deviceUSBDeviceAddress);
 	sourceString[sourceStringLength] = '\0';
 
-	dvConfigNodeCreateString(sourceInfoNode, "sourceString", sourceString, sourceStringLength, sourceStringLength,
+	dvConfigNodeCreateString(sourceInfoNode, "source", sourceString, I32T(sourceStringLength), I32T(sourceStringLength),
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device source information.");
+
+	dvConfigNodeCreateString(outEventsNode, "source", sourceString, I32T(sourceStringLength), I32T(sourceStringLength),
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device source information.");
+
+	dvConfigNodeCreateString(outFramesNode, "source", sourceString, I32T(sourceStringLength), I32T(sourceStringLength),
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device source information.");
+
+	dvConfigNodeCreateString(dvConfigNodeGetRelativeNode(moduleData->moduleNode, "outputs/triggers/info/"), "source",
+		sourceString, I32T(sourceStringLength), I32T(sourceStringLength), DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
+		"Device source information.");
+
+	dvConfigNodeCreateString(dvConfigNodeGetRelativeNode(moduleData->moduleNode, "outputs/imu/info/"), "source",
+		sourceString, I32T(sourceStringLength), I32T(sourceStringLength), DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT,
+		"Device source information.");
 
 	// Ensure good defaults for data acquisition settings.
 	// No blocking behavior due to mainloop notification, and no auto-start of
 	// all producers to ensure cAER settings are respected.
 	caerDeviceConfigSet(
-		moduleData->moduleState, CAER_HOST_CONFIG_DATAEXCHANGE, CAER_HOST_CONFIG_DATAEXCHANGE_BLOCKING, false);
+		moduleData->moduleState, CAER_HOST_CONFIG_DATAEXCHANGE, CAER_HOST_CONFIG_DATAEXCHANGE_BLOCKING, true);
 	caerDeviceConfigSet(
 		moduleData->moduleState, CAER_HOST_CONFIG_DATAEXCHANGE, CAER_HOST_CONFIG_DATAEXCHANGE_START_PRODUCERS, false);
 	caerDeviceConfigSet(
 		moduleData->moduleState, CAER_HOST_CONFIG_DATAEXCHANGE, CAER_HOST_CONFIG_DATAEXCHANGE_STOP_PRODUCERS, true);
 }
 
-static void caerInputDAVISCommonRun(
-	dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out) {
-	UNUSED_ARGUMENT(in);
+static void caerInputDAVISCommonRun(dvModuleData moduleData) {
+	caerEventPacketContainer out = caerDeviceDataGet(moduleData->moduleState);
 
-	*out = caerDeviceDataGet(moduleData->moduleState);
-
-	if (*out != NULL) {
+	if (out != NULL) {
 		// Detect timestamp reset and call all reset functions for processors and outputs.
-		caerEventPacketHeader special = caerEventPacketContainerGetEventPacket(*out, SPECIAL_EVENT);
+		caerEventPacketHeader special = caerEventPacketContainerGetEventPacket(out, SPECIAL_EVENT);
+
+		dvConvertToAedat4(special, moduleData);
 
 		if ((special != NULL) && (caerEventPacketHeaderGetEventNumber(special) == 1)
 			&& (caerSpecialEventPacketFindValidEventByTypeConst((caerSpecialEventPacketConst) special, TIMESTAMP_RESET)
-				   != NULL)) {
+				!= NULL)) {
 			// Update master/slave information.
 			struct caer_davis_info devInfo = caerDavisInfoGet(moduleData->moduleState);
 
 			dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 			dvConfigNodeUpdateReadOnlyAttribute(sourceInfoNode, "deviceIsMaster", DVCFG_TYPE_BOOL,
 				(union dvConfigAttributeValue){.boolean = devInfo.deviceIsMaster});
+		}
+		else {
+			dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, POLARITY_EVENT), moduleData);
+			dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, FRAME_EVENT), moduleData);
+			dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, IMU6_EVENT), moduleData);
 		}
 	}
 }

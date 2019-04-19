@@ -7,7 +7,7 @@ build_mac:
     - mac
     - build
   script:
-    - cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DOPENSSL_LIBRARIES=/usr/local/opt/openssl/lib -DENABLE_OPENCV=1 .
+    - cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl .
     - make -j2
     - macpack -v -d libs src/dv-runtime
     - mkdir -p dv-runtime-packaged-mac

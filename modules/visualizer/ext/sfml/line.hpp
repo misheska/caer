@@ -5,6 +5,7 @@
 #include <cmath>
 
 namespace sfml {
+
 class Line : public sf::Drawable {
 private:
 	sf::Vertex vertices[4];
@@ -33,9 +34,12 @@ public:
 	}
 
 	void draw(sf::RenderTarget &target, sf::RenderStates states) const {
+		(void) states; // Unused.
+
 		target.draw(vertices, 4, sf::Quads);
 	}
 };
+
 } // namespace sfml
 
 #endif /* EXT_SFML_LINE_HPP_ */

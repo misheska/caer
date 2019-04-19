@@ -3,21 +3,23 @@
 #include "dv-sdk/cross/portable_io.h"
 #include "dv-sdk/cross/portable_threads.h"
 
-#include "config_server_main.h"
-#include "config_updater.h"
+#include "../log.hpp"
+#include "config_server_main.hpp"
 
 #include <algorithm>
 #include <boost/version.hpp>
 #include <string>
 #include <system_error>
 
-namespace logger = libcaer::log;
 namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
 static void configServerRestartListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
+static void configServerLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
+
 static void configServerGlobalNodeChangeListener(
 	dvConfigNode node, void *userData, enum dvConfigNodeEvents event, const char *changeNode);
 static void configServerGlobalAttributeChangeListener(dvConfigNode node, void *userData,
@@ -40,7 +42,18 @@ ConfigServer::ConfigServer() :
 void ConfigServer::threadStart() {
 	ioThread = std::thread([this]() {
 		// Set thread name.
-		portable_thread_set_name(CONFIG_SERVER_NAME);
+		portable_thread_set_name(DV_CONFIG_SERVER_NAME);
+
+		// Setup logger.
+		struct dv::LogBlock logger;
+
+		logger.logPrefix = DV_CONFIG_SERVER_NAME;
+
+		auto serverNode = dvCfg::GLOBAL.getNode("/system/server/");
+		serverNode.addAttributeListener(&logger.logLevel, &configServerLogLevelListener);
+		logger.logLevel.store(serverNode.get<dvCfgType::INT>("logLevel"));
+
+		dv::LoggerSet(&logger);
 
 		while (ioThreadRun) {
 			ioThreadState = IOThreadState::STARTING;
@@ -137,7 +150,7 @@ void ConfigServer::serviceConfigure() {
 		acceptor.listen();
 	}
 	catch (const boost::system::system_error &ex) {
-		logger::log(logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to start server. Error: %s.", ex.what());
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to start server. Error: %s.", ex.what());
 		exit(EXIT_FAILURE);
 	}
 
@@ -150,8 +163,7 @@ void ConfigServer::serviceConfigure() {
 				tlsContext.use_certificate_chain_file(serverNode.get<dvCfgType::STRING>("tlsCertFile"));
 			}
 			catch (const boost::system::system_error &ex) {
-				logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
-					"Failed to load certificate file (error '%s'), disabling TLS.", ex.what());
+				dv::Log(dv::logLevel::ERROR, "Failed to load certificate file (error '%s'), disabling TLS.", ex.what());
 				throw;
 			}
 
@@ -159,8 +171,7 @@ void ConfigServer::serviceConfigure() {
 				tlsContext.use_private_key_file(serverNode.get<dvCfgType::STRING>("tlsKeyFile"), asioSSL::context::pem);
 			}
 			catch (const boost::system::system_error &ex) {
-				logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
-					"Failed to load private key file (error '%s'), disabling TLS.", ex.what());
+				dv::Log(dv::logLevel::ERROR, "Failed to load private key file (error '%s'), disabling TLS.", ex.what());
 				throw;
 			}
 
@@ -180,7 +191,7 @@ void ConfigServer::serviceConfigure() {
 						tlsContext.load_verify_file(tlsVerifyFile);
 					}
 					catch (const boost::system::system_error &ex) {
-						logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
+						dv::Log(dv::logLevel::ERROR,
 							"Failed to load certificate authority verification file (error '%s') for client "
 							"verification, disabling TLS.",
 							ex.what());
@@ -201,7 +212,7 @@ void ConfigServer::serviceConfigure() {
 }
 
 void ConfigServer::serviceStart() {
-	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Starting configuration server service.");
+	dv::Log(dv::logLevel::INFO, "%s", "Starting configuration server service.");
 
 	// Start accepting connections.
 	acceptStart();
@@ -239,45 +250,35 @@ void ConfigServer::serviceStop() {
 		}
 	});
 
-	logger::log(logger::logLevel::INFO, CONFIG_SERVER_NAME, "Stopping configuration server service.");
+	dv::Log(dv::logLevel::INFO, "%s", "Stopping configuration server service.");
 }
 
 void ConfigServer::acceptStart() {
-	acceptor.async_accept(acceptorNewSocket, [this](const boost::system::error_code &error) {
-		if (error) {
-			// Ignore cancel error, normal on shutdown.
-			if (error != asio::error::operation_aborted) {
-				logger::log(logger::logLevel::ERROR, CONFIG_SERVER_NAME,
-					"Failed to accept new connection. Error: %s (%d).", error.message().c_str(), error.value());
+	acceptor.async_accept(
+		acceptorNewSocket,
+		[this](const boost::system::error_code &error) {
+			if (error) {
+				// Ignore cancel error, normal on shutdown.
+				if (error != asio::error::operation_aborted) {
+					dv::Log(dv::logLevel::ERROR, "Failed to accept new connection. Error: %s (%d).",
+						error.message().c_str(), error.value());
+				}
 			}
-		}
-		else {
-			auto client
-				= std::make_shared<ConfigServerConnection>(std::move(acceptorNewSocket), tlsEnabled, &tlsContext, this);
+			else {
+				auto client = std::make_shared<ConfigServerConnection>(
+					std::move(acceptorNewSocket), tlsEnabled, &tlsContext, this);
 
-			clients.push_back(client.get());
+				clients.push_back(client.get());
 
-			client->start();
+				client->start();
 
-			acceptStart();
-		}
-	});
+				acceptStart();
+			}
+		},
+		nullptr);
 }
 
-static struct {
-	ConfigUpdater updater;
-	std::unique_ptr<ConfigServer> server;
-} globalConfigData;
-
-void dvConfigServerStart(void) {
-	if (!globalConfigData.server) {
-		globalConfigData.server = std::make_unique<ConfigServer>();
-	}
-
-	// Ensure core nodes are always present.
-	dvCfg::GLOBAL.getNode("/system/");
-	dvCfg::GLOBAL.getNode("/mainloop/");
-
+void dv::ConfigServerStart() {
 	// Get the right configuration node first.
 	auto serverNode = dvCfg::GLOBAL.getNode("/system/server/");
 
@@ -286,6 +287,9 @@ void dvConfigServerStart(void) {
 		"Restart configuration server, disconnects all clients and reloads itself.");
 	serverNode.attributeModifierButton("restart", "ONOFF");
 	serverNode.addAttributeListener(nullptr, &configServerRestartListener);
+
+	serverNode.create<dvCfgType::INT>("logLevel", CAER_LOG_NOTICE, {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
+		dvCfgFlags::NORMAL, "Configuration server log-level.");
 
 	// Ensure default values are present for IP/Port.
 	serverNode.create<dvCfgType::STRING>("ipAddress", "127.0.0.1", {2, 39}, dvCfgFlags::NORMAL,
@@ -308,21 +312,19 @@ void dvConfigServerStart(void) {
 
 	try {
 		// Start threads.
-		globalConfigData.server->threadStart();
-
-		globalConfigData.updater.threadStart();
+		ConfigServer::getGlobal().threadStart();
 	}
 	catch (const std::system_error &ex) {
 		// Failed to create threads.
-		logger::log(logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to create threads. Error: %s.", ex.what());
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to create %s thread. Error: %s.", DV_CONFIG_SERVER_NAME, ex.what());
 		exit(EXIT_FAILURE);
 	}
 
 	// Successfully started threads.
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads created successfully.");
+	dv::Log(dv::logLevel::DEBUG, "%s thread created successfully.", DV_CONFIG_SERVER_NAME);
 }
 
-void dvConfigServerStop(void) {
+void dv::ConfigServerStop() {
 	auto serverNode = dvCfg::GLOBAL.getNode("/system/server/");
 
 	// Remove restart listener first.
@@ -330,19 +332,16 @@ void dvConfigServerStop(void) {
 
 	try {
 		// Stop threads.
-		globalConfigData.server->threadStop();
-
-		globalConfigData.updater.threadStop();
+		ConfigServer::getGlobal().threadStop();
 	}
 	catch (const std::system_error &ex) {
 		// Failed to join threads.
-		logger::log(
-			logger::logLevel::EMERGENCY, CONFIG_SERVER_NAME, "Failed to terminate threads. Error: %s.", ex.what());
+		dv::Log(dv::logLevel::EMERGENCY, "Failed to terminate %s thread. Error: %s.", DV_CONFIG_SERVER_NAME, ex.what());
 		exit(EXIT_FAILURE);
 	}
 
 	// Successfully joined threads.
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Threads terminated successfully.");
+	dv::Log(dv::logLevel::DEBUG, "%s thread terminated successfully.", DV_CONFIG_SERVER_NAME);
 }
 
 static void configServerRestartListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -351,9 +350,20 @@ static void configServerRestartListener(dvConfigNode node, void *userData, enum 
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "restart")
 		&& changeValue.boolean) {
-		globalConfigData.server->serviceRestart();
+		ConfigServer::getGlobal().serviceRestart();
 
 		dvConfigNodeAttributeButtonReset(node, changeKey);
+	}
+}
+
+static void configServerLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+	UNUSED_ARGUMENT(node);
+
+	auto logLevel = static_cast<std::atomic_int32_t *>(userData);
+
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
+		logLevel->store(changeValue.iint);
 	}
 }
 
@@ -362,7 +372,7 @@ static void configServerGlobalNodeChangeListener(
 	UNUSED_ARGUMENT(userData);
 	dvCfg::Node node(n);
 
-	if (globalConfigData.server->pushClientsPresent()) {
+	if (ConfigServer::getGlobal().pushClientsPresent()) {
 		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 		std::string nodePath(node.getPath());
@@ -378,7 +388,7 @@ static void configServerGlobalNodeChangeListener(
 		// change we're pushing comes from a listener firing in response to
 		// changes brought by a client via the config-server, the current
 		// client ID will be the one from that remote client.
-		msg.add_id(globalConfigData.server->getCurrentClientID());
+		msg.add_id(ConfigServer::getGlobal().getCurrentClientID());
 
 		msg.add_action(dv::ConfigAction::PUSH_MESSAGE_NODE);
 		msg.add_nodeEvents(static_cast<dv::ConfigNodeEvents>(event));
@@ -390,7 +400,7 @@ static void configServerGlobalNodeChangeListener(
 		// Write root node and message size.
 		dv::FinishSizePrefixedConfigActionDataBuffer(*msgBuild, msgRoot);
 
-		globalConfigData.server->pushMessageToClients(msgBuild);
+		ConfigServer::getGlobal().pushMessageToClients(msgBuild);
 	}
 }
 
@@ -400,7 +410,7 @@ static void configServerGlobalAttributeChangeListener(dvConfigNode n, void *user
 	UNUSED_ARGUMENT(userData);
 	dvCfg::Node node(n);
 
-	if (globalConfigData.server->pushClientsPresent()) {
+	if (ConfigServer::getGlobal().pushClientsPresent()) {
 		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(DV_CONFIG_SERVER_MAX_INCOMING_SIZE);
 
 		auto type  = static_cast<dvCfg::AttributeType>(changeType);
@@ -427,7 +437,7 @@ static void configServerGlobalAttributeChangeListener(dvConfigNode n, void *user
 		// changes brought by a client via the config-server, the current
 		// client ID will be the one from that remote client. This is also
 		// true for secondary effects like log messages.
-		msg.add_id(globalConfigData.server->getCurrentClientID());
+		msg.add_id(ConfigServer::getGlobal().getCurrentClientID());
 		msg.add_action(dv::ConfigAction::PUSH_MESSAGE_ATTR);
 		msg.add_attrEvents(static_cast<dv::ConfigAttributeEvents>(event));
 		msg.add_node(nodeStr);
@@ -448,6 +458,6 @@ static void configServerGlobalAttributeChangeListener(dvConfigNode n, void *user
 		// Write root node and message size.
 		dv::FinishSizePrefixedConfigActionDataBuffer(*msgBuild, msgRoot);
 
-		globalConfigData.server->pushMessageToClients(msgBuild);
+		ConfigServer::getGlobal().pushMessageToClients(msgBuild);
 	}
 }

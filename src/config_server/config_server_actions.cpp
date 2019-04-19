@@ -2,15 +2,15 @@
 
 #include "dv-sdk/cross/portable_io.h"
 
-#include "../module.h"
+#include "../main.hpp"
 #include "config_server_connection.h"
-#include "config_server_main.h"
+#include "config_server_main.hpp"
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/tokenizer.hpp>
 #include <regex>
+#include <thread>
 
-namespace logger = libcaer::log;
 namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
@@ -38,15 +38,14 @@ static inline void sendError(
 
 		dv::ConfigActionDataBuilder msg(*msgBuild);
 
-		msg.add_action(dv::ConfigAction::ERROR);
+		msg.add_action(dv::ConfigAction::CFG_ERROR);
 		msg.add_id(receivedID);
 		msg.add_value(valStr);
 
 		return (msg.Finish());
 	});
 
-	logger::log(logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Sent error back to client %lld: %s.",
-		client->getClientID(), errorMsg.c_str());
+	dv::Log(dv::logLevel::DEBUG, "Sent error back to client %lld: %s.", client->getClientID(), errorMsg.c_str());
 }
 
 static inline bool checkNodeExists(dvCfg::Tree configStore, const std::string &node,
@@ -95,7 +94,7 @@ static inline const std::string getString(const flatbuffers::String *str,
 	return (s);
 }
 
-void dvConfigServerHandleRequest(
+void ConfigServerHandleRequest(
 	std::shared_ptr<ConfigServerConnection> client, std::unique_ptr<uint8_t[]> messageBuffer) {
 	auto message = dv::GetConfigActionData(messageBuffer.get());
 
@@ -103,8 +102,7 @@ void dvConfigServerHandleRequest(
 	uint64_t receivedID     = message->id(); // Get incoming ID to send back.
 
 	// TODO: better debug message.
-	logger::log(
-		logger::logLevel::DEBUG, CONFIG_SERVER_NAME, "Handling request from client %lld.", client->getClientID());
+	dv::Log(dv::logLevel::DEBUG, "Handling request from client %lld.", client->getClientID());
 
 	// Interpretation of data is up to each action individually.
 	dvCfg::Tree configStore = dvCfg::GLOBAL;
@@ -622,72 +620,13 @@ void dvConfigServerHandleRequest(
 			auto modulesSysNode = configStore.getNode("/system/modules/");
 			auto modulesList    = modulesSysNode.getChildNames();
 
-			if (!findBool(modulesList.begin(), modulesList.end(), moduleLibrary)) {
+			if (!dv::findBool(modulesList.begin(), modulesList.end(), moduleLibrary)) {
 				sendError("Library does not exist.", client, receivedID);
 				break;
 			}
 
-			// Name and library are fine, let's determine the next free ID.
-			auto rootNodes = configStore.getNode("/mainloop/").getChildren();
-
-			std::vector<int16_t> usedModuleIDs;
-
-			for (const auto &mNode : rootNodes) {
-				if (!mNode.exists<dvCfgType::INT>("moduleId")) {
-					continue;
-				}
-
-				int16_t moduleID = I16T(mNode.get<dvCfgType::INT>("moduleId"));
-				usedModuleIDs.push_back(moduleID);
-			}
-
-			vectorSortUnique(usedModuleIDs);
-
-			size_t idx               = 0;
-			int16_t nextFreeModuleID = 1;
-
-			while (idx < usedModuleIDs.size() && usedModuleIDs[idx] == nextFreeModuleID) {
-				idx++;
-				nextFreeModuleID++;
-			}
-
-			// Let's create the needed configuration for the new module.
-			auto newModuleNode = configStore.getNode("/mainloop/" + moduleName + "/");
-
-			newModuleNode.create<dvCfgType::INT>(
-				"moduleId", nextFreeModuleID, {1, INT16_MAX}, dvCfgFlags::READ_ONLY, "Module ID.");
-			newModuleNode.create<dvCfgType::STRING>(
-				"moduleLibrary", moduleLibrary, {1, PATH_MAX}, dvCfgFlags::READ_ONLY, "Module library.");
-
-			// Add moduleInput/moduleOutput as appropriate.
-			auto moduleSysNode          = modulesSysNode.getRelativeNode(moduleLibrary + "/");
-			const std::string inputType = moduleSysNode.get<dvCfgType::STRING>("type");
-
-			if (inputType != "INPUT") {
-				// DV_MODULE_OUTPUT / DV_MODULE_PROCESSOR
-				// moduleInput must exist for OUTPUT and PROCESSOR modules.
-				newModuleNode.create<dvCfgType::STRING>(
-					"moduleInput", "", {0, 1024}, dvCfgFlags::NORMAL, "Module dynamic input definition.");
-			}
-
-			if (inputType != "OUTPUT") {
-				// DV_MODULE_INPUT / DV_MODULE_PROCESSOR
-				// moduleOutput must exist for INPUT and PROCESSOR modules, only
-				// if their outputs are undefined (-1).
-				if (moduleSysNode.existsRelativeNode("outputStreams/0/")) {
-					auto outputNode0        = moduleSysNode.getRelativeNode("outputStreams/0/");
-					int32_t outputNode0Type = outputNode0.get<dvCfgType::INT>("type");
-
-					if (outputNode0Type == -1) {
-						newModuleNode.create<dvCfgType::STRING>(
-							"moduleOutput", "", {0, 1024}, dvCfgFlags::NORMAL, "Module dynamic output definition.");
-					}
-				}
-			}
-
-			// Create static module configuration, so users can start
-			// changing it right away after module add.
-			dvModuleConfigInit(newModuleNode);
+			// Name and library are fine, create the module.
+			dv::addModule(moduleName, moduleLibrary);
 
 			// Send back confirmation to the client.
 			sendMessage(client, [receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
@@ -717,16 +656,18 @@ void dvConfigServerHandleRequest(
 				break;
 			}
 
-			// Modules can only be deleted while the mainloop is not running, to not
-			// destroy data the system is relying on.
-			bool isMainloopRunning = configStore.getNode("/mainloop/").get<dvCfgType::BOOL>("running");
-			if (isMainloopRunning) {
-				sendError("Mainloop is running.", client, receivedID);
-				break;
+			auto moduleNode = configStore.getNode("/mainloop/" + moduleName + "/");
+
+			// Modules can only be deleted if not running.
+			moduleNode.put<dvCfgType::BOOL>("running", false);
+
+			// Wait for termination...
+			while (moduleNode.get<dvCfgType::BOOL>("isRunning")) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			}
 
 			// Truly delete the node and all its children.
-			configStore.getNode("/mainloop/" + moduleName + "/").removeNode();
+			dv::removeModule(moduleName);
 
 			// Send back confirmation to the client.
 			sendMessage(client, [receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {

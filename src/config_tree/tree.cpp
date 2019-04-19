@@ -134,7 +134,7 @@ void dvConfigTreeErrorLogCallbackSet(dvConfigTreeErrorLogCallback error_log_cb) 
 }
 
 dvConfigTree dvConfigTreeNew(void) {
-	dvConfigTree newTree = (dvConfigTree) malloc(sizeof(*newTree));
+	dvConfigTree newTree = static_cast<dvConfigTree>(malloc(sizeof(*newTree)));
 	dvConfigMemoryCheck(newTree, __func__);
 
 	// Create root node.
@@ -168,7 +168,7 @@ bool dvConfigTreeExistsNode(dvConfigTree st, const char *nodePathC) {
 		return (true);
 	}
 
-	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/"));
+	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/", nullptr));
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {
@@ -203,7 +203,7 @@ dvConfigNode dvConfigTreeGetNode(dvConfigTree st, const char *nodePathC) {
 		return (curr);
 	}
 
-	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/"));
+	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/", nullptr));
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {
@@ -232,7 +232,7 @@ bool dvConfigNodeExistsRelativeNode(dvConfigNode node, const char *nodePathC) {
 	// Start with the given node.
 	dvConfigNode curr = node;
 
-	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/"));
+	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/", nullptr));
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {
@@ -262,7 +262,7 @@ dvConfigNode dvConfigNodeGetRelativeNode(dvConfigNode node, const char *nodePath
 	// Start with the given node.
 	dvConfigNode curr = node;
 
-	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/"));
+	boost::tokenizer<boost::char_separator<char>> nodePathTokens(nodePath, boost::char_separator<char>("/", nullptr));
 
 	// Search (or create) viable node iteratively.
 	for (const auto &tok : nodePathTokens) {
@@ -285,7 +285,7 @@ void dvConfigNodeAttributeUpdaterAdd(dvConfigNode node, const char *key, enum dv
 	dv_attribute_updater attrUpdater(node, key, type, updater, updaterUserData, runOnce);
 
 	dvConfigTree tree = dvConfigNodeGetGlobal(node);
-	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
+	std::scoped_lock lock(tree->attributeUpdatersLock);
 
 	// Check no other updater already exists that matches this one.
 	if (!findBool(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(), attrUpdater)) {
@@ -303,7 +303,7 @@ void dvConfigNodeAttributeUpdaterRemove(dvConfigNode node, const char *key, enum
 	dv_attribute_updater attrUpdater(node, key, type, updater, updaterUserData, false);
 
 	dvConfigTree tree = dvConfigNodeGetGlobal(node);
-	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
+	std::scoped_lock lock(tree->attributeUpdatersLock);
 
 	tree->attributeUpdaters.erase(
 		std::remove(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(), attrUpdater),
@@ -312,7 +312,7 @@ void dvConfigNodeAttributeUpdaterRemove(dvConfigNode node, const char *key, enum
 
 void dvConfigNodeAttributeUpdaterRemoveAll(dvConfigNode node) {
 	dvConfigTree tree = dvConfigNodeGetGlobal(node);
-	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
+	std::scoped_lock lock(tree->attributeUpdatersLock);
 
 	tree->attributeUpdaters.erase(std::remove_if(tree->attributeUpdaters.begin(), tree->attributeUpdaters.end(),
 									  [&node](const dv_attribute_updater &up) { return (up.getNode() == node); }),
@@ -320,13 +320,13 @@ void dvConfigNodeAttributeUpdaterRemoveAll(dvConfigNode node) {
 }
 
 void dvConfigTreeAttributeUpdaterRemoveAll(dvConfigTree tree) {
-	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
+	std::scoped_lock lock(tree->attributeUpdatersLock);
 
 	tree->attributeUpdaters.clear();
 }
 
 bool dvConfigTreeAttributeUpdaterRun(dvConfigTree tree) {
-	std::lock_guard<std::mutex> lock(tree->attributeUpdatersLock);
+	std::scoped_lock lock(tree->attributeUpdatersLock);
 
 	bool allSuccess = true;
 
@@ -350,7 +350,7 @@ bool dvConfigTreeAttributeUpdaterRun(dvConfigTree tree) {
 }
 
 void dvConfigTreeGlobalNodeListenerSet(dvConfigTree tree, dvConfigNodeChangeListener node_changed, void *userData) {
-	std::lock_guard<std::mutex> lock(tree->globalListenersLock);
+	std::scoped_lock lock(tree->globalListenersLock);
 
 	// Ensure function is never called with old user data.
 	tree->globalNodeListenerUserData.store(nullptr);
@@ -372,7 +372,7 @@ void *dvConfigGlobalNodeListenerGetUserData(dvConfigTree tree) {
 
 void dvConfigTreeGlobalAttributeListenerSet(
 	dvConfigTree tree, dvConfigAttributeChangeListener attribute_changed, void *userData) {
-	std::lock_guard<std::mutex> lock(tree->globalListenersLock);
+	std::scoped_lock lock(tree->globalListenersLock);
 
 	// Ensure function is never called with old user data.
 	tree->globalAttributeListenerUserData.store(nullptr);

@@ -30,7 +30,10 @@ private:
 	std::atomic_size_t numPushClients;
 
 public:
-	ConfigServer();
+	static ConfigServer &getGlobal() {
+		static ConfigServer cfg;
+		return (cfg);
+	}
 
 	void threadStart();
 	void serviceRestart();
@@ -45,6 +48,8 @@ public:
 	void pushMessageToClients(std::shared_ptr<const flatbuffers::FlatBufferBuilder> message);
 
 private:
+	ConfigServer();
+
 	void serviceConfigure();
 	void serviceStart();
 	void serviceStop();

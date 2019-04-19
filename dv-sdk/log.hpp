@@ -1,10 +1,11 @@
 #ifndef DV_SDK_LOG_HPP
 #define DV_SDK_LOG_HPP
 
-#include "module.h"
+#include "utils.h"
 
 #include <boost/format.hpp>
 #include <iostream>
+#include <sstream>
 
 /**
  * Header file that includes the C++ wrapper for the DV logging facilities.
@@ -16,7 +17,7 @@ namespace dv {
  * Eg. `log.info << "Hello " << "world" << dv::logEnd`.
  */
 struct logEndType {};
-logEndType logEnd{};
+constexpr logEndType logEnd{};
 
 /**
  * LogStream class. To be instantiated only by dv::Logger. Handles the
@@ -24,29 +25,14 @@ logEndType logEnd{};
  * to format logging strings.
  * @tparam L The log level for which this stream should be configured.
  */
-template<caer_log_level L> class LogStream {
+template<dv::logLevel L> class LogStream {
 private:
-	/**
-	 * Pointer to the DV moduleData of the module this logger
-	 * is compiled for. Gets set upon construction.
-	 */
-	dvModuleData moduleData_ = nullptr;
-
 	/**
 	 * internal string stream that gets used to assemble the log message.
 	 */
 	std::ostringstream stream_;
 
 public:
-	/**
-	 * Constructs a new LogStream. A log stream is an object to which one can
-	 * stream data to be logged to. It also provides functions for formatting
-	 * log messages.
-	 * @param moduleData a pointer to the DV moduleData struct of the module
-	 * this is compiled to.
-	 */
-	explicit LogStream(dvModuleData moduleData) : moduleData_(moduleData){};
-
 	/**
 	 * Logs the given argument value.
 	 * @tparam T the type of the argument value
@@ -67,7 +53,7 @@ public:
 	 */
 	template<class T> LogStream &operator<<(const T &val) {
 		write(val);
-		return *this;
+		return (*this);
 	}
 
 	/**
@@ -79,7 +65,7 @@ public:
 	 */
 	LogStream &operator<<(std::ostream &(*) (std::ostream &) ) {
 		commit();
-		return *this;
+		return (*this);
 	}
 
 	/**
@@ -91,7 +77,7 @@ public:
 	 */
 	LogStream &operator<<(logEndType) {
 		commit();
-		return *this;
+		return (*this);
 	}
 
 	/**
@@ -110,12 +96,7 @@ public:
 	 * out and flushing the buffer.
 	 */
 	void commit() {
-		if (moduleData_) {
-			dvModuleLog(moduleData_, L, "%s", stream_.str().c_str());
-		}
-		else {
-			caerLog(L, "[UNKNOWN SUBSYSTEM]", "%s", stream_.str().c_str());
-		}
+		dv::Log(L, "%s", stream_.str().c_str());
 		flush();
 	}
 
@@ -136,8 +117,8 @@ public:
 	 */
 	template<typename... Args> void format(const std::string &fmt, const Args &... args) {
 		boost::format f(fmt);
-		std::initializer_list<char>{(static_cast<void>(f % args), char{})...};
-		this->operator()(boost::str(f));
+		(f % ... % args); // Fold expression.
+		this->operator()(f.str());
 	}
 };
 
@@ -147,23 +128,13 @@ public:
  */
 class Logger {
 public:
-	LogStream<CAER_LOG_DEBUG> debug;
-	LogStream<CAER_LOG_INFO> info;
-	LogStream<CAER_LOG_WARNING> warning;
-	LogStream<CAER_LOG_ERROR> error;
-	LogStream<CAER_LOG_CRITICAL> critical;
-
-	/**
-	 * Constructor. Initializes log streams for the different log levels.
-	 * @param moduleData pointer to the DV moduleData struct.
-	 */
-	explicit Logger(dvModuleData moduleData) :
-		debug(LogStream<CAER_LOG_DEBUG>(moduleData)),
-		info(LogStream<CAER_LOG_INFO>(moduleData)),
-		warning(LogStream<CAER_LOG_WARNING>(moduleData)),
-		error(LogStream<CAER_LOG_ERROR>(moduleData)),
-		critical(LogStream<CAER_LOG_CRITICAL>(moduleData)){};
+	LogStream<dv::logLevel::DEBUG> debug;
+	LogStream<dv::logLevel::INFO> info;
+	LogStream<dv::logLevel::WARNING> warning;
+	LogStream<dv::logLevel::ERROR> error;
+	LogStream<dv::logLevel::CRITICAL> critical;
 };
+
 } // namespace dv
 
 #endif // DV_SDK_LOG_HPP

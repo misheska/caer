@@ -170,8 +170,9 @@ public:
 						&& (std::get<double>(*this) <= std::get<double>(ranges.max)));
 
 			case DVCFG_TYPE_STRING:
-				return ((std::get<std::string>(*this).length() >= (size_t) std::get<int32_t>(ranges.min))
-						&& (std::get<std::string>(*this).length() <= (size_t) std::get<int32_t>(ranges.max)));
+				return (
+					(std::get<std::string>(*this).length() >= static_cast<size_t>(std::get<int32_t>(ranges.min)))
+					&& (std::get<std::string>(*this).length() <= static_cast<size_t>(std::get<int32_t>(ranges.max))));
 
 			case DVCFG_TYPE_UNKNOWN:
 			default:

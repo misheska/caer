@@ -3,17 +3,20 @@
 #ifndef FLATBUFFERS_GENERATED_DVCONFIGACTIONDATA_DV_H_
 #define FLATBUFFERS_GENERATED_DVCONFIGACTIONDATA_DV_H_
 
-#include "dv-sdk/events/flatbuffers/flatbuffers.h"
+#include "dv-sdk/data/cstring.hpp"
+#include "dv-sdk/data/flatbuffers/flatbuffers.h"
 
 namespace dv {
 
 struct ConfigActionData;
 struct ConfigActionDataT;
 
+bool operator==(const ConfigActionDataT &lhs, const ConfigActionDataT &rhs);
+
 inline const flatbuffers::TypeTable *ConfigActionDataTypeTable();
 
 enum class ConfigAction : int8_t {
-	ERROR              = 0,
+	CFG_ERROR          = 0,
 	NODE_EXISTS        = 1,
 	ATTR_EXISTS        = 2,
 	GET_CHILDREN       = 3,
@@ -34,13 +37,13 @@ enum class ConfigAction : int8_t {
 	DUMP_TREE_NODE     = 18,
 	DUMP_TREE_ATTR     = 19,
 	GET_CLIENT_ID      = 20,
-	MIN                = ERROR,
+	MIN                = CFG_ERROR,
 	MAX                = GET_CLIENT_ID
 };
 
 inline const ConfigAction (&EnumValuesConfigAction())[21] {
 	static const ConfigAction values[]
-		= {ConfigAction::ERROR, ConfigAction::NODE_EXISTS, ConfigAction::ATTR_EXISTS, ConfigAction::GET_CHILDREN,
+		= {ConfigAction::CFG_ERROR, ConfigAction::NODE_EXISTS, ConfigAction::ATTR_EXISTS, ConfigAction::GET_CHILDREN,
 			ConfigAction::GET_ATTRIBUTES, ConfigAction::GET_TYPE, ConfigAction::GET_RANGES, ConfigAction::GET_FLAGS,
 			ConfigAction::GET_DESCRIPTION, ConfigAction::GET, ConfigAction::PUT, ConfigAction::ADD_MODULE,
 			ConfigAction::REMOVE_MODULE, ConfigAction::ADD_PUSH_CLIENT, ConfigAction::REMOVE_PUSH_CLIENT,
@@ -50,7 +53,7 @@ inline const ConfigAction (&EnumValuesConfigAction())[21] {
 }
 
 inline const char *const *EnumNamesConfigAction() {
-	static const char *const names[] = {"ERROR", "NODE_EXISTS", "ATTR_EXISTS", "GET_CHILDREN", "GET_ATTRIBUTES",
+	static const char *const names[] = {"CFG_ERROR", "NODE_EXISTS", "ATTR_EXISTS", "GET_CHILDREN", "GET_ATTRIBUTES",
 		"GET_TYPE", "GET_RANGES", "GET_FLAGS", "GET_DESCRIPTION", "GET", "PUT", "ADD_MODULE", "REMOVE_MODULE",
 		"ADD_PUSH_CLIENT", "REMOVE_PUSH_CLIENT", "PUSH_MESSAGE_NODE", "PUSH_MESSAGE_ATTR", "DUMP_TREE",
 		"DUMP_TREE_NODE", "DUMP_TREE_ATTR", "GET_CLIENT_ID", nullptr};
@@ -58,7 +61,7 @@ inline const char *const *EnumNamesConfigAction() {
 }
 
 inline const char *EnumNameConfigAction(ConfigAction e) {
-	if (e < ConfigAction::ERROR || e > ConfigAction::GET_CLIENT_ID)
+	if (e < ConfigAction::CFG_ERROR || e > ConfigAction::GET_CLIENT_ID)
 		return "";
 	const size_t index = static_cast<int>(e);
 	return EnumNamesConfigAction()[index];
@@ -144,19 +147,22 @@ inline const char *EnumNameConfigAttributeEvents(ConfigAttributeEvents e) {
 
 struct ConfigActionDataT : public flatbuffers::NativeTable {
 	typedef ConfigActionData TableType;
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.ConfigActionDataT";
+	}
 	ConfigAction action;
 	ConfigNodeEvents nodeEvents;
 	ConfigAttributeEvents attrEvents;
 	uint64_t id;
-	std::string node;
-	std::string key;
+	dv::cstring node;
+	dv::cstring key;
 	ConfigType type;
-	std::string value;
-	std::string ranges;
+	dv::cstring value;
+	dv::cstring ranges;
 	int32_t flags;
-	std::string description;
+	dv::cstring description;
 	ConfigActionDataT() :
-		action(ConfigAction::ERROR),
+		action(ConfigAction::CFG_ERROR),
 		nodeEvents(ConfigNodeEvents::NODE_ADDED),
 		attrEvents(ConfigAttributeEvents::ATTRIBUTE_ADDED),
 		id(0),
@@ -165,10 +171,21 @@ struct ConfigActionDataT : public flatbuffers::NativeTable {
 	}
 };
 
+inline bool operator==(const ConfigActionDataT &lhs, const ConfigActionDataT &rhs) {
+	return (lhs.action == rhs.action) && (lhs.nodeEvents == rhs.nodeEvents) && (lhs.attrEvents == rhs.attrEvents)
+		   && (lhs.id == rhs.id) && (lhs.node == rhs.node) && (lhs.key == rhs.key) && (lhs.type == rhs.type)
+		   && (lhs.value == rhs.value) && (lhs.ranges == rhs.ranges) && (lhs.flags == rhs.flags)
+		   && (lhs.description == rhs.description);
+}
+
 struct ConfigActionData FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	typedef ConfigActionDataT NativeTableType;
+	static const char *identifier;
 	static const flatbuffers::TypeTable *MiniReflectTypeTable() {
 		return ConfigActionDataTypeTable();
+	}
+	static FLATBUFFERS_CONSTEXPR const char *GetFullyQualifiedName() {
+		return "dv.ConfigActionData";
 	}
 	enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
 		VT_ACTION      = 4,
@@ -228,6 +245,8 @@ struct ConfigActionData FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 	}
 	ConfigActionDataT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
 	void UnPackTo(ConfigActionDataT *_o, const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+	static void UnPackToFrom(ConfigActionDataT *_o, const ConfigActionData *_fb,
+		const flatbuffers::resolver_function_t *_resolver = nullptr);
 	static flatbuffers::Offset<ConfigActionData> Pack(flatbuffers::FlatBufferBuilder &_fbb, const ConfigActionDataT *_o,
 		const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 };
@@ -280,7 +299,7 @@ struct ConfigActionDataBuilder {
 };
 
 inline flatbuffers::Offset<ConfigActionData> CreateConfigActionData(flatbuffers::FlatBufferBuilder &_fbb,
-	ConfigAction action = ConfigAction::ERROR, ConfigNodeEvents nodeEvents = ConfigNodeEvents::NODE_ADDED,
+	ConfigAction action = ConfigAction::CFG_ERROR, ConfigNodeEvents nodeEvents = ConfigNodeEvents::NODE_ADDED,
 	ConfigAttributeEvents attrEvents = ConfigAttributeEvents::ATTRIBUTE_ADDED, uint64_t id = 0,
 	flatbuffers::Offset<flatbuffers::String> node = 0, flatbuffers::Offset<flatbuffers::String> key = 0,
 	ConfigType type = ConfigType::UNKNOWN, flatbuffers::Offset<flatbuffers::String> value = 0,
@@ -302,7 +321,7 @@ inline flatbuffers::Offset<ConfigActionData> CreateConfigActionData(flatbuffers:
 }
 
 inline flatbuffers::Offset<ConfigActionData> CreateConfigActionDataDirect(flatbuffers::FlatBufferBuilder &_fbb,
-	ConfigAction action = ConfigAction::ERROR, ConfigNodeEvents nodeEvents = ConfigNodeEvents::NODE_ADDED,
+	ConfigAction action = ConfigAction::CFG_ERROR, ConfigNodeEvents nodeEvents = ConfigNodeEvents::NODE_ADDED,
 	ConfigAttributeEvents attrEvents = ConfigAttributeEvents::ATTRIBUTE_ADDED, uint64_t id = 0,
 	const char *node = nullptr, const char *key = nullptr, ConfigType type = ConfigType::UNKNOWN,
 	const char *value = nullptr, const char *ranges = nullptr, int32_t flags = 0, const char *description = nullptr) {
@@ -327,54 +346,62 @@ inline ConfigActionDataT *ConfigActionData::UnPack(const flatbuffers::resolver_f
 inline void ConfigActionData::UnPackTo(ConfigActionDataT *_o, const flatbuffers::resolver_function_t *_resolver) const {
 	(void) _o;
 	(void) _resolver;
+	UnPackToFrom(_o, this, _resolver);
+}
+
+inline void ConfigActionData::UnPackToFrom(
+	ConfigActionDataT *_o, const ConfigActionData *_fb, const flatbuffers::resolver_function_t *_resolver) {
+	(void) _o;
+	(void) _fb;
+	(void) _resolver;
 	{
-		auto _e    = action();
+		auto _e    = _fb->action();
 		_o->action = _e;
 	};
 	{
-		auto _e        = nodeEvents();
+		auto _e        = _fb->nodeEvents();
 		_o->nodeEvents = _e;
 	};
 	{
-		auto _e        = attrEvents();
+		auto _e        = _fb->attrEvents();
 		_o->attrEvents = _e;
 	};
 	{
-		auto _e = id();
+		auto _e = _fb->id();
 		_o->id  = _e;
 	};
 	{
-		auto _e = node();
+		auto _e = _fb->node();
 		if (_e)
-			_o->node = _e->str();
+			_o->node = dv::cstring(_e->c_str(), _e->size());
 	};
 	{
-		auto _e = key();
+		auto _e = _fb->key();
 		if (_e)
-			_o->key = _e->str();
+			_o->key = dv::cstring(_e->c_str(), _e->size());
 	};
 	{
-		auto _e  = type();
+		auto _e  = _fb->type();
 		_o->type = _e;
 	};
 	{
-		auto _e = value();
+		auto _e = _fb->value();
 		if (_e)
-			_o->value = _e->str();
+			_o->value = dv::cstring(_e->c_str(), _e->size());
 	};
 	{
-		auto _e = ranges();
+		auto _e = _fb->ranges();
 		if (_e)
-			_o->ranges = _e->str();
+			_o->ranges = dv::cstring(_e->c_str(), _e->size());
 	};
 	{
-		auto _e   = flags();
+		auto _e   = _fb->flags();
 		_o->flags = _e;
 	};
 	{
-		auto _e = description();
+		auto _e = _fb->description();
 		if (_e)
-			_o->description = _e->str();
+			_o->description = dv::cstring(_e->c_str(), _e->size());
 	};
 }
 
@@ -418,10 +445,10 @@ inline const flatbuffers::TypeTable *ConfigActionTypeTable() {
 			{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0},
 			{flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}, {flatbuffers::ET_CHAR, 0, 0}};
 	static const flatbuffers::TypeFunction type_refs[] = {ConfigActionTypeTable};
-	static const char *const names[]       = {"ERROR", "NODE_EXISTS", "ATTR_EXISTS", "GET_CHILDREN", "GET_ATTRIBUTES",
-        "GET_TYPE", "GET_RANGES", "GET_FLAGS", "GET_DESCRIPTION", "GET", "PUT", "ADD_MODULE", "REMOVE_MODULE",
-        "ADD_PUSH_CLIENT", "REMOVE_PUSH_CLIENT", "PUSH_MESSAGE_NODE", "PUSH_MESSAGE_ATTR", "DUMP_TREE",
-        "DUMP_TREE_NODE", "DUMP_TREE_ATTR", "GET_CLIENT_ID"};
+	static const char *const names[] = {"CFG_ERROR", "NODE_EXISTS", "ATTR_EXISTS", "GET_CHILDREN", "GET_ATTRIBUTES",
+		"GET_TYPE", "GET_RANGES", "GET_FLAGS", "GET_DESCRIPTION", "GET", "PUT", "ADD_MODULE", "REMOVE_MODULE",
+		"ADD_PUSH_CLIENT", "REMOVE_PUSH_CLIENT", "PUSH_MESSAGE_NODE", "PUSH_MESSAGE_ATTR", "DUMP_TREE",
+		"DUMP_TREE_NODE", "DUMP_TREE_ATTR", "GET_CLIENT_ID"};
 	static const flatbuffers::TypeTable tt = {flatbuffers::ST_ENUM, 21, type_codes, type_refs, nullptr, names};
 	return &tt;
 }
@@ -476,22 +503,32 @@ inline const dv::ConfigActionData *GetSizePrefixedConfigActionData(const void *b
 	return flatbuffers::GetSizePrefixedRoot<dv::ConfigActionData>(buf);
 }
 
+inline const char *ConfigActionDataIdentifier() {
+	return "CFGA";
+}
+
+inline const char *ConfigActionData::identifier = ConfigActionDataIdentifier();
+
+inline bool ConfigActionDataBufferHasIdentifier(const void *buf) {
+	return flatbuffers::BufferHasIdentifier(buf, ConfigActionDataIdentifier());
+}
+
 inline bool VerifyConfigActionDataBuffer(flatbuffers::Verifier &verifier) {
-	return verifier.VerifyBuffer<dv::ConfigActionData>(nullptr);
+	return verifier.VerifyBuffer<dv::ConfigActionData>(ConfigActionDataIdentifier());
 }
 
 inline bool VerifySizePrefixedConfigActionDataBuffer(flatbuffers::Verifier &verifier) {
-	return verifier.VerifySizePrefixedBuffer<dv::ConfigActionData>(nullptr);
+	return verifier.VerifySizePrefixedBuffer<dv::ConfigActionData>(ConfigActionDataIdentifier());
 }
 
 inline void FinishConfigActionDataBuffer(
 	flatbuffers::FlatBufferBuilder &fbb, flatbuffers::Offset<dv::ConfigActionData> root) {
-	fbb.Finish(root);
+	fbb.Finish(root, ConfigActionDataIdentifier());
 }
 
 inline void FinishSizePrefixedConfigActionDataBuffer(
 	flatbuffers::FlatBufferBuilder &fbb, flatbuffers::Offset<dv::ConfigActionData> root) {
-	fbb.FinishSizePrefixed(root);
+	fbb.FinishSizePrefixed(root, ConfigActionDataIdentifier());
 }
 
 inline std::unique_ptr<ConfigActionDataT> UnPackConfigActionData(

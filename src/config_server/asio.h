@@ -82,12 +82,15 @@ public:
 	template<typename WriteHandler> void write(const asio::const_buffer &buf, WriteHandler &&wrHandler) {
 		const asio::const_buffers_1 buf2(buf);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 		if (secureConnection) {
 			asio::async_write(socket, buf2, wrHandler);
 		}
 		else {
 			asio::async_write(baseSocket(), buf2, wrHandler);
 		}
+#pragma GCC diagnostic pop
 	}
 
 	/**
@@ -97,12 +100,15 @@ public:
 	template<typename ReadHandler> void read(const asio::mutable_buffer &buf, ReadHandler &&rdHandler) {
 		const asio::mutable_buffers_1 buf2(buf);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 		if (secureConnection) {
 			asio::async_read(socket, buf2, rdHandler);
 		}
 		else {
 			asio::async_read(baseSocket(), buf2, rdHandler);
 		}
+#pragma GCC diagnostic pop
 	}
 
 	asioTCP::endpoint local_endpoint() const {

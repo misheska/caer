@@ -1,10 +1,10 @@
-#include "log.h"
+#include "log.hpp"
 
 #include "dv-sdk/cross/portable_io.h"
 
 #include <boost/filesystem.hpp>
 #include <fcntl.h>
-#include <string>
+#include <stdarg.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -16,13 +16,13 @@ using dvCfgFlags = dvCfg::AttributeFlags;
 static int DV_LOG_FILE_FD  = -1;
 static dvCfg::Node logNode = nullptr;
 
+static void logMessagesToConfigTree(const char *msg, size_t msgLength);
 static void logShutDownWriteBack(void);
 static void logConfigLogger(const char *msg, bool fatal);
-static void logMessagesToConfigTree(const char *msg, size_t msgLength);
 static void logLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-void dvLogInit(void) {
+void dv::LoggerInit(void) {
 	logNode = dvCfg::Tree::globalTree().getNode("/system/logger/");
 
 	// Ensure default log file and value are present.

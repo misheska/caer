@@ -410,7 +410,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 	}
 
 	// Let's get the action code first thing.
-	dv::ConfigAction action = dv::ConfigAction::ERROR;
+	dv::ConfigAction action = dv::ConfigAction::CFG_ERROR;
 
 	for (const auto &act : actions) {
 		if (act.name == commandParts[CMD_PART_ACTION]) {
@@ -656,7 +656,7 @@ static void handleInputLine(const char *buf, size_t bufLength) {
 
 	// Display results.
 	switch (resp->action()) {
-		case dv::ConfigAction::ERROR:
+		case dv::ConfigAction::CFG_ERROR:
 			// Return error in 'value'.
 			std::cerr << "ERROR on " << dv::EnumNameConfigAction(action) << ": " << resp->value()->string_view()
 					  << std::endl;
@@ -693,7 +693,7 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 	std::string commandParts[MAX_CMD_PARTS + 1];
 
 	// Split string into usable parts.
-	boost::tokenizer<boost::char_separator<char>> cmdTokens(commandStr, boost::char_separator<char>(" "));
+	boost::tokenizer<boost::char_separator<char>> cmdTokens(commandStr, boost::char_separator<char>(" ", nullptr));
 
 	size_t idx = 0;
 	for (const auto &cmdTok : cmdTokens) {
@@ -727,7 +727,7 @@ static void handleCommandCompletion(const char *buf, linenoiseCompletions *autoC
 	}
 
 	// Let's get the action code first thing.
-	dv::ConfigAction action = dv::ConfigAction::ERROR;
+	dv::ConfigAction action = dv::ConfigAction::CFG_ERROR;
 
 	for (const auto &act : actions) {
 		if (act.name == commandParts[CMD_PART_ACTION]) {
@@ -847,14 +847,14 @@ static void nodeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		return;
 	}
 
-	if (resp->action() == dv::ConfigAction::ERROR) {
+	if (resp->action() == dv::ConfigAction::CFG_ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
 
 	// At this point we made a valid request and got back a full response.
 	const auto respStr = resp->value()->str();
-	boost::tokenizer<boost::char_separator<char>> children(respStr, boost::char_separator<char>("|"));
+	boost::tokenizer<boost::char_separator<char>> children(respStr, boost::char_separator<char>("|", nullptr));
 
 	size_t lengthOfIncompletePart = (partialNodeString.length() - lastSlash);
 
@@ -896,14 +896,14 @@ static void keyCompletion(const std::string &buf, linenoiseCompletions *autoComp
 		return;
 	}
 
-	if (resp->action() == dv::ConfigAction::ERROR) {
+	if (resp->action() == dv::ConfigAction::CFG_ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
 
 	// At this point we made a valid request and got back a full response.
 	const auto respStr = resp->value()->str();
-	boost::tokenizer<boost::char_separator<char>> attributes(respStr, boost::char_separator<char>("|"));
+	boost::tokenizer<boost::char_separator<char>> attributes(respStr, boost::char_separator<char>("|", nullptr));
 
 	for (const auto &attr : attributes) {
 		if (partialKeyString == attr.substr(0, partialKeyString.length())) {
@@ -945,7 +945,7 @@ static void typeCompletion(const std::string &buf, linenoiseCompletions *autoCom
 		return;
 	}
 
-	if (resp->action() == dv::ConfigAction::ERROR) {
+	if (resp->action() == dv::ConfigAction::CFG_ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -1017,7 +1017,7 @@ static void valueCompletion(const std::string &buf, linenoiseCompletions *autoCo
 		return;
 	}
 
-	if (resp->action() == dv::ConfigAction::ERROR) {
+	if (resp->action() == dv::ConfigAction::CFG_ERROR) {
 		// Invalid request made, no auto-completion.
 		return;
 	}
@@ -1043,18 +1043,18 @@ static void addCompletionSuffix(linenoiseCompletions *autoComplete, const char *
 
 	if (endSpace) {
 		if (endSlash) {
-			snprintf(concat, 2048, "%.*s%s/ ", (int) completionPoint, buf, suffix);
+			snprintf(concat, 2048, "%.*s%s/ ", static_cast<int>(completionPoint), buf, suffix);
 		}
 		else {
-			snprintf(concat, 2048, "%.*s%s ", (int) completionPoint, buf, suffix);
+			snprintf(concat, 2048, "%.*s%s ", static_cast<int>(completionPoint), buf, suffix);
 		}
 	}
 	else {
 		if (endSlash) {
-			snprintf(concat, 2048, "%.*s%s/", (int) completionPoint, buf, suffix);
+			snprintf(concat, 2048, "%.*s%s/", static_cast<int>(completionPoint), buf, suffix);
 		}
 		else {
-			snprintf(concat, 2048, "%.*s%s", (int) completionPoint, buf, suffix);
+			snprintf(concat, 2048, "%.*s%s", static_cast<int>(completionPoint), buf, suffix);
 		}
 	}
 

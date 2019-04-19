@@ -1,32 +1,5 @@
 # SDK support library.
-SET(LIBDVSDK_SRC_FILES
-	module_sdk.cpp
-	mainloop_sdk.cpp
-	portability_sdk.cpp
-	types.cpp
-	config_tree/tree.cpp
-	config_tree/helper.cpp
-	config_tree/node.cpp)
-
-# Set full RPATH
-SET(CMAKE_INSTALL_RPATH ${USER_LOCAL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
-
-# Compile SDK library.
-ADD_LIBRARY(dvsdk SHARED ${LIBDVSDK_SRC_FILES})
-
-SET_TARGET_PROPERTIES(dvsdk
-    PROPERTIES
-    SOVERSION ${PROJECT_VERSION_MAJOR}
-    VERSION ${PROJECT_VERSION}
-)
-
-TARGET_LINK_LIBRARIES(dvsdk ${DV_LIBS})
-
-IF (OS_WINDOWS)
-    INSTALL(TARGETS dvsdk RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-ELSE()
-    INSTALL(TARGETS dvsdk DESTINATION ${CMAKE_INSTALL_LIBDIR})
-ENDIF()
+ADD_SUBDIRECTORY(sdk_lib)
 
 # Main dv-runtime executable.
 SET(DV_SRC_FILES
@@ -35,8 +8,10 @@ SET(DV_SRC_FILES
 	config_server/config_server_actions.cpp
 	config_server/config_server_connection.cpp
 	config_server/config_server.cpp
+	devices_discovery.cpp
+	modules_discovery.cpp
 	module.cpp
-	mainloop.cpp
+	types.cpp
 	service.cpp
 	main.cpp)
 
@@ -45,25 +20,44 @@ SET(CMAKE_INSTALL_RPATH ${USER_LOCAL_PREFIX}/${CMAKE_INSTALL_BINDIR})
 
 # Compile main dv-runtime executable.
 ADD_EXECUTABLE(dv-runtime ${DV_SRC_FILES})
-TARGET_LINK_LIBRARIES(dv-runtime PUBLIC ${DV_LIBS} dvsdk)
+
+TARGET_LINK_LIBRARIES(dv-runtime
+	PRIVATE
+		dvsdk
+		Boost::boost
+		Boost::system
+		Boost::filesystem
+		Boost::program_options
+		${BOOST_ASIO_LIBRARIES})
+
 INSTALL(TARGETS dv-runtime DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# Needed only by dv-runtime.
+IF ((NOT (Boost_MAJOR_VERSION EQUAL 1 AND Boost_MINOR_VERSION GREATER_EQUAL 61))
+	OR (OS_UNIX OR OS_LINUX OR OS_MACOSX))
+	# libdl needed if Boost too old to have Boost.DLL as a replacement,
+	# or for Boost.DLL itself on some platforms like Linux and MacOS X.
+	TARGET_LINK_LIBRARIES(dv-runtime PRIVATE dl)
+ENDIF()
 
 # Atomics support for older architectures/systems.
 IF (NEED_LIBATOMIC)
-	MESSAGE(STATUS "Using libatomic for std::atomic.")
+	MESSAGE(STATUS "Using libatomic for std::atomic in dv-runtime.")
 
 	TARGET_LINK_LIBRARIES(dv-runtime PRIVATE atomic)
 ENDIF()
 
 # TCMalloc only makes sense for the main executable
-IF (NOT USE_TCMALLOC)
-	SET(USE_TCMALLOC 0 CACHE BOOL "Link to and use TCMalloc (Google Perftools) to provide faster memory allocation.")
+IF (NOT ENABLE_TCMALLOC)
+	SET(ENABLE_TCMALLOC 0 CACHE BOOL "Link to and use TCMalloc (Google Perftools) to provide faster memory allocation.")
 ENDIF()
 
 # TCMalloc support (fast memory allocation)
-IF (USE_TCMALLOC)
-	PKG_CHECK_MODULES(LIBTCMALLOC REQUIRED libtcmalloc>=2.2)
+IF (ENABLE_TCMALLOC)
+	# Search for external libraries with pkg-config.
+	INCLUDE(FindPkgConfig)
 
-	TARGET_INCLUDE_DIRECTORIES(dv-runtime PRIVATE ${LIBTCMALLOC_INCLUDE_DIRS})
-	TARGET_LINK_LIBRARIES(dv-runtime PRIVATE ${LIBTCMALLOC_LIBRARIES})
+	PKG_CHECK_MODULES(tcmalloc REQUIRED IMPORTED_TARGET libtcmalloc>=2.2)
+
+	TARGET_LINK_LIBRARIES(dv-runtime PRIVATE PkgConfig::tcmalloc)
 ENDIF()

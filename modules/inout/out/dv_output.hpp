@@ -1,12 +1,8 @@
 #ifndef DV_OUTPUT_HPP
 #define DV_OUTPUT_HPP
 
-#include "dv-sdk/events/frame8.hpp"
-#include "dv-sdk/events/polarity.hpp"
-
+#include "dv-sdk/data/types.hpp"
 #include "dv-sdk/utils.h"
-
-#include "src/mainloop.h"
 
 struct arraydef {
 	uint32_t typeId;
@@ -53,7 +49,7 @@ public:
 	}
 
 	std::shared_ptr<const flatbuffers::FlatBufferBuilder> processPacket(struct arraydef packet) {
-		const auto typeInfo = dv::Types::getTypeSystem()->getTypeInfo(packet.typeId);
+		const auto typeInfo = dvTypeSystemGetInfoByID(packet.typeId);
 
 		// Construct serialized flatbuffer packet.
 		auto msgBuild = std::make_shared<flatbuffers::FlatBufferBuilder>(16 * 1024);

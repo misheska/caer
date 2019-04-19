@@ -1,4 +1,4 @@
-#include "service.h"
+#include "service.hpp"
 
 #if !defined(OS_WINDOWS)
 #	include <fcntl.h>
@@ -6,13 +6,9 @@
 #	include <sys/types.h>
 #	include <unistd.h>
 
-namespace dvCfg  = dv::Config;
-using dvCfgType  = dvCfg::AttributeType;
-using dvCfgFlags = dvCfg::AttributeFlags;
+static void unixDaemonize();
 
-static void unixDaemonize(void);
-
-static void unixDaemonize(void) {
+static void unixDaemonize() {
 	// Double fork to background, for more details take a look at:
 	// http://stackoverflow.com/questions/3095566/linux-daemonize
 	pid_t result = fork();
@@ -79,13 +75,13 @@ static void unixDaemonize(void) {
 }
 #endif
 
-void dvServiceInit(void (*runner)(void)) {
+void dv::ServiceInit(void (*runner)()) {
 	auto systemNode = dv::Config::GLOBAL.getNode("/system/");
 
-	systemNode.create<dvCfgType::BOOL>(
-		"backgroundService", false, {}, dvCfgFlags::READ_ONLY, "Start program as a background service.");
+	systemNode.create<dv::CfgType::BOOL>(
+		"backgroundService", false, {}, dv::CfgFlags::READ_ONLY, "Start program as a background service.");
 
-	bool backgroundService = systemNode.get<dvCfgType::BOOL>("backgroundService");
+	bool backgroundService = systemNode.get<dv::CfgType::BOOL>("backgroundService");
 
 	if (backgroundService) {
 #if defined(OS_WINDOWS)
@@ -95,12 +91,12 @@ void dvServiceInit(void (*runner)(void)) {
 		// Unix: double fork to background.
 		unixDaemonize();
 
-		// Run main processing loop.
+		// Run main code in new process.
 		(*runner)();
 #endif
 	}
 	else {
-		// Console application. Just run main processing loop.
+		// Console application. Just run main code directly.
 		(*runner)();
 	}
 }

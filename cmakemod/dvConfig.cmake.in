@@ -1,0 +1,34 @@
+# DV SDK
+# -------
+#
+# cmake configuration for DV SDK
+#
+# IMPORTED Targets
+# ^^^^^^^^^^^^^^^^
+#
+# ``dv::dvsdk``
+#   the shared library
+#
+# Result VARIABLES
+# ^^^^^^^^^^^^^^^^
+#
+# ``dv_FOUND``
+#   ``TRUE`` if the library and all required components were found.
+#   If ``FALSE`` do not use the library.
+# ``dv_INCLUDE_DIRS``
+#   path with the headers
+# ``dv_VERSION``
+#   version as "MM.mm.pp[-rev]"
+# ``dv_VERSION_(MAJOR|MINOR|PATCH)``
+#   the version parts
+#
+
+@PACKAGE_INIT@
+
+CMAKE_POLICY(PUSH)
+CMAKE_POLICY(VERSION 3.12)
+
+INCLUDE(@PACKAGE_export_destination@/dv-exports.cmake)
+SET(dv_INCLUDE_DIRS @PACKAGE_include_dirs@)
+
+CMAKE_POLICY(POP)
