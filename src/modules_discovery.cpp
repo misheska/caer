@@ -141,7 +141,21 @@ void dv::ModulesUpdateInformation() {
 	glModuleData.modulePaths.clear();
 
 	// Search for available modules. Will be loaded as needed later.
-	const std::string modulesSearchPath = modulesNode.get<dvCfgType::STRING>("modulesSearchPath");
+	std::string modulesSearchPath = modulesNode.get<dvCfgType::STRING>("modulesSearchPath");
+
+	char *execLocation = portable_get_executable_location();
+	if (execLocation != nullptr) {
+		boost::filesystem::path execPath(execLocation);
+		free(execLocation);
+
+		if (!boost::filesystem::is_directory(execPath)) {
+			execPath.remove_filename();
+		}
+
+		execPath.append("dv_modules");
+
+		modulesSearchPath = execPath.string() + "|" + modulesSearchPath;
+	}
 
 	// Split on '|'.
 	boost::tokenizer<boost::char_separator<char>> searchPaths(
@@ -173,6 +187,10 @@ void dv::ModulesUpdateInformation() {
 		boost::format exMsg = boost::format("Failed to find any modules on path(s) '%s'.") % modulesSearchPath;
 		throw std::runtime_error(exMsg.str());
 	}
+	else {
+		dv::Log(dv::logLevel::DEBUG, "Found %d modules on path(s) '%s'.", glModuleData.modulePaths.size(),
+			modulesSearchPath.c_str());
+	}
 
 	// Generate nodes for each module, with their in/out information as attributes.
 	// This also checks basic validity of the module's information.
@@ -188,7 +206,7 @@ void dv::ModulesUpdateInformation() {
 			mLoad = InternalLoadLibrary(*iter);
 		}
 		catch (const std::exception &ex) {
-			boost::format exMsg = boost::format("Module '%s': %s") % moduleName % ex.what();
+			auto exMsg = boost::format("Module '%s': %s") % moduleName % ex.what();
 			dv::Log(dv::logLevel::ERROR, exMsg);
 
 			iter = glModuleData.modulePaths.erase(iter);
@@ -196,6 +214,16 @@ void dv::ModulesUpdateInformation() {
 		}
 
 		// Get ConfigTree node under /system/modules/.
+		if (modulesNode.existsRelativeNode(moduleName + "/")) {
+			// Remove duplicates.
+			auto exMsg = boost::format("Module '%s': removing duplicate '%s'.") % moduleName % iter->string();
+			dv::Log(dv::logLevel::INFO, exMsg);
+
+			dv::ModulesUnloadLibrary(mLoad.first);
+			iter = glModuleData.modulePaths.erase(iter);
+			continue;
+		}
+
 		auto moduleNode = modulesNode.getRelativeNode(moduleName + "/");
 
 		// Parse dvModuleInfo into ConfigTree.
