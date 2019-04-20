@@ -199,6 +199,15 @@ void dv::ModulesUpdateInformation() {
 	while (iter != glModuleData.modulePaths.cend()) {
 		std::string moduleName = iter->stem().string();
 
+		// Remove duplicates first.
+		if (modulesNode.existsRelativeNode(moduleName + "/")) {
+			auto exMsg = boost::format("Module '%s': removing duplicate '%s'.") % moduleName % iter->string();
+			dv::Log(dv::logLevel::INFO, exMsg);
+
+			iter = glModuleData.modulePaths.erase(iter);
+			continue;
+		}
+
 		// Load library.
 		std::pair<dv::ModuleLibrary, dvModuleInfo> mLoad;
 
@@ -214,16 +223,6 @@ void dv::ModulesUpdateInformation() {
 		}
 
 		// Get ConfigTree node under /system/modules/.
-		if (modulesNode.existsRelativeNode(moduleName + "/")) {
-			// Remove duplicates.
-			auto exMsg = boost::format("Module '%s': removing duplicate '%s'.") % moduleName % iter->string();
-			dv::Log(dv::logLevel::INFO, exMsg);
-
-			dv::ModulesUnloadLibrary(mLoad.first);
-			iter = glModuleData.modulePaths.erase(iter);
-			continue;
-		}
-
 		auto moduleNode = modulesNode.getRelativeNode(moduleName + "/");
 
 		// Parse dvModuleInfo into ConfigTree.
