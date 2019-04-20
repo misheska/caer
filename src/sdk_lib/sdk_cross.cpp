@@ -17,6 +17,14 @@
 #	if defined(OS_LINUX)
 #		include <sys/prctl.h>
 #		include <sys/resource.h>
+#	elif defined(OS_MACOSX)
+#		include <mach/clock.h>
+#		include <mach/clock_types.h>
+#		include <mach/mach.h>
+#		include <mach/mach_host.h>
+#		include <mach/mach_port.h>
+#		include <mach/mach_time.h>
+#		include <mach-o/dyld.h>
 #	endif
 #elif defined(OS_WINDOWS)
 #	define WIN32_LEAN_AND_MEAN
@@ -103,6 +111,8 @@ char *portable_get_user_home_directory(void) {
 			homeDir = strdup(envHome.string().c_str());
 		}
 	}
+#else
+#	error "No portable way to get user home directory found."
 #endif
 
 	// If nothing else worked, try getting a temporary path.
@@ -131,14 +141,36 @@ char *portable_get_user_home_directory(void) {
 	return (realHomeDir);
 }
 
-#if defined(OS_MACOSX)
-#	include <mach/clock.h>
-#	include <mach/clock_types.h>
-#	include <mach/mach.h>
-#	include <mach/mach_host.h>
-#	include <mach/mach_port.h>
-#	include <mach/mach_time.h>
+#define DV_EXEC_BUF_SIZE (PATH_MAX + 1)
 
+char *portable_get_executable_location(void) {
+	char buf[DV_EXEC_BUF_SIZE];
+
+#if defined(OS_LINUX)
+	ssize_t res = readlink("/proc/self/exe", buf, DV_EXEC_BUF_SIZE);
+	if ((res <= 0) || (res == DV_EXEC_BUF_SIZE)) {
+		return (nullptr);
+	}
+
+	buf[res] = '\0';
+#elif defined(OS_MACOSX)
+	uint32_t bufSize = DV_EXEC_BUF_SIZE;
+	if (_NSGetExecutablePath(buf, &bufSize) != 0) {
+		return (nullptr);
+	}
+#elif defined(OS_WINDOWS)
+	uint32_t res = GetModuleFileName(nullptr, buf, DV_EXEC_BUF_SIZE);
+	if ((res == 0) || (res == DV_EXEC_BUF_SIZE)) {
+		return (nullptr);
+	}
+#else
+#	error "No portable way to get executable location found."
+#endif
+
+	return (portable_realpath(buf));
+}
+
+#if defined(OS_MACOSX)
 bool portable_clock_gettime_monotonic(struct timespec *monoTime) {
 	kern_return_t kRet;
 	clock_serv_t clockRef;

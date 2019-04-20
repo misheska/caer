@@ -62,6 +62,16 @@ int portable_fsync(int fd);
  */
 char *portable_get_user_home_directory(void);
 
+/**
+ * Get the current executable's location as a string.
+ * Returned string is a dynamically allocated copy,
+ * always remember to free() it to avoid a memory leak.
+ *
+ * @return string containing current executable path.
+ *         Always remember to free() this!
+ */
+char *portable_get_executable_location(void);
+
 #ifdef __cplusplus
 }
 #endif
