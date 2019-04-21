@@ -16,6 +16,8 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
+std::atomic_uint64_t dv::Module::controlIDGenerator{0};
+
 dv::Module::Module(std::string_view _name, std::string_view _library) :
 	name(_name),
 	running(false),

@@ -123,6 +123,9 @@ private:
 	// Command and control.
 	std::mutex controlLock;
 	std::deque<dv::ModuleControlT> controlQueue;
+	static std::atomic_uint64_t controlIDGenerator;
+	std::mutex controlDestinationsLock;
+	std::vector<std::deque<dv::ModuleControlT> *> controlDestinations;
 	// Logging.
 	dv::LogBlock logger;
 	// I/O connectivity.
