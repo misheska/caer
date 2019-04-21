@@ -5,6 +5,7 @@
 
 #include "dv-sdk/module.h"
 
+#include "dv_module_control.hpp"
 #include "log.hpp"
 #include "modules_discovery.hpp"
 
@@ -12,6 +13,7 @@
 #include <boost/intrusive_ptr.hpp>
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <condition_variable>
+#include <deque>
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -118,6 +120,9 @@ private:
 	bool running;
 	bool isRunning;
 	std::atomic_bool configUpdate;
+	// Command and control.
+	std::mutex controlLock;
+	std::deque<dv::ModuleControlT> controlQueue;
 	// Logging.
 	dv::LogBlock logger;
 	// I/O connectivity.
