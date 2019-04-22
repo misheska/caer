@@ -96,19 +96,6 @@ dvConfigNode dvModuleOutputGetInfoNode(dvModuleData moduleData, const char *name
 	}
 }
 
-dvConfigNodeConst dvModuleInputGetUpstreamNode(dvModuleData moduleData, const char *name) {
-	auto module = reinterpret_cast<dv::Module *>(moduleData);
-
-	try {
-		return (static_cast<dvConfigNodeConst>(dv::glLibFuncPtr->inputGetUpstreamNode(module, name)));
-	}
-	catch (const std::exception &ex) {
-		dv::Log(dv::logLevel::CRITICAL, "%s", ex.what());
-
-		return (nullptr);
-	}
-}
-
 dvConfigNodeConst dvModuleInputGetInfoNode(dvModuleData moduleData, const char *name) {
 	auto module = reinterpret_cast<dv::Module *>(moduleData);
 

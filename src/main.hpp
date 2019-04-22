@@ -27,7 +27,6 @@ struct SDKLibFunctionPointers {
 	std::function<const dv::Types::TypedObject *(dv::Module *, std::string_view)> inputGet;
 	std::function<void(dv::Module *, std::string_view, const dv::Types::TypedObject *)> inputDismiss;
 	std::function<dv::Config::Node(dv::Module *, std::string_view)> outputGetInfoNode;
-	std::function<const dv::Config::Node(dv::Module *, std::string_view)> inputGetUpstreamNode;
 	std::function<const dv::Config::Node(dv::Module *, std::string_view)> inputGetInfoNode;
 	std::function<bool(dv::Module *, std::string_view)> inputIsConnected;
 };

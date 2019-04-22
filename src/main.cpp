@@ -80,17 +80,16 @@ static void mainRunner() {
 	libFuncPtrs->getTypeInfoIntegerID  = [typeSystem = &dv::MainData::getGlobal().typeSystem](uint32_t ii,
                                             const dv::Module *m) { return (typeSystem->getTypeInfo(ii, m)); };
 
-	libFuncPtrs->registerType         = &dv::Module::registerType;
-	libFuncPtrs->registerOutput       = &dv::Module::registerOutput;
-	libFuncPtrs->registerInput        = &dv::Module::registerInput;
-	libFuncPtrs->outputAllocate       = &dv::Module::outputAllocate;
-	libFuncPtrs->outputCommit         = &dv::Module::outputCommit;
-	libFuncPtrs->inputGet             = &dv::Module::inputGet;
-	libFuncPtrs->inputDismiss         = &dv::Module::inputDismiss;
-	libFuncPtrs->outputGetInfoNode    = &dv::Module::outputGetInfoNode;
-	libFuncPtrs->inputGetUpstreamNode = &dv::Module::inputGetUpstreamNode;
-	libFuncPtrs->inputGetInfoNode     = &dv::Module::inputGetInfoNode;
-	libFuncPtrs->inputIsConnected     = &dv::Module::inputIsConnected;
+	libFuncPtrs->registerType      = &dv::Module::registerType;
+	libFuncPtrs->registerOutput    = &dv::Module::registerOutput;
+	libFuncPtrs->registerInput     = &dv::Module::registerInput;
+	libFuncPtrs->outputAllocate    = &dv::Module::outputAllocate;
+	libFuncPtrs->outputCommit      = &dv::Module::outputCommit;
+	libFuncPtrs->inputGet          = &dv::Module::inputGet;
+	libFuncPtrs->inputDismiss      = &dv::Module::inputDismiss;
+	libFuncPtrs->outputGetInfoNode = &dv::Module::outputGetInfoNode;
+	libFuncPtrs->inputGetInfoNode  = &dv::Module::inputGetInfoNode;
+	libFuncPtrs->inputIsConnected  = &dv::Module::inputIsConnected;
 
 	dv::SDKLibInit(libFuncPtrs);
 
