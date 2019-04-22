@@ -39,7 +39,7 @@ class ModuleInput {
 public:
 	dv::Types::Type type;
 	bool optional;
-	ModuleOutput *linkedOutput;
+	std::string linkedOutput;
 	libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> queue;
 	std::vector<boost::intrusive_ptr<IntrusiveTypedObject>> inUsePackets;
 
@@ -151,6 +151,9 @@ private:
 	void RunningInit();
 	void StaticInit();
 
+	static std::pair<std::string, std::string> parseModuleInputString(const std::string &moduleInput);
+
+	Module *getModule(const std::string &moduleName);
 	ModuleOutput *getModuleOutput(const std::string &outputName);
 	ModuleInput *getModuleInput(const std::string &outputName);
 

@@ -234,6 +234,19 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 
 static const std::regex inputConnRegex("^([a-zA-Z-_\\d\\.]+)\\[([a-zA-Z-_\\d\\.]+)\\]$");
 
+std::pair<std::string, std::string> dv::Module::parseModuleInputString(const std::string &moduleInput) {
+	// Not empty, so check syntax and then components.
+	std::smatch inputConnComponents;
+	if (!std::regex_match(moduleInput, inputConnComponents, inputConnRegex)) {
+		throw std::out_of_range("Invalid format of connectivity attribute '" + moduleInput + "'.");
+	}
+
+	auto moduleName = inputConnComponents.str(1);
+	auto outputName = inputConnComponents.str(2);
+
+	return (std::make_pair(moduleName, outputName));
+}
+
 bool dv::Module::inputConnectivityInitialize() {
 	for (auto &input : inputs) {
 		// Get current module connectivity configuration.
@@ -258,27 +271,25 @@ bool dv::Module::inputConnectivityInitialize() {
 			}
 		}
 
-		// Not empty, so check syntax and then components.
-		std::smatch inputConnComponents;
-		if (!std::regex_match(inputConn, inputConnComponents, inputConnRegex)) {
-			auto msg
-				= boost::format("Input '%s': invalid format of connectivity attribute '%s'.") % input.first % inputConn;
+		std::string moduleName, outputName;
+
+		try {
+			std::tie(moduleName, outputName) = parseModuleInputString(inputConn);
+		}
+		catch (const std::out_of_range &ex) {
+			auto msg = boost::format("Input '%s': %s") % input.first % ex.what();
 			dv::Log(dv::logLevel::ERROR, msg);
 			return (false);
 		}
 
-		auto moduleName = inputConnComponents.str(1);
-		auto outputName = inputConnComponents.str(2);
-
 		// Does the referenced module exist?
-		if (!MainData::getGlobal().modules.count(moduleName)) {
+		auto otherModule = getModule(moduleName);
+		if (otherModule == nullptr) {
 			auto msg = boost::format("Input '%s': invalid connectivity attribute, module '%s' doesn't exist.")
 					   % input.first % moduleName;
 			dv::Log(dv::logLevel::ERROR, msg);
 			return (false);
 		}
-
-		auto otherModule = MainData::getGlobal().modules[moduleName];
 
 		// Does it have the specified output?
 		auto moduleOutput = otherModule->getModuleOutput(outputName);
@@ -306,10 +317,20 @@ bool dv::Module::inputConnectivityInitialize() {
 		connectToModuleOutput(moduleOutput, connection);
 
 		// And we're done.
-		input.second.linkedOutput = moduleOutput;
+		input.second.linkedOutput = inputConn;
 	}
 
 	return (true);
+}
+
+dv::Module *dv::Module::getModule(const std::string &moduleName) {
+	try {
+		return (MainData::getGlobal().modules.at(moduleName).get());
+	}
+	catch (const std::out_of_range &) {
+		// Fine, not found.
+		return (nullptr);
+	}
 }
 
 dv::ModuleOutput *dv::Module::getModuleOutput(const std::string &outputName) {
