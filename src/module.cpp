@@ -182,7 +182,7 @@ void dv::Module::registerInput(std::string_view inputName, std::string_view type
 	}
 
 	// Add info to internal data structure.
-	inputs.try_emplace(inputNameString, this, typeInfo, optional);
+	inputs.try_emplace(inputNameString, typeInfo, optional);
 
 	// Add info to ConfigTree.
 	auto moduleConfigNode = dvCfg::Node(moduleNode);
@@ -226,7 +226,7 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 	auto infoNode = outputNode.getRelativeNode("info/");
 
 	// Add info to internal data structure.
-	outputs.try_emplace(outputNameString, this, infoNode, typeInfo);
+	outputs.try_emplace(outputNameString, typeInfo, infoNode);
 
 	dv::Log(
 		dv::logLevel::DEBUG, "Output '%s' registered with type '%s'.", outputNameString.c_str(), typeInfo.identifier);
