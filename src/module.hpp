@@ -5,7 +5,6 @@
 
 #include "dv-sdk/module.h"
 
-#include "dv_module_control.hpp"
 #include "log.hpp"
 #include "modules_discovery.hpp"
 
@@ -36,76 +35,69 @@ public:
 	}
 };
 
-using ModuleBuffer = libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *>;
-
-class IncomingConnection {
-public:
-	ModuleOutput *linkedOutput;
-	std::shared_ptr<ModuleBuffer> queue;
-
-	IncomingConnection(ModuleOutput *from) :
-		linkedOutput(from),
-		queue(std::make_shared<ModuleBuffer>(INTER_MODULE_TRANSFER_QUEUE_SIZE)) {
-	}
-
-	bool operator==(const IncomingConnection &rhs) const noexcept {
-		return ((linkedOutput == rhs.linkedOutput) && (queue == rhs.queue));
-	}
-
-	bool operator!=(const IncomingConnection &rhs) const noexcept {
-		return (!operator==(rhs));
-	}
-};
-
 class ModuleInput {
 public:
-	Module *relatedModule;
 	dv::Types::Type type;
 	bool optional;
-	IncomingConnection source;
+	ModuleOutput *linkedOutput;
+	libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> queue;
 	std::vector<boost::intrusive_ptr<IntrusiveTypedObject>> inUsePackets;
 
-	ModuleInput(Module *parent, const dv::Types::Type &t, bool opt) :
-		relatedModule(parent),
+	ModuleInput(const dv::Types::Type &t, bool opt) :
 		type(t),
 		optional(opt),
-		source(nullptr) {
+		linkedOutput(nullptr),
+		queue(INTER_MODULE_TRANSFER_QUEUE_SIZE) {
 	}
 };
 
-class OutgoingConnection {
+struct InputDataAvailable {
 public:
-	ModuleInput *linkedInput;
-	std::shared_ptr<ModuleBuffer> queue;
+	// Input data availability.
+	std::mutex lock;
+	std::condition_variable cond;
+	int32_t count;
 
-	OutgoingConnection(ModuleInput *to, std::shared_ptr<ModuleBuffer> linkedQueue) :
-		linkedInput(to),
-		queue(linkedQueue) {
+	InputDataAvailable() : count(0) {
+	}
+};
+
+class OutConnection {
+public:
+	libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue;
+	InputDataAvailable *dataAvailable;
+
+	OutConnection(libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue_, InputDataAvailable *dataAvailable_) :
+		queue(queue_),
+		dataAvailable(dataAvailable_) {
 	}
 
-	bool operator==(const OutgoingConnection &rhs) const noexcept {
-		return ((linkedInput == rhs.linkedInput) && (queue == rhs.queue));
+	bool operator==(const OutConnection &rhs) const noexcept {
+		return ((queue == rhs.queue) && (dataAvailable == rhs.dataAvailable));
 	}
 
-	bool operator!=(const OutgoingConnection &rhs) const noexcept {
+	bool operator!=(const OutConnection &rhs) const noexcept {
 		return (!operator==(rhs));
 	}
 };
 
 class ModuleOutput {
 public:
-	Module *relatedModule;
-	dv::Config::Node infoNode;
 	dv::Types::Type type;
+	dv::Config::Node infoNode;
 	std::mutex destinationsLock;
-	std::vector<OutgoingConnection> destinations;
+	std::vector<OutConnection> destinations;
 	boost::intrusive_ptr<IntrusiveTypedObject> nextPacket;
 
-	ModuleOutput(Module *parent, dv::Config::Node info, const dv::Types::Type &t) :
-		relatedModule(parent),
-		infoNode(info),
-		type(t) {
+	ModuleOutput(const dv::Types::Type &t, dv::Config::Node info) : type(t), infoNode(info) {
 	}
+};
+
+enum class ModuleCommand : int8_t { START = 0, SHUTDOWN = 1, RESTART = 2, TS_RESET = 3, MIN = START, MAX = TS_RESET };
+
+struct ModuleControl {
+	ModuleCommand cmd;
+	uint64_t id;
 };
 
 class Module : public dvModuleDataS {
@@ -122,19 +114,17 @@ private:
 	std::atomic_bool configUpdate;
 	// Command and control.
 	std::mutex controlLock;
-	std::deque<dv::ModuleControlT> controlQueue;
+	std::deque<dv::ModuleControl> controlQueue;
 	static std::atomic_uint64_t controlIDGenerator;
 	std::mutex controlDestinationsLock;
-	std::vector<std::deque<dv::ModuleControlT> *> controlDestinations;
+	std::vector<std::deque<dv::ModuleControl> *> controlDestinations;
 	// Logging.
 	dv::LogBlock logger;
 	// I/O connectivity.
 	std::unordered_map<std::string, ModuleInput> inputs;
 	std::unordered_map<std::string, ModuleOutput> outputs;
 	// Input data availability.
-	std::mutex dataLock;
-	std::condition_variable dataCond;
-	int32_t dataAvailable;
+	struct InputDataAvailable dataAvailable;
 	// Module thread management.
 	std::thread thread;
 	std::atomic_bool threadAlive;
@@ -153,7 +143,6 @@ public:
 	void inputDismiss(std::string_view inputName, const dv::Types::TypedObject *data);
 
 	dv::Config::Node outputGetInfoNode(std::string_view outputName);
-	const dv::Config::Node inputGetUpstreamNode(std::string_view inputName);
 	const dv::Config::Node inputGetInfoNode(std::string_view inputName);
 	bool inputIsConnected(std::string_view inputName);
 
@@ -165,8 +154,8 @@ private:
 	ModuleOutput *getModuleOutput(const std::string &outputName);
 	ModuleInput *getModuleInput(const std::string &outputName);
 
-	static void connectToModuleOutput(ModuleOutput *output, OutgoingConnection connection);
-	static void disconnectFromModuleOutput(ModuleOutput *output, OutgoingConnection connection);
+	static void connectToModuleOutput(ModuleOutput *output, OutConnection connection);
+	static void disconnectFromModuleOutput(ModuleOutput *output, OutConnection connection);
 
 	bool inputConnectivityInitialize();
 	void inputConnectivityDestroy();

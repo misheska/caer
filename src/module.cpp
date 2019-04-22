@@ -23,7 +23,6 @@ dv::Module::Module(std::string_view _name, std::string_view _library) :
 	running(false),
 	isRunning(false),
 	configUpdate(false),
-	dataAvailable(0),
 	threadAlive(false) {
 	// Load library to get module functions.
 	try {
@@ -80,24 +79,18 @@ dv::Module::~Module() {
 
 	thread.join();
 
-	// Now take care of cleaning up all output connections.
-	for (auto &output : outputs) {
-		std::scoped_lock lock(output.second.destinationsLock);
+	// Now take care of notifying all downstream modules.
+	{
+		std::scoped_lock lock(controlLock);
 
-		for (auto &dest : output.second.destinations) {
-			// Break link. Queue remains and just receives no new data.
-			dest.linkedInput->source.linkedOutput = nullptr;
-
+		for (auto &dest : controlDestinations) {
 			// Downstream module has now an incorrect, impossible
 			// input configuration. Let's stop it so the user can
 			// fix it and restart it then.
-			dvCfg::Node(dest.linkedInput->relatedModule->moduleNode).put<dvCfgType::BOOL>("running", false);
+			// TODO: use control system.
 		}
 
-		dv::Log(dv::logLevel::DEBUG, "Output '%s': %d destinations unlinked.", output.first.c_str(),
-			output.second.destinations.size());
-
-		output.second.destinations.clear();
+		controlDestinations.clear();
 	}
 
 	// Cleanup configuration and types.
@@ -308,12 +301,12 @@ bool dv::Module::inputConnectivityInitialize() {
 		}
 
 		// All is well, let's connect to that output.
-		OutgoingConnection connection{&input.second, input.second.source.queue};
+		OutConnection connection{&input.second.queue, &dataAvailable};
 
 		connectToModuleOutput(moduleOutput, connection);
 
-		// And make that connection bidirectional.
-		input.second.source.linkedOutput = moduleOutput;
+		// And we're done.
+		input.second.linkedOutput = moduleOutput;
 	}
 
 	return (true);
@@ -339,13 +332,13 @@ dv::ModuleInput *dv::Module::getModuleInput(const std::string &outputName) {
 	}
 }
 
-void dv::Module::connectToModuleOutput(ModuleOutput *output, OutgoingConnection connection) {
+void dv::Module::connectToModuleOutput(ModuleOutput *output, OutConnection connection) {
 	std::scoped_lock lock(output->destinationsLock);
 
 	output->destinations.push_back(connection);
 }
 
-void dv::Module::disconnectFromModuleOutput(ModuleOutput *output, OutgoingConnection connection) {
+void dv::Module::disconnectFromModuleOutput(ModuleOutput *output, OutConnection connection) {
 	std::scoped_lock lock(output->destinationsLock);
 
 	auto pos = std::find(output->destinations.begin(), output->destinations.end(), connection);
@@ -358,27 +351,27 @@ void dv::Module::disconnectFromModuleOutput(ModuleOutput *output, OutgoingConnec
 void dv::Module::inputConnectivityDestroy() {
 	// Cleanup inputs, disconnect from all of them.
 	for (auto &input : inputs) {
-		if (input.second.source.linkedOutput != nullptr) {
+		if (input.second.linkedOutput != nullptr) {
 			// Remove the connection from the output.
-			OutgoingConnection connection{&input.second, input.second.source.queue};
+			OutConnection connection{&input.second.queue, &dataAvailable};
 
-			disconnectFromModuleOutput(input.second.source.linkedOutput, connection);
+			disconnectFromModuleOutput(input.second.linkedOutput, connection);
 
-			// Dissolve bond.
-			input.second.source.linkedOutput = nullptr;
+			// Disconnected.
+			input.second.linkedOutput = nullptr;
 		}
 
 		// Empty queue of any remaining data elements.
 		{
-			std::scoped_lock lock(dataLock);
+			std::scoped_lock lock(dataAvailable.lock);
 
-			while (!input.second.source.queue->empty()) {
-				auto dataPtr = input.second.source.queue->get();
+			while (!input.second.queue.empty()) {
+				auto dataPtr = input.second.queue.get();
 
 				// Ensure refcount is decremented properly.
 				boost::intrusive_ptr<IntrusiveTypedObject> packet(dataPtr, false);
 
-				dataAvailable--;
+				dataAvailable.count--;
 			}
 		}
 
@@ -524,9 +517,10 @@ void dv::Module::runStateMachine() {
 		// Only run if there is data. On timeout with no data, do nothing.
 		// If is an input generation module (no inputs defined at all), always run.
 		if (inputs.size() > 0) {
-			std::unique_lock lock(dataLock);
+			std::unique_lock lock(dataAvailable.lock);
 
-			if (!dataCond.wait_for(lock, std::chrono::seconds(1), [this]() { return (dataAvailable > 0); })) {
+			if (!dataAvailable.cond.wait_for(
+					lock, std::chrono::seconds(1), [this]() { return (dataAvailable.count > 0); })) {
 				return;
 			}
 		}
@@ -665,11 +659,11 @@ void dv::Module::outputCommit(std::string_view outputName) {
 
 			// Notify downstream module about new data being available.
 			{
-				std::scoped_lock lock2(dest.linkedInput->relatedModule->dataLock);
-				dest.linkedInput->relatedModule->dataAvailable++;
+				std::scoped_lock lock2(dest.dataAvailable->lock);
+				dest.dataAvailable->count++;
 			}
 
-			dest.linkedInput->relatedModule->dataCond.notify_all();
+			dest.dataAvailable->cond.notify_all();
 		}
 	}
 
@@ -687,7 +681,7 @@ const dv::Types::TypedObject *dv::Module::inputGet(std::string_view inputName) {
 	IntrusiveTypedObject *dataPtr = nullptr;
 
 	try {
-		dataPtr = input->source.queue->get();
+		dataPtr = input->queue.get();
 	}
 	catch (const std::out_of_range &) {
 		// Empty queue, no data, return NULL.
@@ -695,8 +689,8 @@ const dv::Types::TypedObject *dv::Module::inputGet(std::string_view inputName) {
 	}
 
 	{
-		std::scoped_lock lock(dataLock);
-		dataAvailable--;
+		std::scoped_lock lock(dataAvailable.lock);
+		dataAvailable.count--;
 	}
 
 	boost::intrusive_ptr<IntrusiveTypedObject> nextPacket(dataPtr, false);
@@ -740,32 +734,6 @@ dv::Config::Node dv::Module::outputGetInfoNode(std::string_view outputName) {
 }
 
 /**
- * Get upstream module node for an input.
- * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
- * moduleInit() and moduleExit(). Do not hold references in state!
- *
- * @param inputName name of input.
- * @return upstream module node.
- */
-const dv::Config::Node dv::Module::inputGetUpstreamNode(std::string_view inputName) {
-	auto input = getModuleInput(std::string(inputName));
-	if (input == nullptr) {
-		// Not found.
-		auto msg = boost::format("Input with name '%s' doesn't exist.") % inputName;
-		throw std::out_of_range(msg.str());
-	}
-
-	auto outputLink = input->source.linkedOutput;
-	if (outputLink == nullptr) {
-		// Input can be unconnected.
-		auto msg = boost::format("Input '%s' is unconnected.") % inputName;
-		throw std::runtime_error(msg.str());
-	}
-
-	return (outputLink->relatedModule->moduleNode);
-}
-
-/**
  * Get informative node for an input from that input's upstream module.
  * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
  * moduleInit() and moduleExit(). Do not hold references in state!
@@ -781,7 +749,7 @@ const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) 
 		throw std::out_of_range(msg.str());
 	}
 
-	auto outputLink = input->source.linkedOutput;
+	auto outputLink = input->linkedOutput;
 	if (outputLink == nullptr) {
 		// Input can be unconnected.
 		auto msg = boost::format("Input '%s' is unconnected.") % inputName;
@@ -789,7 +757,6 @@ const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) 
 	}
 
 	auto infoNode = outputLink->infoNode;
-
 	if (infoNode.getAttributeKeys().size() == 0) {
 		auto msg = boost::format("No informative content present for input '%s'.") % inputName;
 		throw std::runtime_error(msg.str());
@@ -815,13 +782,7 @@ bool dv::Module::inputIsConnected(std::string_view inputName) {
 		throw std::out_of_range(msg.str());
 	}
 
-	auto outputLink = input->source.linkedOutput;
-	if (outputLink == nullptr) {
-		// Input can be unconnected.
-		return (false);
-	}
-
-	return (true);
+	return (input->linkedOutput != nullptr);
 }
 
 void dv::Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
