@@ -105,16 +105,6 @@ struct ModuleControl {
 	uint64_t id;
 };
 
-enum class ModuleExecutionPhase {
-	CONSTRUCT = 0,
-	STOPPED   = 1,
-	INIT      = 2,
-	RUN       = 3,
-	CONFIG    = 4,
-	SHUTDOWN  = 5,
-	DESTRUCT  = 6,
-};
-
 class Module : public dvModuleDataS {
 private:
 	// Module info.
@@ -122,7 +112,6 @@ private:
 	dvModuleInfo info;
 	dv::ModuleLibrary library;
 	// Run status.
-	ModuleExecutionPhase phase;
 	std::mutex runLock;
 	std::condition_variable runCond;
 	bool running;
