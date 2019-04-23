@@ -93,11 +93,26 @@ public:
 	}
 };
 
-enum class ModuleCommand : int8_t { START = 0, SHUTDOWN = 1, RESTART = 2, TS_RESET = 3, MIN = START, MAX = TS_RESET };
+enum class ModuleCommand {
+	START    = 0,
+	SHUTDOWN = 1,
+	RESTART  = 2,
+	TS_RESET = 3,
+};
 
 struct ModuleControl {
 	ModuleCommand cmd;
 	uint64_t id;
+};
+
+enum class ModuleExecutionPhase {
+	CONSTRUCT = 0,
+	STOPPED   = 1,
+	INIT      = 2,
+	RUN       = 3,
+	CONFIG    = 4,
+	SHUTDOWN  = 5,
+	DESTRUCT  = 6,
 };
 
 class Module : public dvModuleDataS {
@@ -107,6 +122,7 @@ private:
 	dvModuleInfo info;
 	dv::ModuleLibrary library;
 	// Run status.
+	ModuleExecutionPhase phase;
 	std::mutex runLock;
 	std::condition_variable runCond;
 	bool running;

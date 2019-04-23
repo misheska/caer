@@ -20,6 +20,7 @@ std::atomic_uint64_t dv::Module::controlIDGenerator{0};
 
 dv::Module::Module(std::string_view _name, std::string_view _library) :
 	name(_name),
+	phase(ModuleExecutionPhase::CONSTRUCT),
 	running(false),
 	isRunning(false),
 	configUpdate(false),
@@ -78,6 +79,8 @@ dv::Module::~Module() {
 	runCond.notify_all();
 
 	thread.join();
+
+	phase = ModuleExecutionPhase::DESTRUCT;
 
 	// Now take care of notifying all downstream modules.
 	{
@@ -484,6 +487,8 @@ void dv::Module::handleModuleInitFailure(bool doModuleExit) {
 			},
 			nullptr, true);
 	}
+
+	phase = ModuleExecutionPhase::STOPPED;
 }
 
 void dv::Module::runThread() {
@@ -494,6 +499,8 @@ void dv::Module::runThread() {
 	portable_thread_set_name(logger.logPrefix.c_str());
 
 	dv::Log(dv::logLevel::DEBUG, "%s", "Module thread running.");
+
+	phase = ModuleExecutionPhase::STOPPED;
 
 	// Run state machine as long as module is running.
 	while (threadAlive.load(std::memory_order_relaxed)) {
@@ -524,6 +531,8 @@ void dv::Module::runStateMachine() {
 
 	if (isRunning && shouldRun) {
 		if (configUpdate.load(std::memory_order_relaxed)) {
+			phase = ModuleExecutionPhase::CONFIG;
+
 			configUpdate.store(false);
 
 			if (info->functions->moduleConfig != nullptr) {
@@ -540,6 +549,8 @@ void dv::Module::runStateMachine() {
 				}
 			}
 		}
+
+		phase = ModuleExecutionPhase::RUN;
 
 		// Only run if there is data. On timeout with no data, do nothing.
 		// If is an input generation module (no inputs defined at all), always run.
@@ -568,6 +579,8 @@ void dv::Module::runStateMachine() {
 	else if (!isRunning && shouldRun) {
 		// Serialize module start/stop globally.
 		std::scoped_lock lock(MainData::getGlobal().modulesLock);
+
+		phase = ModuleExecutionPhase::INIT;
 
 		// Allocate memory for module state.
 		if (info->memSize != 0) {
@@ -624,16 +637,22 @@ void dv::Module::runStateMachine() {
 
 		isRunning = true;
 		moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", true);
+
+		phase = ModuleExecutionPhase::RUN;
 	}
 	else if (isRunning && !shouldRun) {
 		// Serialize module start/stop globally.
 		std::scoped_lock lock(MainData::getGlobal().modulesLock);
+
+		phase = ModuleExecutionPhase::SHUTDOWN;
 
 		// Full shutdown.
 		shutdownProcedure(true);
 
 		isRunning = false;
 		moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
+
+		phase = ModuleExecutionPhase::STOPPED;
 	}
 }
 
