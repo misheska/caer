@@ -376,8 +376,18 @@ void dv::Module::inputConnectivityDestroy() {
 			const auto [moduleName, outputName] = parseModuleInputString(input.second.linkedOutput);
 
 			auto otherModule = getModule(moduleName);
+			if (otherModule == nullptr) {
+				// Module is gone in the meantime. Nothing to disconnect.
+				input.second.linkedOutput.clear();
+				goto empty;
+			}
 
 			auto moduleOutput = otherModule->getModuleOutput(outputName);
+			if (moduleOutput == nullptr) {
+				// Output is gone in the meantime. Nothing to disconnect.
+				input.second.linkedOutput.clear();
+				goto empty;
+			}
 
 			// Remove the connection from the output.
 			OutConnection connection{&input.second.queue, &dataAvailable};
@@ -388,6 +398,7 @@ void dv::Module::inputConnectivityDestroy() {
 			input.second.linkedOutput.clear();
 		}
 
+	empty:
 		// Empty queue of any remaining data elements.
 		{
 			std::scoped_lock lock(dataAvailable.lock);
@@ -794,8 +805,18 @@ const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) 
 	const auto [moduleName, outputName] = parseModuleInputString(outputLink);
 
 	auto otherModule = getModule(moduleName);
+	if (otherModule == nullptr) {
+		// Module is gone in the meantime.
+		auto msg = boost::format("Connected module with name '%s' doesn't exist.") % moduleName;
+		throw std::out_of_range(msg.str());
+	}
 
 	auto moduleOutput = otherModule->getModuleOutput(outputName);
+	if (moduleOutput == nullptr) {
+		// Output is gone in the meantime.
+		auto msg = boost::format("Output with name '%s' doesn't exist in module '%s'.") % outputName % moduleName;
+		throw std::out_of_range(msg.str());
+	}
 
 	auto infoNode = moduleOutput->infoNode;
 	if (infoNode.getAttributeKeys().size() == 0) {
