@@ -372,14 +372,20 @@ void dv::Module::disconnectFromModuleOutput(ModuleOutput *output, OutConnection 
 void dv::Module::inputConnectivityDestroy() {
 	// Cleanup inputs, disconnect from all of them.
 	for (auto &input : inputs) {
-		if (input.second.linkedOutput != nullptr) {
+		if (!input.second.linkedOutput.empty()) {
+			const auto [moduleName, outputName] = parseModuleInputString(input.second.linkedOutput);
+
+			auto otherModule = getModule(moduleName);
+
+			auto moduleOutput = otherModule->getModuleOutput(outputName);
+
 			// Remove the connection from the output.
 			OutConnection connection{&input.second.queue, &dataAvailable};
 
-			disconnectFromModuleOutput(input.second.linkedOutput, connection);
+			disconnectFromModuleOutput(moduleOutput, connection);
 
 			// Disconnected.
-			input.second.linkedOutput = nullptr;
+			input.second.linkedOutput.clear();
 		}
 
 		// Empty queue of any remaining data elements.
@@ -771,13 +777,19 @@ const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) 
 	}
 
 	auto outputLink = input->linkedOutput;
-	if (outputLink == nullptr) {
+	if (outputLink.empty()) {
 		// Input can be unconnected.
 		auto msg = boost::format("Input '%s' is unconnected.") % inputName;
 		throw std::runtime_error(msg.str());
 	}
 
-	auto infoNode = outputLink->infoNode;
+	const auto [moduleName, outputName] = parseModuleInputString(outputLink);
+
+	auto otherModule = getModule(moduleName);
+
+	auto moduleOutput = otherModule->getModuleOutput(outputName);
+
+	auto infoNode = moduleOutput->infoNode;
 	if (infoNode.getAttributeKeys().size() == 0) {
 		auto msg = boost::format("No informative content present for input '%s'.") % inputName;
 		throw std::runtime_error(msg.str());
@@ -803,7 +815,7 @@ bool dv::Module::inputIsConnected(std::string_view inputName) {
 		throw std::out_of_range(msg.str());
 	}
 
-	return (input->linkedOutput != nullptr);
+	return (!input->linkedOutput.empty());
 }
 
 void dv::Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
