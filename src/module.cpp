@@ -780,13 +780,11 @@ dv::Config::Node dv::Module::outputGetInfoNode(std::string_view outputName) {
  * @return informative node for that input.
  */
 const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) {
-#ifndef NDEBUG
 	if (isRunning) {
 		auto msg
 			= boost::format("Function '%s' cannot be called outside of StaticInit(), Init() and Exit().") % __func__;
 		throw std::out_of_range(msg.str());
 	}
-#endif
 
 	auto input = getModuleInput(std::string(inputName));
 	if (input == nullptr) {
