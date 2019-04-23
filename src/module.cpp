@@ -788,6 +788,15 @@ dv::Config::Node dv::Module::outputGetInfoNode(std::string_view outputName) {
  * @return informative node for that input.
  */
 const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) {
+#ifndef NDEBUG
+	if ((phase != ModuleExecutionPhase::CONSTRUCT) || (phase != ModuleExecutionPhase::INIT)
+		|| (phase != ModuleExecutionPhase::SHUTDOWN)) {
+		auto msg
+			= boost::format("Function '%s' cannot be called outside of StaticInit(), Init() and Exit().") % __func__;
+		throw std::out_of_range(msg.str());
+	}
+#endif
+
 	auto input = getModuleInput(std::string(inputName));
 	if (input == nullptr) {
 		// Not found.
@@ -819,8 +828,7 @@ const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) 
 
 /**
  * Check if an input is connected properly and can get data at runtime.
- * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
- * moduleInit() and moduleExit(). Most useful in moduleInit() to verify status
+ * Can always be called. Most useful in moduleInit() to verify status
  * of optional inputs connections.
  *
  * @param inputName name of input.
