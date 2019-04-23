@@ -312,9 +312,14 @@ bool dv::Module::inputConnectivityInitialize() {
 		}
 
 		// All is well, let's connect to that output.
-		OutConnection connection{&input.second.queue, &dataAvailable};
+		OutConnection dataConn{&input.second.queue, &dataAvailable};
 
-		connectToModuleOutput(moduleOutput, connection);
+		connectToModuleOutput(moduleOutput, dataConn);
+
+		// And add our module to the async control mechanism.
+		ControlConnection controlConn{&controlLock, &controlQueue};
+
+		connectToModule(otherModule, controlConn);
 
 		// And we're done.
 		input.second.linkedOutput = inputConn;
@@ -369,6 +374,27 @@ void dv::Module::disconnectFromModuleOutput(ModuleOutput *output, OutConnection 
 	}
 }
 
+void dv::Module::connectToModule(Module *module, ControlConnection connection) {
+	std::scoped_lock lock(module->controlDestinationsLock);
+
+	// Duplicates not allowed.
+	auto pos = std::find(module->controlDestinations.begin(), module->controlDestinations.end(), connection);
+
+	if (pos == module->controlDestinations.end()) {
+		module->controlDestinations.push_back(connection);
+	}
+}
+
+void dv::Module::disconnectFromModule(Module *module, ControlConnection connection) {
+	std::scoped_lock lock(module->controlDestinationsLock);
+
+	auto pos = std::find(module->controlDestinations.begin(), module->controlDestinations.end(), connection);
+
+	if (pos != module->controlDestinations.end()) {
+		module->controlDestinations.erase(pos);
+	}
+}
+
 void dv::Module::inputConnectivityDestroy() {
 	// Cleanup inputs, disconnect from all of them.
 	for (auto &input : inputs) {
@@ -390,9 +416,14 @@ void dv::Module::inputConnectivityDestroy() {
 			}
 
 			// Remove the connection from the output.
-			OutConnection connection{&input.second.queue, &dataAvailable};
+			OutConnection dataConn{&input.second.queue, &dataAvailable};
 
-			disconnectFromModuleOutput(moduleOutput, connection);
+			disconnectFromModuleOutput(moduleOutput, dataConn);
+
+			// And disconnect the module too.
+			ControlConnection controlConn{&controlLock, &controlQueue};
+
+			disconnectFromModule(otherModule, controlConn);
 
 			// Disconnected.
 			input.second.linkedOutput.clear();
@@ -415,6 +446,13 @@ void dv::Module::inputConnectivityDestroy() {
 
 		// Empty per-input tracker of live memory of remaining data.
 		input.second.inUsePackets.clear();
+
+		// Empty control queue of any remaining command elements.
+		{
+			std::scoped_lock lock(controlLock);
+
+			controlQueue.clear();
+		}
 	}
 }
 
