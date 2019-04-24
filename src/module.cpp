@@ -16,8 +16,6 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
-std::atomic_uint64_t dv::Module::controlIDGenerator{0};
-
 dv::Module::Module(std::string_view _name, std::string_view _library) :
 	name(_name),
 	running(false),
@@ -80,18 +78,10 @@ dv::Module::~Module() {
 	thread.join();
 
 	// Now take care of notifying all downstream modules.
-	{
-		std::scoped_lock lock(controlLock);
-
-		for (auto &dest : controlDestinations) {
-			// Downstream module has now an incorrect, impossible
-			// input configuration. Let's stop it so the user can
-			// fix it and restart it then.
-			// TODO: use control system.
-		}
-
-		controlDestinations.clear();
-	}
+	// Downstream module has now an incorrect, impossible
+	// input configuration. Let's stop it so the user can
+	// fix it and restart it then.
+	// TODO: rewrite.
 
 	// Cleanup configuration and types.
 	dvCfg::Node(moduleNode).removeNode();
@@ -271,6 +261,7 @@ bool dv::Module::inputConnectivityInitialize() {
 			}
 		}
 
+		// Parse connectivity attribute into module and output names.
 		std::string moduleName, outputName;
 
 		try {
@@ -285,7 +276,7 @@ bool dv::Module::inputConnectivityInitialize() {
 		// Does the referenced module exist?
 		auto otherModule = getModule(moduleName);
 		if (otherModule == nullptr) {
-			auto msg = boost::format("Input '%s': invalid connectivity attribute, module '%s' doesn't exist.")
+			auto msg = boost::format("Input '%s': invalid connectivity attribute, module '%s' does not exist.")
 					   % input.first % moduleName;
 			dv::Log(dv::logLevel::ERROR, msg);
 			return (false);
@@ -294,14 +285,14 @@ bool dv::Module::inputConnectivityInitialize() {
 		// Does it have the specified output?
 		auto moduleOutput = otherModule->getModuleOutput(outputName);
 		if (moduleOutput == nullptr) {
-			auto msg
-				= boost::format("Input '%s': invalid connectivity attribute, output '%s' doesn't exist in module '%s'.")
-				  % input.first % outputName % moduleName;
+			auto msg = boost::format(
+						   "Input '%s': invalid connectivity attribute, output '%s' does not exist in module '%s'.")
+					   % input.first % outputName % moduleName;
 			dv::Log(dv::logLevel::ERROR, msg);
 			return (false);
 		}
 
-		// Lastly, check the type.
+		// Then, check the type.
 		// If the expected type is ANYT, we accept anything.
 		if ((input.second.type.id != dv::Types::anyId) && (input.second.type.id != moduleOutput->type.id)) {
 			auto msg = boost::format("Input '%s': invalid connectivity attribute, output '%s' in module '%s' has type "
@@ -311,18 +302,22 @@ bool dv::Module::inputConnectivityInitialize() {
 			return (false);
 		}
 
+		// Last, ensure the other module is running. We can directly check
+		// its isRunning variable, as we hold the global modules lock.
+		if (!otherModule->isRunning) {
+			auto msg = boost::format("Input '%s': required module '%s' is not running. Please start it first!")
+					   % input.first % moduleName;
+			dv::Log(dv::logLevel::INFO, msg);
+			return (false);
+		}
+
 		// All is well, let's connect to that output.
-		OutConnection dataConn{&input.second.queue, &dataAvailable};
+		OutConnection dataConn{&input.second.queue, &dataAvailable, &input.second};
 
 		connectToModuleOutput(moduleOutput, dataConn);
 
-		// And add our module to the async control mechanism.
-		ControlConnection controlConn{&controlLock, &controlQueue};
-
-		connectToModule(otherModule, controlConn);
-
 		// And we're done.
-		input.second.linkedOutput = inputConn;
+		input.second.linkedOutput = moduleOutput;
 	}
 
 	return (true);
@@ -374,62 +369,19 @@ void dv::Module::disconnectFromModuleOutput(ModuleOutput *output, OutConnection 
 	}
 }
 
-void dv::Module::connectToModule(Module *module, ControlConnection connection) {
-	std::scoped_lock lock(module->controlDestinationsLock);
-
-	// Duplicates not allowed.
-	auto pos = std::find(module->controlDestinations.begin(), module->controlDestinations.end(), connection);
-
-	if (pos == module->controlDestinations.end()) {
-		module->controlDestinations.push_back(connection);
-	}
-}
-
-void dv::Module::disconnectFromModule(Module *module, ControlConnection connection) {
-	std::scoped_lock lock(module->controlDestinationsLock);
-
-	auto pos = std::find(module->controlDestinations.begin(), module->controlDestinations.end(), connection);
-
-	if (pos != module->controlDestinations.end()) {
-		module->controlDestinations.erase(pos);
-	}
-}
-
 void dv::Module::inputConnectivityDestroy() {
 	// Cleanup inputs, disconnect from all of them.
 	for (auto &input : inputs) {
-		if (!input.second.linkedOutput.empty()) {
-			const auto [moduleName, outputName] = parseModuleInputString(input.second.linkedOutput);
-
-			auto otherModule = getModule(moduleName);
-			if (otherModule == nullptr) {
-				// Module is gone in the meantime. Nothing to disconnect.
-				input.second.linkedOutput.clear();
-				goto empty;
-			}
-
-			auto moduleOutput = otherModule->getModuleOutput(outputName);
-			if (moduleOutput == nullptr) {
-				// Output is gone in the meantime. Nothing to disconnect.
-				input.second.linkedOutput.clear();
-				goto empty;
-			}
-
+		if (input.second.linkedOutput != nullptr) {
 			// Remove the connection from the output.
-			OutConnection dataConn{&input.second.queue, &dataAvailable};
+			OutConnection dataConn{&input.second.queue, &dataAvailable, &input.second};
 
-			disconnectFromModuleOutput(moduleOutput, dataConn);
-
-			// And disconnect the module too.
-			ControlConnection controlConn{&controlLock, &controlQueue};
-
-			disconnectFromModule(otherModule, controlConn);
+			disconnectFromModuleOutput(input.second.linkedOutput, dataConn);
 
 			// Disconnected.
-			input.second.linkedOutput.clear();
+			input.second.linkedOutput = nullptr;
 		}
 
-	empty:
 		// Empty queue of any remaining data elements.
 		{
 			std::scoped_lock lock(dataAvailable.lock);
@@ -446,13 +398,6 @@ void dv::Module::inputConnectivityDestroy() {
 
 		// Empty per-input tracker of live memory of remaining data.
 		input.second.inUsePackets.clear();
-
-		// Empty control queue of any remaining command elements.
-		{
-			std::scoped_lock lock(controlLock);
-
-			controlQueue.clear();
-		}
 	}
 }
 
@@ -793,7 +738,6 @@ void dv::Module::inputDismiss(std::string_view inputName, const dv::Types::Typed
 
 /**
  * Get informative node for an output of this module.
- * Can always be called.
  *
  * @param outputName name of output.
  * @return informative node for that output.
@@ -811,19 +755,11 @@ dv::Config::Node dv::Module::outputGetInfoNode(std::string_view outputName) {
 
 /**
  * Get informative node for an input from that input's upstream module.
- * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
- * moduleInit() and moduleExit(). Do not hold references in state!
  *
  * @param inputName name of input.
  * @return informative node for that input.
  */
 const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) {
-	if (isRunning) {
-		auto msg
-			= boost::format("Function '%s' cannot be called outside of StaticInit(), Init() and Exit().") % __func__;
-		throw std::out_of_range(msg.str());
-	}
-
 	auto input = getModuleInput(std::string(inputName));
 	if (input == nullptr) {
 		// Not found.
@@ -831,27 +767,11 @@ const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) 
 		throw std::out_of_range(msg.str());
 	}
 
-	auto outputLink = input->linkedOutput;
-	if (outputLink.empty()) {
+	auto moduleOutput = input->linkedOutput;
+	if (moduleOutput == nullptr) {
 		// Input can be unconnected.
 		auto msg = boost::format("Input '%s' is unconnected.") % inputName;
 		throw std::runtime_error(msg.str());
-	}
-
-	const auto [moduleName, outputName] = parseModuleInputString(outputLink);
-
-	auto otherModule = getModule(moduleName);
-	if (otherModule == nullptr) {
-		// Module is gone in the meantime.
-		auto msg = boost::format("Connected module with name '%s' doesn't exist.") % moduleName;
-		throw std::out_of_range(msg.str());
-	}
-
-	auto moduleOutput = otherModule->getModuleOutput(outputName);
-	if (moduleOutput == nullptr) {
-		// Output is gone in the meantime.
-		auto msg = boost::format("Output with name '%s' doesn't exist in module '%s'.") % outputName % moduleName;
-		throw std::out_of_range(msg.str());
 	}
 
 	auto infoNode = moduleOutput->infoNode;
@@ -865,8 +785,7 @@ const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) 
 
 /**
  * Check if an input is connected properly and can get data at runtime.
- * Can always be called. Most useful in moduleInit() to verify status
- * of optional inputs connections.
+ * Most useful in moduleInit() to verify status of optional inputs.
  *
  * @param inputName name of input.
  * @return true if input is connected and valid, false otherwise.
@@ -879,7 +798,7 @@ bool dv::Module::inputIsConnected(std::string_view inputName) {
 		throw std::out_of_range(msg.str());
 	}
 
-	return (!input->linkedOutput.empty());
+	return (input->linkedOutput != nullptr);
 }
 
 void dv::Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,

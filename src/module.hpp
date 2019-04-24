@@ -12,7 +12,6 @@
 #include <boost/intrusive_ptr.hpp>
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <condition_variable>
-#include <deque>
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -39,7 +38,7 @@ class ModuleInput {
 public:
 	dv::Types::Type type;
 	bool optional;
-	std::string linkedOutput;
+	ModuleOutput *linkedOutput;
 	libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> queue;
 	std::vector<boost::intrusive_ptr<IntrusiveTypedObject>> inUsePackets;
 
@@ -66,14 +65,18 @@ class OutConnection {
 public:
 	libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue;
 	InputDataAvailable *dataAvailable;
+	ModuleInput *linkedInput;
 
-	OutConnection(libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue_, InputDataAvailable *dataAvailable_) :
+	OutConnection(libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue_, InputDataAvailable *dataAvailable_,
+		ModuleInput *linkedInput_) :
 		queue(queue_),
-		dataAvailable(dataAvailable_) {
+		dataAvailable(dataAvailable_),
+		linkedInput(linkedInput_) {
 	}
 
 	bool operator==(const OutConnection &rhs) const noexcept {
-		return ((queue == rhs.queue) && (dataAvailable == rhs.dataAvailable));
+		// The linked input pointer is unique, so enough to establish equality.
+		return (linkedInput == rhs.linkedInput);
 	}
 
 	bool operator!=(const OutConnection &rhs) const noexcept {
@@ -93,35 +96,6 @@ public:
 	}
 };
 
-enum class ModuleCommand {
-	START    = 0,
-	SHUTDOWN = 1,
-	RESTART  = 2,
-	TS_RESET = 3,
-};
-
-struct ModuleControl {
-	ModuleCommand cmd;
-	uint64_t id;
-};
-
-class ControlConnection {
-public:
-	std::mutex *lock;
-	std::deque<ModuleControl> *queue;
-
-	ControlConnection(std::mutex *lock_, std::deque<ModuleControl> *queue_) : lock(lock_), queue(queue_) {
-	}
-
-	bool operator==(const ControlConnection &rhs) const noexcept {
-		return ((lock == rhs.lock) && (queue == rhs.queue));
-	}
-
-	bool operator!=(const ControlConnection &rhs) const noexcept {
-		return (!operator==(rhs));
-	}
-};
-
 class Module : public dvModuleDataS {
 private:
 	// Module info.
@@ -134,12 +108,6 @@ private:
 	bool running;
 	bool isRunning;
 	std::atomic_bool configUpdate;
-	// Command and control.
-	std::mutex controlLock;
-	std::deque<ModuleControl> controlQueue;
-	static std::atomic_uint64_t controlIDGenerator;
-	std::mutex controlDestinationsLock;
-	std::vector<ControlConnection> controlDestinations;
 	// Logging.
 	dv::LogBlock logger;
 	// I/O connectivity.
@@ -181,9 +149,6 @@ private:
 
 	static void connectToModuleOutput(ModuleOutput *output, OutConnection connection);
 	static void disconnectFromModuleOutput(ModuleOutput *output, OutConnection connection);
-
-	static void connectToModule(Module *module, ControlConnection connection);
-	static void disconnectFromModule(Module *module, ControlConnection connection);
 
 	bool inputConnectivityInitialize();
 	void inputConnectivityDestroy();
