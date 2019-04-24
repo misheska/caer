@@ -77,11 +77,16 @@ dv::Module::~Module() {
 
 	thread.join();
 
-	// Now take care of notifying all downstream modules.
-	// Downstream module has now an incorrect, impossible
-	// input configuration. Let's stop it so the user can
-	// fix it and restart it then.
-	// TODO: rewrite.
+	// This module has shut down, thus all its direct downstream modules
+	// should have shut down too, and no outputs should remain alive.
+	for (auto &output : outputs) {
+		std::scoped_lock lock(output.second.destinationsLock);
+
+		if (!output.second.destinations.empty()) {
+			dv::Log(dv::logLevel::CRITICAL, "Output '%s': %d links still existing. This should never happen!",
+				output.first.c_str(), output.second.destinations.size());
+		}
+	}
 
 	// Cleanup configuration and types.
 	dvCfg::Node(moduleNode).removeNode();
