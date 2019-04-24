@@ -68,7 +68,7 @@ public:
 		return (wrapper);
 	}
 
-	const dv::Config::Node getInfoNode(const std::string &name) const {
+	const dv::Config::Node getInfo(const std::string &name) const {
 		// const_cast and then re-add const manually. Needed for transition to C++ type.
 		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData, name.c_str())));
 	}

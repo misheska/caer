@@ -36,7 +36,7 @@ public:
 		// Wait for input to be ready. All inputs, once they are up and running, will
 		// have a valid sourceInfo node to query, especially if dealing with data.
 		// Allocate map using info from sourceInfo.
-		auto info = inputs.getInfoNode("frames");
+		auto info = inputs.getInfo("frames");
 		if (!info) {
 			throw std::runtime_error("Frames input not ready, upstream module not running.");
 		}

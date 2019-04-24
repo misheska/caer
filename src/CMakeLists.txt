@@ -13,7 +13,7 @@ SET(DV_SRC_FILES
 	module.cpp
 	types.cpp
 	service.cpp
-	main.cpp)
+	main.cpp ../dv-sdk/processing.hpp)
 
 # Set full RPATH
 SET(CMAKE_INSTALL_RPATH ${USER_LOCAL_PREFIX}/${CMAKE_INSTALL_BINDIR})

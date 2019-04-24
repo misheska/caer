@@ -57,7 +57,7 @@ public:
 		}
 
 		if (eventsConnected) {
-			auto eventsInfo = inputs.getInfoNode("events");
+			auto eventsInfo = inputs.getInfo("events");
 			if (!eventsInfo) {
 				throw std::runtime_error("Events input not ready, upstream module not running.");
 			}
@@ -70,7 +70,7 @@ public:
 		}
 
 		if (framesConnected) {
-			auto framesInfo = inputs.getInfoNode("frames");
+			auto framesInfo = inputs.getInfo("frames");
 			if (!framesInfo) {
 				throw std::runtime_error("Frames input not ready, upstream module not running.");
 			}

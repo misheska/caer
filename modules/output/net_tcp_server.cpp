@@ -60,7 +60,7 @@ public:
 		tlsContext(asioSSL::context::tlsv12_server),
 		tlsEnabled(false) {
 		// First check that input is possible.
-		auto inputInfoNode = inputs.getInfoNode("output0");
+		auto inputInfoNode = inputs.getInfo("output0");
 		if (!inputInfoNode) {
 			throw std::runtime_error("Input not ready, upstream module not running.");
 		}
