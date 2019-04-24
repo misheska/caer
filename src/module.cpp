@@ -16,8 +16,6 @@ namespace dvCfg  = dv::Config;
 using dvCfgType  = dvCfg::AttributeType;
 using dvCfgFlags = dvCfg::AttributeFlags;
 
-std::atomic_uint64_t dv::Module::controlIDGenerator{0};
-
 dv::Module::Module(std::string_view _name, std::string_view _library) :
 	name(_name),
 	running(false),
@@ -79,18 +77,15 @@ dv::Module::~Module() {
 
 	thread.join();
 
-	// Now take care of notifying all downstream modules.
-	{
-		std::scoped_lock lock(controlLock);
+	// This module has shut down, thus all its direct downstream modules
+	// should have shut down too, and no outputs should remain alive.
+	for (auto &output : outputs) {
+		std::scoped_lock lock(output.second.destinationsLock);
 
-		for (auto &dest : controlDestinations) {
-			// Downstream module has now an incorrect, impossible
-			// input configuration. Let's stop it so the user can
-			// fix it and restart it then.
-			// TODO: use control system.
+		if (!output.second.destinations.empty()) {
+			dv::Log(dv::logLevel::CRITICAL, "Output '%s': %d links still existing. This should never happen!",
+				output.first.c_str(), output.second.destinations.size());
 		}
-
-		controlDestinations.clear();
 	}
 
 	// Cleanup configuration and types.
@@ -234,6 +229,19 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 
 static const std::regex inputConnRegex("^([a-zA-Z-_\\d\\.]+)\\[([a-zA-Z-_\\d\\.]+)\\]$");
 
+std::pair<std::string, std::string> dv::Module::parseModuleInputString(const std::string &moduleInput) {
+	// Not empty, so check syntax and then components.
+	std::smatch inputConnComponents;
+	if (!std::regex_match(moduleInput, inputConnComponents, inputConnRegex)) {
+		throw std::out_of_range("Invalid format of connectivity attribute '" + moduleInput + "'.");
+	}
+
+	auto moduleName = inputConnComponents.str(1);
+	auto outputName = inputConnComponents.str(2);
+
+	return (std::make_pair(moduleName, outputName));
+}
+
 bool dv::Module::inputConnectivityInitialize() {
 	for (auto &input : inputs) {
 		// Get current module connectivity configuration.
@@ -258,39 +266,38 @@ bool dv::Module::inputConnectivityInitialize() {
 			}
 		}
 
-		// Not empty, so check syntax and then components.
-		std::smatch inputConnComponents;
-		if (!std::regex_match(inputConn, inputConnComponents, inputConnRegex)) {
-			auto msg
-				= boost::format("Input '%s': invalid format of connectivity attribute '%s'.") % input.first % inputConn;
+		// Parse connectivity attribute into module and output names.
+		std::string moduleName, outputName;
+
+		try {
+			std::tie(moduleName, outputName) = parseModuleInputString(inputConn);
+		}
+		catch (const std::out_of_range &ex) {
+			auto msg = boost::format("Input '%s': %s") % input.first % ex.what();
 			dv::Log(dv::logLevel::ERROR, msg);
 			return (false);
 		}
 
-		auto moduleName = inputConnComponents.str(1);
-		auto outputName = inputConnComponents.str(2);
-
 		// Does the referenced module exist?
-		if (!MainData::getGlobal().modules.count(moduleName)) {
-			auto msg = boost::format("Input '%s': invalid connectivity attribute, module '%s' doesn't exist.")
+		auto otherModule = getModule(moduleName);
+		if (otherModule == nullptr) {
+			auto msg = boost::format("Input '%s': invalid connectivity attribute, module '%s' does not exist.")
 					   % input.first % moduleName;
 			dv::Log(dv::logLevel::ERROR, msg);
 			return (false);
 		}
 
-		auto otherModule = MainData::getGlobal().modules[moduleName];
-
 		// Does it have the specified output?
 		auto moduleOutput = otherModule->getModuleOutput(outputName);
 		if (moduleOutput == nullptr) {
-			auto msg
-				= boost::format("Input '%s': invalid connectivity attribute, output '%s' doesn't exist in module '%s'.")
-				  % input.first % outputName % moduleName;
+			auto msg = boost::format(
+						   "Input '%s': invalid connectivity attribute, output '%s' does not exist in module '%s'.")
+					   % input.first % outputName % moduleName;
 			dv::Log(dv::logLevel::ERROR, msg);
 			return (false);
 		}
 
-		// Lastly, check the type.
+		// Then, check the type.
 		// If the expected type is ANYT, we accept anything.
 		if ((input.second.type.id != dv::Types::anyId) && (input.second.type.id != moduleOutput->type.id)) {
 			auto msg = boost::format("Input '%s': invalid connectivity attribute, output '%s' in module '%s' has type "
@@ -300,16 +307,35 @@ bool dv::Module::inputConnectivityInitialize() {
 			return (false);
 		}
 
-		// All is well, let's connect to that output.
-		OutConnection connection{&input.second.queue, &dataAvailable};
+		// Last, ensure the other module is running. We can directly check
+		// its isRunning variable, as we hold the global modules lock.
+		if (!otherModule->isRunning) {
+			auto msg = boost::format("Input '%s': required module '%s' is not running. Please start it first!")
+					   % input.first % moduleName;
+			dv::Log(dv::logLevel::INFO, msg);
+			return (false);
+		}
 
-		connectToModuleOutput(moduleOutput, connection);
+		// All is well, let's connect to that output.
+		OutConnection dataConn{&input.second.queue, &dataAvailable, &input.second};
+
+		connectToModuleOutput(moduleOutput, dataConn);
 
 		// And we're done.
 		input.second.linkedOutput = moduleOutput;
 	}
 
 	return (true);
+}
+
+dv::Module *dv::Module::getModule(const std::string &moduleName) {
+	try {
+		return (MainData::getGlobal().modules.at(moduleName).get());
+	}
+	catch (const std::out_of_range &) {
+		// Fine, not found.
+		return (nullptr);
+	}
 }
 
 dv::ModuleOutput *dv::Module::getModuleOutput(const std::string &outputName) {
@@ -353,9 +379,9 @@ void dv::Module::inputConnectivityDestroy() {
 	for (auto &input : inputs) {
 		if (input.second.linkedOutput != nullptr) {
 			// Remove the connection from the output.
-			OutConnection connection{&input.second.queue, &dataAvailable};
+			OutConnection dataConn{&input.second.queue, &dataAvailable, &input.second};
 
-			disconnectFromModuleOutput(input.second.linkedOutput, connection);
+			disconnectFromModuleOutput(input.second.linkedOutput, dataConn);
 
 			// Disconnected.
 			input.second.linkedOutput = nullptr;
@@ -717,7 +743,6 @@ void dv::Module::inputDismiss(std::string_view inputName, const dv::Types::Typed
 
 /**
  * Get informative node for an output of this module.
- * Can always be called.
  *
  * @param outputName name of output.
  * @return informative node for that output.
@@ -735,8 +760,6 @@ dv::Config::Node dv::Module::outputGetInfoNode(std::string_view outputName) {
 
 /**
  * Get informative node for an input from that input's upstream module.
- * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
- * moduleInit() and moduleExit(). Do not hold references in state!
  *
  * @param inputName name of input.
  * @return informative node for that input.
@@ -749,14 +772,14 @@ const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) 
 		throw std::out_of_range(msg.str());
 	}
 
-	auto outputLink = input->linkedOutput;
-	if (outputLink == nullptr) {
+	auto moduleOutput = input->linkedOutput;
+	if (moduleOutput == nullptr) {
 		// Input can be unconnected.
 		auto msg = boost::format("Input '%s' is unconnected.") % inputName;
 		throw std::runtime_error(msg.str());
 	}
 
-	auto infoNode = outputLink->infoNode;
+	auto infoNode = moduleOutput->infoNode;
 	if (infoNode.getAttributeKeys().size() == 0) {
 		auto msg = boost::format("No informative content present for input '%s'.") % inputName;
 		throw std::runtime_error(msg.str());
@@ -767,9 +790,7 @@ const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) 
 
 /**
  * Check if an input is connected properly and can get data at runtime.
- * Can only be called while global modules lock is held, ie. from moduleStaticInit(),
- * moduleInit() and moduleExit(). Most useful in moduleInit() to verify status
- * of optional inputs connections.
+ * Most useful in moduleInit() to verify status of optional inputs.
  *
  * @param inputName name of input.
  * @return true if input is connected and valid, false otherwise.

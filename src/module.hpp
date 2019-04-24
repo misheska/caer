@@ -12,7 +12,6 @@
 #include <boost/intrusive_ptr.hpp>
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <condition_variable>
-#include <deque>
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -66,14 +65,18 @@ class OutConnection {
 public:
 	libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue;
 	InputDataAvailable *dataAvailable;
+	ModuleInput *linkedInput;
 
-	OutConnection(libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue_, InputDataAvailable *dataAvailable_) :
+	OutConnection(libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue_, InputDataAvailable *dataAvailable_,
+		ModuleInput *linkedInput_) :
 		queue(queue_),
-		dataAvailable(dataAvailable_) {
+		dataAvailable(dataAvailable_),
+		linkedInput(linkedInput_) {
 	}
 
 	bool operator==(const OutConnection &rhs) const noexcept {
-		return ((queue == rhs.queue) && (dataAvailable == rhs.dataAvailable));
+		// The linked input pointer is unique, so enough to establish equality.
+		return (linkedInput == rhs.linkedInput);
 	}
 
 	bool operator!=(const OutConnection &rhs) const noexcept {
@@ -93,13 +96,6 @@ public:
 	}
 };
 
-enum class ModuleCommand : int8_t { START = 0, SHUTDOWN = 1, RESTART = 2, TS_RESET = 3, MIN = START, MAX = TS_RESET };
-
-struct ModuleControl {
-	ModuleCommand cmd;
-	uint64_t id;
-};
-
 class Module : public dvModuleDataS {
 private:
 	// Module info.
@@ -112,12 +108,6 @@ private:
 	bool running;
 	bool isRunning;
 	std::atomic_bool configUpdate;
-	// Command and control.
-	std::mutex controlLock;
-	std::deque<dv::ModuleControl> controlQueue;
-	static std::atomic_uint64_t controlIDGenerator;
-	std::mutex controlDestinationsLock;
-	std::vector<std::deque<dv::ModuleControl> *> controlDestinations;
 	// Logging.
 	dv::LogBlock logger;
 	// I/O connectivity.
@@ -151,6 +141,9 @@ private:
 	void RunningInit();
 	void StaticInit();
 
+	static std::pair<std::string, std::string> parseModuleInputString(const std::string &moduleInput);
+
+	Module *getModule(const std::string &moduleName);
 	ModuleOutput *getModuleOutput(const std::string &outputName);
 	ModuleInput *getModuleInput(const std::string &outputName);
 
