@@ -9,6 +9,10 @@
 #	define DV_FRAME_OPENCV_SUPPORT 1
 #endif
 
+
+#include <boost/preprocessor/stringize.hpp>
+#pragma message("OPENCV frame support: " BOOST_PP_STRINGIZE(DV_FRAME_OPENCV_SUPPORT))
+
 #if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
 #	include <opencv2/core.hpp>
 #	include <opencv2/core/utility.hpp>

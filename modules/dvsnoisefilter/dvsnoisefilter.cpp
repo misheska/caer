@@ -1,3 +1,4 @@
+#define DV_FRAME_OPENCV_SUPPORT 0
 #include "dv-sdk/data/event.hpp"
 #include "dv-sdk/module.hpp"
 

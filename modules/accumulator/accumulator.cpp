@@ -1,8 +1,5 @@
 #include "dv-sdk/module.hpp"
 #include "dv-sdk/processing.hpp"
-#include <dv-sdk/data/frame.hpp>
-
-
 
 class Accumulator : public dv::ModuleBase {
 
@@ -20,7 +17,7 @@ public:
     }
 
     static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-        out.emplace_back("frame", dv::Frame::identifier);
+        out.emplace_back("frames", dv::Frame::identifier);
     }
 
     static void getConfigOptions(dv::RuntimeConfig &config) {

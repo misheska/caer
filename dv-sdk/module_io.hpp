@@ -2,7 +2,7 @@
 #define DV_SDK_MODULE_IO_HPP
 
 #include <dv-sdk/data/event.hpp>
-#include <dv-sdk/data/frame_base.hpp>
+#include <dv-sdk/data/frame.hpp>
 #include <dv-sdk/data/imu.hpp>
 #include <dv-sdk/data/trigger.hpp>
 #include "data/wrappers.hpp"
