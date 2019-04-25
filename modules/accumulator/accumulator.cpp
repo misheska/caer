@@ -76,8 +76,7 @@ public:
         frame.convertTo(correctedFrame, CV_8U, scaleFactor, shiftFactor);
 
         // output
-        outputs.get<dv::Frame>("frame");
-
+        outputs.get<dv::Frame>("frame") << correctedFrame;
     }
 
 
