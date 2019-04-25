@@ -120,20 +120,12 @@ void dv::Module::RunningInit() {
 	auto moduleConfigNode = dvCfg::Node(moduleNode);
 
 	// Initialize shutdown controls. By default modules always run.
-	// Allow for users to disable a module at start.
-	moduleConfigNode.create<dvCfgType::BOOL>("autoStartup", true, {}, dvCfgFlags::NORMAL,
-		"Start this module when the mainloop starts and keep retrying if initialization fails.");
-
-	moduleConfigNode.create<dvCfgType::BOOL>(
-		"running", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Module start/stop.");
+	moduleConfigNode.create<dvCfgType::BOOL>("running", true, {}, dvCfgFlags::NORMAL, "Module start/stop.");
 
 	moduleConfigNode.create<dvCfgType::BOOL>(
 		"isRunning", false, {}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module running state.");
 
-	bool runModule = moduleConfigNode.get<dvCfgType::BOOL>("autoStartup");
-
-	running = runModule;
-	moduleConfigNode.put<dvCfgType::BOOL>("running", runModule);
+	running = moduleConfigNode.get<dvCfgType::BOOL>("running");
 
 	isRunning = false;
 	moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
@@ -461,10 +453,6 @@ void dv::Module::shutdownProcedure(bool doModuleExit) {
 
 	// Cleanup output info nodes, if any exist.
 	cleanupOutputInfoNodes();
-}
-
-void dv::Module::handleModuleInitFailure(bool doModuleExit) {
-	shutdownProcedure(doModuleExit);
 
 	auto moduleConfigNode = dvCfg::Node(moduleNode);
 
@@ -574,7 +562,7 @@ void dv::Module::runStateMachine() {
 			if (moduleState == nullptr) {
 				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "memory allocation failure");
 
-				handleModuleInitFailure(false);
+				shutdownProcedure(false);
 				return;
 			}
 		}
@@ -588,7 +576,7 @@ void dv::Module::runStateMachine() {
 		if (!inputConnectivityInitialize()) {
 			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "input connectivity failure");
 
-			handleModuleInitFailure(false);
+			shutdownProcedure(false);
 			return;
 		}
 
@@ -608,7 +596,7 @@ void dv::Module::runStateMachine() {
 				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s :: %s', disabling module.",
 					boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
 
-				handleModuleInitFailure(false);
+				shutdownProcedure(false);
 				return;
 			}
 		}
@@ -617,7 +605,7 @@ void dv::Module::runStateMachine() {
 		if (!verifyOutputInfoNodes()) {
 			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "incomplete ouput information");
 
-			handleModuleInitFailure(true);
+			shutdownProcedure(true);
 			return;
 		}
 

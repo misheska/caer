@@ -158,7 +158,6 @@ private:
 
 	void runThread();
 	void runStateMachine();
-	void handleModuleInitFailure(bool doModuleExit);
 	void shutdownProcedure(bool doModuleExit);
 
 	static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
