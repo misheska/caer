@@ -66,7 +66,7 @@ public:
 			eventSizeY = static_cast<int16_t>(eventsInfo.get<dv::CfgType::INT>("sizeY"));
 
 			// Populate event output info node, keep same as input info node.
-			eventsInfo.copyTo(outputs.getInfoNode("undistortedEvents"));
+			eventsInfo.copyTo(outputs.getInfo("undistortedEvents"));
 		}
 
 		if (framesConnected) {
@@ -79,11 +79,11 @@ public:
 			frameSizeY = static_cast<int16_t>(framesInfo.get<dv::CfgType::INT>("sizeY"));
 
 			// Populate event output info node, keep same as input info node.
-			framesInfo.copyTo(outputs.getInfoNode("undistortedFrames"));
+			framesInfo.copyTo(outputs.getInfo("undistortedFrames"));
 		}
 	}
 
-	void advancedConfigUpdate() override {
+	void configUpdate() override {
 		// Any changes to configuration mean the calibration has to be
 		// reloaded and reinitialized, so we force this here.
 		calibrationLoaded = false;

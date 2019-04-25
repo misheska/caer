@@ -42,10 +42,10 @@ public:
 		}
 
 		// Populate frame output info node, keep same as input info node.
-		info.copyTo(outputs.getInfoNode("frames"));
+		info.copyTo(outputs.getInfo("frames"));
 
 		// Call once to translate string into enum properly.
-		advancedConfigUpdate();
+		configUpdate();
 	}
 
 	void run() override {
@@ -291,7 +291,7 @@ public:
 		clahe->apply(input, output);
 	}
 
-	void advancedConfigUpdate() override {
+	void configUpdate() override {
 		// Parse available choices into enum value.
 		auto selectedContrastAlgo = config.get<dvCfgType::STRING>("contrastAlgorithm");
 

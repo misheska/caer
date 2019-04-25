@@ -176,7 +176,7 @@ public:
 	 * @param moduleData The moduleData provided by DV.
 	 */
 	static void config(dvModuleData moduleData) {
-		static_cast<T *>(moduleData->moduleState)->configUpdate();
+		static_cast<T *>(moduleData->moduleState)->configMerge();
 	}
 
 	/**

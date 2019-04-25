@@ -1,6 +1,10 @@
 #ifndef DV_SDK_MODULE_IO_HPP
 #define DV_SDK_MODULE_IO_HPP
 
+#include <dv-sdk/data/event.hpp>
+#include <dv-sdk/data/frame_base.hpp>
+#include <dv-sdk/data/imu.hpp>
+#include <dv-sdk/data/trigger.hpp>
 #include "data/wrappers.hpp"
 #include "module.h"
 #include "utils.h"
@@ -63,11 +67,59 @@ public:
 		return (objPtr);
 	}
 
+	/**
+	 * Get data from an input
+	 * @tparam T The flatbuffers type of the data to be retrieved
+	 * @param name The name of the input stream
+	 * @return An input wrapper of the desired type, allowing data access
+	 */
 	template<typename T> const InputWrapper<T> get(const std::string &name) const {
 		const InputWrapper<T> wrapper{getUnwrapped<T>(name)};
 		return (wrapper);
 	}
 
+	/**
+	 * (Convenience) Function to get events from an event input
+	 * @param name the name of the event input stream
+	 * @return An input wrapper of an event packet, allowing data access
+	 */
+	const InputWrapper<dv::EventPacket> getEvents(const std::string &name) const {
+		return get<dv::EventPacket>(name);
+	}
+
+	/**
+	 * (Convenience) Function to get a frame from a frame input
+	 * @param name the name of the event input stream
+	 * @return An input wrapper of a frame, allowing data access
+	 */
+	const InputWrapper<dv::Frame> getFrame(const std::string &name) const {
+		return get<dv::Frame>(name);
+	}
+
+	/**
+	 * (Convenience) Function to get IMU data from an IMU input
+	 * @param name the name of the event input stream
+	 * @return An input wrapper of an IMU packet, allowing data access
+	 */
+	const InputWrapper<dv::IMUPacket> getIMUMeasurements(const std::string &name) const {
+		return get<dv::IMUPacket>(name);
+	}
+
+	/**
+ 	 * (Convenience) Function to get Trigger data from a Trigger input
+ 	 * @param name the name of the event input stream
+ 	 * @return An input wrapper of an Trigger packet, allowing data access
+ 	 */
+	const InputWrapper<dv::TriggerPacket> getTriggers(const std::string &name) const {
+		return get<dv::TriggerPacket>(name);
+	}
+
+	/**
+	 * Returns an info node about the specified input. Can be used to determine dimensions of an
+	 * input/output
+	 * @param name The name of the input in question
+	 * @return A node that contains the specified inputs information, such as "sizeX" or "sizeY"
+	 */
 	const dv::Config::Node getInfo(const std::string &name) const {
 		// const_cast and then re-add const manually. Needed for transition to C++ type.
 		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData, name.c_str())));
@@ -113,7 +165,49 @@ public:
 		return (wrapper);
 	}
 
-	dv::Config::Node getInfoNode(const std::string &name) {
+	/**
+	 * (Convenience) Function to get events from an event output
+	 * @param name the name of the event output stream
+	 * @return An output wrapper of an event packet, allowing data access
+	 */
+	OutputWrapper<dv::EventPacket> getEvents(const std::string &name) {
+		return get<dv::EventPacket>(name);
+	}
+
+	/**
+	 * (Convenience) Function to get a frame from a frame output
+	 * @param name the name of the event output stream
+	 * @return An output wrapper of a frame, allowing data access
+	 */
+	OutputWrapper<dv::Frame> getFrame(const std::string &name) {
+		return get<dv::Frame>(name);
+	}
+
+	/**
+	 * (Convenience) Function to get IMU data from an IMU output
+	 * @param name the name of the event output stream
+	 * @return An output wrapper of an IMU packet, allowing data access
+	 */
+	OutputWrapper<dv::IMUPacket> getIMUMeasurements(const std::string &name) {
+		return get<dv::IMUPacket>(name);
+	}
+
+	/**
+ 	 * (Convenience) Function to get Trigger data from a Trigger output
+ 	 * @param name the name of the event output stream
+ 	 * @return An output wrapper of an Trigger packet, allowing data access
+ 	 */
+	OutputWrapper<dv::TriggerPacket> getTriggers(const std::string &name) {
+		return get<dv::TriggerPacket>(name);
+	}
+
+	/**
+	 * Returns an info node about the specified output. Can be used to determine dimensions of an
+	 * input/output
+	 * @param name The name of the output in question
+	 * @return A node that contains the specified outputs information, such as "sizeX" or "sizeY"
+	 */
+	dv::Config::Node getInfo(const std::string &name) {
 		return (dvModuleOutputGetInfoNode(moduleData, name.c_str()));
 	}
 };

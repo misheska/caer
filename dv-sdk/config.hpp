@@ -925,6 +925,31 @@ public:
 			entry.second.updateValue();
 		}
 	}
+
+	// Convenience getter methods
+	inline int getInt(const std::string &key) const {
+		return get<dv::CfgType::INT>(key);
+	}
+
+	inline long getLong(const std::string &key) const {
+		return get<dv::CfgType::LONG>(key);
+	}
+
+	inline float getFloat(const std::string &key) const {
+		return get<dv::CfgType::FLOAT>(key);
+	}
+
+    inline double getDouble(const std::string &key) const {
+        return get<dv::CfgType::DOUBLE>(key);
+    }
+
+	inline const std::string& getString(const std::string &key) const {
+		return get<dv::CfgType::STRING>(key);
+	}
+
+	inline bool getBool(const std::string &key) const {
+		return get<dv::CfgType::BOOL>(key);
+	}
 };
 
 } // namespace dv

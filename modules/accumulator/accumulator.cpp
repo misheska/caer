@@ -1,7 +1,7 @@
-#include <dv-sdk/data/frame_base.hpp>
-#include "dv-sdk/data/event.hpp"
 #include "dv-sdk/module.hpp"
 #include "dv-sdk/processing.hpp"
+#include <dv-sdk/data/frame.hpp>
+
 
 
 class Accumulator : public dv::ModuleBase {
@@ -11,7 +11,6 @@ private:
     dv::Accumulator frameAccumulator;
 
 public:
-
     static const char* getDescription() {
         return "Accumulates events into a frame. Provides various configurations to tune the integration process";
     }
@@ -38,33 +37,16 @@ public:
 
 
     Accumulator() {
-        int sizeX = inputs.getInfo("events").get<dv::CfgType::INT>("sizeX");
-        int sizeY = inputs.getInfo("events").get<dv::CfgType::INT>("sizeY");
+        int sizeX = inputs.getInfo("events").getInt("sizeX");
+        int sizeY = inputs.getInfo("events").getInt("sizeY");
         size = cv::Size(sizeX, sizeY);
         frameAccumulator = dv::Accumulator::reconstructionFrame(size);
     }
 
 
-    static dv::Accumulator::Decay decayFromString(const std::string &name) {
-        if (name == "Linear") return dv::Accumulator::Decay::LINEAR;
-        if (name == "Exponential") return dv::Accumulator::Decay::EXPONENTIAL;
-        if (name == "Step") return dv::Accumulator::Decay::STEP;
-        return dv::Accumulator::Decay::NONE;
-    }
-
     void run() override {
-        // update the configs
-        frameAccumulator.setRectifyPolarity(config.get<dv::CfgType::BOOL>("rectifyPolarity"));
-        frameAccumulator.setEventContribution(config.get<dv::CfgType::FLOAT>("eventContribution"));
-        frameAccumulator.setMaxPotential(config.get<dv::CfgType::FLOAT>("maxPotential"));
-        frameAccumulator.setNeutralPotential(config.get<dv::CfgType::FLOAT>("neutralPotential"));
-        frameAccumulator.setMinPotential(config.get<dv::CfgType::FLOAT>("minPotential"));
-        frameAccumulator.setDecayFunction(decayFromString(config.get<dv::CfgType::STRING>("decayFunction")));
-        frameAccumulator.setDecayParam(config.get<dv::CfgType::DOUBLE>("decayParam"));
-        frameAccumulator.setSynchronousDecay(config.get<dv::CfgType::BOOL>("synchronousDecay"));
-
         // integrate frame
-        frameAccumulator.accumulate(inputs.get<dv::EventPacket>("events"));
+        frameAccumulator.accumulate(inputs.getEvents("events"));
 
         // generate frame
         auto frame = frameAccumulator.generateFrame();
@@ -76,10 +58,26 @@ public:
         frame.convertTo(correctedFrame, CV_8U, scaleFactor, shiftFactor);
 
         // output
-        outputs.get<dv::Frame>("frame") << correctedFrame;
+        outputs.getFrame("frame") << correctedFrame;
     }
 
+    static dv::Accumulator::Decay decayFromString(const std::string &name) {
+        if (name == "Linear") return dv::Accumulator::Decay::LINEAR;
+        if (name == "Exponential") return dv::Accumulator::Decay::EXPONENTIAL;
+        if (name == "Step") return dv::Accumulator::Decay::STEP;
+        return dv::Accumulator::Decay::NONE;
+    }
 
+    void configUpdate() override {
+        frameAccumulator.setRectifyPolarity(config.getBool("rectifyPolarity"));
+        frameAccumulator.setEventContribution(config.getFloat("eventContribution"));
+        frameAccumulator.setMaxPotential(config.getFloat("maxPotential"));
+        frameAccumulator.setNeutralPotential(config.getFloat("neutralPotential"));
+        frameAccumulator.setMinPotential(config.getFloat("minPotential"));
+        frameAccumulator.setDecayFunction(decayFromString(config.getString("decayFunction")));
+        frameAccumulator.setDecayParam(config.getDouble("decayParam"));
+        frameAccumulator.setSynchronousDecay(config.getBool("synchronousDecay"));
+    }
 };
 
 registerModuleClass(Accumulator)

@@ -78,12 +78,12 @@ public:
 
 		imageSize = cv::Size(info.get<dv::CfgType::INT>("sizeX"), info.get<dv::CfgType::INT>("sizeY"));
 
-		info.copyTo(outputs.getInfoNode("patternCorners"));
+		info.copyTo(outputs.getInfo("patternCorners"));
 
-		advancedConfigUpdate();
+		configUpdate();
 	}
 
-	void advancedConfigUpdate() override {
+	void configUpdate() override {
 		// Parse available choices into enum value.
 		auto selectedCalibrationPattern = config.get<dv::CfgType::STRING>("calibrationPattern");
 

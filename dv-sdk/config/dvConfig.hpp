@@ -507,6 +507,31 @@ public:
 		return (getAttribute<T>(key).value);
 	}
 
+	// Convenience getter methods
+	inline int getInt(const std::string &key) const {
+		return get<dv::Config::AttributeType::INT>(key);
+	}
+
+	inline long getLong(const std::string &key) const {
+		return get<dv::Config::AttributeType::LONG>(key);
+	}
+
+	inline float getFloat(const std::string &key) const {
+		return get<dv::Config::AttributeType::FLOAT>(key);
+	}
+
+	inline double getDouble(const std::string &key) const {
+		return get<dv::Config::AttributeType::DOUBLE>(key);
+	}
+
+	inline const std::string getString(const std::string &key) const {
+		return get<dv::Config::AttributeType::STRING>(key);
+	}
+
+	inline bool getBool(const std::string &key) const {
+		return get<dv::Config::AttributeType::BOOL>(key);
+	}
+
 	bool exportNodeToXML(int fd) const {
 		return (dvConfigNodeExportNodeToXML(node, fd));
 	}
