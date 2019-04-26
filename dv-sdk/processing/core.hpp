@@ -603,7 +603,7 @@ namespace dv {
          * over the supplied data.
          * @param packet the packet to use to
          */
-        void addEventPacket(const dv::InputWrapper<dv::EventPacket> &packet) {
+        void addEventPacket(const dv::InputDataWrapper<dv::EventPacket> &packet) {
             if (!dataPartials_.empty() && dataPartials_.back().getHighestTime() > packet.front().timestamp()) {
                 std::cerr << "[WARNING] Tried adding event packet to store out of order. Ignoring packet." << std::endl;
                 return;
@@ -642,7 +642,7 @@ namespace dv {
          * to `dv::EventStore`
          * @param packet the packet to construct the EventStore from
          */
-        EventStore(const dv::InputWrapper<dv::EventPacket> &packet) {
+        EventStore(const dv::InputDataWrapper<dv::EventPacket> &packet) {
             totalLength_ = 0;
             addEventPacket(packet);
         }
@@ -1089,7 +1089,7 @@ namespace dv {
          * The slicer obtaines shared ownership ower the provided data
          * @param packet the libcaer packet to add the the buffer
          */
-        void addEventPacket(const InputWrapper<dv::EventPacket> &packet) {
+        void addEventPacket(const InputDataWrapper<dv::EventPacket> &packet) {
             storePacket_.addEventPacket(packet);
             evaluate();
         }

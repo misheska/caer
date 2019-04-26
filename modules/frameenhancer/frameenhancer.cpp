@@ -33,23 +33,15 @@ public:
 	}
 
 	FrameEnhancer() {
-		// Wait for input to be ready. All inputs, once they are up and running, will
-		// have a valid sourceInfo node to query, especially if dealing with data.
-		// Allocate map using info from sourceInfo.
-		auto info = inputs.getInfo("frames");
-		if (!info) {
-			throw std::runtime_error("Frames input not ready, upstream module not running.");
-		}
-
 		// Populate frame output info node, keep same as input info node.
-		info.copyTo(outputs.getInfo("frames"));
+		inputs.getFrameInput("frames").info().copyTo(outputs.getInfo("frames"));
 
 		// Call once to translate string into enum properly.
 		configUpdate();
 	}
 
 	void run() override {
-		auto frame_in  = inputs.get<dv::Frame>("frames");
+		auto frame_in  = inputs.getFrameInput("frames").data();
 		auto frame_out = outputs.get<dv::Frame>("frames");
 
 		// Setup output frame. Same size.

@@ -6,14 +6,14 @@
 
 namespace dv {
 
-template<> class InputWrapper<EventPacket> : public dv::cvectorConstProxy<Event> {
+template<> class InputDataWrapper<EventPacket> : public dv::cvectorConstProxy<Event> {
 private:
 	using NativeType = typename EventPacket::NativeTableType;
 
 	std::shared_ptr<const NativeType> ptr;
 
 public:
-	InputWrapper(std::shared_ptr<const NativeType> p) :
+	InputDataWrapper(std::shared_ptr<const NativeType> p) :
 		dv::cvectorConstProxy<Event>((p) ? (&p->events) : (nullptr)),
 		ptr(std::move(p)) {
 	}
@@ -27,7 +27,7 @@ public:
 	}
 };
 
-template<> class OutputWrapper<EventPacket> : public dv::cvectorProxy<Event> {
+template<> class OutputDataWrapper<EventPacket> : public dv::cvectorProxy<Event> {
 private:
 	using NativeType = typename EventPacket::NativeTableType;
 
@@ -36,7 +36,7 @@ private:
 	std::string name;
 
 public:
-	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) :
+	OutputDataWrapper(NativeType *p, dvModuleData m, const std::string &n) :
 		dv::cvectorProxy<Event>((p) ? (&p->events) : (nullptr)),
 		ptr(p),
 		moduleData(m),

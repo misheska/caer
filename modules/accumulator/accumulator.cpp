@@ -34,8 +34,8 @@ public:
 
 
     Accumulator() {
-        int sizeX = inputs.getInfo("events").getInt("sizeX");
-        int sizeY = inputs.getInfo("events").getInt("sizeY");
+        int sizeX = inputs.getEventInput("events").sizeX();
+        int sizeY = inputs.getEventInput("events").sizeY();
         size = cv::Size(sizeX, sizeY);
         frameAccumulator = dv::Accumulator::reconstructionFrame(size);
     }
@@ -43,7 +43,7 @@ public:
 
     void run() override {
         // integrate frame
-        frameAccumulator.accumulate(inputs.getEvents("events"));
+        frameAccumulator.accumulate(inputs.getEventInput("events").data());
 
         // generate frame
         auto frame = frameAccumulator.generateFrame();

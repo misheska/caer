@@ -49,37 +49,29 @@ public:
 	Undistort() : calibrationLoaded(false) {
 		// Wait for input to be ready. All inputs, once they are up and running, will
 		// have a valid sourceInfo node to query, especially if dealing with data.
-		bool eventsConnected = inputs.isConnected("events");
-		bool framesConnected = inputs.isConnected("frames");
+		bool eventsConnected = inputs.getEventInput("events").isConnected();
+		bool framesConnected = inputs.getFrameInput("frames").isConnected();
 
 		if (!eventsConnected && !framesConnected) {
 			throw std::runtime_error("No input is connected, nothing to do.");
 		}
 
 		if (eventsConnected) {
-			auto eventsInfo = inputs.getInfo("events");
-			if (!eventsInfo) {
-				throw std::runtime_error("Events input not ready, upstream module not running.");
-			}
-
-			eventSizeX = static_cast<int16_t>(eventsInfo.get<dv::CfgType::INT>("sizeX"));
-			eventSizeY = static_cast<int16_t>(eventsInfo.get<dv::CfgType::INT>("sizeY"));
+			auto eventsInput = inputs.getEventInput("events");
+			eventSizeX = static_cast<int16_t>(eventsInput.sizeX());
+			eventSizeY = static_cast<int16_t>(eventsInput.sizeY());
 
 			// Populate event output info node, keep same as input info node.
-			eventsInfo.copyTo(outputs.getInfo("undistortedEvents"));
+			eventsInput.info().copyTo(outputs.getInfo("undistortedEvents"));
 		}
 
 		if (framesConnected) {
-			auto framesInfo = inputs.getInfo("frames");
-			if (!framesInfo) {
-				throw std::runtime_error("Frames input not ready, upstream module not running.");
-			}
-
-			frameSizeX = static_cast<int16_t>(framesInfo.get<dv::CfgType::INT>("sizeX"));
-			frameSizeY = static_cast<int16_t>(framesInfo.get<dv::CfgType::INT>("sizeY"));
+			auto framesInput = inputs.getFrameInput("frames");
+			frameSizeX = static_cast<int16_t>(framesInput.sizeX());
+			frameSizeY = static_cast<int16_t>(framesInput.sizeY());
 
 			// Populate event output info node, keep same as input info node.
-			framesInfo.copyTo(outputs.getInfo("undistortedFrames"));
+			framesInput.info().copyTo(outputs.getInfo("undistortedFrames"));
 		}
 	}
 
@@ -90,10 +82,10 @@ public:
 	}
 
 	void run() override {
-		auto events_in  = inputs.get<dv::EventPacket>("events");
+		auto events_in  = inputs.getEventInput("events").data();
 		auto events_out = outputs.get<dv::EventPacket>("undistortedEvents");
 
-		auto frame_in  = inputs.get<dv::Frame>("frames");
+		auto frame_in  = inputs.getFrameInput("frames").data();
 		auto frame_out = outputs.get<dv::Frame>("undistortedFrames");
 
 		// At this point we always try to load the calibration settings for undistortion.
@@ -197,7 +189,7 @@ public:
 		return (true);
 	}
 
-	void undistortEvents(dv::InputWrapper<dv::EventPacket> &in, dv::OutputWrapper<dv::EventPacket> &out) {
+	void undistortEvents(dv::InputDataWrapper<dv::EventPacket> &in, dv::OutputDataWrapper<dv::EventPacket> &out) {
 		for (const auto &evt : in) {
 			// Get new coordinates at which event shall be remapped.
 			size_t mapIdx              = static_cast<size_t>((evt.y() * eventSizeX) + evt.x());
@@ -214,7 +206,7 @@ public:
 		out.commit();
 	}
 
-	void undistortFrame(dv::InputWrapper<dv::Frame> &in, dv::OutputWrapper<dv::Frame> &out) {
+	void undistortFrame(dv::InputDataWrapper<dv::Frame> &in, dv::OutputDataWrapper<dv::Frame> &out) {
 		// Setup output frame. Same size.
 		out->sizeX                    = in->sizeX;
 		out->sizeY                    = in->sizeY;

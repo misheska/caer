@@ -71,14 +71,10 @@ public:
 		// Wait for input to be ready. All inputs, once they are up and running, will
 		// have a valid sourceInfo node to query, especially if dealing with data.
 		// Allocate map using info from sourceInfo.
-		auto info = inputs.getInfo("frames");
-		if (!info) {
-			throw std::runtime_error("Frame input not ready, upstream module not running.");
-		}
+		auto frameInput = inputs.getFrameInput("frames");
+		imageSize = cv::Size(frameInput.sizeX(), frameInput.sizeY());
 
-		imageSize = cv::Size(info.get<dv::CfgType::INT>("sizeX"), info.get<dv::CfgType::INT>("sizeY"));
-
-		info.copyTo(outputs.getInfo("patternCorners"));
+		frameInput.info().copyTo(outputs.getInfo("patternCorners"));
 
 		configUpdate();
 	}
@@ -131,7 +127,7 @@ public:
 	}
 
 	void run() override {
-		auto frame_in = inputs.get<dv::Frame>("frames");
+		auto frame_in = inputs.getFrameInput("frames").data();
 
 		auto corners_out = outputs.get<dv::Frame>("patternCorners");
 
@@ -163,7 +159,7 @@ public:
 		}
 	}
 
-	bool findNewPoints(dv::InputWrapper<dv::Frame> &frame, dv::OutputWrapper<dv::Frame> &corners) {
+	bool findNewPoints(dv::InputDataWrapper<dv::Frame> &frame, dv::OutputDataWrapper<dv::Frame> &corners) {
 		auto view = frame.getMatPointer();
 
 		int chessBoardFlags = cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE;

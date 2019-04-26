@@ -398,7 +398,7 @@ public:
 		dvConfigNodeClearSubTree(node, clearThisNode);
 	}
 
-	void copyTo(dv::Config::Node destination) {
+	void copyTo(dv::Config::Node destination) const {
 		dvConfigNodeCopy(node, static_cast<dvConfigNode>(destination));
 	}
 

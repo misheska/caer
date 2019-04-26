@@ -7,14 +7,14 @@
 
 namespace dv {
 
-template<typename T> class InputWrapper {
+template<typename T> class InputDataWrapper {
 private:
 	using NativeType = typename T::NativeTableType;
 
 	std::shared_ptr<const NativeType> ptr;
 
 public:
-	InputWrapper(std::shared_ptr<const NativeType> p) : ptr(std::move(p)) {
+	InputDataWrapper(std::shared_ptr<const NativeType> p) : ptr(std::move(p)) {
 	}
 
 	explicit operator bool() const noexcept {
@@ -34,7 +34,7 @@ public:
 	}
 };
 
-template<typename T> class OutputWrapper {
+template<typename T> class OutputDataWrapper {
 private:
 	using NativeType = typename T::NativeTableType;
 
@@ -43,7 +43,7 @@ private:
 	std::string name;
 
 public:
-	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) : ptr(p), moduleData(m), name(n) {
+	OutputDataWrapper(NativeType *p, dvModuleData m, const std::string &n) : ptr(p), moduleData(m), name(n) {
 	}
 
 	void commit() noexcept {

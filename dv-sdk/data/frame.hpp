@@ -20,7 +20,7 @@
 
 namespace dv {
 
-template<> class InputWrapper<Frame> {
+template<> class InputDataWrapper<Frame> {
 private:
 	using NativeType = typename Frame::NativeTableType;
 
@@ -30,7 +30,7 @@ private:
 #endif
 
 public:
-	InputWrapper(std::shared_ptr<const NativeType> p) : ptr(std::move(p)) {
+	InputDataWrapper(std::shared_ptr<const NativeType> p) : ptr(std::move(p)) {
 #if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
 		// Use custom deleter to bind life-time of main data 'ptr' to OpenCV 'matPtr'.
 		if (ptr) {
@@ -69,7 +69,7 @@ public:
 #endif
 };
 
-template<> class OutputWrapper<Frame> {
+template<> class OutputDataWrapper<Frame> {
 private:
 	using NativeType = typename Frame::NativeTableType;
 
@@ -78,7 +78,7 @@ private:
 	std::string name;
 
 public:
-	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) : ptr(p), moduleData(m), name(n) {
+	OutputDataWrapper(NativeType *p, dvModuleData m, const std::string &n) : ptr(p), moduleData(m), name(n) {
 	}
 
 	void commit() noexcept {
@@ -216,7 +216,7 @@ public:
 		commit();
 	}
 
-	OutputWrapper<dv::Frame>& operator<<(const cv::Mat &mat) {
+	OutputDataWrapper<dv::Frame>& operator<<(const cv::Mat &mat) {
 		commitMat(mat);
 		return *this;
 	}

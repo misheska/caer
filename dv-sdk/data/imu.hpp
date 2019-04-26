@@ -6,14 +6,14 @@
 
 namespace dv {
 
-template<> class InputWrapper<IMUPacket> : public dv::cvectorConstProxy<IMUT> {
+template<> class InputDataWrapper<IMUPacket> : public dv::cvectorConstProxy<IMUT> {
 private:
 	using NativeType = typename IMUPacket::NativeTableType;
 
 	std::shared_ptr<const NativeType> ptr;
 
 public:
-	InputWrapper(std::shared_ptr<const NativeType> p) :
+	InputDataWrapper(std::shared_ptr<const NativeType> p) :
 		dv::cvectorConstProxy<IMUT>((p) ? (&p->samples) : (nullptr)),
 		ptr(std::move(p)) {
 	}
@@ -27,7 +27,7 @@ public:
 	}
 };
 
-template<> class OutputWrapper<IMUPacket> : public dv::cvectorProxy<IMUT> {
+template<> class OutputDataWrapper<IMUPacket> : public dv::cvectorProxy<IMUT> {
 private:
 	using NativeType = typename IMUPacket::NativeTableType;
 
@@ -36,7 +36,7 @@ private:
 	std::string name;
 
 public:
-	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) :
+	OutputDataWrapper(NativeType *p, dvModuleData m, const std::string &n) :
 		dv::cvectorProxy<IMUT>((p) ? (&p->samples) : (nullptr)),
 		ptr(p),
 		moduleData(m),

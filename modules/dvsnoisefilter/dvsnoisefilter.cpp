@@ -113,25 +113,20 @@ public:
 		backgroundActivityStatOff(0),
 		refractoryPeriodStatOn(0),
 		refractoryPeriodStatOff(0) {
-		// Wait for input to be ready. All inputs, once they are up and running, will
-		// have a valid sourceInfo node to query, especially if dealing with data.
-		// Allocate map using info from sourceInfo.
-		auto info = inputs.getInfo("events");
-		if (!info) {
-			throw std::runtime_error("Change events input not ready, upstream module not running.");
-		}
 
-		sizeX = static_cast<int16_t>(info.get<dvCfgType::INT>("sizeX"));
-		sizeY = static_cast<int16_t>(info.get<dvCfgType::INT>("sizeY"));
+		auto eventInput = inputs.getEventInput("events");
+
+		sizeX = static_cast<int16_t>(eventInput.sizeX());
+		sizeY = static_cast<int16_t>(eventInput.sizeY());
 
 		timestampsMap.resize(static_cast<size_t>(sizeX * sizeY));
 
 		// Populate event output info node, keep same as input info node.
-		info.copyTo(outputs.getInfo("events"));
+		eventInput.info().copyTo(outputs.getInfo("events"));
 	}
 
 	void run() override {
-		auto evt_in  = inputs.get<dv::EventPacket>("events");
+		auto evt_in  = inputs.getEventInput("events").data();
 		auto evt_out = outputs.get<dv::EventPacket>("events");
 
 		bool hotPixelEnabled           = config.get<dvCfgType::BOOL>("hotPixelEnable");
