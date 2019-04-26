@@ -9,10 +9,8 @@
 
 class Undistort : public dv::ModuleBase {
 private:
-	int16_t eventSizeX;
-	int16_t eventSizeY;
-	int16_t frameSizeX;
-	int16_t frameSizeY;
+	cv::Size eventSize;
+	cv::Size frameSize;
 
 	bool calibrationLoaded;
 
@@ -57,21 +55,16 @@ public:
 		}
 
 		if (eventsConnected) {
-			auto eventsInput = inputs.getEventInput("events");
-			eventSizeX = static_cast<int16_t>(eventsInput.sizeX());
-			eventSizeY = static_cast<int16_t>(eventsInput.sizeY());
-
+			eventSize = inputs.getEventInput("events").size();
 			// Populate event output info node, keep same as input info node.
-            eventsInput.infoNode().copyTo(outputs.getInfo("undistortedEvents"));
+			inputs.getEventInput("events").infoNode().copyTo(outputs.getInfo("undistortedEvents"));
 		}
 
 		if (framesConnected) {
-			auto framesInput = inputs.getFrameInput("frames");
-			frameSizeX = static_cast<int16_t>(framesInput.sizeX());
-			frameSizeY = static_cast<int16_t>(framesInput.sizeY());
+			frameSize = inputs.getFrameInput("frames").size();
 
 			// Populate event output info node, keep same as input info node.
-            framesInput.infoNode().copyTo(outputs.getInfo("undistortedFrames"));
+			inputs.getFrameInput("frames").infoNode().copyTo(outputs.getInfo("undistortedFrames"));
 		}
 	}
 
@@ -125,10 +118,6 @@ public:
 
 		// Close file.
 		fs.release();
-
-		// Generate maps for frame remap().
-		cv::Size frameSize(frameSizeX, frameSizeY);
-		cv::Size eventSize(eventSizeX, eventSizeY);
 
 		// Allocate undistort events maps.
 		std::vector<cv::Point2f> undistortEventInputMap;
@@ -192,12 +181,12 @@ public:
 	void undistortEvents(dv::InputDataWrapper<dv::EventPacket> &in, dv::OutputDataWrapper<dv::EventPacket> &out) {
 		for (const auto &evt : in) {
 			// Get new coordinates at which event shall be remapped.
-			size_t mapIdx              = static_cast<size_t>((evt.y() * eventSizeX) + evt.x());
+			size_t mapIdx              = static_cast<size_t>((evt.y() * eventSize.width) + evt.x());
 			cv::Point2i eventUndistort = undistortEventMap.at(mapIdx);
 
 			// Check that new coordinates are still within view boundary. If yes, use new remapped coordinates.
-			if (eventUndistort.x >= 0 && eventUndistort.x < eventSizeX && eventUndistort.y >= 0
-				&& eventUndistort.y < eventSizeY) {
+			if (eventUndistort.x >= 0 && eventUndistort.x < eventSize.width && eventUndistort.y >= 0
+				&& eventUndistort.y < eventSize.height) {
 				out.emplace_back(evt.timestamp(), static_cast<int16_t>(eventUndistort.x),
 					static_cast<int16_t>(eventUndistort.y), evt.polarity());
 			}

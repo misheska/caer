@@ -45,7 +45,7 @@ public:
 
 
 template <typename T>
-class RuntimeInputCommon {
+class _RuntimeInputCommon {
 private:
 	std::string name_;
 	dvModuleData moduleData_;
@@ -77,7 +77,7 @@ private:
 
 
 public:
-	RuntimeInputCommon(const std::string &name, dvModuleData moduleData) : name_(name), moduleData_(moduleData) {
+	_RuntimeInputCommon(const std::string &name, dvModuleData moduleData) : name_(name), moduleData_(moduleData) {
 	}
 
 	/**
@@ -119,16 +119,16 @@ public:
 };
 
 template <typename T>
-class RuntimeInput : public RuntimeInputCommon<T> {
+class RuntimeInput : public _RuntimeInputCommon<T> {
 public:
-	RuntimeInput<T>(const std::string &name, dvModuleData moduleData) : RuntimeInputCommon<T>(name, moduleData) {
+	RuntimeInput(const std::string &name, dvModuleData moduleData) : _RuntimeInputCommon<T>(name, moduleData) {
 	}
 };
 
 template <>
-class RuntimeInput<dv::EventPacket> : public RuntimeInputCommon<dv::EventPacket> {
+class RuntimeInput<dv::EventPacket> : public _RuntimeInputCommon<dv::EventPacket> {
 public:
-	RuntimeInput(const std::string &name, dvModuleData moduleData) : RuntimeInputCommon(name, moduleData) {
+	RuntimeInput(const std::string &name, dvModuleData moduleData) : _RuntimeInputCommon(name, moduleData) {
 	}
 
     InputDataWrapper<dv::EventPacket> events() const {
@@ -151,9 +151,9 @@ public:
 };
 
 template <>
-class RuntimeInput<dv::Frame> : public RuntimeInputCommon<dv::Frame> {
+class RuntimeInput<dv::Frame> : public _RuntimeInputCommon<dv::Frame> {
 public:
-	RuntimeInput(const std::string &name, dvModuleData moduleData) : RuntimeInputCommon(name, moduleData) {
+	RuntimeInput(const std::string &name, dvModuleData moduleData) : _RuntimeInputCommon(name, moduleData) {
 	}
 
     InputDataWrapper<dv::Frame> frame() const {
@@ -244,16 +244,14 @@ public:
 	}
 };
 
-class RuntimeOutputs {
+template <typename T>
+class _RuntimeOutputCommon {
 private:
-	dvModuleData moduleData;
+	std::string name_;
+	dvModuleData moduleData_;
 
-public:
-	RuntimeOutputs(dvModuleData m) : moduleData(m) {
-	}
-
-	template<typename T> typename T::NativeTableType *allocateUnwrapped(const std::string &name) {
-		auto typedObject = dvModuleOutputAllocate(moduleData, name.c_str());
+	typename T::NativeTableType *allocateUnwrapped(const std::string &name) {
+		auto typedObject = dvModuleOutputAllocate(moduleData_, name.c_str());
 		if (typedObject == nullptr) {
 			// Actual errors will write a log message and return null.
 			// No data just returns null. So if null we simply forward that.
@@ -263,7 +261,7 @@ public:
 #ifndef NDEBUG
 		if (typedObject->typeId != dvTypeIdentifierToId(T::identifier)) {
 			throw std::runtime_error(
-				"allocateUnwrapped(" + name + "): output type and given template type are not compatible.");
+					"allocateUnwrapped(" + name + "): output type and given template type are not compatible.");
 		}
 #endif
 
@@ -271,21 +269,78 @@ public:
 	}
 
 	void commitUnwrapped(const std::string &name) {
-		dvModuleOutputCommit(moduleData, name.c_str());
+		dvModuleOutputCommit(moduleData_, name.c_str());
 	}
 
-	template<typename T> OutputDataWrapper<T> get(const std::string &name) {
-		OutputDataWrapper<T> wrapper{allocateUnwrapped<T>(name), moduleData, name};
+public:
+	_RuntimeOutputCommon(const std::string &name, dvModuleData moduleData) : name_(name),
+	moduleData_(moduleData) {
+	}
+
+	OutputDataWrapper<T> getOutputData() {
+		OutputDataWrapper<T> wrapper{allocateUnwrapped(name_), moduleData_, name_};
 		return (wrapper);
 	}
+
+	dv::Config::Node infoNode() const {
+		// const_cast and then re-add const manually. Needed for transition to C++ type.
+		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData_, name_.c_str())));
+	}
+
+};
+
+
+template <typename T>
+class RuntimeOutput : public _RuntimeOutputCommon<T> {
+public:
+	RuntimeOutput(const std::string &name, dvModuleData moduleData) : _RuntimeOutputCommon<T>(name, moduleData) {
+	}
+
+	void setup(const std::string &originDescription) {
+		// dv::Config::Node infoNode = this->infoNode();
+		auto infoNode = this->infoNode();
+	    //infoNode.create<dv::Config::AttributeType::STRING>("source",
+	    //		"", {0, 100}, dv::Cfg::AttributeFlags::NORMAL | dv::Cfg::AttributeFlags::NO_EXPORT, "");
+
+		infoNode.create<dv::Config::AttributeType::INT>("myInt", 10, {0, 100}, dv::Cfg::AttributeFlags::NORMAL, "");
+
+		std::printf("abc %d", 100);
+	}
+};
+
+template <>
+class RuntimeOutput<dv::EventPacket> : public _RuntimeOutputCommon<dv::EventPacket> {
+public:
+    RuntimeOutput(const std::string &name, dvModuleData moduleData) : _RuntimeOutputCommon<dv::EventPacket>(name, moduleData) {
+    }
+
+    void setup() {
+		this->infoNode().create<dv::Config::AttributeType::INT>("myInt", 10, {0, 100}, dv::Cfg::AttributeFlags::NORMAL, "");
+	}
+};
+
+
+class RuntimeOutputs {
+private:
+	dvModuleData moduleData_;
+
+public:
+	RuntimeOutputs(dvModuleData moduleData) : moduleData_(moduleData) {
+	}
+
+	template <typename T>
+	RuntimeOutput<T> getOutput(const std::string &name) {
+	    return RuntimeOutput<T>(name, moduleData_);
+	}
+
 
 	/**
 	 * (Convenience) Function to get events from an event output
 	 * @param name the name of the event output stream
 	 * @return An output wrapper of an event packet, allowing data access
 	 */
-	OutputDataWrapper<dv::EventPacket> getEvents(const std::string &name) {
-		return get<dv::EventPacket>(name);
+	RuntimeOutput<dv::EventPacket> getEventOutput(const std::string &name) {
+		return getOutput<dv::EventPacket>(name);
 	}
 
 	/**
@@ -293,8 +348,8 @@ public:
 	 * @param name the name of the event output stream
 	 * @return An output wrapper of a frame, allowing data access
 	 */
-	OutputDataWrapper<dv::Frame> getFrame(const std::string &name) {
-		return get<dv::Frame>(name);
+	RuntimeOutput<dv::Frame> getFrameOutput(const std::string &name) {
+		return getOutput<dv::Frame>(name);
 	}
 
 	/**
@@ -302,8 +357,8 @@ public:
 	 * @param name the name of the event output stream
 	 * @return An output wrapper of an IMU packet, allowing data access
 	 */
-	OutputDataWrapper<dv::IMUPacket> getIMUMeasurements(const std::string &name) {
-		return get<dv::IMUPacket>(name);
+	RuntimeOutput<dv::IMUPacket> getIMUOutput(const std::string &name) {
+		return getOutput<dv::IMUPacket>(name);
 	}
 
 	/**
@@ -311,19 +366,19 @@ public:
  	 * @param name the name of the event output stream
  	 * @return An output wrapper of an Trigger packet, allowing data access
  	 */
-	OutputDataWrapper<dv::TriggerPacket> getTriggers(const std::string &name) {
-		return get<dv::TriggerPacket>(name);
+	RuntimeOutput<dv::TriggerPacket> getTriggerOutput(const std::string &name) {
+		return getOutput<dv::TriggerPacket>(name);
 	}
 
-	/**
-	 * Returns an info node about the specified output. Can be used to determine dimensions of an
-	 * input/output
-	 * @param name The name of the output in question
-	 * @return A node that contains the specified outputs information, such as "sizeX" or "sizeY"
-	 */
-	dv::Config::Node getInfo(const std::string &name) {
-		return (dvModuleOutputGetInfoNode(moduleData, name.c_str()));
-	}
+    /**
+     * Returns an info node about the specified input. Can be used to determine dimensions of an
+     * input/output
+     * @return A node that contains the specified inputs information, such as "sizeX" or "sizeY"
+     */
+    const dv::Config::Node getUntypedInfo(const std::string &name) const {
+        // const_cast and then re-add const manually. Needed for transition to C++ type.
+        return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData_, name.c_str())));
+    }
 };
 
 } // namespace dv

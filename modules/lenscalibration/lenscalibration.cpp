@@ -68,13 +68,8 @@ public:
 	}
 
 	LensCalibration() {
-		// Wait for input to be ready. All inputs, once they are up and running, will
-		// have a valid sourceInfo node to query, especially if dealing with data.
-		// Allocate map using info from sourceInfo.
-		auto frameInput = inputs.getFrameInput("frames");
-		imageSize = cv::Size(frameInput.sizeX(), frameInput.sizeY());
-
-		frameInput.infoNode().copyTo(outputs.getInfo("patternCorners"));
+		imageSize = inputs.getFrameInput("frames").size();
+		inputs.getFrameInput("frames").infoNode().copyTo(outputs.getInfo("patternCorners"));
 
 		configUpdate();
 	}
