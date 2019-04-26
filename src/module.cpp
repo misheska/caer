@@ -64,8 +64,12 @@ dv::Module::~Module() {
 	// Check module is properly shut down, which takes care of
 	// cleaning up all input connections. This should always be
 	// the case as it's a requirement for calling removeModule().
-	if (run.isRunning) {
-		dv::Log(dv::logLevel::CRITICAL, "%s", "Destroying a running module. This should never happen!");
+	{
+		std::scoped_lock lock(run.lock);
+
+		if (run.isRunning) {
+			dv::Log(dv::logLevel::CRITICAL, "%s", "Destroying a running module. This should never happen!");
+		}
 	}
 
 	// Stop module thread and wait for it to exit.
@@ -113,7 +117,7 @@ void dv::Module::RunningInit() {
 
 	run.running = moduleConfigNode.get<dvCfgType::BOOL>("running");
 
-	run.forceShutdown = false;
+	run.forcedShutdown = false;
 
 	run.isRunning = false;
 	moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
@@ -158,7 +162,7 @@ void dv::Module::registerInput(std::string_view inputName, std::string_view type
 	}
 
 	// Add info to internal data structure.
-	inputs.try_emplace(inputNameString, typeInfo, optional);
+	inputs.try_emplace(inputNameString, typeInfo, optional, this);
 
 	// Add info to ConfigTree.
 	auto moduleConfigNode = dvCfg::Node(moduleNode);
@@ -202,7 +206,7 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 	auto infoNode = outputNode.getRelativeNode("info/");
 
 	// Add info to internal data structure.
-	outputs.try_emplace(outputNameString, typeInfo, infoNode);
+	outputs.try_emplace(outputNameString, typeInfo, infoNode, this);
 
 	dv::Log(
 		dv::logLevel::DEBUG, "Output '%s' registered with type '%s'.", outputNameString.c_str(), typeInfo.identifier);
@@ -272,14 +276,18 @@ void dv::Module::inputConnectivityInitialize() {
 
 		// Last, ensure the other module is running. We can directly check
 		// its isRunning variable, as we hold the global modules lock.
-		if (!otherModule->run.isRunning) {
-			auto msg = boost::format("Input '%s': required module '%s' is not running. Please start it first!")
-					   % input.first % moduleName;
-			throw std::runtime_error(msg.str());
+		{
+			std::scoped_lock lock(otherModule->run.lock);
+
+			if (!otherModule->run.isRunning) {
+				auto msg = boost::format("Input '%s': required module '%s' is not running. Please start it first!")
+						   % input.first % moduleName;
+				throw std::runtime_error(msg.str());
+			}
 		}
 
 		// All is well, let's connect to that output.
-		OutConnection dataConn{&input.second.queue, &dataAvailable, &input.second};
+		OutConnection dataConn{&input.second.queue, &dataAvailable, &run, &input.second};
 
 		connectToModuleOutput(moduleOutput, dataConn);
 
@@ -339,7 +347,7 @@ void dv::Module::inputConnectivityDestroy() {
 	for (auto &input : inputs) {
 		if (input.second.linkedOutput != nullptr) {
 			// Remove the connection from the output.
-			OutConnection dataConn{&input.second.queue, &dataAvailable, &input.second};
+			OutConnection dataConn{nullptr, nullptr, nullptr, &input.second};
 
 			disconnectFromModuleOutput(input.second.linkedOutput, dataConn);
 
@@ -460,6 +468,7 @@ void dv::Module::runStateMachine() {
 	auto moduleConfigNode = dvCfg::Node(moduleNode);
 
 	bool shouldRun = false;
+	bool isRunning = false;
 
 	{
 		std::unique_lock lock(run.lock);
@@ -472,10 +481,11 @@ void dv::Module::runStateMachine() {
 			return (run.running || run.isRunning);
 		});
 
-		shouldRun = (run.running && !run.forceShutdown);
+		shouldRun = (run.running && !run.forcedShutdown);
+		isRunning = run.isRunning;
 	}
 
-	if (run.isRunning && shouldRun) {
+	if (isRunning && shouldRun) {
 		if (run.configUpdate.load(std::memory_order_relaxed)) {
 			run.configUpdate.store(false);
 
@@ -518,7 +528,7 @@ void dv::Module::runStateMachine() {
 			}
 		}
 	}
-	else if (!run.isRunning && shouldRun) {
+	else if (!isRunning && shouldRun) {
 		// Serialize module start/stop globally.
 		std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
@@ -590,22 +600,60 @@ void dv::Module::runStateMachine() {
 			return;
 		}
 
-		run.isRunning = true;
+		{
+			std::scoped_lock runLock(run.lock);
+			run.isRunning = true;
+		}
+
 		moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", true);
 	}
-	else if (run.isRunning && !shouldRun) {
-		// Shutdown downstream modules first. This happens recursively.
-		// TODO: implement.
+	else if (isRunning && !shouldRun) {
+		{
+			// Serialize module start/stop globally.
+			std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
-		// Serialize module start/stop globally.
-		std::scoped_lock lock(MainData::getGlobal().modulesLock);
+			// Shutdown downstream modules first. This happens recursively.
+			// First prevent any module from connecting to us. Running is a pre-condition.
+			{
+				std::scoped_lock runLock(run.lock);
+				run.isRunning = false;
+			}
 
-		// Full shutdown.
-		shutdownProcedure(true, false);
+			// Now put all outputs into forced shutdown mode.
+			for (auto &out : outputs) {
+				std::scoped_lock destLock(out.second.destinationsLock);
 
-		run.forceShutdown = false; // Just did a shutdown, we're good.
-		run.isRunning     = false;
-		moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
+				for (auto &dest : out.second.destinations) {
+					std::scoped_lock runLock(dest.run->lock);
+
+					dest.run->forcedShutdown = true;
+				}
+			}
+		}
+
+	waitAndCheckAgain:
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+		// Now put all outputs into forced shutdown mode.
+		for (auto &out : outputs) {
+			std::scoped_lock destLock(out.second.destinationsLock);
+
+			for (auto &dest : out.second.destinations) {
+				if (dvCfg::Node(dest.linkedInput->parentModule->moduleNode).get<dvCfgType::BOOL>("isRunning")) {
+					goto waitAndCheckAgain;
+				}
+			}
+		}
+
+		{
+			// Serialize module start/stop globally.
+			std::scoped_lock lock(MainData::getGlobal().modulesLock);
+
+			// Full shutdown.
+			shutdownProcedure(true, false);
+
+			moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
+		}
 	}
 }
 

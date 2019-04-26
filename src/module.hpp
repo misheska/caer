@@ -39,13 +39,15 @@ public:
 	dv::Types::Type type;
 	bool optional;
 	ModuleOutput *linkedOutput;
+	Module *parentModule;
 	libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> queue;
 	std::vector<boost::intrusive_ptr<IntrusiveTypedObject>> inUsePackets;
 
-	ModuleInput(const dv::Types::Type &t, bool opt) :
+	ModuleInput(const dv::Types::Type &t, bool opt, Module *parentModule_) :
 		type(t),
 		optional(opt),
 		linkedOutput(nullptr),
+		parentModule(parentModule_),
 		queue(INTER_MODULE_TRANSFER_QUEUE_SIZE) {
 	}
 };
@@ -61,16 +63,31 @@ public:
 	}
 };
 
+struct RunControl {
+	// Run status.
+	std::mutex lock;
+	std::condition_variable cond;
+	bool forcedShutdown;
+	bool running;
+	bool isRunning;
+	std::atomic_bool configUpdate;
+
+	RunControl() : forcedShutdown(false), running(false), isRunning(false), configUpdate(false) {
+	}
+};
+
 class OutConnection {
 public:
 	libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue;
 	InputDataAvailable *dataAvailable;
+	RunControl *run;
 	ModuleInput *linkedInput;
 
 	OutConnection(libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue_, InputDataAvailable *dataAvailable_,
-		ModuleInput *linkedInput_) :
+		RunControl *run_, ModuleInput *linkedInput_) :
 		queue(queue_),
 		dataAvailable(dataAvailable_),
+		run(run_),
 		linkedInput(linkedInput_) {
 	}
 
@@ -88,24 +105,15 @@ class ModuleOutput {
 public:
 	dv::Types::Type type;
 	dv::Config::Node infoNode;
+	Module *parentModule;
 	std::mutex destinationsLock;
 	std::vector<OutConnection> destinations;
 	boost::intrusive_ptr<IntrusiveTypedObject> nextPacket;
 
-	ModuleOutput(const dv::Types::Type &t, dv::Config::Node info) : type(t), infoNode(info) {
-	}
-};
-
-struct RunControl {
-	// Run status.
-	std::mutex lock;
-	std::condition_variable cond;
-	bool forceShutdown;
-	bool running;
-	bool isRunning;
-	std::atomic_bool configUpdate;
-
-	RunControl() : forceShutdown(false), running(false), isRunning(false), configUpdate(false) {
+	ModuleOutput(const dv::Types::Type &type_, dv::Config::Node infoNode_, Module *parentModule_) :
+		type(type_),
+		infoNode(infoNode_),
+		parentModule(parentModule_) {
 	}
 };
 
