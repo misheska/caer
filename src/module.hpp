@@ -96,6 +96,19 @@ public:
 	}
 };
 
+struct RunControl {
+	// Run status.
+	std::mutex lock;
+	std::condition_variable cond;
+	bool forceShutdown;
+	bool running;
+	bool isRunning;
+	std::atomic_bool configUpdate;
+
+	RunControl() : forceShutdown(false), running(false), isRunning(false), configUpdate(false) {
+	}
+};
+
 class Module : public dvModuleDataS {
 private:
 	// Module info.
@@ -103,11 +116,7 @@ private:
 	dvModuleInfo info;
 	dv::ModuleLibrary library;
 	// Run status.
-	std::mutex runLock;
-	std::condition_variable runCond;
-	bool running;
-	bool isRunning;
-	std::atomic_bool configUpdate;
+	struct RunControl run;
 	// Logging.
 	dv::LogBlock logger;
 	// I/O connectivity.
@@ -122,6 +131,8 @@ private:
 public:
 	Module(std::string_view _name, std::string_view _library);
 	~Module();
+
+	void start();
 
 	void registerType(const dv::Types::Type type);
 	void registerOutput(std::string_view name, std::string_view typeName);
@@ -141,8 +152,6 @@ private:
 	void RunningInit();
 	void StaticInit();
 
-	static std::pair<std::string, std::string> parseModuleInputString(const std::string &moduleInput);
-
 	Module *getModule(const std::string &moduleName);
 	ModuleOutput *getModuleOutput(const std::string &outputName);
 	ModuleInput *getModuleInput(const std::string &outputName);
@@ -150,15 +159,15 @@ private:
 	static void connectToModuleOutput(ModuleOutput *output, OutConnection connection);
 	static void disconnectFromModuleOutput(ModuleOutput *output, OutConnection connection);
 
-	bool inputConnectivityInitialize();
+	void inputConnectivityInitialize();
 	void inputConnectivityDestroy();
 
-	bool verifyOutputInfoNodes();
+	void verifyOutputInfoNodes();
 	void cleanupOutputInfoNodes();
 
 	void runThread();
 	void runStateMachine();
-	void shutdownProcedure(bool doModuleExit);
+	void shutdownProcedure(bool doModuleExit, bool disableModule);
 
 	static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);

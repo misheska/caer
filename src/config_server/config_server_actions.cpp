@@ -626,7 +626,7 @@ void ConfigServerHandleRequest(
 			}
 
 			// Name and library are fine, create the module.
-			dv::addModule(moduleName, moduleLibrary);
+			dv::addModule(moduleName, moduleLibrary, true);
 
 			// Send back confirmation to the client.
 			sendMessage(client, [receivedID](flatbuffers::FlatBufferBuilder *msgBuild) {
