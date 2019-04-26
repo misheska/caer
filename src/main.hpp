@@ -56,7 +56,7 @@ private:
  * @param name new module instance name.
  * @param library shared library plugin to load.
  */
-void addModule(const std::string &name, const std::string &library);
+void addModule(const std::string &name, const std::string &library, bool startModule);
 
 /**
  * Removes a module from the system, fully erasing its configuration.

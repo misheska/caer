@@ -47,13 +47,17 @@ static void mainShutdownHandler(int signum);
 static void systemRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 
-void dv::addModule(const std::string &name, const std::string &library) {
+void dv::addModule(const std::string &name, const std::string &library, bool startModule) {
 	std::scoped_lock lock(dv::MainData::getGlobal().modulesLock);
 
 	auto restoreLogger = dv::LoggerGet();
 
 	try {
 		dv::MainData::getGlobal().modules.try_emplace(name, std::make_shared<dv::Module>(name, library));
+
+		if (startModule) {
+			dv::MainData::getGlobal().modules.at(name)->start();
+		}
 	}
 	catch (const std::exception &ex) {
 		dv::Log(dv::logLevel::CRITICAL, "addModule(): '%s', removing module.", ex.what());
@@ -215,8 +219,19 @@ static void mainRunner() {
 	systemNode.addAttributeListener(nullptr, &systemRunningListener);
 
 	// Add each module defined in configuration to runnable modules.
+	// Do not start them yet.
 	for (const auto &child : mainloopNode.getChildren()) {
-		dv::addModule(child.getName(), child.get<dvCfgType::STRING>("moduleLibrary"));
+		dv::addModule(child.getName(), child.get<dvCfgType::STRING>("moduleLibrary"), false);
+	}
+
+	// Start modules after having added them all, so that connections between
+	// each other may correctly resolve right away.
+	{
+		std::scoped_lock lock(dv::MainData::getGlobal().modulesLock);
+
+		for (const auto &m : dv::MainData::getGlobal().modules) {
+			m.second->start();
+		}
 	}
 
 	// Start the configuration server thread for run-time config changes.
@@ -229,8 +244,14 @@ static void mainRunner() {
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
 
-	// After shutting down the updater, also shutdown the config server thread.
+	// After shutting down the updater, also shutdown the config server thread,
+	// to ensure no more changes can happen.
 	dv::ConfigServerStop();
+
+	// Write config back on shutdown, after config server is disabled (no more
+	// changes), but before we set running to false on all modules and force
+	// their shutdown (so that correct run status is written to file).
+	dv::ConfigWriteBack();
 
 	// We don't remove modules here, as that would delete their configuration.
 	// But we do make sure they're all properly shut down.
@@ -250,9 +271,6 @@ static void mainRunner() {
 	systemNode.removeAttributeListener(nullptr, &dv::ConfigWriteBackListener);
 	modulesNode.removeAttributeListener(nullptr, &dv::ModulesUpdateInformationListener);
 	devicesNode.removeAttributeListener(nullptr, &dv::DevicesUpdateListener);
-
-	// Write config back on shutdown.
-	dv::ConfigWriteBack();
 }
 
 static void mainSegfaultHandler(int signum) {
