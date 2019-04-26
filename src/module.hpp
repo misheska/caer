@@ -63,31 +63,16 @@ public:
 	}
 };
 
-struct RunControl {
-	// Run status.
-	std::mutex lock;
-	std::condition_variable cond;
-	bool forcedShutdown;
-	bool running;
-	bool isRunning;
-	std::atomic_bool configUpdate;
-
-	RunControl() : forcedShutdown(false), running(false), isRunning(false), configUpdate(false) {
-	}
-};
-
 class OutConnection {
 public:
 	libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue;
 	InputDataAvailable *dataAvailable;
-	RunControl *run;
 	ModuleInput *linkedInput;
 
 	OutConnection(libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> *queue_, InputDataAvailable *dataAvailable_,
-		RunControl *run_, ModuleInput *linkedInput_) :
+		ModuleInput *linkedInput_) :
 		queue(queue_),
 		dataAvailable(dataAvailable_),
-		run(run_),
 		linkedInput(linkedInput_) {
 	}
 
@@ -117,12 +102,26 @@ public:
 	}
 };
 
+struct RunControl {
+	// Run status.
+	std::mutex lock;
+	std::condition_variable cond;
+	bool forcedShutdown;
+	bool running;
+	std::atomic_bool isRunning;
+	std::atomic_bool configUpdate;
+
+	RunControl() : forcedShutdown(false), running(false), isRunning(false), configUpdate(false) {
+	}
+};
+
 class Module : public dvModuleDataS {
 private:
 	// Module info.
 	std::string name;
 	dvModuleInfo info;
 	dv::ModuleLibrary library;
+	dv::Config::Node moduleConfigNode;
 	// Run status.
 	struct RunControl run;
 	// Logging.
@@ -176,8 +175,9 @@ private:
 	void runThread();
 	void runStateMachine();
 	void shutdownProcedure(bool doModuleExit, bool disableModule);
+	void forcedShutdown(bool shutdown);
 
-	static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	static void moduleRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 	static void moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
