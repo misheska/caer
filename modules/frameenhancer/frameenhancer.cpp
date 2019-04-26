@@ -33,8 +33,8 @@ public:
 	}
 
 	FrameEnhancer() {
-		// Populate frame output info node, keep same as input info node.
-		inputs.getFrameInput("frames").infoNode().copyTo(outputs.getInfo("frames"));
+		// setup output frame stream
+		outputs.getFrameOutput("frames").setup(inputs.getFrameInput("frames"));
 
 		// Call once to translate string into enum properly.
 		configUpdate();
@@ -42,7 +42,7 @@ public:
 
 	void run() override {
 		auto frame_in  = inputs.getFrameInput("frames").data();
-		auto frame_out = outputs.get<dv::Frame>("frames");
+		auto frame_out = outputs.getFrameOutput("frames").getOutputData();
 
 		// Setup output frame. Same size.
 		frame_out->sizeX                    = frame_in->sizeX;

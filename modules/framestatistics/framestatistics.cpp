@@ -31,16 +31,12 @@ public:
 		// Populate frame output info node. Must have generated statistics histogram frame
 		// Populate frame output info node. Must have generated statistics histogram frame
 		// maximum size. Max size is 256 x 128 due to max number of bins being 256.
-		auto outInfoNode = outputs.getInfo("histograms");
-		outInfoNode.create<dvCfgType::INT>(
-			"sizeX", 256, {256, 256}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Maximum X axis size of frame.");
-		outInfoNode.create<dvCfgType::INT>(
-			"sizeY", 128, {128, 128}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Maximum Y axis size of frame.");
+		outputs.getFrameOutput("histogram").setup(256, 256, inputs.getFrameInput("frames").getOriginDescription());
 	}
 
 	void run() override {
 		auto frame_in = inputs.getFrameInput("frames").data();
-		auto hist_out = outputs.get<dv::Frame>("histograms");
+		auto hist_out = outputs.getFrameOutput("histograms").getOutputData();
 
 		auto numBins = config.get<dvCfgType::INT>("numBins");
 

@@ -122,12 +122,12 @@ public:
 		timestampsMap.resize(static_cast<size_t>(sizeX * sizeY));
 
 		// Populate event output info node, keep same as input info node.
-		eventInput.infoNode().copyTo(outputs.getInfo("events"));
+		outputs.getEventOutput("events").setup(inputs.getEventInput("events"));
 	}
 
 	void run() override {
-		auto evt_in  = inputs.getEventInput("events").data();
-		auto evt_out = outputs.get<dv::EventPacket>("events");
+		auto evt_in  = inputs.getEventInput("events").events();
+		auto evt_out = outputs.getEventOutput("events").getOutputData();
 
 		bool hotPixelEnabled           = config.get<dvCfgType::BOOL>("hotPixelEnable");
 		bool refractoryPeriodEnabled   = config.get<dvCfgType::BOOL>("refractoryPeriodEnable");

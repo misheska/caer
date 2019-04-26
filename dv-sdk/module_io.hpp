@@ -287,6 +287,24 @@ public:
 		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData_, name_.c_str())));
 	}
 
+protected:
+    void createSourceAttribute(const std::string &originDescription) {
+        dv::Config::Node infoNode = this->infoNode();
+        infoNode.create<dv::Config::AttributeType::STRING>("source",
+                originDescription, {0, PATH_MAX}, dv::Cfg::AttributeFlags::NORMAL | dv::Cfg::AttributeFlags::NO_EXPORT,
+                "Description of the first origin of the data");
+    }
+
+    void createSizeAttributes(int sizeX, int sizeY) {
+        dv::Config::Node infoNode = this->infoNode();
+        infoNode.create<dv::Config::AttributeType::INT>("sizeX",
+                sizeX, {sizeX, sizeX}, dv::Cfg::AttributeFlags::NORMAL | dv::Cfg::AttributeFlags::NO_EXPORT,
+                "Width of the output data. (max x-coordinate + 1)");
+
+        infoNode.create<dv::Config::AttributeType::INT>("sizeY",
+                sizeY, {sizeY, sizeY}, dv::Cfg::AttributeFlags::NORMAL | dv::Cfg::AttributeFlags::NO_EXPORT,
+                "Height of the output data. (max y-coordinate + 1)");
+    }
 };
 
 
@@ -297,14 +315,7 @@ public:
 	}
 
 	void setup(const std::string &originDescription) {
-		// dv::Config::Node infoNode = this->infoNode();
-		auto infoNode = this->infoNode();
-	    //infoNode.create<dv::Config::AttributeType::STRING>("source",
-	    //		"", {0, 100}, dv::Cfg::AttributeFlags::NORMAL | dv::Cfg::AttributeFlags::NO_EXPORT, "");
-
-		infoNode.create<dv::Config::AttributeType::INT>("myInt", 10, {0, 100}, dv::Cfg::AttributeFlags::NORMAL, "");
-
-		std::printf("abc %d", 100);
+        this->createSourceAttribute(originDescription);
 	}
 };
 
@@ -314,10 +325,40 @@ public:
     RuntimeOutput(const std::string &name, dvModuleData moduleData) : _RuntimeOutputCommon<dv::EventPacket>(name, moduleData) {
     }
 
-    void setup() {
-		this->infoNode().create<dv::Config::AttributeType::INT>("myInt", 10, {0, 100}, dv::Cfg::AttributeFlags::NORMAL, "");
+    void setup(int sizeX, int sizeY, const std::string &originDescription) {
+        this->createSourceAttribute(originDescription);
+        this->createSizeAttributes(sizeX, sizeY);
 	}
+
+    void setup(const RuntimeInput<dv::EventPacket> &eventInput) {
+        setup(eventInput.sizeX(), eventInput.sizeY(), eventInput.getOriginDescription());
+    }
+
+    void setup(const RuntimeInput<dv::Frame> &frameInput) {
+        setup(frameInput.sizeX(), frameInput.sizeY(), frameInput.getOriginDescription());
+    }
 };
+
+template <>
+class RuntimeOutput<dv::Frame> : public _RuntimeOutputCommon<dv::Frame> {
+public:
+    RuntimeOutput(const std::string &name, dvModuleData moduleData) : _RuntimeOutputCommon<dv::Frame>(name, moduleData) {
+    }
+
+    void setup(int sizeX, int sizeY, const std::string &originDescription) {
+        this->createSourceAttribute(originDescription);
+        this->createSizeAttributes(sizeX, sizeY);
+    }
+
+    void setup(const RuntimeInput<dv::EventPacket> &eventInput) {
+        setup(eventInput.sizeX(), eventInput.sizeY(), eventInput.getOriginDescription());
+    }
+
+    void setup(const RuntimeInput<dv::Frame> &frameInput) {
+        setup(frameInput.sizeX(), frameInput.sizeY(), frameInput.getOriginDescription());
+    }
+};
+
 
 
 class RuntimeOutputs {
@@ -328,6 +369,11 @@ public:
 	RuntimeOutputs(dvModuleData moduleData) : moduleData_(moduleData) {
 	}
 
+    /**
+     * Function to get an output
+     * @param name the name of the output stream
+     * @return An object to access the modules output
+     */
 	template <typename T>
 	RuntimeOutput<T> getOutput(const std::string &name) {
 	    return RuntimeOutput<T>(name, moduleData_);
@@ -335,37 +381,37 @@ public:
 
 
 	/**
-	 * (Convenience) Function to get events from an event output
+	 * (Convenience) Function to get an event output
 	 * @param name the name of the event output stream
-	 * @return An output wrapper of an event packet, allowing data access
+	 * @return An object to access the modules output
 	 */
 	RuntimeOutput<dv::EventPacket> getEventOutput(const std::string &name) {
 		return getOutput<dv::EventPacket>(name);
 	}
 
-	/**
-	 * (Convenience) Function to get a frame from a frame output
-	 * @param name the name of the event output stream
-	 * @return An output wrapper of a frame, allowing data access
-	 */
+    /**
+     * (Convenience) Function to get an frame output
+     * @param name the name of the frame output stream
+     * @return An object to access the modules output
+     */
 	RuntimeOutput<dv::Frame> getFrameOutput(const std::string &name) {
 		return getOutput<dv::Frame>(name);
 	}
 
-	/**
-	 * (Convenience) Function to get IMU data from an IMU output
-	 * @param name the name of the event output stream
-	 * @return An output wrapper of an IMU packet, allowing data access
-	 */
+    /**
+     * (Convenience) Function to get an imu output
+     * @param name the name of the imu output stream
+     * @return An object to access the modules output
+     */
 	RuntimeOutput<dv::IMUPacket> getIMUOutput(const std::string &name) {
 		return getOutput<dv::IMUPacket>(name);
 	}
 
-	/**
- 	 * (Convenience) Function to get Trigger data from a Trigger output
- 	 * @param name the name of the event output stream
- 	 * @return An output wrapper of an Trigger packet, allowing data access
- 	 */
+    /**
+     * (Convenience) Function to get an trigger output
+     * @param name the name of the trigger output stream
+     * @return An object to access the modules output
+     */
 	RuntimeOutput<dv::TriggerPacket> getTriggerOutput(const std::string &name) {
 		return getOutput<dv::TriggerPacket>(name);
 	}

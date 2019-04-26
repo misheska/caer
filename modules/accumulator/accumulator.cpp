@@ -39,8 +39,7 @@ public:
 
 
     Accumulator() {
-        outputs.getframeoutput("frames").setup(inputs.getEventInput("frame"));
-
+        outputs.getFrameOutput("frames").setup(inputs.getEventInput("events"));
         size = inputs.getEventInput("events").size();
         frameAccumulator = dv::Accumulator::reconstructionFrame(size);
     }
@@ -60,7 +59,7 @@ public:
         frame.convertTo(correctedFrame, CV_8U, scaleFactor, shiftFactor);
 
         // output
-        outputs.getFrame("frame") << correctedFrame;
+        outputs.getFrameOutput("frame").getOutputData() << correctedFrame;
     }
 
     static dv::Accumulator::Decay decayFromString(const std::string &name) {

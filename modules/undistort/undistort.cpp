@@ -57,14 +57,14 @@ public:
 		if (eventsConnected) {
 			eventSize = inputs.getEventInput("events").size();
 			// Populate event output info node, keep same as input info node.
-			inputs.getEventInput("events").infoNode().copyTo(outputs.getInfo("undistortedEvents"));
+			outputs.getEventOutput("undistortedEvents").setup(inputs.getEventInput("events"));
 		}
 
 		if (framesConnected) {
 			frameSize = inputs.getFrameInput("frames").size();
 
 			// Populate event output info node, keep same as input info node.
-			inputs.getFrameInput("frames").infoNode().copyTo(outputs.getInfo("undistortedFrames"));
+			outputs.getFrameOutput("undistortedFrames").setup(inputs.getFrameInput("frames"));
 		}
 	}
 
@@ -76,10 +76,10 @@ public:
 
 	void run() override {
 		auto events_in  = inputs.getEventInput("events").data();
-		auto events_out = outputs.get<dv::EventPacket>("undistortedEvents");
+		auto events_out = outputs.getEventOutput("undistortedEvents").getOutputData();
 
 		auto frame_in  = inputs.getFrameInput("frames").data();
-		auto frame_out = outputs.get<dv::Frame>("undistortedFrames");
+		auto frame_out = outputs.getFrameOutput("undistortedFrames").getOutputData();
 
 		// At this point we always try to load the calibration settings for undistortion.
 		// Maybe they just got created or exist from a previous run.

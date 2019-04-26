@@ -69,8 +69,7 @@ public:
 
 	LensCalibration() {
 		imageSize = inputs.getFrameInput("frames").size();
-		inputs.getFrameInput("frames").infoNode().copyTo(outputs.getInfo("patternCorners"));
-
+		outputs.getFrameOutput("patternCorners").setup(inputs.getFrameInput("frames"));
 		configUpdate();
 	}
 
@@ -124,7 +123,7 @@ public:
 	void run() override {
 		auto frame_in = inputs.getFrameInput("frames").data();
 
-		auto corners_out = outputs.get<dv::Frame>("patternCorners");
+		auto corners_out = outputs.getFrameOutput("patternCorners").getOutputData();
 
 		// Calibration is done only using frames.
 		if (!calibrationCompleted) {
