@@ -34,7 +34,7 @@ public:
 
 	FrameEnhancer() {
 		// Populate frame output info node, keep same as input info node.
-		inputs.getFrameInput("frames").info().copyTo(outputs.getInfo("frames"));
+		inputs.getFrameInput("frames").infoNode().copyTo(outputs.getInfo("frames"));
 
 		// Call once to translate string into enum properly.
 		configUpdate();

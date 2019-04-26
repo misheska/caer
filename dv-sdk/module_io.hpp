@@ -9,6 +9,16 @@
 #include "module.h"
 #include "utils.h"
 
+// Allow disabling of OpenCV requirement.
+#ifndef DV_API_OPENCV_SUPPORT
+#	define DV_API_OPENCV_SUPPORT 1
+#endif
+
+#if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
+#	include <opencv2/core.hpp>
+#endif
+
+
 namespace dv {
 
 class InputDefinition {
@@ -85,13 +95,25 @@ public:
 	 * input/output
 	 * @return A node that contains the specified inputs information, such as "sizeX" or "sizeY"
 	 */
-	const dv::Config::Node info() const {
+	const dv::Config::Node infoNode() const {
 		// const_cast and then re-add const manually. Needed for transition to C++ type.
 		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData_, name_.c_str())));
 	}
 
+	/**
+	 * Returns true, if this optional input is actually connected to an output of another module
+	 * @return true, if this input is connected
+	 */
 	bool isConnected() const {
 		return (dvModuleInputIsConnected(moduleData_, name_.c_str()));
+	}
+
+	/**
+	 * Returns the description of the origin of the data
+	 * @return the description of the origin of the data
+	 */
+	const std::string& getOriginDescription() const {
+	    return infoNode().getString(name_);
 	}
 
 };
@@ -109,13 +131,23 @@ public:
 	RuntimeInput(const std::string &name, dvModuleData moduleData) : RuntimeInputCommon(name, moduleData) {
 	}
 
+    InputDataWrapper<dv::EventPacket> events() const {
+	    return data();
+	}
+
 	int sizeX() const {
-		return info().getInt("sizeX");
+		return infoNode().getInt("sizeX");
 	}
 
 	int sizeY() const {
-		return info().getInt("sizeY");
+		return infoNode().getInt("sizeY");
 	}
+
+#if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
+	const cv::Size size() const {
+		return cv::Size(sizeX(), sizeY());
+	}
+#endif
 };
 
 template <>
@@ -124,13 +156,23 @@ public:
 	RuntimeInput(const std::string &name, dvModuleData moduleData) : RuntimeInputCommon(name, moduleData) {
 	}
 
+    InputDataWrapper<dv::Frame> frame() const {
+        return data();
+    }
+
 	int sizeX() const {
-		return info().getInt("sizeX");
+		return infoNode().getInt("sizeX");
 	}
 
 	int sizeY() const {
-		return info().getInt("sizeY");
+		return infoNode().getInt("sizeY");
 	}
+
+#if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
+	const cv::Size size() const {
+		return cv::Size(sizeX(), sizeY());
+	}
+#endif
 };
 
 

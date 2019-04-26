@@ -62,7 +62,7 @@ public:
 			eventSizeY = static_cast<int16_t>(eventsInput.sizeY());
 
 			// Populate event output info node, keep same as input info node.
-			eventsInput.info().copyTo(outputs.getInfo("undistortedEvents"));
+            eventsInput.infoNode().copyTo(outputs.getInfo("undistortedEvents"));
 		}
 
 		if (framesConnected) {
@@ -71,7 +71,7 @@ public:
 			frameSizeY = static_cast<int16_t>(framesInput.sizeY());
 
 			// Populate event output info node, keep same as input info node.
-			framesInput.info().copyTo(outputs.getInfo("undistortedFrames"));
+            framesInput.infoNode().copyTo(outputs.getInfo("undistortedFrames"));
 		}
 	}
 

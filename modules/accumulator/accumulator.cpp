@@ -13,10 +13,15 @@ public:
     }
 
     static void addInputs(std::vector<dv::InputDefinition> &in) {
+
+    //    in.addEventInput("events");
+
         in.emplace_back("events", dv::EventPacket::identifier, false);
     }
 
     static void addOutputs(std::vector<dv::OutputDefinition> &out) {
+    //    out.addFrameOutput("frames", );
+
         out.emplace_back("frames", dv::Frame::identifier);
     }
 
@@ -34,16 +39,16 @@ public:
 
 
     Accumulator() {
-        int sizeX = inputs.getEventInput("events").sizeX();
-        int sizeY = inputs.getEventInput("events").sizeY();
-        size = cv::Size(sizeX, sizeY);
+        outputs.getframeoutput("frames").setup(inputs.getEventInput("frame"));
+
+        size = inputs.getEventInput("events").size();
         frameAccumulator = dv::Accumulator::reconstructionFrame(size);
     }
 
 
     void run() override {
         // integrate frame
-        frameAccumulator.accumulate(inputs.getEventInput("events").data());
+        frameAccumulator.accumulate(inputs.getEventInput("events").events());
 
         // generate frame
         auto frame = frameAccumulator.generateFrame();

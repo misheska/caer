@@ -5,15 +5,11 @@
 #include "wrappers.hpp"
 
 // Allow disabling of OpenCV requirement.
-#ifndef DV_FRAME_OPENCV_SUPPORT
-#	define DV_FRAME_OPENCV_SUPPORT 1
+#ifndef DV_API_OPENCV_SUPPORT
+#	define DV_API_OPENCV_SUPPORT 1
 #endif
 
-
-#include <boost/preprocessor/stringize.hpp>
-#pragma message("OPENCV frame support: " BOOST_PP_STRINGIZE(DV_FRAME_OPENCV_SUPPORT))
-
-#if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
+#if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
 #	include <opencv2/core.hpp>
 #	include <opencv2/core/utility.hpp>
 #endif
@@ -25,13 +21,13 @@ private:
 	using NativeType = typename Frame::NativeTableType;
 
 	std::shared_ptr<const NativeType> ptr;
-#if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
+#if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
 	std::shared_ptr<const cv::Mat> matPtr;
 #endif
 
 public:
 	InputDataWrapper(std::shared_ptr<const NativeType> p) : ptr(std::move(p)) {
-#if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
+#if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
 		// Use custom deleter to bind life-time of main data 'ptr' to OpenCV 'matPtr'.
 		if (ptr) {
 			matPtr = std::shared_ptr<const cv::Mat>{new cv::Mat(ptr->sizeY, ptr->sizeX, static_cast<int>(ptr->format),
@@ -57,7 +53,7 @@ public:
 		return (ptr.get());
 	}
 
-#if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
+#if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
 	/**
 	 * Return a read-only OpenCV Mat representing this frame.
 	 *
@@ -129,7 +125,7 @@ public:
 		return (ptr);
 	}
 
-#if defined(DV_FRAME_OPENCV_SUPPORT) && DV_FRAME_OPENCV_SUPPORT == 1
+#if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
 	/**
 	 * Return an OpenCV Mat representing this frame.
 	 * Please note the actual backing memory comes from the Frame->pixels vector.

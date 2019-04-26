@@ -74,7 +74,7 @@ public:
 		auto frameInput = inputs.getFrameInput("frames");
 		imageSize = cv::Size(frameInput.sizeX(), frameInput.sizeY());
 
-		frameInput.info().copyTo(outputs.getInfo("patternCorners"));
+		frameInput.infoNode().copyTo(outputs.getInfo("patternCorners"));
 
 		configUpdate();
 	}

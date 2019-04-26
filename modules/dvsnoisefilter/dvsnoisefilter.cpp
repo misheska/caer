@@ -122,7 +122,7 @@ public:
 		timestampsMap.resize(static_cast<size_t>(sizeX * sizeY));
 
 		// Populate event output info node, keep same as input info node.
-		eventInput.info().copyTo(outputs.getInfo("events"));
+		eventInput.infoNode().copyTo(outputs.getInfo("events"));
 	}
 
 	void run() override {
