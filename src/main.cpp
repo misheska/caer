@@ -264,6 +264,12 @@ static void mainRunner() {
 		}
 	}
 
+	{
+		std::scoped_lock lock(dv::MainData::getGlobal().modulesLock);
+
+		dv::MainData::getGlobal().modules.clear();
+	}
+
 	// Remove attribute listeners for clean shutdown.
 	systemNode.removeAttributeListener(nullptr, &systemRunningListener);
 	systemNode.removeAttributeListener(nullptr, &dv::ConfigWriteBackListener);
