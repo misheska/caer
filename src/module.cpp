@@ -421,8 +421,7 @@ void dv::Module::shutdownProcedure(bool doModuleExit, bool disableModule) {
 		moduleConfigNode.put<dv::CfgType::BOOL>("running", false);
 	}
 	else {
-		// Rate-limit retries to once per second.
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+		run.runDelay = true;
 	}
 }
 
@@ -454,6 +453,13 @@ void dv::Module::runThread() {
 }
 
 void dv::Module::runStateMachine() {
+	if (run.runDelay) {
+		// Rate-limit retries to once per second.
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+
+		run.runDelay = false;
+	}
+
 	bool shouldRun = false;
 
 	{

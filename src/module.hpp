@@ -110,8 +110,9 @@ struct RunControl {
 	bool running;
 	std::atomic_bool isRunning;
 	std::atomic_bool configUpdate;
+	bool runDelay;
 
-	RunControl() : forcedShutdown(false), running(false), isRunning(false), configUpdate(false) {
+	RunControl() : forcedShutdown(false), running(false), isRunning(false), configUpdate(false), runDelay(false) {
 	}
 };
 
