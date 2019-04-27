@@ -3,325 +3,12 @@
         <node name="mainloop" path="/mainloop/">
             <node name="davisCamera" path="/mainloop/davisCamera/">
                 <attr key="_priorityAttributes" type="string">running</attr>
-                <attr key="autoStartup" type="bool">true</attr>
                 <attr key="busNumber" type="int">0</attr>
                 <attr key="devAddress" type="int">0</attr>
                 <attr key="logLevel" type="int">5</attr>
                 <attr key="moduleLibrary" type="string">dv_davis</attr>
+                <attr key="running" type="bool">true</attr>
                 <attr key="serialNumber" type="string"/>
-                <node name="DAVIS240A" path="/mainloop/davisCamera/DAVIS240A/">
-                    <node name="aps" path="/mainloop/davisCamera/DAVIS240A/aps/">
-                        <attr key="AutoExposure" type="bool">true</attr>
-                        <attr key="EndColumn0" type="int">239</attr>
-                        <attr key="EndRow0" type="int">179</attr>
-                        <attr key="Exposure" type="int">11359</attr>
-                        <attr key="FrameInterval" type="int">40000</attr>
-                        <attr key="FrameMode" type="string">Default</attr>
-                        <attr key="Run" type="bool">true</attr>
-                        <attr key="StartColumn0" type="int">0</attr>
-                        <attr key="StartRow0" type="int">0</attr>
-                        <attr key="TakeSnapShot" type="bool">false</attr>
-                        <attr key="WaitOnTransferStall" type="bool">true</attr>
-                        <attr key="_FrameModeListOptions" type="string">Default,Grayscale,Original</attr>
-                        <attr key="_priorityAttributes" type="string">Run,GlobalShutter,AutoExposure,Exposure,FrameInterval</attr>
-                    </node>
-                    <node name="bias" path="/mainloop/davisCamera/DAVIS240A/bias/">
-                        <node name="AEPdBn" path="/mainloop/davisCamera/DAVIS240A/bias/AEPdBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">6</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">91</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="AEPuXBp" path="/mainloop/davisCamera/DAVIS240A/bias/AEPuXBp/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">4</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">80</attr>
-                            <attr key="sex" type="string">P</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="AEPuYBp" path="/mainloop/davisCamera/DAVIS240A/bias/AEPuYBp/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">7</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">152</attr>
-                            <attr key="sex" type="string">P</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="ApsCasEpc" path="/mainloop/davisCamera/DAVIS240A/bias/ApsCasEpc/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">5</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">185</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Cascode</attr>
-                        </node>
-                        <node name="ApsOverflowLevelBn" path="/mainloop/davisCamera/DAVIS240A/bias/ApsOverflowLevelBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">6</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">253</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="ApsROSFBn" path="/mainloop/davisCamera/DAVIS240A/bias/ApsROSFBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">6</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">219</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="BiasBuffer" path="/mainloop/davisCamera/DAVIS240A/bias/BiasBuffer/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">5</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">254</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="DiffBn" path="/mainloop/davisCamera/DAVIS240A/bias/DiffBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">4</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">39</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="DiffCasBnc" path="/mainloop/davisCamera/DAVIS240A/bias/DiffCasBnc/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">5</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">115</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Cascode</attr>
-                        </node>
-                        <node name="IFRefrBn" path="/mainloop/davisCamera/DAVIS240A/bias/IFRefrBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">5</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">255</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="IFThrBn" path="/mainloop/davisCamera/DAVIS240A/bias/IFThrBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">5</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">255</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="LcolTimeoutBn" path="/mainloop/davisCamera/DAVIS240A/bias/LcolTimeoutBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">5</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">49</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="LocalBufBn" path="/mainloop/davisCamera/DAVIS240A/bias/LocalBufBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">5</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">164</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="OffBn" path="/mainloop/davisCamera/DAVIS240A/bias/OffBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">4</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">0</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="OnBn" path="/mainloop/davisCamera/DAVIS240A/bias/OnBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">5</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">255</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="PadFollBn" path="/mainloop/davisCamera/DAVIS240A/bias/PadFollBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">7</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">215</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="PixInvBn" path="/mainloop/davisCamera/DAVIS240A/bias/PixInvBn/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">5</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">129</attr>
-                            <attr key="sex" type="string">N</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="PrBp" path="/mainloop/davisCamera/DAVIS240A/bias/PrBp/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">2</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">58</attr>
-                            <attr key="sex" type="string">P</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="PrSFBp" path="/mainloop/davisCamera/DAVIS240A/bias/PrSFBp/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">1</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">16</attr>
-                            <attr key="sex" type="string">P</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="RefrBp" path="/mainloop/davisCamera/DAVIS240A/bias/RefrBp/">
-                            <attr key="_currentLevelListOptions" type="string">Normal,Low</attr>
-                            <attr key="_sexListOptions" type="string">N,P</attr>
-                            <attr key="_typeListOptions" type="string">Normal,Cascode</attr>
-                            <attr key="coarseValue" type="int">4</attr>
-                            <attr key="currentLevel" type="string">Normal</attr>
-                            <attr key="enabled" type="bool">true</attr>
-                            <attr key="fineValue" type="int">25</attr>
-                            <attr key="sex" type="string">P</attr>
-                            <attr key="type" type="string">Normal</attr>
-                        </node>
-                        <node name="SSN" path="/mainloop/davisCamera/DAVIS240A/bias/SSN/">
-                            <attr key="_operatingModeListOptions" type="string">ShiftedSource,HiZ,TiedToRail</attr>
-                            <attr key="_voltageLevelListOptions" type="string">SplitGate,SingleDiode,DoubleDiode</attr>
-                            <attr key="operatingMode" type="string">ShiftedSource</attr>
-                            <attr key="refValue" type="int">1</attr>
-                            <attr key="regValue" type="int">33</attr>
-                            <attr key="voltageLevel" type="string">SplitGate</attr>
-                        </node>
-                        <node name="SSP" path="/mainloop/davisCamera/DAVIS240A/bias/SSP/">
-                            <attr key="_operatingModeListOptions" type="string">ShiftedSource,HiZ,TiedToRail</attr>
-                            <attr key="_voltageLevelListOptions" type="string">SplitGate,SingleDiode,DoubleDiode</attr>
-                            <attr key="operatingMode" type="string">ShiftedSource</attr>
-                            <attr key="refValue" type="int">1</attr>
-                            <attr key="regValue" type="int">33</attr>
-                            <attr key="voltageLevel" type="string">SplitGate</attr>
-                        </node>
-                    </node>
-                    <node name="chip" path="/mainloop/davisCamera/DAVIS240A/chip/">
-                        <attr key="AERnArow" type="bool">false</attr>
-                        <attr key="AnalogMux0" type="int">0</attr>
-                        <attr key="AnalogMux1" type="int">0</attr>
-                        <attr key="AnalogMux2" type="int">0</attr>
-                        <attr key="BiasMux0" type="int">0</attr>
-                        <attr key="DigitalMux0" type="int">0</attr>
-                        <attr key="DigitalMux1" type="int">0</attr>
-                        <attr key="DigitalMux2" type="int">0</attr>
-                        <attr key="DigitalMux3" type="int">0</attr>
-                        <attr key="ResetCalibNeuron" type="bool">true</attr>
-                        <attr key="ResetTestPixel" type="bool">true</attr>
-                        <attr key="SpecialPixelControl" type="bool">false</attr>
-                        <attr key="TypeNCalibNeuron" type="bool">false</attr>
-                        <attr key="UseAOut" type="bool">false</attr>
-                        <attr key="_priorityAttributes" type="string"/>
-                    </node>
-                    <node name="dvs" path="/mainloop/davisCamera/DAVIS240A/dvs/">
-                        <attr key="ExternalAERControl" type="bool">false</attr>
-                        <attr key="Run" type="bool">true</attr>
-                        <attr key="WaitOnTransferStall" type="bool">false</attr>
-                        <attr key="_priorityAttributes" type="string">Run</attr>
-                    </node>
-                    <node name="externalInput" path="/mainloop/davisCamera/DAVIS240A/externalInput/">
-                        <attr key="DetectFallingEdges" type="bool">false</attr>
-                        <attr key="DetectPulseLength" type="int">10</attr>
-                        <attr key="DetectPulsePolarity" type="bool">true</attr>
-                        <attr key="DetectPulses" type="bool">true</attr>
-                        <attr key="DetectRisingEdges" type="bool">false</attr>
-                        <attr key="RunDetector" type="bool">false</attr>
-                        <attr key="_priorityAttributes" type="string"/>
-                    </node>
-                    <node name="imu" path="/mainloop/davisCamera/DAVIS240A/imu/">
-                        <attr key="AccelFullScale" type="int">1</attr>
-                        <attr key="DigitalLowPassFilter" type="int">1</attr>
-                        <attr key="GyroFullScale" type="int">1</attr>
-                        <attr key="RunAccel" type="bool">true</attr>
-                        <attr key="RunGyro" type="bool">true</attr>
-                        <attr key="RunTemp" type="bool">true</attr>
-                        <attr key="SampleRateDivider" type="int">0</attr>
-                        <attr key="_priorityAttributes" type="string"/>
-                    </node>
-                    <node name="multiplexer" path="/mainloop/davisCamera/DAVIS240A/multiplexer/">
-                        <attr key="DropDVSOnTransferStall" type="bool">true</attr>
-                        <attr key="DropExtInputOnTransferStall" type="bool">true</attr>
-                        <attr key="Run" type="bool">true</attr>
-                        <attr key="RunChip" type="bool">true</attr>
-                        <attr key="TimestampReset" type="bool">false</attr>
-                        <attr key="TimestampRun" type="bool">true</attr>
-                        <attr key="_priorityAttributes" type="string">TimestampReset</attr>
-                    </node>
-                    <node name="usb" path="/mainloop/davisCamera/DAVIS240A/usb/">
-                        <attr key="BufferNumber" type="int">8</attr>
-                        <attr key="BufferSize" type="int">8192</attr>
-                        <attr key="EarlyPacketDelay" type="int">8</attr>
-                        <attr key="Run" type="bool">true</attr>
-                        <attr key="_priorityAttributes" type="string"/>
-                    </node>
-                </node>
                 <node name="system" path="/mainloop/davisCamera/system/">
                     <attr key="DataExchangeBufferSize" type="int">64</attr>
                     <attr key="PacketContainerInterval" type="int">10000</attr>
@@ -330,10 +17,9 @@
             </node>
             <node name="eventVisualizer" path="/mainloop/eventVisualizer/">
                 <attr key="_priorityAttributes" type="string">running</attr>
-                <attr key="autoStartup" type="bool">true</attr>
                 <attr key="logLevel" type="int">5</attr>
                 <attr key="moduleLibrary" type="string">dv_visualizer</attr>
-                <attr key="running" type="bool">false</attr>
+                <attr key="running" type="bool">true</attr>
                 <attr key="subsampleRendering" type="int">1</attr>
                 <attr key="windowPositionX" type="int">1051</attr>
                 <attr key="windowPositionY" type="int">135</attr>
@@ -346,10 +32,9 @@
             </node>
             <node name="frameVisualizer" path="/mainloop/frameVisualizer/">
                 <attr key="_priorityAttributes" type="string">running</attr>
-                <attr key="autoStartup" type="bool">true</attr>
                 <attr key="logLevel" type="int">5</attr>
                 <attr key="moduleLibrary" type="string">dv_visualizer</attr>
-                <attr key="running" type="bool">false</attr>
+                <attr key="running" type="bool">true</attr>
                 <attr key="subsampleRendering" type="int">1</attr>
                 <attr key="windowPositionX" type="int">504</attr>
                 <attr key="windowPositionY" type="int">157</attr>
@@ -362,7 +47,6 @@
             </node>
             <node name="noiseFilter" path="/mainloop/noiseFilter/">
                 <attr key="_priorityAttributes" type="string">running</attr>
-                <attr key="autoStartup" type="bool">true</attr>
                 <attr key="backgroundActivityCheckPolarity" type="bool">false</attr>
                 <attr key="backgroundActivityEnable" type="bool">true</attr>
                 <attr key="backgroundActivitySupportMax" type="int">8</attr>
@@ -389,9 +73,6 @@
             <attr key="backgroundService" type="bool">false</attr>
             <node name="logger" path="/system/logger/">
                 <attr key="logLevel" type="int">5</attr>
-            </node>
-            <node name="modules" path="/system/modules/">
-                <attr key="modulesSearchPath" type="string">/usr/share/dv/modules</attr>
             </node>
             <node name="server" path="/system/server/">
                 <attr key="ipAddress" type="string">127.0.0.1</attr>

@@ -9,16 +9,16 @@ libcaer git master checkout, as we often depend on new features of the libcaer d
 
 Linux, MacOS X or Windows (for Windows build instructions see README.Windows) <br />
 gcc >= 7.0 or clang >= 5.0 <br />
-cmake >= 2.8.12 <br />
+cmake >= 3.12.0 <br />
 Boost >= 1.50 (with system, filesystem, iostreams, program_options) <br />
 OpenSSL (for Boost.ASIO SSL) <br />
 OpenCV >= 3.1.0 <br />
-libcaer >= 3.1.2 <br />
+libcaer >= 3.1.9 <br />
 Optional: tcmalloc >= 2.2 (faster memory allocation) <br />
-Optional: SFML >= 2.3.0, glew >= 1.10.0 (visualizer module) <br />
+Optional: SFML >= 2.3.0 (visualizer module) <br />
 
 Install all dependencies manually on Ubuntu Bionic:
-$ sudo apt install git cmake build-essential pkg-config libboost-all-dev libusb-1.0-0-dev libserialport-dev libopencv-contrib-dev libopencv-dev libsfml-dev libglew-dev
+$ sudo apt install git cmake build-essential pkg-config libboost-all-dev libusb-1.0-0-dev libserialport-dev libopencv-contrib-dev libopencv-dev libsfml-dev
 
 # Installation
 

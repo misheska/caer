@@ -37,10 +37,6 @@
 #define INTERNAL_XSTR(a) INTERNAL_STR(a)
 #define INTERNAL_STR(a) #a
 
-namespace dvCfg  = dv::Config;
-using dvCfgType  = dvCfg::AttributeType;
-using dvCfgFlags = dvCfg::AttributeFlags;
-
 static void mainRunner();
 static void mainSegfaultHandler(int signum);
 static void mainShutdownHandler(int signum);
@@ -71,7 +67,9 @@ void dv::removeModule(const std::string &name) {
 	std::scoped_lock lock(dv::MainData::getGlobal().modulesLock);
 
 	auto restoreLogger = dv::LoggerGet();
+
 	dv::MainData::getGlobal().modules.erase(name);
+
 	dv::LoggerSet(restoreLogger);
 }
 
@@ -178,14 +176,14 @@ static void mainRunner() {
 #endif
 
 	// Ensure core nodes exist.
-	auto systemNode   = dvCfg::GLOBAL.getNode("/system/");
-	auto mainloopNode = dvCfg::GLOBAL.getNode("/mainloop/");
+	auto systemNode   = dv::Cfg::GLOBAL.getNode("/system/");
+	auto mainloopNode = dv::Cfg::GLOBAL.getNode("/mainloop/");
 
 	// Support device discovery.
 	auto devicesNode = systemNode.getRelativeNode("devices/");
 
-	devicesNode.create<dvCfgType::BOOL>("updateAvailableDevices", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT,
-		"Update available devices list.");
+	devicesNode.create<dv::CfgType::BOOL>("updateAvailableDevices", false, {},
+		dv::CfgFlags::NORMAL | dv::CfgFlags::NO_EXPORT, "Update available devices list.");
 	devicesNode.attributeModifierButton("updateAvailableDevices", "EXECUTE");
 	devicesNode.addAttributeListener(nullptr, &dv::DevicesUpdateListener);
 
@@ -197,31 +195,31 @@ static void mainRunner() {
 	// Default search directories.
 	boost::filesystem::path modulesDefaultDir(INTERNAL_XSTR(DV_MODULES_DIR));
 
-	modulesNode.create<dvCfgType::STRING>("modulesSearchPath", modulesDefaultDir.string(), {1, 16 * PATH_MAX},
-		dvCfgFlags::NORMAL, "Directories to search loadable modules in, separated by '|'.");
+	modulesNode.create<dv::CfgType::STRING>("modulesSearchPath", modulesDefaultDir.string(), {1, 16 * PATH_MAX},
+		dv::CfgFlags::NORMAL, "Directories to search loadable modules in, separated by '|'.");
 
-	modulesNode.create<dvCfgType::BOOL>("updateModulesInformation", false, {},
-		dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Update modules information.");
+	modulesNode.create<dv::CfgType::BOOL>("updateModulesInformation", false, {},
+		dv::CfgFlags::NORMAL | dv::CfgFlags::NO_EXPORT, "Update modules information.");
 	modulesNode.attributeModifierButton("updateModulesInformation", "EXECUTE");
 	modulesNode.addAttributeListener(nullptr, &dv::ModulesUpdateInformationListener);
 
 	dv::ModulesUpdateInformation();
 
 	// Allow user-driven configuration write-back.
-	systemNode.create<dvCfgType::BOOL>("writeConfiguration", false, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT,
-		"Write current configuration to XML config file.");
+	systemNode.create<dv::CfgType::BOOL>("writeConfiguration", false, {},
+		dv::CfgFlags::NORMAL | dv::CfgFlags::NO_EXPORT, "Write current configuration to XML config file.");
 	systemNode.attributeModifierButton("writeConfiguration", "EXECUTE");
 	systemNode.addAttributeListener(nullptr, &dv::ConfigWriteBackListener);
 
 	// Allow system running status control (shutdown).
-	systemNode.create<dvCfgType::BOOL>(
-		"running", true, {}, dvCfgFlags::NORMAL | dvCfgFlags::NO_EXPORT, "Global system start/stop.");
+	systemNode.create<dv::CfgType::BOOL>(
+		"running", true, {}, dv::CfgFlags::NORMAL | dv::CfgFlags::NO_EXPORT, "Global system start/stop.");
 	systemNode.addAttributeListener(nullptr, &systemRunningListener);
 
 	// Add each module defined in configuration to runnable modules.
 	// Do not start them yet.
 	for (const auto &child : mainloopNode.getChildren()) {
-		dv::addModule(child.getName(), child.get<dvCfgType::STRING>("moduleLibrary"), false);
+		dv::addModule(child.getName(), child.get<dv::CfgType::STRING>("moduleLibrary"), false);
 	}
 
 	// Start modules after having added them all, so that connections between
@@ -239,7 +237,7 @@ static void mainRunner() {
 
 	// Main thread now works as updater (sleeps most of the time).
 	while (dv::MainData::getGlobal().systemRunning.load(std::memory_order_relaxed)) {
-		dvCfg::GLOBAL.attributeUpdaterRun();
+		dv::Cfg::GLOBAL.attributeUpdaterRun();
 
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
@@ -256,12 +254,12 @@ static void mainRunner() {
 	// We don't remove modules here, as that would delete their configuration.
 	// But we do make sure they're all properly shut down.
 	for (auto &child : mainloopNode.getChildren()) {
-		child.put<dvCfgType::BOOL>("running", false);
+		child.put<dv::CfgType::BOOL>("running", false);
 	}
 
 	// Wait for termination ...
 	for (const auto &child : mainloopNode.getChildren()) {
-		while (child.get<dvCfgType::BOOL>("isRunning")) {
+		while (child.get<dv::CfgType::BOOL>("isRunning")) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 	}
@@ -292,7 +290,7 @@ static void mainShutdownHandler(int signum) {
 	UNUSED_ARGUMENT(signum);
 
 	// Simply set all the running flags to false on SIGTERM and SIGINT (CTRL+C) for global shutdown.
-	dv::MainData::getGlobal().systemRunning.store(false);
+	dv::MainData::getGlobal().systemRunning = false;
 }
 
 static void systemRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
@@ -302,7 +300,7 @@ static void systemRunningListener(dvConfigNode node, void *userData, enum dvConf
 	UNUSED_ARGUMENT(changeValue);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
-		dv::MainData::getGlobal().systemRunning.store(false);
+		dv::MainData::getGlobal().systemRunning = false;
 	}
 }
 

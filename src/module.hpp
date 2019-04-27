@@ -39,13 +39,15 @@ public:
 	dv::Types::Type type;
 	bool optional;
 	ModuleOutput *linkedOutput;
+	Module *parentModule;
 	libcaer::ringbuffer::RingBuffer<IntrusiveTypedObject *> queue;
 	std::vector<boost::intrusive_ptr<IntrusiveTypedObject>> inUsePackets;
 
-	ModuleInput(const dv::Types::Type &t, bool opt) :
+	ModuleInput(const dv::Types::Type &t, bool opt, Module *parentModule_) :
 		type(t),
 		optional(opt),
 		linkedOutput(nullptr),
+		parentModule(parentModule_),
 		queue(INTER_MODULE_TRANSFER_QUEUE_SIZE) {
 	}
 };
@@ -88,11 +90,15 @@ class ModuleOutput {
 public:
 	dv::Types::Type type;
 	dv::Config::Node infoNode;
+	Module *parentModule;
 	std::mutex destinationsLock;
 	std::vector<OutConnection> destinations;
 	boost::intrusive_ptr<IntrusiveTypedObject> nextPacket;
 
-	ModuleOutput(const dv::Types::Type &t, dv::Config::Node info) : type(t), infoNode(info) {
+	ModuleOutput(const dv::Types::Type &type_, dv::Config::Node infoNode_, Module *parentModule_) :
+		type(type_),
+		infoNode(infoNode_),
+		parentModule(parentModule_) {
 	}
 };
 
@@ -100,12 +106,12 @@ struct RunControl {
 	// Run status.
 	std::mutex lock;
 	std::condition_variable cond;
-	bool forceShutdown;
+	bool forcedShutdown;
 	bool running;
-	bool isRunning;
+	std::atomic_bool isRunning;
 	std::atomic_bool configUpdate;
 
-	RunControl() : forceShutdown(false), running(false), isRunning(false), configUpdate(false) {
+	RunControl() : forcedShutdown(false), running(false), isRunning(false), configUpdate(false) {
 	}
 };
 
@@ -115,6 +121,7 @@ private:
 	std::string name;
 	dvModuleInfo info;
 	dv::ModuleLibrary library;
+	dv::Config::Node moduleConfigNode;
 	// Run status.
 	struct RunControl run;
 	// Logging.
@@ -168,8 +175,9 @@ private:
 	void runThread();
 	void runStateMachine();
 	void shutdownProcedure(bool doModuleExit, bool disableModule);
+	void forcedShutdown(bool shutdown);
 
-	static void moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	static void moduleRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);
 	static void moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 		const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue);

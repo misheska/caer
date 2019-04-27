@@ -12,32 +12,30 @@
 #include <regex>
 #include <typeinfo>
 
-namespace dvCfg  = dv::Config;
-using dvCfgType  = dvCfg::AttributeType;
-using dvCfgFlags = dvCfg::AttributeFlags;
-
-dv::Module::Module(std::string_view _name, std::string_view _library) : name(_name), threadAlive(false) {
+dv::Module::Module(std::string_view name_, std::string_view library_) :
+	name(name_),
+	moduleConfigNode(dv::Cfg::GLOBAL.getNode("/mainloop/" + name + "/")),
+	threadAlive(false) {
 	// Load library to get module functions.
 	try {
-		std::tie(library, info) = dv::ModulesLoadLibrary(_library);
+		std::tie(library, info) = dv::ModulesLoadLibrary(library_);
 	}
 	catch (const std::exception &ex) {
-		auto exMsg = boost::format("%s: module library load failed, error '%s'.") % name % ex.what();
+		auto exMsg = boost::format("%s: module library load failed, exception '%s :: %s'.") % name
+					 % boost::core::demangle(typeid(ex).name()) % ex.what();
 		dv::Log(dv::logLevel::ERROR, exMsg);
-		throw std::invalid_argument(exMsg.str());
+		throw std::runtime_error(exMsg.str());
 	}
 
 	// Set configuration node (so it's user accessible).
-	auto moduleConfigNode = dvCfg::GLOBAL.getNode("/mainloop/" + name + "/");
-
 	moduleNode = static_cast<dvConfigNode>(moduleConfigNode);
 
 	// State allocated later by init().
 	moduleState = nullptr;
 
 	// Ensure the library is stored for successive startups.
-	moduleConfigNode.create<dvCfgType::STRING>(
-		"moduleLibrary", std::string(_library), {1, PATH_MAX}, dvCfgFlags::READ_ONLY, "Module library.");
+	moduleConfigNode.create<dv::CfgType::STRING>(
+		"moduleLibrary", std::string(library_), {1, PATH_MAX}, dv::CfgFlags::READ_ONLY, "Module library.");
 
 	// Initialize logging related functionality.
 	LoggingInit();
@@ -53,8 +51,8 @@ dv::Module::Module(std::string_view _name, std::string_view _library) : name(_na
 
 void dv::Module::start() {
 	// Start module thread.
-	threadAlive.store(true);
-	thread = std::thread(&dv::Module::runThread, this);
+	threadAlive = true;
+	thread      = std::thread(&dv::Module::runThread, this);
 }
 
 dv::Module::~Module() {
@@ -69,13 +67,12 @@ dv::Module::~Module() {
 	}
 
 	// Stop module thread and wait for it to exit.
-	threadAlive.store(false);
+	threadAlive = false;
 	run.cond.notify_all();
-
 	thread.join();
 
 	// Cleanup configuration and types.
-	dvCfg::Node(moduleNode).removeNode();
+	moduleConfigNode.removeNode();
 
 	MainData::getGlobal().typeSystem.unregisterModuleTypes(this);
 
@@ -86,44 +83,37 @@ dv::Module::~Module() {
 }
 
 void dv::Module::LoggingInit() {
-	auto moduleConfigNode = dvCfg::Node(moduleNode);
-
 	// Per-module custom log string prefix.
 	logger.logPrefix = name;
 
 	// Per-module log level support. Initialize with global log level value.
-	moduleConfigNode.create<dvCfgType::INT>("logLevel", CAER_LOG_NOTICE, {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
-		dvCfgFlags::NORMAL, "Module-specific log-level.");
+	moduleConfigNode.create<dv::CfgType::INT>("logLevel", CAER_LOG_NOTICE, {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
+		dv::CfgFlags::NORMAL, "Module-specific log-level.");
 
 	moduleConfigNode.addAttributeListener(&logger.logLevel, &moduleLogLevelListener);
-	logger.logLevel.store(moduleConfigNode.get<dvCfgType::INT>("logLevel"));
+	logger.logLevel = moduleConfigNode.get<dv::CfgType::INT>("logLevel");
 
 	// Switch to current module logger.
 	dv::LoggerSet(&logger);
 }
 
 void dv::Module::RunningInit() {
-	auto moduleConfigNode = dvCfg::Node(moduleNode);
-
 	// Initialize shutdown controls. By default modules always run.
-	moduleConfigNode.create<dvCfgType::BOOL>("running", true, {}, dvCfgFlags::NORMAL, "Module start/stop.");
+	moduleConfigNode.create<dv::CfgType::BOOL>("running", true, {}, dv::CfgFlags::NORMAL, "Module start/stop.");
 
-	moduleConfigNode.create<dvCfgType::BOOL>(
-		"isRunning", false, {}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Module running state.");
+	moduleConfigNode.create<dv::CfgType::BOOL>(
+		"isRunning", false, {}, dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT, "Module running state.");
 
-	run.running = moduleConfigNode.get<dvCfgType::BOOL>("running");
+	moduleConfigNode.addAttributeListener(&run, &moduleRunningListener);
+	run.running = moduleConfigNode.get<dv::CfgType::BOOL>("running");
 
-	run.forceShutdown = false;
+	run.forcedShutdown = false;
 
 	run.isRunning = false;
-	moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
-
-	moduleConfigNode.addAttributeListener(this, &moduleShutdownListener);
+	moduleConfigNode.updateReadOnly<dv::CfgType::BOOL>("isRunning", false);
 }
 
 void dv::Module::StaticInit() {
-	auto moduleConfigNode = dvCfg::Node(moduleNode);
-
 	moduleConfigNode.addAttributeListener(&run.configUpdate, &moduleConfigUpdateListener);
 
 	// Call module's staticInit function to create default static config.
@@ -158,23 +148,21 @@ void dv::Module::registerInput(std::string_view inputName, std::string_view type
 	}
 
 	// Add info to internal data structure.
-	inputs.try_emplace(inputNameString, typeInfo, optional);
+	inputs.try_emplace(inputNameString, typeInfo, optional, this);
 
 	// Add info to ConfigTree.
-	auto moduleConfigNode = dvCfg::Node(moduleNode);
-
 	auto inputNode = moduleConfigNode.getRelativeNode("inputs/" + inputNameString + "/");
 
-	inputNode.create<dvCfgType::BOOL>("optional", optional, {}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT,
+	inputNode.create<dv::CfgType::BOOL>("optional", optional, {}, dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT,
 		"Module can run without this input being connected.");
-	inputNode.create<dvCfgType::STRING>("typeIdentifier", typeInfo.identifier, {4, 4},
-		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type identifier.");
-	inputNode.create<dvCfgType::STRING>("typeDescription", typeInfo.description, {1, 200},
-		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type description.");
+	inputNode.create<dv::CfgType::STRING>("typeIdentifier", typeInfo.identifier, {4, 4},
+		dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT, "Type identifier.");
+	inputNode.create<dv::CfgType::STRING>("typeDescription", typeInfo.description, {1, 200},
+		dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT, "Type description.");
 
 	// Add connectivity configuration attribute.
-	inputNode.create<dvCfgType::STRING>(
-		"from", "", {0, 256}, dvCfgFlags::NORMAL, "From which 'moduleName[outputName]' to get data.");
+	inputNode.create<dv::CfgType::STRING>(
+		"from", "", {0, 256}, dv::CfgFlags::NORMAL, "From which 'moduleName[outputName]' to get data.");
 
 	dv::Log(dv::logLevel::DEBUG, "Input '%s' registered with type '%s' (optional=%d).", inputNameString.c_str(),
 		typeInfo.identifier, optional);
@@ -190,19 +178,17 @@ void dv::Module::registerOutput(std::string_view outputName, std::string_view ty
 	}
 
 	// Add info to ConfigTree.
-	auto moduleConfigNode = dvCfg::Node(moduleNode);
-
 	auto outputNode = moduleConfigNode.getRelativeNode("outputs/" + outputNameString + "/");
 
-	outputNode.create<dvCfgType::STRING>("typeIdentifier", typeInfo.identifier, {4, 4},
-		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type identifier.");
-	outputNode.create<dvCfgType::STRING>("typeDescription", typeInfo.description, {1, 200},
-		dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Type description.");
+	outputNode.create<dv::CfgType::STRING>("typeIdentifier", typeInfo.identifier, {4, 4},
+		dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT, "Type identifier.");
+	outputNode.create<dv::CfgType::STRING>("typeDescription", typeInfo.description, {1, 200},
+		dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT, "Type description.");
 
 	auto infoNode = outputNode.getRelativeNode("info/");
 
 	// Add info to internal data structure.
-	outputs.try_emplace(outputNameString, typeInfo, infoNode);
+	outputs.try_emplace(outputNameString, typeInfo, infoNode, this);
 
 	dv::Log(
 		dv::logLevel::DEBUG, "Output '%s' registered with type '%s'.", outputNameString.c_str(), typeInfo.identifier);
@@ -213,10 +199,8 @@ static const std::regex inputConnRegex("^([a-zA-Z-_\\d\\.]+)\\[([a-zA-Z-_\\d\\.]
 void dv::Module::inputConnectivityInitialize() {
 	for (auto &input : inputs) {
 		// Get current module connectivity configuration.
-		auto moduleConfigNode = dvCfg::Node(moduleNode);
-
 		auto inputNode = moduleConfigNode.getRelativeNode("inputs/" + input.first + "/");
-		auto inputConn = inputNode.get<dvCfgType::STRING>("from");
+		auto inputConn = inputNode.get<dv::CfgType::STRING>("from");
 
 		// Check basic syntax: either empty or 'x[y]'.
 		if (inputConn.empty()) {
@@ -270,8 +254,7 @@ void dv::Module::inputConnectivityInitialize() {
 			throw std::out_of_range(msg.str());
 		}
 
-		// Last, ensure the other module is running. We can directly check
-		// its isRunning variable, as we hold the global modules lock.
+		// Last, ensure the other module is running.
 		if (!otherModule->run.isRunning) {
 			auto msg = boost::format("Input '%s': required module '%s' is not running. Please start it first!")
 					   % input.first % moduleName;
@@ -339,7 +322,7 @@ void dv::Module::inputConnectivityDestroy() {
 	for (auto &input : inputs) {
 		if (input.second.linkedOutput != nullptr) {
 			// Remove the connection from the output.
-			OutConnection dataConn{&input.second.queue, &dataAvailable, &input.second};
+			OutConnection dataConn{nullptr, nullptr, &input.second};
 
 			disconnectFromModuleOutput(input.second.linkedOutput, dataConn);
 
@@ -435,8 +418,22 @@ void dv::Module::shutdownProcedure(bool doModuleExit, bool disableModule) {
 	// If we cannot recover from whatever caused the shutdown,
 	// we force-disable the module and let the user take action.
 	if (disableModule) {
-		dvCfg::Node(moduleNode).put<dvCfgType::BOOL>("running", false);
+		moduleConfigNode.put<dv::CfgType::BOOL>("running", false);
 	}
+	else {
+		// Rate-limit retries to once per second.
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+}
+
+void dv::Module::forcedShutdown(bool shutdown) {
+	{
+		std::scoped_lock lock(run.lock);
+
+		run.forcedShutdown = shutdown;
+	}
+
+	run.cond.notify_all();
 }
 
 void dv::Module::runThread() {
@@ -457,8 +454,6 @@ void dv::Module::runThread() {
 }
 
 void dv::Module::runStateMachine() {
-	auto moduleConfigNode = dvCfg::Node(moduleNode);
-
 	bool shouldRun = false;
 
 	{
@@ -469,15 +464,15 @@ void dv::Module::runStateMachine() {
 				return (true); // Stop waiting on thread exit.
 			}
 
-			return (run.running || run.isRunning);
+			return (run.running || run.isRunning.load(std::memory_order_relaxed));
 		});
 
-		shouldRun = (run.running && !run.forceShutdown);
+		shouldRun = (run.running && !run.forcedShutdown);
 	}
 
-	if (run.isRunning && shouldRun) {
+	if (run.isRunning.load(std::memory_order_relaxed) && shouldRun) {
 		if (run.configUpdate.load(std::memory_order_relaxed)) {
-			run.configUpdate.store(false);
+			run.configUpdate = false;
 
 			if (info->functions->moduleConfig != nullptr) {
 				// Call config function. 'configUpdate' variable reset is done above.
@@ -488,7 +483,7 @@ void dv::Module::runStateMachine() {
 					dv::Log(dv::logLevel::ERROR, "moduleConfig(): '%s :: %s', disabling module.",
 						boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
 
-					moduleConfigNode.put<dvCfgType::BOOL>("running", false);
+					moduleConfigNode.put<dv::CfgType::BOOL>("running", false);
 					return;
 				}
 			}
@@ -513,12 +508,12 @@ void dv::Module::runStateMachine() {
 				dv::Log(dv::logLevel::ERROR, "moduleRun(): '%s :: %s', disabling module.",
 					boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
 
-				moduleConfigNode.put<dvCfgType::BOOL>("running", false);
+				moduleConfigNode.put<dv::CfgType::BOOL>("running", false);
 				return;
 			}
 		}
 	}
-	else if (!run.isRunning && shouldRun) {
+	else if (!run.isRunning.load(std::memory_order_relaxed) && shouldRun) {
 		// Serialize module start/stop globally.
 		std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
@@ -562,7 +557,7 @@ void dv::Module::runStateMachine() {
 		// and implies a full configuration update. This avoids stale state
 		// forcing an update and/or reset right away in the first run of
 		// the module, which is unneeded and wasteful.
-		run.configUpdate.store(false);
+		run.configUpdate = false;
 
 		if (info->functions->moduleInit != nullptr) {
 			try {
@@ -591,21 +586,92 @@ void dv::Module::runStateMachine() {
 		}
 
 		run.isRunning = true;
-		moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", true);
+		moduleConfigNode.updateReadOnly<dv::CfgType::BOOL>("isRunning", true);
 	}
-	else if (run.isRunning && !shouldRun) {
-		// Shutdown downstream modules first. This happens recursively.
-		// TODO: implement.
+	else if (run.isRunning.load(std::memory_order_relaxed) && !shouldRun) {
+		std::vector<std::string> forcedShutdownModuleNames;
 
-		// Serialize module start/stop globally.
-		std::scoped_lock lock(MainData::getGlobal().modulesLock);
+		{
+			// Serialize module start/stop globally.
+			std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
-		// Full shutdown.
-		shutdownProcedure(true, false);
+			// Shutdown downstream modules first. This happens recursively.
+			// First prevent any module from connecting to us. Running is a pre-condition
+			// checked with this isRunning variable, so we set it false early
+			// to provent any later module from establishing a new connection.
+			run.isRunning = false;
 
-		run.forceShutdown = false; // Just did a shutdown, we're good.
-		run.isRunning     = false;
-		moduleConfigNode.updateReadOnly<dvCfgType::BOOL>("isRunning", false);
+			// Gather all outputs that must be shutdown.
+			for (auto &out : outputs) {
+				std::scoped_lock destLock(out.second.destinationsLock);
+
+				for (auto &dest : out.second.destinations) {
+					forcedShutdownModuleNames.push_back(dest.linkedInput->parentModule->name);
+				}
+			}
+
+			// Remove any duplicates.
+			vectorSortUnique(forcedShutdownModuleNames);
+
+			// Now force all those modules to shut down and remain
+			// in shutdown until allowed to run again, after this
+			// module has also turned itself off. Here we can just
+			// getModule() directly, as we still hold the global modules
+			// lock and nothing can have removed a module in the meantime.
+			for (auto &mName : forcedShutdownModuleNames) {
+				getModule(mName)->forcedShutdown(true);
+			}
+		}
+
+	checkDownstreamShutdown:
+		// Wait until all downstream modules have really quit. We check
+		// moduleNode.isRunning here because that is set _after_ a module
+		// has fully shut down (while the isRunning variable is set early).
+		// We hold the global modules lock during the check and check again
+		// that the module actually exists, to handle the case where modules
+		// could have been removed in the mean-time while we didn't hold
+		// the global lock. The global lock must be released between checks
+		// to allow the other modules to run their shutdown code.
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+		{
+			// Serialize module start/stop globally.
+			std::scoped_lock lock(MainData::getGlobal().modulesLock);
+
+			for (auto &mName : forcedShutdownModuleNames) {
+				auto mod = getModule(mName);
+				if (mod == nullptr) {
+					continue;
+				}
+
+				if (dv::Cfg::GLOBAL.getNode("/mainloop/" + mName + "/").get<dv::CfgType::BOOL>("isRunning")) {
+					goto checkDownstreamShutdown;
+				}
+			}
+		}
+
+		{
+			// Serialize module start/stop globally.
+			std::scoped_lock lock(MainData::getGlobal().modulesLock);
+
+			// Full shutdown.
+			shutdownProcedure(true, false);
+
+			moduleConfigNode.updateReadOnly<dv::CfgType::BOOL>("isRunning", false);
+
+			// Allow downstream modules to start again, depending on user config.
+			// First check for the existence of the corresponding module to verify
+			// the module still exists, since we didn't hold the global modules lock
+			// before all the time, it could have been removed by now.
+			for (auto &mName : forcedShutdownModuleNames) {
+				auto mod = getModule(mName);
+				if (mod == nullptr) {
+					continue;
+				}
+
+				mod->forcedShutdown(false);
+			}
+		}
 	}
 }
 
@@ -779,20 +845,20 @@ bool dv::Module::inputIsConnected(std::string_view inputName) {
 	return (input->linkedOutput != nullptr);
 }
 
-void dv::Module::moduleShutdownListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+void dv::Module::moduleRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
 	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
 	UNUSED_ARGUMENT(node);
 
-	auto module = static_cast<dv::Module *>(userData);
+	auto run = static_cast<dv::RunControl *>(userData);
 
 	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
 		{
-			std::scoped_lock lock(module->run.lock);
+			std::scoped_lock lock(run->lock);
 
-			module->run.running = changeValue.boolean;
+			run->running = changeValue.boolean;
 		}
 
-		module->run.cond.notify_all();
+		run->cond.notify_all();
 	}
 }
 
