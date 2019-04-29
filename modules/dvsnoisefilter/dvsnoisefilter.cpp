@@ -450,9 +450,8 @@ public:
 
 		// Print list of hot pixels for debugging.
 		for (size_t i = 0; i < hotPixelArray.size(); i++) {
-			auto msg = boost::format("HotPixel %zu: X=%" PRIi16 ", Y=%" PRIi16 ", count=%" PRIi32 ".") % i
-					   % hotPixelArray[i].x % hotPixelArray[i].y % hotPixelArray[i].count;
-			log.debug << msg << dv::logEnd;
+			log.debug.format("HotPixel %zu: X=%" PRIi16 ", Y=%" PRIi16 ", count=%" PRIi32 ".", i, hotPixelArray[i].x,
+				hotPixelArray[i].y, hotPixelArray[i].count);
 		}
 	}
 };
