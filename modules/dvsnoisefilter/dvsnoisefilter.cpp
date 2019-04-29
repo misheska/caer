@@ -113,7 +113,6 @@ public:
 		backgroundActivityStatOff(0),
 		refractoryPeriodStatOn(0),
 		refractoryPeriodStatOff(0) {
-
 		auto eventInput = inputs.getEventInput("events");
 
 		sizeX = static_cast<int16_t>(eventInput.sizeX());

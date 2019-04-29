@@ -13,15 +13,10 @@ public:
     }
 
     static void addInputs(std::vector<dv::InputDefinition> &in) {
-
-    //    in.addEventInput("events");
-
         in.emplace_back("events", dv::EventPacket::identifier, false);
     }
 
     static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-    //    out.addFrameOutput("frames", );
-
         out.emplace_back("frames", dv::Frame::identifier);
     }
 
@@ -59,7 +54,7 @@ public:
         frame.convertTo(correctedFrame, CV_8U, scaleFactor, shiftFactor);
 
         // output
-        outputs.getFrameOutput("frame").getOutputData() << correctedFrame;
+        outputs.getFrameOutput("frames").getOutputData() << correctedFrame;
     }
 
     static dv::Accumulator::Decay decayFromString(const std::string &name) {

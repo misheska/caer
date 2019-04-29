@@ -113,7 +113,7 @@ public:
 	 * @return the description of the origin of the data
 	 */
 	const std::string& getOriginDescription() const {
-	    return infoNode().getString(name_);
+	    return infoNode().getString("source");
 	}
 
 };
@@ -284,7 +284,7 @@ public:
 
 	dv::Config::Node infoNode() const {
 		// const_cast and then re-add const manually. Needed for transition to C++ type.
-		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData_, name_.c_str())));
+		return (const_cast<dvConfigNode>(dvModuleOutputGetInfoNode(moduleData_, name_.c_str())));
 	}
 
 protected:

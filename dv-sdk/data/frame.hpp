@@ -140,9 +140,10 @@ public:
 	cv::Mat getMat() {
 		// Verify size.
 		auto channels = (static_cast<int>(ptr->format) / 8) + 1;
-		if (ptr->pixels.size() < static_cast<size_t>(ptr->sizeX * ptr->sizeY * channels)) {
-			throw std::out_of_range(
-				"getMat(): Frame.pixels.size() smaller than (Frame.sizeX * Frame.sizeY * Frame.numChannels).");
+		auto requiredSize = static_cast<size_t>(ptr->sizeX * ptr->sizeY * channels);
+		if (ptr->pixels.size() < requiredSize) {
+			// In case the buffer does not correspond to the specified sizes, we resize the buffer
+			ptr->pixels.resize(requiredSize);
 		}
 
 		return (cv::Mat{ptr->sizeY, ptr->sizeX, static_cast<int>(ptr->format), ptr->pixels.data()});
