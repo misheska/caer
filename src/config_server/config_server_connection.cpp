@@ -66,21 +66,18 @@ void ConfigServerConnection::removePushClient() {
 void ConfigServerConnection::writePushMessage(std::shared_ptr<const flatbuffers::FlatBufferBuilder> message) {
 	auto self(shared_from_this());
 
-	socket.write(
-		asio::buffer(message->GetBufferPointer(), message->GetSize()),
+	socket.write(asio::buffer(message->GetBufferPointer(), message->GetSize()),
 		[this, self, message](const boost::system::error_code &error, size_t /*length*/) {
 			if (error) {
 				handleError(error, "Failed to write push message");
 			}
-		},
-		self);
+		});
 }
 
 void ConfigServerConnection::writeMessage(std::shared_ptr<const flatbuffers::FlatBufferBuilder> message) {
 	auto self(shared_from_this());
 
-	socket.write(
-		asio::buffer(message->GetBufferPointer(), message->GetSize()),
+	socket.write(asio::buffer(message->GetBufferPointer(), message->GetSize()),
 		[this, self, message](const boost::system::error_code &error, size_t /*length*/) {
 			if (error) {
 				handleError(error, "Failed to write message");
@@ -89,8 +86,7 @@ void ConfigServerConnection::writeMessage(std::shared_ptr<const flatbuffers::Fla
 				// Restart, wait for next message.
 				readMessageSize();
 			}
-		},
-		self);
+		});
 }
 
 void ConfigServerConnection::readMessageSize() {

@@ -151,11 +151,10 @@ public:
 	 * Write handler needs following signature:
 	 * void (const boost::system::error_code &, size_t)
 	 */
-	template<typename WriteHandler>
-	void write(const asio::const_buffer &buf, WriteHandler &&wrHandler, std::shared_ptr<void> alive) {
+	template<typename WriteHandler> void write(const asio::const_buffer &buf, WriteHandler &&wrHandler) {
 		bool writeInProgress = writesOutstanding();
 
-		writeQueue.emplace_back(buf, wrHandler, alive);
+		writeQueue.emplace_back(buf, wrHandler);
 
 		if (!writeInProgress) {
 			orderedWrite();
@@ -167,29 +166,25 @@ public:
 	}
 
 private:
-	std::deque<std::tuple<asio::const_buffer, std::function<void(const boost::system::error_code &, size_t)>,
-		std::shared_ptr<void>>>
+	std::deque<std::pair<asio::const_buffer, std::function<void(const boost::system::error_code &, size_t)>>>
 		writeQueue; // No locking for writeQueue because all changes are posted to io_service thread.
 
 	void orderedWrite() {
-		TCPTLSSocket::write(
-			std::get<0>(writeQueue.front()), [this](const boost::system::error_code &error, size_t length) {
-				std::get<1>(writeQueue.front())(error, length);
+		TCPTLSSocket::write(writeQueue.front().first, [this](const boost::system::error_code &error, size_t length) {
+			writeQueue.front().second(error, length);
 
-				auto alive = std::get<2>(writeQueue.front());
+			if (!error) {
+				writeQueue.pop_front();
 
-				if (!error) {
-					writeQueue.pop_front();
-
-					if (writesOutstanding()) {
-						orderedWrite();
-					}
+				if (writesOutstanding()) {
+					orderedWrite();
 				}
-				else {
-					// Abort and clear queue on error.
-					writeQueue.clear();
-				}
-			});
+			}
+			else {
+				// Abort and clear queue on error.
+				writeQueue.clear();
+			}
+		});
 	}
 };
 
