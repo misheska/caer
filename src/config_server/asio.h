@@ -176,7 +176,7 @@ private:
 			std::get<0>(writeQueue.front()), [this](const boost::system::error_code &error, size_t length) {
 				std::get<1>(writeQueue.front())(error, length);
 
-				auto alive = std::get<2>(writeQueue.front());
+				std::shared_ptr<void> alive = std::get<2>(writeQueue.front());
 
 				if (!error) {
 					writeQueue.pop_front();
@@ -189,6 +189,9 @@ private:
 					// Abort and clear queue on error.
 					writeQueue.clear();
 				}
+
+				// And finally destroy last reference that kept the rest safe.
+				alive.reset();
 			});
 	}
 };
