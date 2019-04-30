@@ -171,18 +171,22 @@ private:
 
 	void orderedWrite() {
 		TCPTLSSocket::write(writeQueue.front().first, [this](const boost::system::error_code &error, size_t length) {
-			writeQueue.front().second(error, length);
+			auto funcCopy = writeQueue.front().second;
 
-			if (!error) {
-				writeQueue.pop_front();
+			{
+				funcCopy(error, length);
 
-				if (writesOutstanding()) {
-					orderedWrite();
+				if (!error) {
+					writeQueue.pop_front();
+
+					if (writesOutstanding()) {
+						orderedWrite();
+					}
 				}
-			}
-			else {
-				// Abort and clear queue on error.
-				writeQueue.clear();
+				else {
+					// Abort and clear queue on error.
+					writeQueue.clear();
+				}
 			}
 		});
 	}
