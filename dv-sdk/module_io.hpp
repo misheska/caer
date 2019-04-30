@@ -21,6 +21,10 @@
 
 namespace dv {
 
+/**
+ * Definition of a module input. Every input to a module has a unique (for the module) name,
+ * as well as a type. The type is the 4-character flatbuffers identifier
+ */
 class InputDefinition {
 public:
 	std::string name;
@@ -34,6 +38,10 @@ public:
 	}
 };
 
+/**
+ * Definition of a module output. Every output has a unique (for the module) name,
+ * as well as a type. THe type is the 4-character flatbuffers identifier.
+ */
 class OutputDefinition {
 public:
 	std::string name;
@@ -170,15 +178,28 @@ public:
 
 
 
-
+/**
+ * Base class for a runtime input definition.
+ * There are template-specialized subclasses of this, providing convenience function
+ * interfaces for the most common, known types. There is also a generic,
+ * templated subclass `RuntimeInput` which does not add any more convenience
+ * functions over this common subclass, and can be used for the generic case
+ */
 template <typename T>
 class _RuntimeInputCommon {
 private:
+	/* Runtime name of this module from config */
 	std::string name_;
+	/* Pointer to the dv moduleData struct */
 	dvModuleData moduleData_;
 
-    std::shared_ptr<const typename T::NativeTableType> getUnwrapped(const std::string &name) const {
-        auto typedObject = dvModuleInputGet(moduleData_, name.c_str());
+	/**
+	 * Fetches available data at the input and returns a shared_ptr to it.
+	 * Also casts the shared_ptr to this particular input type.
+	 * @return A shared_ptr of the input data type to the latest received data
+	 */
+    std::shared_ptr<const typename T::NativeTableType> getUnwrapped() const {
+        auto typedObject = dvModuleInputGet(moduleData_, name_.c_str());
         if (typedObject == nullptr) {
             // Actual errors will write a log message and return null.
             // No data just returns null. So if null we simply forward that.
@@ -189,13 +210,13 @@ private:
         // (debug mode), memory gets properly cleaned up.
         std::shared_ptr<const typename T::NativeTableType> objPtr{
                 static_cast<const typename T::NativeTableType *>(typedObject->obj),
-                [moduleData = moduleData_, name, typedObject](
+                [moduleData = moduleData_, name = name_, typedObject](
                         const typename T::NativeTableType *) { dvModuleInputDismiss(moduleData, name.c_str(), typedObject); }};
 
 #ifndef NDEBUG
         if (typedObject->typeId != dvTypeIdentifierToId(T::identifier)) {
             throw std::runtime_error(
-                    "getUnwrapped(" + name + "): input type and given template type are not compatible.");
+                    "getUnwrapped(" + name_ + "): input type and given template type are not compatible.");
         }
 #endif
 
@@ -204,6 +225,11 @@ private:
 
 
 public:
+	/**
+	 * This constructor is called by the child classes in their initialization
+	 * @param name The name of this input
+	 * @param moduleData Pointer to the dv moduleData struct
+	 */
 	_RuntimeInputCommon(const std::string &name, dvModuleData moduleData) : name_(name), moduleData_(moduleData) {
 	}
 
@@ -213,7 +239,7 @@ public:
 	 * @return An input wrapper of the desired type, allowing data access
 	 */
 	const InputDataWrapper<T> data() const {
-		const InputDataWrapper<T> wrapper{getUnwrapped(name_)};
+		const InputDataWrapper<T> wrapper{getUnwrapped()};
 		return (wrapper);
 	}
 
@@ -245,6 +271,12 @@ public:
 
 };
 
+/**
+ * Describes a generic input at runtime. A generic input can be instantiated for any type.
+ * This class basically just inherits from `_RuntimeInputCommon<T>` and does not add any
+ * specializations.
+ * @tparam T The type of the input data
+ */
 template <typename T>
 class RuntimeInput : public _RuntimeInputCommon<T> {
 public:
@@ -252,25 +284,44 @@ public:
 	}
 };
 
+/**
+ * Describes an input for event packets. Offers convenience functions to obtain informations
+ * about the event input as well as to get the event data.
+ */
 template <>
 class RuntimeInput<dv::EventPacket> : public _RuntimeInputCommon<dv::EventPacket> {
 public:
 	RuntimeInput(const std::string &name, dvModuleData moduleData) : _RuntimeInputCommon(name, moduleData) {
 	}
 
+	/**
+	 * Returns an iterable container of the latest events that arrived at this input.
+	 * @return An iterable container of the newest events.
+	 */
     InputDataWrapper<dv::EventPacket> events() const {
 	    return data();
 	}
 
+	/**
+	 * @return The width of the input region in pixels. Any event on this input will have a x-coordinate
+	 * smaller than the return value of this function.
+	 */
 	int sizeX() const {
 		return infoNode().getInt("sizeX");
 	}
 
+	/**
+	 * @return The height of the input region in pixels. Any event on this input will have a y-coordinate
+	 * smaller than the return value of this function
+	 */
 	int sizeY() const {
 		return infoNode().getInt("sizeY");
 	}
 
 #if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
+	/**
+	 * @return the input region size in pixels as an OpenCV size object
+	 */
 	const cv::Size size() const {
 		return cv::Size(sizeX(), sizeY());
 	}
@@ -365,20 +416,36 @@ public:
 	 * input/output
 	 * @return A node that contains the specified inputs information, such as "sizeX" or "sizeY"
 	 */
-	const dv::Config::Node getUntypedInfo(const std::string &name) const {
+	const dv::Config::Node infoNode(const std::string &name) const {
 		// const_cast and then re-add const manually. Needed for transition to C++ type.
 		return (const_cast<dvConfigNode>(dvModuleInputGetInfoNode(moduleData, name.c_str())));
 	}
 };
 
+/**
+ * Base class for a runtime output. This class acts as the base for various template-specialized
+ * sub classes which provide convenience functions for outputting data in their respective
+ * data types. There is a templated generic subclass `RuntimeOutput<T>` that can be used
+ * for the generic case
+ * @tparam T The flatbuffers type of the output data
+ */
 template <typename T>
 class _RuntimeOutputCommon {
 private:
+	/* Configured name of the module at runtime */
 	std::string name_;
+	/* pointer to the dv moduleData struct at runtime */
 	dvModuleData moduleData_;
 
-	typename T::NativeTableType *allocateUnwrapped(const std::string &name) {
-		auto typedObject = dvModuleOutputAllocate(moduleData_, name.c_str());
+	/**
+	 * Allocates a new instance of the datatype of this output and returns a
+	 * raw pointer to the allocated memory. If there was memory allocated before
+	 * (This function has been called before) but the output never has been commited,
+	 * a raw pointer to the previously allocated memory gets returned.
+	 * @return A raw pointer to the allocated memory
+	 */
+	typename T::NativeTableType *allocateUnwrapped() {
+		auto typedObject = dvModuleOutputAllocate(moduleData_, name_.c_str());
 		if (typedObject == nullptr) {
 			// Actual errors will write a log message and return null.
 			// No data just returns null. So if null we simply forward that.
@@ -388,33 +455,50 @@ private:
 #ifndef NDEBUG
 		if (typedObject->typeId != dvTypeIdentifierToId(T::identifier)) {
 			throw std::runtime_error(
-					"allocateUnwrapped(" + name + "): output type and given template type are not compatible.");
+					"allocateUnwrapped(" + name_ + "): output type and given template type are not compatible.");
 		}
 #endif
 
 		return (static_cast<typename T::NativeTableType *>(typedObject->obj));
 	}
 
-	void commitUnwrapped(const std::string &name) {
-		dvModuleOutputCommit(moduleData_, name.c_str());
-	}
-
 public:
+	/**
+	 * This constructor is called by the subclasses constructors
+	 * @param name The configuration name of the module this output belongs to
+	 * @param moduleData A pointer to the dv moduleData struct
+	 */
 	_RuntimeOutputCommon(const std::string &name, dvModuleData moduleData) : name_(name),
 	moduleData_(moduleData) {
 	}
 
+	/**
+	 * Returns a writeable output wrapper for the given type of this output.
+	 * Allocates new output memory if necessary. The output can be committed
+	 * by calling commit on the returned object.
+	 * @return A wrapper to allocated output memory to write to
+	 */
 	OutputDataWrapper<T> getOutputData() {
-		OutputDataWrapper<T> wrapper{allocateUnwrapped(name_), moduleData_, name_};
+		OutputDataWrapper<T> wrapper{allocateUnwrapped(), moduleData_, name_};
 		return (wrapper);
 	}
 
+	/**
+	 * Returns the node of the dv config tree that contains all the information
+	 * about this output.
+	 * @return The node in the dv config tree with the information about this output
+	 */
 	dv::Config::Node infoNode() const {
 		// const_cast and then re-add const manually. Needed for transition to C++ type.
 		return (const_cast<dvConfigNode>(dvModuleOutputGetInfoNode(moduleData_, name_.c_str())));
 	}
 
 protected:
+	/**
+	 * Creates the output information attribute in the config tree.
+	 * The source attribute is a string containing information about the original generator of the data
+	 * @param originDescription a string containing information about the original generator of the data
+	 */
     void createSourceAttribute(const std::string &originDescription) {
         dv::Config::Node infoNode = this->infoNode();
         infoNode.create<dv::Config::AttributeType::STRING>("source",
@@ -422,6 +506,11 @@ protected:
                 "Description of the first origin of the data");
     }
 
+    /**
+     * Adds size information attributes to the output info node
+     * @param sizeX The width dimension of the output
+     * @param sizeY The height dimension of the output
+     */
     void createSizeAttributes(int sizeX, int sizeY) {
         dv::Config::Node infoNode = this->infoNode();
         infoNode.create<dv::Config::AttributeType::INT>("sizeX",
@@ -435,58 +524,111 @@ protected:
 };
 
 
+/**
+ * Class that describes an output of a generic type at runtime.
+ * Can be used to obtain information about the output, as well as getting a new
+ * output object to send data to.
+ * @tparam T The flatbuffers type of the output
+ */
 template <typename T>
 class RuntimeOutput : public _RuntimeOutputCommon<T> {
 public:
 	RuntimeOutput(const std::string &name, dvModuleData moduleData) : _RuntimeOutputCommon<T>(name, moduleData) {
 	}
 
+	/**
+	 * Sets up the output. Has to be called in the constructor of the module.
+	 * @param originDescription A description of the original creator of the data
+	 */
 	void setup(const std::string &originDescription) {
         this->createSourceAttribute(originDescription);
 	}
 };
 
+/**
+ * Specialization of the runtime output for event outputs.
+ * Provides convenience setup functions for setting up the event output
+ */
 template <>
 class RuntimeOutput<dv::EventPacket> : public _RuntimeOutputCommon<dv::EventPacket> {
 public:
     RuntimeOutput(const std::string &name, dvModuleData moduleData) : _RuntimeOutputCommon<dv::EventPacket>(name, moduleData) {
     }
 
+    /**
+     * Sets up this event output by setting the provided arguments to the output info node
+     * @param sizeX The width of this event output
+     * @param sizeY The height of this event output
+     * @param originDescription A description that describes the original generator of the data
+     */
     void setup(int sizeX, int sizeY, const std::string &originDescription) {
         this->createSourceAttribute(originDescription);
         this->createSizeAttributes(sizeX, sizeY);
 	}
 
+	/**
+	 * Sets this event output up with the same parameters as the supplied input.
+	 * @param eventInput The event input to copy the information from
+	 */
     void setup(const RuntimeInput<dv::EventPacket> &eventInput) {
         setup(eventInput.sizeX(), eventInput.sizeY(), eventInput.getOriginDescription());
     }
 
+    /**
+     * Sets this event output up with the same parameters the the supplied input.
+     * @param frameInput  The frame input to copy the data from
+     */
     void setup(const RuntimeInput<dv::Frame> &frameInput) {
         setup(frameInput.sizeX(), frameInput.sizeY(), frameInput.getOriginDescription());
     }
 };
 
+/**
+ * Specialization of the runtime output for frame outputs
+ * Provides convenience setup functions for setting up the frame output
+ */
 template <>
 class RuntimeOutput<dv::Frame> : public _RuntimeOutputCommon<dv::Frame> {
 public:
     RuntimeOutput(const std::string &name, dvModuleData moduleData) : _RuntimeOutputCommon<dv::Frame>(name, moduleData) {
     }
 
+    /**
+     * Sets up this frame output with the provided parameters
+     * @param sizeX The width of the frames supplied on this output
+     * @param sizeY The height of the frames supplied on this output
+     * @param originDescription A description of the original creator of the data
+     */
     void setup(int sizeX, int sizeY, const std::string &originDescription) {
         this->createSourceAttribute(originDescription);
         this->createSizeAttributes(sizeX, sizeY);
     }
 
+	/**
+ 	 * Sets this frame output up with the same parameters as the supplied input.
+ 	 * @param eventInput The event input to copy the information from
+ 	 */
     void setup(const RuntimeInput<dv::EventPacket> &eventInput) {
         setup(eventInput.sizeX(), eventInput.sizeY(), eventInput.getOriginDescription());
     }
 
+	/**
+     * Sets this frame output up with the same parameters the the supplied input.
+     * @param frameInput  The frame input to copy the data from
+     */
     void setup(const RuntimeInput<dv::Frame> &frameInput) {
         setup(frameInput.sizeX(), frameInput.sizeY(), frameInput.getOriginDescription());
     }
 
 
 #if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
+	/**
+	 * Convenience shorthand to commit an OpenCV mat onto this output.
+	 * If not using this function, call `getOutputData` to get an output frame
+	 * to fill into.
+	 * @param mat The OpenCV Mat to submit
+	 * @return A reference to the this
+	 */
 	RuntimeOutput<dv::Frame>& operator<<(const cv::Mat &mat) {
 		getOutputData() << mat;
 		return *this;
