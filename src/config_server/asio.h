@@ -180,6 +180,10 @@ private:
 					orderedWrite();
 				}
 			}
+			else {
+				// Abort and clear queue on error.
+				writeQueue.clear();
+			}
 		});
 	}
 };
