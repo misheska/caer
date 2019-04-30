@@ -48,12 +48,12 @@ inline constexpr bool has_addTypes
 BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(addInputs)
 template<typename T>
 inline constexpr bool has_addInputs
-	= has_static_member_function_addInputs<T, void(std::vector<dv::InputDefinition> &)>::value;
+	= has_static_member_function_addInputs<T, void(dv::InputDefinitionList &)>::value;
 
 BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(addOutputs)
 template<typename T>
 inline constexpr bool has_addOutputs
-	= has_static_member_function_addOutputs<T, void(std::vector<dv::OutputDefinition> &)>::value;
+	= has_static_member_function_addOutputs<T, void(dv::OutputDefinitionList &)>::value;
 
 /**
  * Pure static template class that provides the static C interface functions
@@ -96,21 +96,21 @@ public:
 		}
 
 		if constexpr (has_addInputs<T>) {
-			std::vector<dv::InputDefinition> inputs;
+			dv::InputDefinitionList inputs;
 
 			T::addInputs(inputs);
 
-			for (const auto &in : inputs) {
+			for (const auto &in : inputs.getInputs()) {
 				dvModuleRegisterInput(moduleData, in.name.c_str(), in.typeName.c_str(), in.optional);
 			}
 		}
 
 		if constexpr (has_addOutputs<T>) {
-			std::vector<dv::OutputDefinition> outputs;
+			dv::OutputDefinitionList outputs;
 
 			T::addOutputs(outputs);
 
-			for (const auto &out : outputs) {
+			for (const auto &out : outputs.getOutputs()) {
 				dvModuleRegisterOutput(moduleData, out.name.c_str(), out.typeName.c_str());
 			}
 		}

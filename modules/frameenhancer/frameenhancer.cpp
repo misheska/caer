@@ -14,12 +14,12 @@ private:
 	enum class ContrastAlgorithms { NORMALIZATION, HISTOGRAM_EQUALIZATION, CLAHE } contrastAlgo;
 
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("frames", dv::Frame::identifier, false);
+	static void addInputs(dv::InputDefinitionList &in) {
+		in.addEventInput("frames");
 	}
 
-	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-		out.emplace_back("frames", dv::Frame::identifier);
+	static void addOutputs(dv::OutputDefinitionList &out) {
+		out.addFrameOutput("frames");
 	}
 
 	static const char *getDescription() {

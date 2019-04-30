@@ -37,8 +37,8 @@ private:
 	dvOutput output;
 
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("output0", "ANYT", false);
+	static void addInputs(dv::InputDefinitionList &in) {
+		in.addInput("output0", "ANYT", false);
 	}
 
 	static const char *getDescription() {

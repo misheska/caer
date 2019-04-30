@@ -19,14 +19,14 @@ private:
 	cv::Mat undistortFrameRemap2;
 
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("events", dv::EventPacket::identifier, true);
-		in.emplace_back("frames", dv::Frame::identifier, true);
+	static void addInputs(dv::InputDefinitionList &in) {
+		in.addEventInput("events", true);
+		in.addFrameInput("frames", true);
 	}
 
-	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-		out.emplace_back("undistortedEvents", dv::EventPacket::identifier);
-		out.emplace_back("undistortedFrames", dv::Frame::identifier);
+	static void addOutputs(dv::OutputDefinitionList &out) {
+		out.addEventOutput("undistortedEvents");
+		out.addFrameOutput("undistortedFrames");
 	}
 
 	static const char *getDescription() {

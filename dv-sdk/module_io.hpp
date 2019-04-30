@@ -44,6 +44,133 @@ public:
 };
 
 
+/**
+ * Vector decorator that gives convenience methods to add various kinds of inputs to
+ * a module
+ */
+class InputDefinitionList  {
+private:
+	std::vector<InputDefinition> inputs;
+public:
+	/**
+	 * Adds an input of a generic type to the module
+	 * @param name The name of the input
+	 * @param typeIdentifier The identifier of the flatbuffers data type used on this input
+	 * @param optional A flag that describes if this input is optional or not.
+	 */
+	void addInput(const std::string &name, const std::string typeIdentifier, bool optional = false) {
+		inputs.emplace_back(InputDefinition(name, typeIdentifier, optional));
+	}
+
+	/**
+	 * Adds an input for event data to this module.
+	 * @param name The name of this event data input
+	 * @param optional A flag to set this input as optional
+	 */
+	void addEventInput(const std::string &name, bool optional = false) {
+		addInput(name, dv::EventPacket::identifier, optional);
+	}
+
+	/**
+	 * Adds a frame input to this module
+	 * @param name The name of this input
+	 * @param optional A flag to set this input as optional
+	 */
+	void addFrameInput(const std::string &name, bool optional = false) {
+		addInput(name, dv::Frame::identifier, optional);
+	}
+
+	/**
+	 * Adds an IMU input to this module
+	 * @param name The name of this input
+	 * @param optional A flag to set this input as optional
+	 */
+	void addIMUInput(const std::string &name, bool optional = false) {
+		addInput(name, dv::IMUPacket::identifier, optional);
+	}
+
+	/**
+	 * Adds a trigger input to this module.
+	 * @param name The name of the trigger module
+	 * @param optional A flag to set this input as optional
+	 */
+	void addTriggerInput(const std::string &name, bool optional = false) {
+		addInput(name, dv::TriggerPacket::identifier, optional);
+	}
+
+	/**
+	 * __INTERNAL USE__
+	 * Returns the list of configured input definitions
+	 * @return The list of configured input definitions
+	 */
+	const std::vector<InputDefinition> &getInputs() const {
+		return inputs;
+	}
+};
+
+
+/**
+ * Vector decorator that exposes convenience functions to add various types of outputs to
+ * a module
+ */
+class OutputDefinitionList {
+private:
+	std::vector<OutputDefinition> outputs;
+public:
+	/**
+	 * Adds an output to the module of a generic type
+	 * @param name The name of this output
+	 * @param typeIdentifier The flatbuffers type identifier for this type
+	 */
+	void addOutput(const std::string &name, const std::string &typeIdentifier) {
+		outputs.emplace_back(OutputDefinition(name, typeIdentifier));
+	}
+
+	/**
+	 * Adds an event output to this module
+	 * @param name The name of this output
+	 */
+	void addEventOutput(const std::string &name) {
+		addOutput(name, dv::EventPacket::identifier);
+	}
+
+	/**
+	 * Adds a frame output to this module
+	 * @param name The name of this output
+	 */
+	void addFrameOutput(const std::string &name) {
+		addOutput(name, dv::Frame::identifier);
+	}
+
+	/**
+	 * Adds an IMU output to this module
+	 * @param name The name of this output
+	 */
+	void addIMUOutput(const std::string &name) {
+		addOutput(name, dv::IMUPacket::identifier);
+	}
+
+	/**
+	 * Adds a trigger output to this module
+	 * @param name the name of this output
+	 */
+	void addTriggerOutput(const std::string &name) {
+		addOutput(name, dv::TriggerPacket::identifier);
+	}
+
+	/**
+	 * __INTERNAL USE__
+	 * Returns the list of configured outputs
+	 * @return the list of configured outputs
+	 */
+	const std::vector<OutputDefinition> &getOutputs() const {
+		return outputs;
+	}
+};
+
+
+
+
 template <typename T>
 class _RuntimeInputCommon {
 private:
@@ -357,6 +484,15 @@ public:
     void setup(const RuntimeInput<dv::Frame> &frameInput) {
         setup(frameInput.sizeX(), frameInput.sizeY(), frameInput.getOriginDescription());
     }
+
+
+#if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
+	RuntimeOutput<dv::Frame>& operator<<(const cv::Mat &mat) {
+		getOutputData() << mat;
+		return *this;
+	}
+#endif
+
 };
 
 

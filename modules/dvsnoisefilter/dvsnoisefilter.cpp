@@ -42,12 +42,12 @@ private:
 	std::vector<int64_t> timestampsMap;
 
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("events", dv::EventPacket::identifier, false);
+	static void addInputs(dv::InputDefinitionList &in) {
+	    in.addEventInput("events");
 	}
 
-	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-		out.emplace_back("events", dv::EventPacket::identifier);
+	static void addOutputs(dv::OutputDefinitionList &out) {
+	    out.addEventOutput("events");
 	}
 
 	static const char *getDescription() {

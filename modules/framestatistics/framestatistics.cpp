@@ -11,12 +11,12 @@ using dvCfgFlags = dvCfg::AttributeFlags;
 
 class FrameStatistics : public dv::ModuleBase {
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("frames", dv::Frame::identifier, false);
+	static void addInputs(dv::InputDefinitionList &in) {
+		in.addFrameInput("frames");
 	}
 
-	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-		out.emplace_back("histograms", dv::Frame::identifier);
+	static void addOutputs(dv::OutputDefinitionList &out) {
+		out.addFrameOutput("histograms");
 	}
 
 	static const char *getDescription() {

@@ -7,6 +7,9 @@
 
 namespace dv {
 
+	struct commitType {};
+	constexpr commitType commit{};
+
 template<typename T> class InputDataWrapper {
 private:
 	using NativeType = typename T::NativeTableType;
@@ -87,6 +90,11 @@ public:
 
 	const NativeType *operator->() const noexcept {
 		return (ptr);
+	}
+
+	const OutputDataWrapper operator<<(commitType) {
+		commit();
+		return *this;
 	}
 };
 

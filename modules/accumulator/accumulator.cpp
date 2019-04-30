@@ -12,18 +12,18 @@ public:
         return "Accumulates events into a frame. Provides various configurations to tune the integration process";
     }
 
-    static void addInputs(std::vector<dv::InputDefinition> &in) {
-        in.emplace_back("events", dv::EventPacket::identifier, false);
+    static void addInputs(dv::InputDefinitionList &in) {
+        in.addEventInput("events");
     }
 
-    static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-        out.emplace_back("frames", dv::Frame::identifier);
+    static void addOutputs(dv::OutputDefinitionList &out) {
+        out.addFrameOutput("frames");
     }
 
     static void getConfigOptions(dv::RuntimeConfig &config) {
         config.add("rectifyPolarity", dv::ConfigOption::boolOption("All events have positive contribution"));
         config.add("eventContribution", dv::ConfigOption::floatOption("The contribution of a single event", 0.04f));
-        config.add("maxPotential", dv::ConfigOption::floatOption("Value at which to clip the integration", 1.0));
+        config.add("maxPotential", dv::ConfigOption::floatOption("Value at which to clip the integration", .3f));
         config.add("neutralPotential", dv::ConfigOption::floatOption("Value to which the decay tends over time", 0.0));
         config.add("minPotential", dv::ConfigOption::floatOption("Value at which to clip the integration", 0.0));
         config.add("decayFunction", dv::ConfigOption::listOption("The decay function to be used",
@@ -54,7 +54,7 @@ public:
         frame.convertTo(correctedFrame, CV_8U, scaleFactor, shiftFactor);
 
         // output
-        outputs.getFrameOutput("frames").getOutputData() << correctedFrame;
+        outputs.getFrameOutput("frames") << correctedFrame;
     }
 
     static dv::Accumulator::Decay decayFromString(const std::string &name) {

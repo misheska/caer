@@ -43,8 +43,8 @@ private:
 	int32_t packetSubsampleCount;
 
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("visualize", "ANYT", false);
+	static void addInputs(dv::InputDefinitionList &in) {
+		in.addInput("visualize", "ANYT", false);
 	}
 
 	static const char *getDescription() {
