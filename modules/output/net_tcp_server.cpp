@@ -208,12 +208,14 @@ void Connection::close() {
 void Connection::writeMessage(std::shared_ptr<const flatbuffers::FlatBufferBuilder> message) {
 	auto self(shared_from_this());
 
-	socket.write(asio::buffer(message->GetBufferPointer(), message->GetSize()),
+	socket.write(
+		asio::buffer(message->GetBufferPointer(), message->GetSize()),
 		[this, self, message](const boost::system::error_code &error, size_t /*length*/) {
 			if (error) {
 				handleError(error, "Failed to write message");
 			}
-		});
+		},
+		self);
 }
 
 void Connection::keepAliveByReading() {
