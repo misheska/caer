@@ -125,7 +125,7 @@ bool ConfigServer::pushClientsPresent() {
 
 void ConfigServer::pushMessageToClients(std::shared_ptr<const flatbuffers::FlatBufferBuilder> message) {
 	if (pushClientsPresent()) {
-		ioService.dispatch([this, message]() {
+		ioService.post([this, message]() {
 			for (auto client : pushClients) {
 				client->writePushMessage(message);
 			}
