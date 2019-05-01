@@ -70,7 +70,7 @@ public:
 #endif
 
 		// Initialize visualizer. Needs size information from the source.
-		auto info = inputs.getInfoNode("visualize");
+		auto info = inputs.infoNode("visualize");
 		if (!info) {
 			throw std::runtime_error("Input not ready, upstream module not running.");
 		}
@@ -160,7 +160,7 @@ public:
 		renderScreen();
 	}
 
-	void advancedConfigUpdate() override {
+	void configUpdate() override {
 		// Here we don't know what changed, just that something changed,
 		// so we force both resize and move updates, if nothing really
 		// changed, they're both pretty cheap.
