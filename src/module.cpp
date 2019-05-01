@@ -98,8 +98,8 @@ void dv::Module::LoggingInit() {
 }
 
 void dv::Module::RunningInit() {
-	// Initialize shutdown controls. By default modules always run.
-	moduleConfigNode.create<dv::CfgType::BOOL>("running", true, {}, dv::CfgFlags::NORMAL, "Module start/stop.");
+	// Initialize shutdown controls. By default modules are OFF.
+	moduleConfigNode.create<dv::CfgType::BOOL>("running", false, {}, dv::CfgFlags::NORMAL, "Module start/stop.");
 
 	moduleConfigNode.create<dv::CfgType::BOOL>(
 		"isRunning", false, {}, dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT, "Module running state.");

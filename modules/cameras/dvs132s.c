@@ -295,8 +295,10 @@ static void caerInputDVS132SExit(dvModuleData moduleData) {
 	dvConfigNodeRemoveAttributeListener(sysNode, moduleData, &systemConfigListener);
 
 	// Remove statistics read modifiers.
-	dvConfigNode statNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "statistics/");
-	dvConfigNodeAttributeUpdaterRemoveAll(statNode);
+	if (dvConfigNodeExistsRelativeNode(deviceConfigNode, "statistics/")) {
+		dvConfigNode statNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "statistics/");
+		dvConfigNodeAttributeUpdaterRemoveAll(statNode);
+	}
 
 	caerDeviceDataStop(moduleData->moduleState);
 

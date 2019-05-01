@@ -91,8 +91,8 @@ public:
 
 		acceptStart();
 
-		log.info << boost::format("Output server ready on %s:%d.") % config.get<dv::CfgType::STRING>("ipAddress")
-						% config.get<dv::CfgType::INT>("portNumber");
+		log.info.format("Output server ready on %s:%d.", config.get<dv::CfgType::STRING>("ipAddress"),
+			config.get<dv::CfgType::INT>("portNumber"));
 	}
 
 	~NetTCPServer() override {
@@ -153,8 +153,8 @@ private:
 				if (error) {
 					// Ignore cancel error, normal on shutdown.
 					if (error != asio::error::operation_aborted) {
-						log.error << boost::format("Failed to accept connection. Error: %s (%d).") % error.message()
-										 % error.value();
+						log.error.format(
+							"Failed to accept connection. Error: %s (%d).", error.message(), error.value());
 					}
 				}
 				else {
@@ -176,15 +176,15 @@ Connection::Connection(asioTCP::socket s, bool tlsEnabled, asioSSL::context *tls
 	parent(server),
 	socket(std::move(s), tlsEnabled, tlsContext),
 	keepAliveReadSpace(0) {
-	parent->log.info << boost::format("New connection from client %s:%d.") % socket.remote_address().to_string()
-							% socket.remote_port();
+	parent->log.info.format(
+		"New connection from client %s:%d.", socket.remote_address().to_string(), socket.remote_port());
 }
 
 Connection::~Connection() {
 	parent->removeClient(this);
 
-	parent->log.info << boost::format("Closing connection from client %s:%d.") % socket.remote_address().to_string()
-							% socket.remote_port();
+	parent->log.info.format(
+		"Closing connection from client %s:%d.", socket.remote_address().to_string(), socket.remote_port());
 }
 
 void Connection::start() {
@@ -234,12 +234,12 @@ void Connection::keepAliveByReading() {
 void Connection::handleError(const boost::system::error_code &error, const char *message) {
 	if (error == asio::error::eof) {
 		// Handle EOF separately.
-		parent->log.info << boost::format("Client %s:%d: connection closed.") % socket.remote_address().to_string()
-								% socket.remote_port();
+		parent->log.info.format(
+			"Client %s:%d: connection closed.", socket.remote_address().to_string(), socket.remote_port());
 	}
 	else {
-		parent->log.error << boost::format("Client %s:%d: %s. Error: %s (%d).") % socket.remote_address().to_string()
-								 % socket.remote_port() % message % error.message() % error.value();
+		parent->log.error.format("Client %s:%d: %s. Error: %s (%d).", socket.remote_address().to_string(),
+			socket.remote_port(), message, error.message(), error.value());
 	}
 }
 

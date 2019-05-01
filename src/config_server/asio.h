@@ -152,36 +152,41 @@ public:
 	 * void (const boost::system::error_code &, size_t)
 	 */
 	template<typename WriteHandler> void write(const asio::const_buffer &buf, WriteHandler &&wrHandler) {
-		bool writeInProgress = writesOutstanding();
+		std::function<void(const boost::system::error_code &, size_t)> orderedHandler
+			= [this, wrHandler](const boost::system::error_code &error, size_t length) {
+				  // Execute bound handler.
+				  wrHandler(error, length);
 
-		writeQueue.emplace_back(buf, wrHandler);
+				  // Remove currently executing handler from queue (placeholder only).
+				  writeQueue.pop_front();
 
-		if (!writeInProgress) {
-			orderedWrite();
+				  // On error, clear pending writes and do nothing.
+				  if (error) {
+					  writeQueue.clear();
+				  }
+				  else {
+					  // Start new writes.
+					  if (!writeQueue.empty()) {
+						  TCPTLSSocket::write(writeQueue.front().first, writeQueue.front().second);
+					  }
+				  }
+			  };
+
+		// Check current status.
+		bool noWrites = writeQueue.empty();
+
+		// Enqueue all writes.
+		writeQueue.emplace_back(buf, orderedHandler);
+
+		if (noWrites) {
+			// Start first write.
+			TCPTLSSocket::write(writeQueue.front().first, writeQueue.front().second);
 		}
-	}
-
-	bool writesOutstanding() {
-		return (!writeQueue.empty());
 	}
 
 private:
 	std::deque<std::pair<asio::const_buffer, std::function<void(const boost::system::error_code &, size_t)>>>
 		writeQueue; // No locking for writeQueue because all changes are posted to io_service thread.
-
-	void orderedWrite() {
-		TCPTLSSocket::write(writeQueue.front().first, [this](const boost::system::error_code &error, size_t length) {
-			writeQueue.front().second(error, length);
-
-			if (!error) {
-				writeQueue.pop_front();
-
-				if (writesOutstanding()) {
-					orderedWrite();
-				}
-			}
-		});
-	}
 };
 
 #endif /* SRC_ASIO_H_ */

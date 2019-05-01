@@ -182,8 +182,10 @@ static void caerInputDAVISExit(dvModuleData moduleData) {
 		apsNode, "Exposure", DVCFG_TYPE_INT, apsExposureUpdater(moduleData->moduleState, "Exposure", DVCFG_TYPE_INT));
 
 	// Remove statistics updaters.
-	dvConfigNode statNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "statistics/");
-	dvConfigNodeAttributeUpdaterRemoveAll(statNode);
+	if (dvConfigNodeExistsRelativeNode(deviceConfigNode, "statistics/")) {
+		dvConfigNode statNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "statistics/");
+		dvConfigNodeAttributeUpdaterRemoveAll(statNode);
+	}
 
 	caerDeviceDataStop(moduleData->moduleState);
 
