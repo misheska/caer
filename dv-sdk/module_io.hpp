@@ -265,7 +265,7 @@ public:
 	 * Returns the description of the origin of the data
 	 * @return the description of the origin of the data
 	 */
-	const std::string& getOriginDescription() const {
+	const std::string getOriginDescription() const {
 	    return infoNode().getString("source");
 	}
 
