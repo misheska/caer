@@ -497,8 +497,12 @@ static void sendDefaultConfiguration(dvModuleData moduleData, const struct caer_
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "DVS132S/");
 
+	dvConfigNode muxNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "multiplexer/");
+
 	// Send cAER configuration to libcaer and device.
 	biasConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "bias/"), moduleData);
+	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_RUN_CHIP,
+		dvConfigNodeGetBool(muxNode, "RunChip"));
 
 	// Wait 200 ms for biases to stabilize.
 	struct timespec biasEnSleep = {.tv_sec = 0, .tv_nsec = 200000000};
@@ -619,14 +623,11 @@ static void biasConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 }
 
 static void muxConfigSend(dvConfigNode node, dvModuleData moduleData) {
-	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_TIMESTAMP_RESET,
-		dvConfigNodeGetBool(node, "TimestampReset"));
+	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_TIMESTAMP_RESET, false);
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_DROP_DVS_ON_TRANSFER_STALL,
 		dvConfigNodeGetBool(node, "DropDVSOnTransferStall"));
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_DROP_EXTINPUT_ON_TRANSFER_STALL,
 		dvConfigNodeGetBool(node, "DropExtInputOnTransferStall"));
-	caerDeviceConfigSet(
-		moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_RUN_CHIP, dvConfigNodeGetBool(node, "RunChip"));
 	caerDeviceConfigSet(moduleData->moduleState, DVS132S_CONFIG_MUX, DVS132S_CONFIG_MUX_TIMESTAMP_RUN,
 		dvConfigNodeGetBool(node, "TimestampRun"));
 	caerDeviceConfigSet(
