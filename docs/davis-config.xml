@@ -61,7 +61,7 @@
                 <attr key="moduleLibrary" type="string">dv_dvsnoisefilter</attr>
                 <attr key="refractoryPeriodEnable" type="bool">true</attr>
                 <attr key="refractoryPeriodTime" type="int">100</attr>
-                <attr key="running" type="bool">false</attr>
+                <attr key="running" type="bool">true</attr>
                 <node name="inputs" path="/mainloop/noiseFilter/inputs/">
                     <node name="events" path="/mainloop/noiseFilter/inputs/events/">
                         <attr key="from" type="string">davisCamera[events]</attr>
