@@ -273,6 +273,10 @@ public:
 		_RuntimeOutputCommon<dv::Frame>(name, moduleData) {
 	}
 
+	OutputDataWrapper<dv::Frame> frame() {
+		return (data());
+	}
+
 	/**
 	 * Sets up this frame output with the provided parameters
 	 * @param sizeX The width of the frames supplied on this output

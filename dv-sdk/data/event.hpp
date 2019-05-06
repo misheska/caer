@@ -148,6 +148,10 @@ public:
 		_RuntimeOutputCommon<dv::EventPacket>(name, moduleData) {
 	}
 
+	OutputDataWrapper<dv::EventPacket> events() {
+		return (data());
+	}
+
 	/**
 	 * Sets up this event output by setting the provided arguments to the output info node
 	 * @param sizeX The width of this event output
