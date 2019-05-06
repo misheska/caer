@@ -180,37 +180,53 @@ public:
 			case 1:
 				ptr->format = dv::FrameFormat::GRAY;
 				break;
+
 			case 3:
 				ptr->format = dv::FrameFormat::BGR;
 				break;
+
 			case 4:
 				ptr->format = dv::FrameFormat::BGRA;
 				break;
+
 			default:
 				throw std::out_of_range(
 					(boost::format("Unsupported number of channels in OpenCV Mat: %d") % mat.channels()).str());
 		}
+
 		cv::Mat outMat = getMat();
-		switch (mat.type() % 8) {
+
+		switch (mat.depth()) {
 			case CV_8U:
 				mat.copyTo(outMat);
 				break;
+
 			case CV_8S:
-				mat.convertTo(outMat, CV_8U, 1, 128);
+				mat.convertTo(outMat, CV_8U, 1, std::abs(std::numeric_limits<int8_t>::min()));
 				break;
+
 			case CV_16U:
-				mat.convertTo(outMat, CV_8U, 1. / 256., 0);
+				mat.convertTo(outMat, CV_8U, 1.0 / 256.0, 0);
 				break;
+
 			case CV_16S:
-				mat.convertTo(outMat, CV_8U, 1. / 256., 128);
+				mat.convertTo(outMat, CV_8U, 1.0 / 256.0, std::abs(std::numeric_limits<int16_t>::min()));
 				break;
+
+			case CV_32S:
+				mat.convertTo(outMat, CV_8U, 1.0 / 16777216.0, std::abs(std::numeric_limits<int32_t>::min()));
+				break;
+
 			case CV_32F:
 			case CV_64F:
+				// Floating point range is 0.0 to 1.0 here.
 				mat.convertTo(outMat, CV_8U, 255, 0);
 				break;
+
 			default:
-				throw std::out_of_range((boost::format("Unsupported OpenCV data type: %d") % mat.type()).str());
+				throw std::out_of_range((boost::format("Unsupported OpenCV data type: %d") % mat.depth()).str());
 		}
+
 		commit();
 	}
 
@@ -218,7 +234,6 @@ public:
 		commitMat(mat);
 		return *this;
 	}
-
 #endif
 };
 
