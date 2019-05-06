@@ -1518,14 +1518,11 @@ static void chipConfigListener(dvConfigNode node, void *userData, enum dvConfigA
 }
 
 static void muxConfigSend(dvConfigNode node, dvModuleData moduleData) {
-	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_TIMESTAMP_RESET,
-		dvConfigNodeGetBool(node, "TimestampReset"));
+	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_TIMESTAMP_RESET, false);
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_DROP_EXTINPUT_ON_TRANSFER_STALL,
 		dvConfigNodeGetBool(node, "DropExtInputOnTransferStall"));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_DROP_DVS_ON_TRANSFER_STALL,
 		dvConfigNodeGetBool(node, "DropDVSOnTransferStall"));
-	caerDeviceConfigSet(
-		moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_RUN_CHIP, dvConfigNodeGetBool(node, "RunChip"));
 	caerDeviceConfigSet(moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_TIMESTAMP_RUN,
 		dvConfigNodeGetBool(node, "TimestampRun"));
 	caerDeviceConfigSet(

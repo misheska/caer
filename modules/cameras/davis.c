@@ -1,5 +1,7 @@
 #include "davis_utils.h"
 
+#include <time.h>
+
 static void caerInputDAVISStaticInit(dvModuleData moduleData);
 static bool caerInputDAVISInit(dvModuleData moduleData);
 static void caerInputDAVISExit(dvModuleData moduleData);
@@ -68,7 +70,6 @@ static bool caerInputDAVISInit(dvModuleData moduleData) {
 	createDefaultBiasConfiguration(moduleData, chipIDToName(devInfo.chipID, true), devInfo.chipID);
 	createDefaultLogicConfiguration(moduleData, chipIDToName(devInfo.chipID, true), &devInfo);
 	createDefaultUSBConfiguration(moduleData, chipIDToName(devInfo.chipID, true));
-	sendDefaultConfiguration(moduleData, &devInfo);
 
 	// Start data acquisition.
 	bool ret
@@ -80,6 +81,9 @@ static bool caerInputDAVISInit(dvModuleData moduleData) {
 
 		return (false);
 	}
+
+	// Send configuration, enabling data capture as requested.
+	sendDefaultConfiguration(moduleData, &devInfo);
 
 	// Device related configuration has its own sub-node.
 	dvConfigNode deviceConfigNode
@@ -220,12 +224,26 @@ static void sendDefaultConfiguration(dvModuleData moduleData, struct caer_davis_
 	dvConfigNode deviceConfigNode
 		= dvConfigNodeGetRelativeNode(moduleData->moduleNode, chipIDToName(devInfo->chipID, true));
 
+	dvConfigNode muxNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "multiplexer/");
+
 	// Send cAER configuration to libcaer and device.
 	biasConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "bias/"), moduleData, devInfo);
 	chipConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "chip/"), moduleData, devInfo);
+	caerDeviceConfigSet(
+		moduleData->moduleState, DAVIS_CONFIG_MUX, DAVIS_CONFIG_MUX_RUN_CHIP, dvConfigNodeGetBool(muxNode, "RunChip"));
+
+	// Wait 200 ms for biases to stabilize.
+	struct timespec biasEnSleep = {.tv_sec = 0, .tv_nsec = 200000000};
+	nanosleep(&biasEnSleep, NULL);
+
 	systemConfigSend(dvConfigNodeGetRelativeNode(moduleData->moduleNode, "system/"), moduleData);
 	usbConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "usb/"), moduleData);
 	muxConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "multiplexer/"), moduleData);
+
+	// Wait 50 ms for data transfer to be ready.
+	struct timespec noDataSleep = {.tv_sec = 0, .tv_nsec = 50000000};
+	nanosleep(&noDataSleep, NULL);
+
 	dvsConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "dvs/"), moduleData, devInfo);
 	apsConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "aps/"), moduleData, devInfo);
 	imuConfigSend(dvConfigNodeGetRelativeNode(deviceConfigNode, "imu/"), moduleData, devInfo);
