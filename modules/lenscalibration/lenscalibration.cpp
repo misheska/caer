@@ -121,9 +121,9 @@ public:
 	}
 
 	void run() override {
-		auto frame_in = inputs.getFrameInput("frames").data();
+		auto frame_in = inputs.getFrameInput("frames").frame();
 
-		auto corners_out = outputs.getFrameOutput("patternCorners").getOutputData();
+		auto corners_out = outputs.getFrameOutput("patternCorners").frame();
 
 		// Calibration is done only using frames.
 		if (!calibrationCompleted) {

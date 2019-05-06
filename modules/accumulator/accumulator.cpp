@@ -3,7 +3,6 @@
 
 class Accumulator : public dv::ModuleBase {
 private:
-	cv::Size size;
 	dv::Accumulator frameAccumulator;
 
 public:
@@ -35,8 +34,7 @@ public:
 
 	Accumulator() {
 		outputs.getFrameOutput("frames").setup(inputs.getEventInput("events"));
-		size             = inputs.getEventInput("events").size();
-		frameAccumulator = dv::Accumulator::reconstructionFrame(size);
+		frameAccumulator = dv::Accumulator::reconstructionFrame(inputs.getEventInput("events").size());
 	}
 
 	void run() override {
@@ -48,8 +46,8 @@ public:
 
 		// make sure frame is in correct exposure and data type
 		double scaleFactor
-			= 255. / ((double) frameAccumulator.getMaxPotential() - (double) frameAccumulator.getMinPotential());
-		double shiftFactor = -(double) frameAccumulator.getMinPotential() * scaleFactor;
+			= 255.0 / static_cast<double>(frameAccumulator.getMaxPotential() - frameAccumulator.getMinPotential());
+		double shiftFactor = -static_cast<double>(frameAccumulator.getMinPotential()) * scaleFactor;
 		cv::Mat correctedFrame;
 		frame.convertTo(correctedFrame, CV_8U, scaleFactor, shiftFactor);
 

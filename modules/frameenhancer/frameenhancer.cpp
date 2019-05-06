@@ -41,8 +41,8 @@ public:
 	}
 
 	void run() override {
-		auto frame_in  = inputs.getFrameInput("frames").data();
-		auto frame_out = outputs.getFrameOutput("frames").getOutputData();
+		auto frame_in  = inputs.getFrameInput("frames").frame();
+		auto frame_out = outputs.getFrameOutput("frames").frame();
 
 		// Setup output frame. Same size.
 		frame_out->sizeX                    = frame_in->sizeX;

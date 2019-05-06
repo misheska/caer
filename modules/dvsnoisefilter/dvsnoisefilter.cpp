@@ -126,7 +126,7 @@ public:
 
 	void run() override {
 		auto evt_in  = inputs.getEventInput("events").events();
-		auto evt_out = outputs.getEventOutput("events").getOutputData();
+		auto evt_out = outputs.getEventOutput("events").events();
 
 		bool hotPixelEnabled           = config.get<dvCfgType::BOOL>("hotPixelEnable");
 		bool refractoryPeriodEnabled   = config.get<dvCfgType::BOOL>("refractoryPeriodEnable");

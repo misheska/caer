@@ -75,11 +75,11 @@ public:
 	}
 
 	void run() override {
-		auto events_in  = inputs.getEventInput("events").data();
-		auto events_out = outputs.getEventOutput("undistortedEvents").getOutputData();
+		auto events_in  = inputs.getEventInput("events").events();
+		auto events_out = outputs.getEventOutput("undistortedEvents").events();
 
-		auto frame_in  = inputs.getFrameInput("frames").data();
-		auto frame_out = outputs.getFrameOutput("undistortedFrames").getOutputData();
+		auto frame_in  = inputs.getFrameInput("frames").frame();
+		auto frame_out = outputs.getFrameOutput("undistortedFrames").frame();
 
 		// At this point we always try to load the calibration settings for undistortion.
 		// Maybe they just got created or exist from a previous run.

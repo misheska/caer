@@ -35,8 +35,8 @@ public:
 	}
 
 	void run() override {
-		auto frame_in = inputs.getFrameInput("frames").data();
-		auto hist_out = outputs.getFrameOutput("histograms").getOutputData();
+		auto frame_in = inputs.getFrameInput("frames").frame();
+		auto hist_out = outputs.getFrameOutput("histograms").frame();
 
 		auto numBins = config.get<dvCfgType::INT>("numBins");
 
