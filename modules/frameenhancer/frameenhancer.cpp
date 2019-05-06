@@ -15,7 +15,7 @@ private:
 
 public:
 	static void addInputs(dv::InputDefinitionList &in) {
-		in.addEventInput("frames");
+		in.addFrameInput("frames");
 	}
 
 	static void addOutputs(dv::OutputDefinitionList &out) {

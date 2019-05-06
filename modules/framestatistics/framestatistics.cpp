@@ -31,7 +31,7 @@ public:
 		// Populate frame output info node. Must have generated statistics histogram frame
 		// Populate frame output info node. Must have generated statistics histogram frame
 		// maximum size. Max size is 256 x 128 due to max number of bins being 256.
-		outputs.getFrameOutput("histogram").setup(256, 256, inputs.getFrameInput("frames").getOriginDescription());
+		outputs.getFrameOutput("histogram").setup(256, 128, inputs.getFrameInput("frames").getOriginDescription());
 	}
 
 	void run() override {

@@ -60,13 +60,9 @@ public:
 		acceptorNewSocket(ioService),
 		tlsContext(asioSSL::context::tlsv12_server),
 		tlsEnabled(false) {
-		// First check that input is possible.
+		// Required input is always present.
 		auto inputInfoNode = inputs.infoNode("output0");
-		if (!inputInfoNode) {
-			throw std::runtime_error("Input not ready, upstream module not running.");
-		}
-
-		auto inputNode = inputInfoNode.getParent();
+		auto inputNode     = inputInfoNode.getParent();
 
 		auto outputNode     = moduleNode.getRelativeNode("outputs/output0/");
 		auto outputInfoNode = outputNode.getRelativeNode("info/");
