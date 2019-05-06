@@ -237,6 +237,82 @@ public:
 #endif
 };
 
+template<> class RuntimeInput<dv::Frame> : public _RuntimeInputCommon<dv::Frame> {
+public:
+	RuntimeInput(const std::string &name, dvModuleData moduleData) : _RuntimeInputCommon(name, moduleData) {
+	}
+
+	const InputDataWrapper<dv::Frame> frame() const {
+		return (data());
+	}
+
+	int sizeX() const {
+		return (infoNode().getInt("sizeX"));
+	}
+
+	int sizeY() const {
+		return (infoNode().getInt("sizeY"));
+	}
+
+#if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
+	const cv::Size size() const {
+		return (cv::Size(sizeX(), sizeY()));
+	}
+#endif
+};
+
+struct EventPacket;
+
+/**
+ * Specialization of the runtime output for frame outputs
+ * Provides convenience setup functions for setting up the frame output
+ */
+template<> class RuntimeOutput<dv::Frame> : public _RuntimeOutputCommon<dv::Frame> {
+public:
+	RuntimeOutput(const std::string &name, dvModuleData moduleData) :
+		_RuntimeOutputCommon<dv::Frame>(name, moduleData) {
+	}
+
+	/**
+	 * Sets up this frame output with the provided parameters
+	 * @param sizeX The width of the frames supplied on this output
+	 * @param sizeY The height of the frames supplied on this output
+	 * @param originDescription A description of the original creator of the data
+	 */
+	void setup(int sizeX, int sizeY, const std::string &originDescription) {
+		this->createSourceAttribute(originDescription);
+		this->createSizeAttributes(sizeX, sizeY);
+	}
+
+	/**
+	 * Sets this frame output up with the same parameters the the supplied input.
+	 * @param frameInput  The frame input to copy the data from
+	 */
+	void setup(const RuntimeInput<dv::Frame> &frameInput) {
+		setup(frameInput.sizeX(), frameInput.sizeY(), frameInput.getOriginDescription());
+	}
+
+	/**
+	 * Sets this frame output up with the same parameters as the supplied input.
+	 * @param eventInput The event input to copy the information from
+	 */
+	void setup(const RuntimeInput<dv::EventPacket> &eventInput);
+
+#if defined(DV_API_OPENCV_SUPPORT) && DV_API_OPENCV_SUPPORT == 1
+	/**
+	 * Convenience shorthand to commit an OpenCV mat onto this output.
+	 * If not using this function, call `data()` to get an output frame
+	 * to fill into.
+	 * @param mat The OpenCV Mat to submit
+	 * @return A reference to the this
+	 */
+	RuntimeOutput<dv::Frame> &operator<<(const cv::Mat &mat) {
+		data() << mat;
+		return *this;
+	}
+#endif
+};
+
 } // namespace dv
 
 #endif // DV_SDK_FRAME_HPP
