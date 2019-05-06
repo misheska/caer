@@ -1,17 +1,12 @@
 #ifndef DV_PROCESSING_CORE_HPP
 #define DV_PROCESSING_CORE_HPP
 
-#include <libcaercpp/events/polarity.hpp>
+#include "../data/event.hpp"
 
 #include <algorithm>
-#include <atomic>
-#include <condition_variable>
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <opencv2/opencv.hpp>
-#include <thread>
-#include <valarray>
 #include <vector>
 
 #define TIME_SCALE 1e6
@@ -1279,6 +1274,7 @@ public:
 		return *this;
 	}
 };
+
 } // namespace dv
 
 #endif // DV_PROCESSING_CORE_HPP

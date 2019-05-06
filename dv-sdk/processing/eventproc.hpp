@@ -3,8 +3,6 @@
 
 #include "core.hpp"
 
-#include <opencv2/opencv.hpp>
-
 namespace dv {
 
 /**
@@ -179,6 +177,7 @@ cv::Rect boundingRect(const EventStore &packet) {
 
 	return cv::Rect(minX, minY, maxX - minX, maxY - minY);
 }
+
 } // namespace dv
 
 #endif // DV_PROCESSING_EVENTPROC_HPP

@@ -3,8 +3,6 @@
 
 #include "core.hpp"
 
-#include <opencv2/opencv.hpp>
-
 namespace dv {
 
 /**
@@ -499,6 +497,7 @@ public:
 		return timeSurface.at(y, x);
 	}
 };
+
 } // namespace dv
 
 #endif // DV_PROCESSING_FRAME_HPP
