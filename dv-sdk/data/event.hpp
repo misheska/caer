@@ -77,13 +77,10 @@ public:
 		return (ptr);
 	}
 
-
-	OutputDataWrapper<dv::EventPacket>& operator<<(const dv ::Event &event) {
+	OutputDataWrapper<dv::EventPacket> &operator<<(const dv ::Event &event) {
 		push_back(event);
 		return *this;
 	}
-
-
 };
 
 } // namespace dv

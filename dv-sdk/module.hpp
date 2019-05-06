@@ -47,8 +47,7 @@ inline constexpr bool has_addTypes
 
 BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(addInputs)
 template<typename T>
-inline constexpr bool has_addInputs
-	= has_static_member_function_addInputs<T, void(dv::InputDefinitionList &)>::value;
+inline constexpr bool has_addInputs = has_static_member_function_addInputs<T, void(dv::InputDefinitionList &)>::value;
 
 BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(addOutputs)
 template<typename T>

@@ -9,4 +9,4 @@
 #include "dv-sdk/processing/eventproc.hpp"
 #include "dv-sdk/processing/frame.hpp"
 
-#endif //DV_RUNTIME_PROCESSING_HPP
+#endif // DV_RUNTIME_PROCESSING_HPP

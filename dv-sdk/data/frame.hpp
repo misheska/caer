@@ -139,7 +139,7 @@ public:
 	 */
 	cv::Mat getMat() {
 		// Verify size.
-		auto channels = (static_cast<int>(ptr->format) / 8) + 1;
+		auto channels     = (static_cast<int>(ptr->format) / 8) + 1;
 		auto requiredSize = static_cast<size_t>(ptr->sizeX * ptr->sizeY * channels);
 		if (ptr->pixels.size() < requiredSize) {
 			// In case the buffer does not correspond to the specified sizes, we resize the buffer
@@ -162,7 +162,7 @@ public:
 	 */
 	const cv::Mat getMat() const {
 		// Verify size.
-		auto channels = (static_cast<int>(ptr->format) / 8) + 1;
+		auto channels     = (static_cast<int>(ptr->format) / 8) + 1;
 		auto requiredSize = static_cast<size_t>(ptr->sizeX * ptr->sizeY * channels);
 		if (ptr->pixels.size() < requiredSize) {
 			// In case the buffer does not correspond to the specified sizes, we resize the buffer
@@ -187,7 +187,8 @@ public:
 				ptr->format = dv::FrameFormat::BGRA;
 				break;
 			default:
-				throw std::out_of_range((boost::format("Unsupported number of channels in OpenCV Mat: %d") % mat.channels()).str());
+				throw std::out_of_range(
+					(boost::format("Unsupported number of channels in OpenCV Mat: %d") % mat.channels()).str());
 		}
 		cv::Mat outMat = getMat();
 		switch (mat.type() % 8) {
@@ -198,10 +199,10 @@ public:
 				mat.convertTo(outMat, CV_8U, 1, 128);
 				break;
 			case CV_16U:
-				mat.convertTo(outMat, CV_8U, 1./256., 0);
+				mat.convertTo(outMat, CV_8U, 1. / 256., 0);
 				break;
 			case CV_16S:
-				mat.convertTo(outMat, CV_8U, 1./256., 128);
+				mat.convertTo(outMat, CV_8U, 1. / 256., 128);
 				break;
 			case CV_32F:
 			case CV_64F:
@@ -213,7 +214,7 @@ public:
 		commit();
 	}
 
-	OutputDataWrapper<dv::Frame>& operator<<(const cv::Mat &mat) {
+	OutputDataWrapper<dv::Frame> &operator<<(const cv::Mat &mat) {
 		commitMat(mat);
 		return *this;
 	}

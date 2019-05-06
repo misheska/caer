@@ -43,11 +43,11 @@ private:
 
 public:
 	static void addInputs(dv::InputDefinitionList &in) {
-	    in.addEventInput("events");
+		in.addEventInput("events");
 	}
 
 	static void addOutputs(dv::OutputDefinitionList &out) {
-	    out.addEventOutput("events");
+		out.addEventOutput("events");
 	}
 
 	static const char *getDescription() {

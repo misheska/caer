@@ -7,8 +7,8 @@
 
 namespace dv {
 
-	struct commitType {};
-	constexpr commitType commit{};
+struct commitType {};
+constexpr commitType commit{};
 
 template<typename T> class InputDataWrapper {
 private:

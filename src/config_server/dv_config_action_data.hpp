@@ -4,7 +4,6 @@
 #define FLATBUFFERS_GENERATED_DVCONFIGACTIONDATA_DV_H_
 
 #include "dv-sdk/data/cstring.hpp"
-
 #include "dv-sdk/data/flatbuffers/flatbuffers.h"
 
 namespace dv {
