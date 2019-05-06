@@ -195,7 +195,7 @@ public:
 	 */
 	size_t sliceTimeFront(time_t time) {
 		auto timeItr = iteratorAtTime(time);
-		auto index   = (size_t)(timeItr - begin());
+		auto index   = static_cast<size_t>(timeItr - begin());
 		sliceFront(index);
 		return index;
 	}
@@ -218,7 +218,7 @@ public:
 	 */
 	size_t sliceTimeBack(time_t time) {
 		auto timeItr     = iteratorAtTime(time);
-		auto index       = (size_t)(timeItr - begin());
+		auto index       = static_cast<size_t>(timeItr - begin());
 		size_t cutAmount = length_ - index;
 		sliceBack(cutAmount);
 		return cutAmount;
@@ -324,7 +324,8 @@ private:
 	const bool lower_;
 
 public:
-	explicit PartialEventDataTimeComparator(bool lower) : lower_(lower){};
+	explicit PartialEventDataTimeComparator(bool lower) : lower_(lower) {
+	}
 
 	/**
 	 * Returns true, if the comparator is set to not lower and the given time is higher than the highest
@@ -412,7 +413,8 @@ public:
 	 * Default constructor. Creates a new iterator at the beginning of
 	 * the packet
 	 */
-	EventStoreIterator() : EventStoreIterator(nullptr, true){};
+	EventStoreIterator() : EventStoreIterator(nullptr, true) {
+	}
 
 	/**
 	 * Creates a new Iterator either at the beginning or at the end
@@ -425,7 +427,7 @@ public:
 		dataPartialsPtr_(dataPartialsPtr),
 		offset_(0) {
 		partialIndex_ = front ? 0 : dataPartialsPtr->size();
-	};
+	}
 
 	/**
 	 * __INTERNAL USE ONLY__
@@ -707,8 +709,8 @@ public:
 		std::vector<PartialEventData> newPartials;
 		auto lowerPartial = std::upper_bound(partialOffsets_.begin(), partialOffsets_.end(), start);
 		auto upperPartial = std::lower_bound(partialOffsets_.begin(), partialOffsets_.end(), start + length);
-		size_t lowIndex   = (size_t)(lowerPartial - partialOffsets_.begin()) - 1;
-		size_t highIndex  = (size_t)(upperPartial - partialOffsets_.begin());
+		auto lowIndex     = static_cast<size_t>(lowerPartial - partialOffsets_.begin()) - 1;
+		auto highIndex    = static_cast<size_t>(upperPartial - partialOffsets_.begin());
 		for (size_t i = lowIndex; i < highIndex; i++) {
 			newPartials.emplace_back(dataPartials_[i]);
 		}
@@ -788,7 +790,7 @@ public:
 		}
 
 		if (newLength == 0) {
-			retStart = isEmpty() ? 0 : partialOffsets_[(size_t)(lowerPartial - dataPartials_.begin())];
+			retStart = isEmpty() ? 0 : partialOffsets_[static_cast<size_t>(lowerPartial - dataPartials_.begin())];
 			retEnd   = retStart;
 
 			return EventStore();
@@ -806,7 +808,7 @@ public:
 			newPartials.erase(newPartials.end() - 1);
 		}
 
-		retStart = partialOffsets_[(size_t)(lowerPartial - dataPartials_.begin())] + cutFront;
+		retStart = partialOffsets_[static_cast<size_t>(lowerPartial - dataPartials_.begin())] + cutFront;
 		retEnd   = retStart + newLength;
 
 		return EventStore(newPartials);
@@ -1136,7 +1138,7 @@ private:
 			time_t oldVal           = data_.get()[i];
 			(target.data_.get())[i] = (a < 0 && -a > oldVal) ? 0 : oldVal + (time_t) a;
 		}
-	};
+	}
 
 public:
 	/**

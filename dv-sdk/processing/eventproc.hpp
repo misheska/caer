@@ -12,7 +12,7 @@ namespace dv {
  * @return a 64 bit hash that uniquely identifies the coordinates
  */
 inline long coordinateHash(const coord_t x, const coord_t y) {
-	return ((long) x << 32) | y;
+	return (static_cast<long>(x) << 32) | y;
 }
 
 /**
@@ -23,7 +23,7 @@ inline long coordinateHash(const coord_t x, const coord_t y) {
  * @param out The EventStore to put the ROI events into. Will get modified.
  * @param roi The rectangle with the region of interest.
  */
-void roiFilter(const EventStore &in, EventStore &out, const cv::Rect &roi) {
+inline void roiFilter(const EventStore &in, EventStore &out, const cv::Rect &roi) {
 	// in-place filtering is not supported
 	assert(&in != &out);
 
@@ -46,13 +46,13 @@ void roiFilter(const EventStore &in, EventStore &out, const cv::Rect &roi) {
  * @param xDivision Division factor for the x-coordinate for the events
  * @param yDivision Division factor for the y-coordinate of the events
  */
-void subsample(const EventStore &in, EventStore &out, double xDivision, double yDivision) {
+inline void subsample(const EventStore &in, EventStore &out, double xDivision, double yDivision) {
 	// in-place filtering is not supported
 	assert(&in != &out);
 
 	for (const Event &event : in) {
-		out.addEvent(Event(
-			event.timestamp(), (coord_t)(event.x() / xDivision), (coord_t)(event.y() / yDivision), event.polarity()));
+		out.addEvent(Event(event.timestamp(), static_cast<coord_t>(event.x() / xDivision),
+			static_cast<coord_t>(event.y() / yDivision), event.polarity()));
 	}
 }
 
@@ -63,7 +63,7 @@ void subsample(const EventStore &in, EventStore &out, double xDivision, double y
  * @param out The outgoing EventStore to store the kept events on
  * @param polarity The polarity of the events that should be kept
  */
-void polarityFilter(const EventStore &in, EventStore &out, bool polarity) {
+inline void polarityFilter(const EventStore &in, EventStore &out, bool polarity) {
 	// in-place filtering is not supported
 	assert(&in != &out);
 
@@ -85,7 +85,7 @@ void polarityFilter(const EventStore &in, EventStore &out, bool polarity) {
  * @param out The EventStore to copy the kept events into.
  * @param rate The rate in "Events per second per pixel"
  */
-void rateLimitFilter(const EventStore &in, EventStore &out, double rate) {
+inline void rateLimitFilter(const EventStore &in, EventStore &out, double rate) {
 	// in-place filtering is not supported
 	assert(&in != &out);
 	double period = (1. / rate) * TIME_SCALE;
@@ -94,7 +94,7 @@ void rateLimitFilter(const EventStore &in, EventStore &out, double rate) {
 	for (const Event &event : in) {
 		long hash = coordinateHash(event.x(), event.y());
 		if (occurrenceMap.find(hash) == occurrenceMap.end()
-			|| (double) (event.timestamp() - occurrenceMap[hash]) >= period) {
+			|| static_cast<double>(event.timestamp() - occurrenceMap[hash]) >= period) {
 			occurrenceMap[hash] = event.timestamp();
 			out.addEvent(event);
 		}
@@ -132,7 +132,8 @@ public:
 	 * @param size The height and width of the expected event data.
 	 * @param rate The rate of events (in events/second) that should pass the filter
 	 */
-	RateLimitFilter(const cv::Size &size, double rate) : RateLimitFilter(size.height, size.height, rate){};
+	RateLimitFilter(const cv::Size &size, double rate) : RateLimitFilter(size.height, size.height, rate) {
+	}
 
 	/**
 	 * Filters the incoming packet with using the given rate and the state of the
@@ -144,7 +145,7 @@ public:
 		double period = (1. / rate_) * TIME_SCALE;
 
 		for (const Event &event : in) {
-			if ((double) (event.timestamp() - lastEmitSurface_.at(event.y(), event.x())) > period) {
+			if (static_cast<double>(event.timestamp() - lastEmitSurface_.at(event.y(), event.x())) > period) {
 				out.addEvent(event);
 				lastEmitSurface_.at(event.y(), event.x()) = event.timestamp();
 			}
@@ -158,7 +159,7 @@ public:
  * @param packet The EventStore to work on
  * @return The smallest possible rectangle that contains all the events in packet.
  */
-cv::Rect boundingRect(const EventStore &packet) {
+inline cv::Rect boundingRect(const EventStore &packet) {
 	if (packet.isEmpty()) {
 		return cv::Rect(0, 0, 0, 0);
 	}

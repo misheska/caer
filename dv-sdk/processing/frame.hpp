@@ -94,17 +94,20 @@ private:
 				decayTimeSurface_.at(y, x) = time;
 				break;
 			}
+
 			case EXPONENTIAL: {
 				potentialSurface_.at<float>(y, x)
 					= lastPotential * (float) std::exp(-((double) (time - lastDecayTime)) / decayParam_);
 				decayTimeSurface_.at(y, x) = time;
 				break;
 			}
+
 			case STEP: {
 				potentialSurface_.at<float>(y, x)
 					= (double) (time - lastDecayTime) > decayParam_ ? neutralPotential_ : lastPotential;
 				break;
 			}
+
 			default: {
 				potentialSurface_.at<float>(y, x) = lastPotential;
 				break;
@@ -188,7 +191,7 @@ public:
 		synchronousDecay_(synchronousDecay),
 		shape_(size),
 		decayTimeSurface_(TimeMat(size)),
-		potentialSurface_(cv::Mat(size, CV_32F, (double) neutralPotential)),
+		potentialSurface_(cv::Mat(size, CV_32F, neutralPotential)),
 		highestTime_(0) {
 	}
 
@@ -253,7 +256,7 @@ public:
 	 * This function does not reset the time surface.
 	 */
 	void clear() {
-		potentialSurface_ = cv::Mat(shape_, CV_32F, (double) neutralPotential_);
+		potentialSurface_ = cv::Mat(shape_, CV_32F, neutralPotential_);
 	}
 
 	// setters
@@ -471,7 +474,9 @@ public:
 	 * Creates a new time surface accumulator with the given size
 	 * @param size The size (in pixels) for the time surface integrator
 	 */
-	explicit TimeSurface(const cv::Size &size) : timeSurface(TimeMat(size)){};
+	explicit TimeSurface(const cv::Size &size) : timeSurface(TimeMat(size)) {
+	}
+
 	void accumulate(const EventStore &store) {
 		for (const Event &event : store) {
 			timeSurface.at(event.y(), event.x()) = event.timestamp();
