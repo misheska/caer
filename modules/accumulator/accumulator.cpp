@@ -22,7 +22,8 @@ public:
 
 	static void getConfigOptions(dv::RuntimeConfig &config) {
 		config.add("rectifyPolarity", dv::ConfigOption::boolOption("All events have positive contribution"));
-		config.add("eventContribution", dv::ConfigOption::floatOption("The contribution of a single event", 0.04f, 0.0f, 1.0f));
+		config.add("eventContribution",
+			dv::ConfigOption::floatOption("The contribution of a single event", 0.04f, 0.0f, 1.0f));
 		config.add("maxPotential", dv::ConfigOption::floatOption("Value at which to clip the integration", .3f));
 		config.add("neutralPotential", dv::ConfigOption::floatOption("Value to which the decay tends over time", 0.0));
 		config.add("minPotential", dv::ConfigOption::floatOption("Value at which to clip the integration", 0.0));
@@ -32,37 +33,37 @@ public:
 			"decayParam", dv::ConfigOption::doubleOption(
 							  "Slope for linear decay, tau for exponential decay, time for step decay", 1e6, 0, 1e10));
 		config.add("synchronousDecay", dv::ConfigOption::boolOption("Decay at frame generation time"));
-		config.add("accumulationTime", dv::ConfigOption::intOption("Time in ms to accumulate events over", 33, 1, 1000));
+		config.add(
+			"accumulationTime", dv::ConfigOption::intOption("Time in ms to accumulate events over", 33, 1, 1000));
 	}
 
-
 	void doPerFrameTime(const dv::EventStore &events) {
-        frameAccumulator.accumulate(events);
-        // generate frame
-        auto frame = frameAccumulator.generateFrame();
+		frameAccumulator.accumulate(events);
+		// generate frame
+		auto frame = frameAccumulator.generateFrame();
 
-        // make sure frame is in correct exposure and data type
-        double scaleFactor
-                = 255.0 / static_cast<double>(frameAccumulator.getMaxPotential() - frameAccumulator.getMinPotential());
-        double shiftFactor = -static_cast<double>(frameAccumulator.getMinPotential()) * scaleFactor;
-        cv::Mat correctedFrame;
-        frame.convertTo(correctedFrame, CV_8U, scaleFactor, shiftFactor);
+		// make sure frame is in correct exposure and data type
+		double scaleFactor
+			= 255.0 / static_cast<double>(frameAccumulator.getMaxPotential() - frameAccumulator.getMinPotential());
+		double shiftFactor = -static_cast<double>(frameAccumulator.getMinPotential()) * scaleFactor;
+		cv::Mat correctedFrame;
+		frame.convertTo(correctedFrame, CV_8U, scaleFactor, shiftFactor);
 
-        // output
-        outputs.getFrameOutput("frames") << correctedFrame;
+		// output
+		outputs.getFrameOutput("frames") << correctedFrame;
 	}
 
 	Accumulator() : slicer(dv::EventStreamSlicer()) {
 		outputs.getFrameOutput("frames").setup(inputs.getEventInput("events"));
 		frameAccumulator = dv::Accumulator::reconstructionFrame(inputs.getEventInput("events").size());
 
-		sliceJob = slicer.doEveryTimeInterval(config.getInt("accumulationTime") * 1000, std::function<void(const dv::EventStore&)>(
+		sliceJob = slicer.doEveryTimeInterval(config.getInt("accumulationTime") * 1000,
+			std::function<void(const dv::EventStore &)>(
 				std::bind(&Accumulator::doPerFrameTime, this, std::placeholders::_1)));
 	}
 
-
 	void run() override {
-	    slicer.addEventPacket(inputs.getEventInput("events").events());
+		slicer.addEventPacket(inputs.getEventInput("events").events());
 	}
 
 	static dv::Accumulator::Decay decayFromString(const std::string &name) {

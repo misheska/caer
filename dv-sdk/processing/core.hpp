@@ -971,7 +971,8 @@ class EventStreamSlicer {
 		 * the job should be executed
 		 * @param callback The callback function to call on execution.
 		 */
-		SliceJob(const SliceType type, const time_t timeInterval, const size_t numberInterval, std::function<void(EventStore &)> callback) :
+		SliceJob(const SliceType type, const time_t timeInterval, const size_t numberInterval,
+			std::function<void(EventStore &)> callback) :
 			type_(type),
 			callback_(std::move(callback)),
 			timeInterval_(timeInterval),
@@ -1028,13 +1029,13 @@ class EventStreamSlicer {
 		}
 
 		/**
- 		 * __INTERNAL USE ONLY__
- 		 * Sets the number interval to the supplied value
- 		 * @param numberInterval the new interval to use
- 		 */
+		 * __INTERNAL USE ONLY__
+		 * Sets the number interval to the supplied value
+		 * @param numberInterval the new interval to use
+		 */
 		void setNumberInterval(size_t numberInterval) {
-            assert(type_ == NUMBER);
-            numberInterval = numberInterval_;
+			assert(type_ == NUMBER);
+			numberInterval = numberInterval_;
 		}
 	};
 

@@ -1,5 +1,5 @@
-#ifndef DV_PROCESSING_EVENTPROC_HPP
-#define DV_PROCESSING_EVENTPROC_HPP
+#ifndef DV_PROCESSING_EVENT_HPP
+#define DV_PROCESSING_EVENT_HPP
 
 #include "core.hpp"
 
@@ -181,4 +181,4 @@ inline cv::Rect boundingRect(const EventStore &packet) {
 
 } // namespace dv
 
-#endif // DV_PROCESSING_EVENTPROC_HPP
+#endif // DV_PROCESSING_EVENT_HPP
