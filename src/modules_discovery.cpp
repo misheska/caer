@@ -60,7 +60,7 @@ static std::pair<dv::ModuleLibrary, dvModuleInfo> InternalLoadLibrary(boost::fil
 		// Failed to load shared library!
 		boost::format exMsg
 			= boost::format("Failed to load library '%s', error: '%s'.") % modulePath.string() % ex.what();
-		throw std::runtime_error(exMsg.str());
+		throw std::system_error(std::error_code(), exMsg.str());
 	}
 
 	dvModuleInfo (*getInfo)(void);
@@ -72,7 +72,7 @@ static std::pair<dv::ModuleLibrary, dvModuleInfo> InternalLoadLibrary(boost::fil
 		dv::ModulesUnloadLibrary(moduleLibrary);
 		boost::format exMsg
 			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % ex.what();
-		throw std::runtime_error(exMsg.str());
+		throw std::range_error(exMsg.str());
 	}
 #else
 	void *moduleLibrary = dlopen(modulePath.c_str(), RTLD_NOW);
@@ -80,7 +80,7 @@ static std::pair<dv::ModuleLibrary, dvModuleInfo> InternalLoadLibrary(boost::fil
 		// Failed to load shared library!
 		boost::format exMsg
 			= boost::format("Failed to load library '%s', error: '%s'.") % modulePath.string() % dlerror();
-		throw std::runtime_error(exMsg.str());
+		throw std::system_error(std::error_code(), exMsg.str());
 	}
 
 	dvModuleInfo (*getInfo)(void) = (dvModuleInfo(*)(void)) dlsym(moduleLibrary, "dvModuleGetInfo");
@@ -89,7 +89,7 @@ static std::pair<dv::ModuleLibrary, dvModuleInfo> InternalLoadLibrary(boost::fil
 		dv::ModulesUnloadLibrary(moduleLibrary);
 		boost::format exMsg
 			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % dlerror();
-		throw std::runtime_error(exMsg.str());
+		throw std::range_error(exMsg.str());
 	}
 #endif
 
@@ -182,16 +182,6 @@ void dv::ModulesUpdateInformation() {
 	// Sort and unique.
 	vectorSortUnique(glModuleData.modulePaths);
 
-	// No modules, cannot start!
-	if (glModuleData.modulePaths.empty()) {
-		boost::format exMsg = boost::format("Failed to find any modules on path(s) '%s'.") % modulesSearchPath;
-		throw std::runtime_error(exMsg.str());
-	}
-	else {
-		dv::Log(dv::logLevel::DEBUG, "Found %d modules on path(s) '%s'.", glModuleData.modulePaths.size(),
-			modulesSearchPath.c_str());
-	}
-
 	// Generate nodes for each module, with their in/out information as attributes.
 	// This also checks basic validity of the module's information.
 	auto iter = glModuleData.modulePaths.cbegin();
@@ -201,7 +191,7 @@ void dv::ModulesUpdateInformation() {
 
 		// Remove duplicates first.
 		if (modulesNode.existsRelativeNode(moduleName + "/")) {
-			auto exMsg = boost::format("Module '%s': removing duplicate '%s'.") % moduleName % iter->string();
+			auto exMsg = boost::format("Module candidate '%s': removing duplicate '%s'.") % moduleName % iter->string();
 			dv::Log(dv::logLevel::INFO, exMsg);
 
 			iter = glModuleData.modulePaths.erase(iter);
@@ -214,8 +204,15 @@ void dv::ModulesUpdateInformation() {
 		try {
 			mLoad = InternalLoadLibrary(*iter);
 		}
+		catch (const std::range_error &ex) {
+			auto exMsg = boost::format("Module candidate '%s': %s (probably not a DV module)") % moduleName % ex.what();
+			dv::Log(dv::logLevel::DEBUG, exMsg);
+
+			iter = glModuleData.modulePaths.erase(iter);
+			continue;
+		}
 		catch (const std::exception &ex) {
-			auto exMsg = boost::format("Module '%s': %s") % moduleName % ex.what();
+			auto exMsg = boost::format("Module candidate '%s': %s") % moduleName % ex.what();
 			dv::Log(dv::logLevel::ERROR, exMsg);
 
 			iter = glModuleData.modulePaths.erase(iter);
@@ -237,5 +234,15 @@ void dv::ModulesUpdateInformation() {
 		dv::ModulesUnloadLibrary(mLoad.first);
 
 		iter++;
+	}
+
+	// No modules, cannot start!
+	if (glModuleData.modulePaths.empty()) {
+		boost::format exMsg = boost::format("Failed to find any modules on path(s) '%s'.") % modulesSearchPath;
+		throw std::runtime_error(exMsg.str());
+	}
+	else {
+		dv::Log(dv::logLevel::DEBUG, "Found %d modules on path(s) '%s'.", glModuleData.modulePaths.size(),
+			modulesSearchPath.c_str());
 	}
 }
