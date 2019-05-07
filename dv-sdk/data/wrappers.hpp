@@ -92,7 +92,7 @@ public:
 		return (ptr);
 	}
 
-	const OutputDataWrapper operator<<(commitType) {
+	OutputDataWrapper operator<<(commitType) {
 		commit();
 		return *this;
 	}

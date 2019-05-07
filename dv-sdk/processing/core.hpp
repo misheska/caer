@@ -1022,7 +1022,7 @@ private:
 	EventStore storePacket_;
 
 	/** List of all the sliceJobs */
-	std::vector<SliceJob> sliceJobs_;
+	std::map<slicejob_t, SliceJob> sliceJobs_;
 
 	/**
 	 * Should get called as soon as there is fresh data available.
@@ -1032,20 +1032,20 @@ private:
 	 */
 	void evaluate() {
 		// run jobs
-		for (auto &job : sliceJobs_) {
-			job.run(storePacket_);
+		for (auto &jobTuple : sliceJobs_) {
+			jobTuple.second.run(storePacket_);
 		}
 
 		// find  border of the end of last call
 		size_t lowerBound = storePacket_.getTotalLength();
-		for (auto &job : sliceJobs_) {
-			lowerBound = std::min(lowerBound, job.lastCallEnd);
+		for (auto &jobTuple : sliceJobs_) {
+			lowerBound = std::min(lowerBound, jobTuple.second.lastCallEnd);
 		}
 
 		// discard fully processed events and readjust call boundaries of jobs
 		storePacket_ = storePacket_.slice(lowerBound);
-		for (auto &job : sliceJobs_) {
-			job.lastCallEnd = job.lastCallEnd - lowerBound;
+		for (auto &jobTuple : sliceJobs_) {
+			jobTuple.second.lastCallEnd = jobTuple.second.lastCallEnd - lowerBound;
 		}
 	}
 
@@ -1096,6 +1096,7 @@ public:
 	 * @return A handle to uniquely identify the job.
 	 */
 	slicejob_t doEveryNumberOfEvents(size_t n, std::function<void(const EventStore &)> callback) {
+
 		sliceJobs_.emplace_back(SliceJob(SliceJob::SliceType::NUMBER, n, callback));
 		return (slicejob_t) sliceJobs_.size();
 	}
