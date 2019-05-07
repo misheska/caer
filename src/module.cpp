@@ -544,7 +544,7 @@ void dv::Module::runStateMachine() {
 			inputConnectivityInitialize();
 		}
 		catch (const std::runtime_error &ex) {
-			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', retrying ...", ex.what());
+			dv::Log(dv::logLevel::INFO, "moduleInit(): '%s', retrying ...", ex.what());
 
 			// Runtime errors indicate problems the system can
 			// maybe recover from with no user intervention,
@@ -572,7 +572,7 @@ void dv::Module::runStateMachine() {
 				}
 			}
 			catch (const std::exception &ex) {
-				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s :: %s', retrying ...",
+				dv::Log(dv::logLevel::INFO, "moduleInit(): '%s :: %s', retrying ...",
 					boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
 
 				shutdownProcedure(false, false);
