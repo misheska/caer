@@ -285,7 +285,7 @@ static void createDefaultBiasConfiguration(dvModuleData moduleData, const char *
 		createCoarseFineBiasSetting(biasNode, "DiffCasBnc", 5, 115, true, "N", "Cascode");
 		createCoarseFineBiasSetting(biasNode, "ApsROSFBn", 6, 219, true, "N", "Normal");
 		createCoarseFineBiasSetting(biasNode, "LocalBufBn", 5, 164, true, "N", "Normal");
-		createCoarseFineBiasSetting(biasNode, "PixInvBn", 5, 129, true, "N", "Normal");
+		createCoarseFineBiasSetting(biasNode, "PixInvBn", 6, 144, true, "N", "Normal");
 		createCoarseFineBiasSetting(biasNode, "PrBp", 2, 58, true, "P", "Normal");
 		createCoarseFineBiasSetting(biasNode, "PrSFBp", 1, 16, true, "P", "Normal");
 		createCoarseFineBiasSetting(biasNode, "RefrBp", 4, 25, true, "P", "Normal");
@@ -339,7 +339,7 @@ static void createDefaultBiasConfiguration(dvModuleData moduleData, const char *
 		createCoarseFineBiasSetting(biasNode, "DiffBn", 4, 39, true, "N", "Normal");
 		createCoarseFineBiasSetting(biasNode, "OnBn", 5, 255, true, "N", "Normal");
 		createCoarseFineBiasSetting(biasNode, "OffBn", 4, 1, true, "N", "Normal");
-		createCoarseFineBiasSetting(biasNode, "PixInvBn", 5, 129, true, "N", "Normal");
+		createCoarseFineBiasSetting(biasNode, "PixInvBn", 6, 144, true, "N", "Normal");
 		createCoarseFineBiasSetting(biasNode, "PrBp", 2, 58, true, "P", "Normal");
 		createCoarseFineBiasSetting(biasNode, "PrSFBp", 1, 16, true, "P", "Normal");
 		createCoarseFineBiasSetting(biasNode, "RefrBp", 4, 25, true, "P", "Normal");
