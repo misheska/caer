@@ -2099,8 +2099,8 @@ public:
 		size_t end;
 		return !str
 			   || (VerifyVectorOrString(reinterpret_cast<const uint8_t *>(str), 1, &end) && Verify(end, 1)
-					  &&                         // Must have terminator
-					  Check(buf_[end] == '\0')); // Terminating byte must be 0.
+				   &&                         // Must have terminator
+				   Check(buf_[end] == '\0')); // Terminating byte must be 0.
 	}
 
 	// Common code between vectors and strings.

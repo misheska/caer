@@ -1,4 +1,4 @@
-#define DV_FRAME_OPENCV_SUPPORT 0
+#define DV_API_OPENCV_SUPPORT 0
 
 #include "dv-sdk/data/event.hpp"
 #include "dv-sdk/data/frame.hpp"
@@ -43,8 +43,8 @@ private:
 	int32_t packetSubsampleCount;
 
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("visualize", "ANYT", false);
+	static void addInputs(dv::InputDefinitionList &in) {
+		in.addInput("visualize", "ANYT", false);
 	}
 
 	static const char *getDescription() {
@@ -70,7 +70,7 @@ public:
 #endif
 
 		// Initialize visualizer. Needs size information from the source.
-		auto info = inputs.getInfoNode("visualize");
+		auto info = inputs.infoNode("visualize");
 		if (!info) {
 			throw std::runtime_error("Input not ready, upstream module not running.");
 		}
@@ -160,7 +160,7 @@ public:
 		renderScreen();
 	}
 
-	void advancedConfigUpdate() override {
+	void configUpdate() override {
 		// Here we don't know what changed, just that something changed,
 		// so we force both resize and move updates, if nothing really
 		// changed, they're both pretty cheap.

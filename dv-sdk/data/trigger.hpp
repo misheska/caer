@@ -6,14 +6,14 @@
 
 namespace dv {
 
-template<> class InputWrapper<TriggerPacket> : public dv::cvectorConstProxy<TriggerT> {
+template<> class InputDataWrapper<TriggerPacket> : public dv::cvectorConstProxy<TriggerT> {
 private:
 	using NativeType = typename TriggerPacket::NativeTableType;
 
 	std::shared_ptr<const NativeType> ptr;
 
 public:
-	InputWrapper(std::shared_ptr<const NativeType> p) :
+	InputDataWrapper(std::shared_ptr<const NativeType> p) :
 		dv::cvectorConstProxy<TriggerT>((p) ? (&p->triggers) : (nullptr)),
 		ptr(std::move(p)) {
 	}
@@ -27,7 +27,7 @@ public:
 	}
 };
 
-template<> class OutputWrapper<TriggerPacket> : public dv::cvectorProxy<TriggerT> {
+template<> class OutputDataWrapper<TriggerPacket> : public dv::cvectorProxy<TriggerT> {
 private:
 	using NativeType = typename TriggerPacket::NativeTableType;
 
@@ -36,7 +36,7 @@ private:
 	std::string name;
 
 public:
-	OutputWrapper(NativeType *p, dvModuleData m, const std::string &n) :
+	OutputDataWrapper(NativeType *p, dvModuleData m, const std::string &n) :
 		dv::cvectorProxy<TriggerT>((p) ? (&p->triggers) : (nullptr)),
 		ptr(p),
 		moduleData(m),

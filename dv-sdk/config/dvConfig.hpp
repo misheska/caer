@@ -398,7 +398,7 @@ public:
 		dvConfigNodeClearSubTree(node, clearThisNode);
 	}
 
-	void copyTo(dv::Config::Node destination) {
+	void copyTo(dv::Config::Node destination) const {
 		dvConfigNodeCopy(node, static_cast<dvConfigNode>(destination));
 	}
 
@@ -505,6 +505,31 @@ public:
 
 	template<AttributeType T> typename AttributeTypeGenerator<T>::type get(const std::string &key) const {
 		return (getAttribute<T>(key).value);
+	}
+
+	// Convenience getter methods
+	inline int getInt(const std::string &key) const {
+		return get<dv::Config::AttributeType::INT>(key);
+	}
+
+	inline long getLong(const std::string &key) const {
+		return get<dv::Config::AttributeType::LONG>(key);
+	}
+
+	inline float getFloat(const std::string &key) const {
+		return get<dv::Config::AttributeType::FLOAT>(key);
+	}
+
+	inline double getDouble(const std::string &key) const {
+		return get<dv::Config::AttributeType::DOUBLE>(key);
+	}
+
+	inline const std::string getString(const std::string &key) const {
+		return get<dv::Config::AttributeType::STRING>(key);
+	}
+
+	inline bool getBool(const std::string &key) const {
+		return get<dv::Config::AttributeType::BOOL>(key);
 	}
 
 	bool exportNodeToXML(int fd) const {

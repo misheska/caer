@@ -1,14 +1,14 @@
 # FILE
-ADD_LIBRARY(output_file SHARED dv_output.hpp output_common.c file.c)
-
-SET_TARGET_PROPERTIES(output_file
-	PROPERTIES
-	PREFIX "dv_"
-)
-
-TARGET_LINK_LIBRARIES(output_file ${DV_LIBS})
-
-INSTALL(TARGETS output_file DESTINATION ${DV_MODULES_DIR})
+#ADD_LIBRARY(output_file SHARED dv_output.hpp output_common.c file.c)
+#
+#SET_TARGET_PROPERTIES(output_file
+#	PROPERTIES
+#	PREFIX "dv_"
+#)
+#
+#TARGET_LINK_LIBRARIES(output_file ${DV_LIBS})
+#
+#INSTALL(TARGETS output_file DESTINATION ${DV_MODULES_DIR})
 
 # NET_TCP_SERVER
 ADD_LIBRARY(output_net_tcp_server SHARED net_tcp_server.cpp)

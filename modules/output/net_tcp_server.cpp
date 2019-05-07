@@ -1,3 +1,4 @@
+#define DV_API_OPENCV_SUPPORT 0
 #include "dv-sdk/module.hpp"
 
 #include "dv_output.hpp"
@@ -36,8 +37,8 @@ private:
 	dvOutput output;
 
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("output0", "ANYT", false);
+	static void addInputs(dv::InputDefinitionList &in) {
+		in.addInput("output0", "ANYT", false);
 	}
 
 	static const char *getDescription() {
@@ -59,13 +60,9 @@ public:
 		acceptorNewSocket(ioService),
 		tlsContext(asioSSL::context::tlsv12_server),
 		tlsEnabled(false) {
-		// First check that input is possible.
-		auto inputInfoNode = inputs.getInfoNode("output0");
-		if (!inputInfoNode) {
-			throw std::runtime_error("Input not ready, upstream module not running.");
-		}
-
-		auto inputNode = inputInfoNode.getParent();
+		// Required input is always present.
+		auto inputInfoNode = inputs.infoNode("output0");
+		auto inputNode     = inputInfoNode.getParent();
 
 		auto outputNode     = moduleNode.getRelativeNode("outputs/output0/");
 		auto outputInfoNode = outputNode.getRelativeNode("info/");

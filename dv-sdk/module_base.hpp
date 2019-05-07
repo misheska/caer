@@ -127,13 +127,16 @@ public:
 	}
 
 	/**
-	 * Method that updates the configs in the map as soon as some config
-	 * change.
+	 * Method that gets called whenever a config gets changed. It first merges
+	 * the new config from the config tree into a runtime dict. After that,
+	 * a user overloadable function is called with which the user has the
+	 * possibility to copy out config values.
 	 */
-	void configUpdate() {
+	void configMerge() {
+		// merges the changes from the config tree into the runtime dict
 		config.update();
-
-		advancedConfigUpdate();
+		// calls a user overloadable function to handle config changes
+		configUpdate();
 	}
 
 	/**
@@ -141,7 +144,7 @@ public:
 	 * Called on configuration update, allows more advanced control of how
 	 * configuration values are updated.
 	 */
-	virtual void advancedConfigUpdate() {
+	virtual void configUpdate() {
 	}
 
 	/**

@@ -14,12 +14,12 @@ private:
 	enum class ContrastAlgorithms { NORMALIZATION, HISTOGRAM_EQUALIZATION, CLAHE } contrastAlgo;
 
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("frames", dv::Frame::identifier, false);
+	static void addInputs(dv::InputDefinitionList &in) {
+		in.addFrameInput("frames");
 	}
 
-	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-		out.emplace_back("frames", dv::Frame::identifier);
+	static void addOutputs(dv::OutputDefinitionList &out) {
+		out.addFrameOutput("frames");
 	}
 
 	static const char *getDescription() {
@@ -33,24 +33,16 @@ public:
 	}
 
 	FrameEnhancer() {
-		// Wait for input to be ready. All inputs, once they are up and running, will
-		// have a valid sourceInfo node to query, especially if dealing with data.
-		// Allocate map using info from sourceInfo.
-		auto info = inputs.getInfoNode("frames");
-		if (!info) {
-			throw std::runtime_error("Frames input not ready, upstream module not running.");
-		}
-
-		// Populate frame output info node, keep same as input info node.
-		info.copyTo(outputs.getInfoNode("frames"));
+		// setup output frame stream
+		outputs.getFrameOutput("frames").setup(inputs.getFrameInput("frames"));
 
 		// Call once to translate string into enum properly.
-		advancedConfigUpdate();
+		configUpdate();
 	}
 
 	void run() override {
-		auto frame_in  = inputs.get<dv::Frame>("frames");
-		auto frame_out = outputs.get<dv::Frame>("frames");
+		auto frame_in  = inputs.getFrameInput("frames").frame();
+		auto frame_out = outputs.getFrameOutput("frames").frame();
 
 		// Setup output frame. Same size.
 		frame_out->sizeX                    = frame_in->sizeX;
@@ -291,7 +283,7 @@ public:
 		clahe->apply(input, output);
 	}
 
-	void advancedConfigUpdate() override {
+	void configUpdate() override {
 		// Parse available choices into enum value.
 		auto selectedContrastAlgo = config.get<dvCfgType::STRING>("contrastAlgorithm");
 

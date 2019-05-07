@@ -11,12 +11,12 @@ using dvCfgFlags = dvCfg::AttributeFlags;
 
 class FrameStatistics : public dv::ModuleBase {
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("frames", dv::Frame::identifier, false);
+	static void addInputs(dv::InputDefinitionList &in) {
+		in.addFrameInput("frames");
 	}
 
-	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-		out.emplace_back("histograms", dv::Frame::identifier);
+	static void addOutputs(dv::OutputDefinitionList &out) {
+		out.addFrameOutput("histograms");
 	}
 
 	static const char *getDescription() {
@@ -28,26 +28,15 @@ public:
 	}
 
 	FrameStatistics() {
-		// Wait for input to be ready. All inputs, once they are up and running, will
-		// have a valid sourceInfo node to query, especially if dealing with data.
-		// Allocate map using info from sourceInfo.
-		auto info = inputs.getInfoNode("frames");
-		if (!info) {
-			throw std::runtime_error("Frames input not ready, upstream module not running.");
-		}
-
+		// Populate frame output info node. Must have generated statistics histogram frame
 		// Populate frame output info node. Must have generated statistics histogram frame
 		// maximum size. Max size is 256 x 128 due to max number of bins being 256.
-		auto outInfoNode = outputs.getInfoNode("histograms");
-		outInfoNode.create<dvCfgType::INT>(
-			"sizeX", 256, {256, 256}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Maximum X axis size of frame.");
-		outInfoNode.create<dvCfgType::INT>(
-			"sizeY", 128, {128, 128}, dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Maximum Y axis size of frame.");
+		outputs.getFrameOutput("histogram").setup(256, 128, inputs.getFrameInput("frames").getOriginDescription());
 	}
 
 	void run() override {
-		auto frame_in = inputs.get<dv::Frame>("frames");
-		auto hist_out = outputs.get<dv::Frame>("histograms");
+		auto frame_in = inputs.getFrameInput("frames").frame();
+		auto hist_out = outputs.getFrameOutput("histograms").frame();
 
 		auto numBins = config.get<dvCfgType::INT>("numBins");
 

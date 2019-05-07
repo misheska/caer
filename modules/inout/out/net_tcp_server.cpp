@@ -1,3 +1,5 @@
+#define DV_API_OPENCV_SUPPORT 0
+
 #include "dv-sdk/module.hpp"
 
 #include "dv_output.hpp"

@@ -28,12 +28,12 @@ private:
 	bool calibrationCompleted;
 
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("frames", dv::Frame::identifier, false);
+	static void addInputs(dv::InputDefinitionList &in) {
+		in.addFrameInput("frames", false);
 	}
 
-	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-		out.emplace_back("patternCorners", dv::Frame::identifier);
+	static void addOutputs(dv::OutputDefinitionList &out) {
+		out.addFrameOutput("patternCorners");
 	}
 
 	static const char *getDescription() {
@@ -68,22 +68,12 @@ public:
 	}
 
 	LensCalibration() {
-		// Wait for input to be ready. All inputs, once they are up and running, will
-		// have a valid sourceInfo node to query, especially if dealing with data.
-		// Allocate map using info from sourceInfo.
-		auto info = inputs.getInfoNode("frames");
-		if (!info) {
-			throw std::runtime_error("Frame input not ready, upstream module not running.");
-		}
-
-		imageSize = cv::Size(info.get<dv::CfgType::INT>("sizeX"), info.get<dv::CfgType::INT>("sizeY"));
-
-		info.copyTo(outputs.getInfoNode("patternCorners"));
-
-		advancedConfigUpdate();
+		imageSize = inputs.getFrameInput("frames").size();
+		outputs.getFrameOutput("patternCorners").setup(inputs.getFrameInput("frames"));
+		configUpdate();
 	}
 
-	void advancedConfigUpdate() override {
+	void configUpdate() override {
 		// Parse available choices into enum value.
 		auto selectedCalibrationPattern = config.get<dv::CfgType::STRING>("calibrationPattern");
 
@@ -131,9 +121,9 @@ public:
 	}
 
 	void run() override {
-		auto frame_in = inputs.get<dv::Frame>("frames");
+		auto frame_in = inputs.getFrameInput("frames").frame();
 
-		auto corners_out = outputs.get<dv::Frame>("patternCorners");
+		auto corners_out = outputs.getFrameOutput("patternCorners").frame();
 
 		// Calibration is done only using frames.
 		if (!calibrationCompleted) {
@@ -163,7 +153,7 @@ public:
 		}
 	}
 
-	bool findNewPoints(dv::InputWrapper<dv::Frame> &frame, dv::OutputWrapper<dv::Frame> &corners) {
+	bool findNewPoints(dv::InputDataWrapper<dv::Frame> &frame, dv::OutputDataWrapper<dv::Frame> &corners) {
 		auto view = frame.getMatPointer();
 
 		int chessBoardFlags = cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE;

@@ -1,6 +1,6 @@
 #include "aedat4_convert.h"
 
-#define DV_FRAME_OPENCV_SUPPORT 0
+#define DV_API_OPENCV_SUPPORT 0
 
 #include <libcaercpp/events/frame.hpp>
 #include <libcaercpp/events/imu6.hpp>

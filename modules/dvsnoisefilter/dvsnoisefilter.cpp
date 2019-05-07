@@ -1,3 +1,4 @@
+#define DV_API_OPENCV_SUPPORT 0
 #include "dv-sdk/data/event.hpp"
 #include "dv-sdk/module.hpp"
 
@@ -41,12 +42,12 @@ private:
 	std::vector<int64_t> timestampsMap;
 
 public:
-	static void addInputs(std::vector<dv::InputDefinition> &in) {
-		in.emplace_back("events", dv::EventPacket::identifier, false);
+	static void addInputs(dv::InputDefinitionList &in) {
+		in.addEventInput("events");
 	}
 
-	static void addOutputs(std::vector<dv::OutputDefinition> &out) {
-		out.emplace_back("events", dv::EventPacket::identifier);
+	static void addOutputs(dv::OutputDefinitionList &out) {
+		out.addEventOutput("events");
 	}
 
 	static const char *getDescription() {
@@ -112,26 +113,20 @@ public:
 		backgroundActivityStatOff(0),
 		refractoryPeriodStatOn(0),
 		refractoryPeriodStatOff(0) {
-		// Wait for input to be ready. All inputs, once they are up and running, will
-		// have a valid sourceInfo node to query, especially if dealing with data.
-		// Allocate map using info from sourceInfo.
-		auto info = inputs.getInfoNode("events");
-		if (!info) {
-			throw std::runtime_error("Change events input not ready, upstream module not running.");
-		}
+		auto eventInput = inputs.getEventInput("events");
 
-		sizeX = static_cast<int16_t>(info.get<dvCfgType::INT>("sizeX"));
-		sizeY = static_cast<int16_t>(info.get<dvCfgType::INT>("sizeY"));
+		sizeX = static_cast<int16_t>(eventInput.sizeX());
+		sizeY = static_cast<int16_t>(eventInput.sizeY());
 
 		timestampsMap.resize(static_cast<size_t>(sizeX * sizeY));
 
 		// Populate event output info node, keep same as input info node.
-		info.copyTo(outputs.getInfoNode("events"));
+		outputs.getEventOutput("events").setup(inputs.getEventInput("events"));
 	}
 
 	void run() override {
-		auto evt_in  = inputs.get<dv::EventPacket>("events");
-		auto evt_out = outputs.get<dv::EventPacket>("events");
+		auto evt_in  = inputs.getEventInput("events").events();
+		auto evt_out = outputs.getEventOutput("events").events();
 
 		bool hotPixelEnabled           = config.get<dvCfgType::BOOL>("hotPixelEnable");
 		bool refractoryPeriodEnabled   = config.get<dvCfgType::BOOL>("refractoryPeriodEnable");
