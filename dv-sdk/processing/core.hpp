@@ -971,14 +971,16 @@ class EventStreamSlicer {
 		 * the job should be executed
 		 * @param callback The callback function to call on execution.
 		 */
-		SliceJob(const SliceType type, const size_t interval, std::function<void(EventStore &)> callback) :
+		SliceJob(const SliceType type, const time_t timeInterval, const size_t numberInterval, std::function<void(EventStore &)> callback) :
 			type_(type),
 			callback_(std::move(callback)),
+			timeInterval_(timeInterval),
+			numberInterval_(numberInterval),
 			lastCallEndTime_(0),
 			lastCallEnd(0) {
-			this->timeInterval_   = (type == TIME ? interval : 0);
-			this->numberInterval_ = (type == NUMBER ? interval : 0);
 		}
+
+		SliceJob() = default;
 
 		/**
 		 * __INTERNAL USE ONLY__
@@ -1014,6 +1016,26 @@ class EventStreamSlicer {
 				}
 			}
 		}
+
+		/**
+		 * __INTERNAL USE ONLY__
+		 * Sets the time interval to the supplied value
+		 * @param timeInterval the new timeinterval to use
+		 */
+		void setTimeInterval(time_t timeInterval) {
+			assert(type_ == TIME);
+			timeInterval_ = timeInterval;
+		}
+
+		/**
+ 		 * __INTERNAL USE ONLY__
+ 		 * Sets the number interval to the supplied value
+ 		 * @param numberInterval the new interval to use
+ 		 */
+		void setNumberInterval(size_t numberInterval) {
+            assert(type_ == NUMBER);
+            numberInterval = numberInterval_;
+		}
 	};
 
 private:
@@ -1023,6 +1045,7 @@ private:
 
 	/** List of all the sliceJobs */
 	std::map<slicejob_t, SliceJob> sliceJobs_;
+	slicejob_t hashCounter_ = 0;
 
 	/**
 	 * Should get called as soon as there is fresh data available.
@@ -1096,9 +1119,9 @@ public:
 	 * @return A handle to uniquely identify the job.
 	 */
 	slicejob_t doEveryNumberOfEvents(size_t n, std::function<void(const EventStore &)> callback) {
-
-		sliceJobs_.emplace_back(SliceJob(SliceJob::SliceType::NUMBER, n, callback));
-		return (slicejob_t) sliceJobs_.size();
+		hashCounter_ += 1;
+		sliceJobs_.emplace(std::make_pair(hashCounter_, SliceJob(SliceJob::SliceType::NUMBER, 0, n, callback)));
+		return hashCounter_;
 	}
 
 	/**
@@ -1119,8 +1142,53 @@ public:
 	 * @return A handle to uniquely identify the job.
 	 */
 	slicejob_t doEveryTimeInterval(time_t time, std::function<void(const EventStore &)> callback) {
-		sliceJobs_.emplace_back(SliceJob(SliceJob::SliceType::TIME, time, callback));
-		return (slicejob_t) sliceJobs_.size();
+		hashCounter_ += 1;
+		sliceJobs_.emplace(std::make_pair(hashCounter_, SliceJob(SliceJob::SliceType::TIME, time, 0, callback)));
+		return hashCounter_;
+	}
+
+	/**
+	 * Returns true if the slicer contains the slicejob with the provided id
+	 * @param job the id of the slicejob in question
+	 * @return true, if the slicer contains the given slicejob
+	 */
+	bool hasJob(slicejob_t job) {
+		return sliceJobs_.find(job) != sliceJobs_.end();
+	}
+
+	/**
+	 * Removes the given job from the list of current jobs.
+	 * @param job The job id to be removed
+	 */
+	void removeJob(slicejob_t job) {
+		if (!hasJob(job)) {
+			return;
+		}
+		sliceJobs_.erase(job);
+	}
+
+	/**
+	 * Modifies the time interval of the supplied job to the requested value
+	 * @param job  the job whose time interval should be changed
+	 * @param timeInterval the new time interval value
+	 */
+	void modifyTimeInterval(slicejob_t job, time_t timeInterval) {
+		if (!hasJob(job)) {
+			return;
+		}
+		sliceJobs_[job].setTimeInterval(timeInterval);
+	}
+
+	/**
+	 * Modifies the number interval of the supplied job to the requested value
+	 * @param job the job whose number interval should be changed
+	 * @param numberInterval the new number interval value
+	 */
+	void modifyNumberInterval(slicejob_t job, size_t numberInterval) {
+		if (!hasJob(job)) {
+			return;
+		}
+		sliceJobs_[job].setNumberInterval(numberInterval);
 	}
 };
 
