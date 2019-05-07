@@ -129,6 +129,8 @@ static void caerInputDAVISCommonSystemConfigInit(dvModuleData moduleData) {
 	// Ring-buffer setting (only changes value on module init/shutdown cycles).
 	dvConfigNodeCreateInt(sysNode, "DataExchangeBufferSize", 64, 8, 1024, DVCFG_FLAGS_NORMAL,
 		"Size of EventPacketContainer queue, used for transfers between data acquisition thread and mainloop.");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(sysNode, "PacketContainerInterval");
 }
 
 static void caerInputDAVISCommonInit(dvModuleData moduleData, struct caer_davis_info *devInfo) {
@@ -2220,6 +2222,8 @@ static void createVDACBiasSetting(
 		"Voltage, as a fraction of 1/64th of VDD=3.3V.");
 	dvConfigNodeCreateInt(biasConfigNode, "currentValue", I8T(currentValue), 0, 7, DVCFG_FLAGS_NORMAL,
 		"Current that drives the voltage.");
+
+	dvConfigNodeAttributeModifierPriorityAttributes(biasConfigNode, "");
 }
 
 static uint16_t generateVDACBiasParent(dvConfigNode biasNode, const char *biasName) {
@@ -2270,6 +2274,8 @@ static void createCoarseFineBiasSetting(dvConfigNode biasNode, const char *biasN
 	dvConfigNodeAttributeModifierListOptions(biasConfigNode, "type", "Normal,Cascode", false);
 	dvConfigNodeCreateString(biasConfigNode, "currentLevel", "Normal", 3, 6, DVCFG_FLAGS_NORMAL, "Bias current level.");
 	dvConfigNodeAttributeModifierListOptions(biasConfigNode, "currentLevel", "Normal,Low", false);
+
+	dvConfigNodeAttributeModifierPriorityAttributes(biasConfigNode, "");
 }
 
 static uint16_t generateCoarseFineBiasParent(dvConfigNode biasNode, const char *biasName) {
@@ -2333,6 +2339,8 @@ static void createShiftedSourceBiasSetting(dvConfigNode biasNode, const char *bi
 		biasConfigNode, "voltageLevel", voltageLevel, 9, 11, DVCFG_FLAGS_NORMAL, "Shifted-source voltage level.");
 	dvConfigNodeAttributeModifierListOptions(
 		biasConfigNode, "voltageLevel", "SplitGate,SingleDiode,DoubleDiode", false);
+
+	dvConfigNodeAttributeModifierPriorityAttributes(biasConfigNode, "");
 }
 
 static uint16_t generateShiftedSourceBiasParent(dvConfigNode biasNode, const char *biasName) {
