@@ -780,7 +780,7 @@ public:
 
 		auto lowerPartial = std::lower_bound(
 			dataPartials_.begin(), dataPartials_.end(), startTime, PartialEventDataTimeComparator(false));
-		auto upperPartial = std::upper_bound(
+		auto upperPartial = std::lower_bound(
 			dataPartials_.begin(), dataPartials_.end(), endTime, PartialEventDataTimeComparator(true));
 
 		size_t newLength = 0;
