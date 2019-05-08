@@ -276,7 +276,7 @@ protected:
 	void createSourceAttribute(const std::string &originDescription) {
 		dv::Config::Node infoNode = this->infoNode();
 		infoNode.create<dv::Config::AttributeType::STRING>("source", originDescription, {0, 8192},
-			dv::Cfg::AttributeFlags::NORMAL | dv::Cfg::AttributeFlags::NO_EXPORT,
+			dv::Cfg::AttributeFlags::NORMAL | dv::Cfg::AttributeFlags::NO_EXPORT | dv::Cfg::AttributeFlags::READ_ONLY,
 			"Description of the first origin of the data");
 	}
 
@@ -288,11 +288,11 @@ protected:
 	void createSizeAttributes(int sizeX, int sizeY) {
 		dv::Config::Node infoNode = this->infoNode();
 		infoNode.create<dv::Config::AttributeType::INT>("sizeX", sizeX, {sizeX, sizeX},
-			dv::Cfg::AttributeFlags::NORMAL | dv::Cfg::AttributeFlags::NO_EXPORT,
+			dv::Cfg::AttributeFlags::NORMAL | dv::Cfg::AttributeFlags::NO_EXPORT | dv::Cfg::AttributeFlags::READ_ONLY,
 			"Width of the output data. (max x-coordinate + 1)");
 
 		infoNode.create<dv::Config::AttributeType::INT>("sizeY", sizeY, {sizeY, sizeY},
-			dv::Cfg::AttributeFlags::NORMAL | dv::Cfg::AttributeFlags::NO_EXPORT,
+			dv::Cfg::AttributeFlags::NORMAL | dv::Cfg::AttributeFlags::NO_EXPORT | dv::Cfg::AttributeFlags::READ_ONLY,
 			"Height of the output data. (max y-coordinate + 1)");
 	}
 };
