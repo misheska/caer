@@ -22,6 +22,11 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 		return;
 	}
 
+	// Get real-time timestamp offset for this camera.
+	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+
+	int64_t tsOffset = dvConfigNodeGetLong(sourceInfoNode, "tsOffset");
+
 	switch (caerEventPacketHeaderGetEventType(oldPacket)) {
 		case POLARITY_EVENT: {
 			auto newObject      = dvModuleOutputAllocate(moduleData, "events");
@@ -38,7 +43,7 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 				}
 
 				newEventPacket->events.emplace_back(
-					evt.getTimestamp64(oldPacketPolarity), evt.getX(), evt.getY(), evt.getPolarity());
+					tsOffset + evt.getTimestamp64(oldPacketPolarity), evt.getX(), evt.getY(), evt.getPolarity());
 			}
 
 			if (newEventPacket->events.size() > 0) {
@@ -59,11 +64,11 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 				auto newObject = dvModuleOutputAllocate(moduleData, "frames");
 				auto newFrame  = static_cast<dv::Frame::NativeTableType *>(newObject->obj);
 
-				newFrame->timestamp                = evt.getTimestamp64(oldPacketFrame);
-				newFrame->timestampStartOfFrame    = evt.getTSStartOfFrame64(oldPacketFrame);
-				newFrame->timestampStartOfExposure = evt.getTSStartOfExposure64(oldPacketFrame);
-				newFrame->timestampEndOfExposure   = evt.getTSEndOfExposure64(oldPacketFrame);
-				newFrame->timestampEndOfFrame      = evt.getTSEndOfFrame64(oldPacketFrame);
+				newFrame->timestamp                = tsOffset + evt.getTimestamp64(oldPacketFrame);
+				newFrame->timestampStartOfFrame    = tsOffset + evt.getTSStartOfFrame64(oldPacketFrame);
+				newFrame->timestampStartOfExposure = tsOffset + evt.getTSStartOfExposure64(oldPacketFrame);
+				newFrame->timestampEndOfExposure   = tsOffset + evt.getTSEndOfExposure64(oldPacketFrame);
+				newFrame->timestampEndOfFrame      = tsOffset + evt.getTSEndOfFrame64(oldPacketFrame);
 
 				newFrame->sizeX     = static_cast<int16_t>(evt.getLengthX());
 				newFrame->sizeY     = static_cast<int16_t>(evt.getLengthY());
@@ -132,7 +137,7 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 				}
 
 				dv::IMU::NativeTableType imu{};
-				imu.timestamp      = evt.getTimestamp64(oldPacketIMU);
+				imu.timestamp      = tsOffset + evt.getTimestamp64(oldPacketIMU);
 				imu.temperature    = evt.getTemp();
 				imu.accelerometerX = evt.getAccelX();
 				imu.accelerometerY = evt.getAccelY();
@@ -201,7 +206,7 @@ void dvConvertToAedat4(caerEventPacketHeaderConst oldPacket, dvModuleData module
 					continue;
 				}
 
-				trigger.timestamp = evt.getTimestamp64(oldPacketSpecial);
+				trigger.timestamp = tsOffset + evt.getTimestamp64(oldPacketSpecial);
 
 				newTriggerPacket->triggers.push_back(trigger);
 			}

@@ -9,6 +9,7 @@
 
 #include <libcaer/devices/davis.h>
 
+#include "dv-sdk/cross/portable_time.h"
 #include "dv-sdk/module.h"
 
 #include "aedat4_convert.h"
@@ -254,6 +255,15 @@ static void caerInputDAVISCommonRun(dvModuleData moduleData) {
 			dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
 			dvConfigNodeUpdateReadOnlyAttribute(sourceInfoNode, "deviceIsMaster", DVCFG_TYPE_BOOL,
 				(union dvConfigAttributeValue){.boolean = devInfo.deviceIsMaster});
+
+			// Reset real-time timestamp offset.
+			struct timespec tsNow;
+			portable_clock_gettime_realtime(&tsNow);
+
+			int64_t tsNowOffset = I64T(tsNow.tv_sec * 1000000LL) + I64T(tsNow.tv_nsec / 1000LL);
+
+			dvConfigNodeUpdateReadOnlyAttribute(
+				sourceInfoNode, "tsOffset", DVCFG_TYPE_LONG, (union dvConfigAttributeValue){.ilong = tsNowOffset});
 		}
 		else {
 			dvConvertToAedat4(caerEventPacketContainerGetEventPacket(out, POLARITY_EVENT), moduleData);

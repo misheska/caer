@@ -56,6 +56,18 @@ static bool caerInputDAVISRPiInit(dvModuleData moduleData) {
 	createDefaultAERConfiguration(moduleData, chipIDToName(devInfo.chipID, true));
 	sendDefaultConfiguration(moduleData, &devInfo);
 
+	dvConfigNode sourceInfoNode = dvConfigNodeGetRelativeNode(moduleData->moduleNode, "sourceInfo/");
+
+	// Set timestamp offset for real-time timestamps. DataStart() will
+	// reset the device-side timestamp.
+	struct timespec tsNow;
+	portable_clock_gettime_realtime(&tsNow);
+
+	int64_t tsNowOffset = I64T(tsNow.tv_sec * 1000000LL) + I64T(tsNow.tv_nsec / 1000LL);
+
+	dvConfigNodeCreateLong(sourceInfoNode, "tsOffset", tsNowOffset, 0, INT64_MAX,
+		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Time offset of data stream starting point to Unix time in µs.");
+
 	// Start data acquisition.
 	bool ret
 		= caerDeviceDataStart(moduleData->moduleState, NULL, NULL, NULL, &moduleShutdownNotify, moduleData->moduleNode);
