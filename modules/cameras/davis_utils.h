@@ -130,7 +130,7 @@ static void caerInputDAVISCommonSystemConfigInit(dvModuleData moduleData) {
 	dvConfigNodeCreateInt(sysNode, "DataExchangeBufferSize", 64, 8, 1024, DVCFG_FLAGS_NORMAL,
 		"Size of EventPacketContainer queue, used for transfers between data acquisition thread and mainloop.");
 
-	dvConfigNodeAttributeModifierPriorityAttributes(sysNode, "PacketContainerInterval");
+	dvConfigNodeAttributeModifierPriorityAttributes(sysNode, "");
 }
 
 static void caerInputDAVISCommonInit(dvModuleData moduleData, struct caer_davis_info *devInfo) {
@@ -472,7 +472,7 @@ static void createDefaultLogicConfiguration(
 	// Subsystem 0: Multiplexer
 	dvConfigNode muxNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "multiplexer/");
 
-	dvConfigNodeAttributeModifierPriorityAttributes(muxNode, "TimestampReset");
+	dvConfigNodeAttributeModifierPriorityAttributes(muxNode, "");
 
 	dvConfigNodeCreateBool(muxNode, "Run", true, DVCFG_FLAGS_NORMAL, "Enable multiplexer state machine.");
 	dvConfigNodeCreateBool(muxNode, "TimestampRun", true, DVCFG_FLAGS_NORMAL, "Enable µs-timestamp generation.");
@@ -696,7 +696,7 @@ static void createDefaultLogicConfiguration(
 	if (devInfo->muxHasStatistics) {
 		dvConfigNode statNode = dvConfigNodeGetRelativeNode(deviceConfigNode, "statistics/");
 
-		dvConfigNodeAttributeModifierPriorityAttributes(statNode, "muxDroppedDVS");
+		dvConfigNodeAttributeModifierPriorityAttributes(statNode, "");
 
 		dvConfigNodeCreateLong(statNode, "muxDroppedExtInput", 0, 0, INT64_MAX,
 			DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Number of dropped External Input events due to USB full.");
