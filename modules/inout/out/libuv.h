@@ -1,7 +1,8 @@
 #ifndef EXT_LIBUV_H_
 #define EXT_LIBUV_H_
 
-#include "caer-sdk/buffers.h"
+#include "dv-sdk/buffers.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>

@@ -1,22 +1,23 @@
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/mainloop.h"
+
 #include "output_common.h"
 
-static bool caerOutputUnixSocketInit(caerModuleData moduleData);
+static bool caerOutputUnixSocketInit(dvModuleData moduleData);
 
-static const struct caer_module_functions OutputUnixSocketFunctions = {.moduleInit = &caerOutputUnixSocketInit,
-	.moduleRun                                                                     = &caerOutputCommonRun,
-	.moduleConfig                                                                  = NULL,
-	.moduleExit                                                                    = &caerOutputCommonExit,
-	.moduleReset                                                                   = &caerOutputCommonReset};
+static const struct dvModuleFunctionsS OutputUnixSocketFunctions = {
+	.moduleInit   = &caerOutputUnixSocketInit,
+	.moduleRun    = &caerOutputCommonRun,
+	.moduleConfig = NULL,
+	.moduleExit   = &caerOutputCommonExit,
+};
 
 static const struct caer_event_stream_in OutputUnixSocketInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct caer_module_info OutputUnixSocketInfo = {
+static const struct dvModuleInfoS OutputUnixSocketInfo = {
 	.version           = 1,
-	.name              = "UnixSocketOutput",
 	.description       = "Send AEDAT 3 data out to a Unix Socket (client mode).",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),
 	.functions         = &OutputUnixSocketFunctions,
 	.inputStreams      = OutputUnixSocketInputs,
@@ -25,21 +26,21 @@ static const struct caer_module_info OutputUnixSocketInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&OutputUnixSocketInfo);
 }
 
-static bool caerOutputUnixSocketInit(caerModuleData moduleData) {
+static bool caerOutputUnixSocketInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
-	sshsNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
 		"Unix Socket path for writing output data (client mode, connect to existing socket).");
 
 	// Allocate memory.
 	size_t numClients         = 1;
 	outputCommonNetIO streams = malloc(sizeof(*streams) + (numClients * sizeof(uv_stream_t *)));
 	if (streams == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
 		return (false);
 	}
 
@@ -47,7 +48,7 @@ static bool caerOutputUnixSocketInit(caerModuleData moduleData) {
 	if (pipe == NULL) {
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network structure.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network structure.");
 		return (false);
 	}
 
@@ -56,7 +57,7 @@ static bool caerOutputUnixSocketInit(caerModuleData moduleData) {
 		free(pipe);
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network connection.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network connection.");
 		return (false);
 	}
 
@@ -70,7 +71,7 @@ static bool caerOutputUnixSocketInit(caerModuleData moduleData) {
 	streams->server        = NULL;
 
 	// Remember address.
-	streams->address = sshsNodeGetString(moduleData->moduleNode, "socketPath");
+	streams->address = dvConfigNodeGetString(moduleData->moduleNode, "socketPath");
 
 	pipe->data = streams;
 

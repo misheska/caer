@@ -2,14 +2,17 @@
 #define INPUT_COMMON_H_
 
 #include <libcaer/ringbuffer.h>
-#include "caer-sdk/buffers.h"
-#include "caer-sdk/module.h"
+
+#include "dv-sdk/buffers.h"
+#include "dv-sdk/module.h"
+
 #include "../inout_common.h"
 #include "ext/uthash/utarray.h"
+
 #include <unistd.h>
 
 #ifdef HAVE_PTHREADS
-#include "caer-sdk/cross/c11threads_posix.h"
+#	include "dv-sdk/cross/c11threads_posix.h"
 #endif
 
 struct input_common_header_info {
@@ -165,15 +168,16 @@ struct input_common_state {
 	/// Flag to signal update to buffer configuration asynchronously.
 	atomic_bool bufferUpdate;
 	/// Reference to parent module's original data.
-	caerModuleData parentModule;
+	dvModuleData parentModule;
 	/// Reference to sourceInfo node (to avoid getting it each time again).
-	sshsNode sourceInfoNode;
+	dvConfigNode sourceInfoNode;
 };
 
 typedef struct input_common_state *inputCommonState;
 
-bool caerInputCommonInit(caerModuleData moduleData, int readFd, bool isNetworkStream, bool isNetworkMessageBased);
-void caerInputCommonExit(caerModuleData moduleData);
-void caerInputCommonRun(caerModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
+void caerInputCommonConfigInit(dvConfigNode configNode);
+bool caerInputCommonInit(dvModuleData moduleData, int readFd, bool isNetworkStream, bool isNetworkMessageBased);
+void caerInputCommonExit(dvModuleData moduleData);
+void caerInputCommonRun(dvModuleData moduleData, caerEventPacketContainer in, caerEventPacketContainer *out);
 
 #endif /* INPUT_COMMON_H_ */

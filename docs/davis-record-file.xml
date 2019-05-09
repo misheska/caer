@@ -1,32 +1,34 @@
-<sshs version="1.0">
+<dv version="2.0">
     <node name="" path="/">
-        <node name="dvsnoisefilter" path="/dvsnoisefilter/">
-            <attr key="moduleId" type="short">2</attr>
-            <attr key="moduleInput" type="string">1[1]</attr>
-            <attr key="moduleLibrary" type="string">caer_dvsnoisefilter</attr>
-        </node>
-        <node name="caer" path="/caer/">
-            <node name="logger" path="/caer/logger/">
-                <attr key="logLevel" type="byte">5</attr>
+        <node name="system" path="/system/">
+            <node name="logger" path="/system/logger/">
+                <attr key="logLevel" type="int">5</attr>
             </node>
-            <node name="server" path="/caer/server/">
+            <node name="server" path="/system/server/">
                 <attr key="ipAddress" type="string">127.0.0.1</attr>
                 <attr key="portNumber" type="int">4040</attr>
             </node>
         </node>
-        <node name="davisCamera" path="/davisCamera/">
-            <attr key="moduleId" type="short">1</attr>
-            <attr key="moduleLibrary" type="string">caer_davis</attr>
+		<node name="mainloop" path="/mainloop/">
+        <node name="davisCamera" path="/mainloop/davisCamera/">
+            <attr key="moduleId" type="int">1</attr>
+            <attr key="moduleLibrary" type="string">dv_davis</attr>
         </node>
-		<node name="outFile" path="/outFile/">
+		<node name="dvsnoisefilter" path="/mainloop/dvsnoisefilter/">
+            <attr key="moduleId" type="int">2</attr>
+            <attr key="moduleInput" type="string">1[1]</attr>
+            <attr key="moduleLibrary" type="string">dv_dvsnoisefilter</attr>
+        </node>
+		<node name="outFile" path="/mainloop/outFile/">
 			<attr key="directory" type="string">/home/youruser/</attr>
 			<attr key="keepPackets" type="bool">false</attr>
-			<attr key="moduleId" type="short">3</attr>
+			<attr key="moduleId" type="int">3</attr>
 			<attr key="moduleInput" type="string">1[1a2]</attr>
-			<attr key="moduleLibrary" type="string">caer_output_file</attr>
-			<attr key="prefix" type="string">caerOut</attr>
+			<attr key="moduleLibrary" type="string">dv_output_file</attr>
+			<attr key="prefix" type="string">systemOut</attr>
 			<attr key="ringBufferSize" type="int">512</attr>
 			<attr key="validOnly" type="bool">true</attr>
 		</node>
+		</node>
     </node>
-</sshs>
+</dv>

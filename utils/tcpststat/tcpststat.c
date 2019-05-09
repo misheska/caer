@@ -1,8 +1,15 @@
+#include <libcaer/events/common.h>
+#include <libcaer/events/frame.h>
+#include <libcaer/events/polarity.h>
+
 #include "ext/net_rw.h"
 #include "modules/inout/inout_common.h"
+
 #include <arpa/inet.h>
 #include <inttypes.h>
 #include <netinet/in.h>
+#include <signal.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -10,13 +17,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
-#include <libcaer/events/common.h>
-#include <libcaer/events/frame.h>
-#include <libcaer/events/polarity.h>
-
-#include <signal.h>
-#include <stdatomic.h>
 
 static atomic_bool globalShutdown = ATOMIC_VAR_INIT(false);
 

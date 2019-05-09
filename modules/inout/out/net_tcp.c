@@ -1,21 +1,22 @@
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/mainloop.h"
+
 #include "output_common.h"
 
-static bool caerOutputNetTCPInit(caerModuleData moduleData);
+static bool caerOutputNetTCPInit(dvModuleData moduleData);
 
-static const struct caer_module_functions OutputNetTCPFunctions = {.moduleInit = &caerOutputNetTCPInit,
-	.moduleRun                                                                 = &caerOutputCommonRun,
-	.moduleConfig                                                              = NULL,
-	.moduleExit                                                                = &caerOutputCommonExit,
-	.moduleReset                                                               = &caerOutputCommonReset};
+static const struct dvModuleFunctionsS OutputNetTCPFunctions = {
+	.moduleInit   = &caerOutputNetTCPInit,
+	.moduleRun    = &caerOutputCommonRun,
+	.moduleConfig = NULL,
+	.moduleExit   = &caerOutputCommonExit,
+};
 
 static const struct caer_event_stream_in OutputNetTCPInputs[] = {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct caer_module_info OutputNetTCPInfo = {
+static const struct dvModuleInfoS OutputNetTCPInfo = {
 	.version           = 1,
-	.name              = "NetTCPOutput",
 	.description       = "Send AEDAT 3 data out via a TCP connection (client mode).",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),
 	.functions         = &OutputNetTCPFunctions,
 	.inputStreams      = OutputNetTCPInputs,
@@ -24,16 +25,16 @@ static const struct caer_module_info OutputNetTCPInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&OutputNetTCPInfo);
 }
 
-static bool caerOutputNetTCPInit(caerModuleData moduleData) {
+static bool caerOutputNetTCPInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
-	sshsNodeCreateString(moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleData->moduleNode, "ipAddress", "127.0.0.1", 7, 15, DVCFG_FLAGS_NORMAL,
 		"IPv4 address to connect to (client mode).");
-	sshsNodeCreateInt(moduleData->moduleNode, "portNumber", 8888, 1, UINT16_MAX, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(moduleData->moduleNode, "portNumber", 8888, 1, UINT16_MAX, DVCFG_FLAGS_NORMAL,
 		"Port number to connect to (client mode).");
 
 	int retVal;
@@ -41,8 +42,8 @@ static bool caerOutputNetTCPInit(caerModuleData moduleData) {
 	// Generate address.
 	struct sockaddr_in serverAddress;
 
-	char *ipAddress = sshsNodeGetString(moduleData->moduleNode, "ipAddress");
-	retVal          = uv_ip4_addr(ipAddress, sshsNodeGetInt(moduleData->moduleNode, "portNumber"), &serverAddress);
+	char *ipAddress = dvConfigNodeGetString(moduleData->moduleNode, "ipAddress");
+	retVal          = uv_ip4_addr(ipAddress, dvConfigNodeGetInt(moduleData->moduleNode, "portNumber"), &serverAddress);
 	UV_RET_CHECK(retVal, moduleData->moduleSubSystemString, "uv_ip4_addr", free(ipAddress); return (false));
 	free(ipAddress);
 
@@ -50,7 +51,7 @@ static bool caerOutputNetTCPInit(caerModuleData moduleData) {
 	size_t numClients         = 1;
 	outputCommonNetIO streams = malloc(sizeof(*streams) + (numClients * sizeof(uv_stream_t *)));
 	if (streams == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
 		return (false);
 	}
 
@@ -58,7 +59,7 @@ static bool caerOutputNetTCPInit(caerModuleData moduleData) {
 	if (streams->address == NULL) {
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network address.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network address.");
 		return (false);
 	}
 
@@ -67,7 +68,7 @@ static bool caerOutputNetTCPInit(caerModuleData moduleData) {
 		free(streams->address);
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network structure.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network structure.");
 		return (false);
 	}
 
@@ -77,7 +78,7 @@ static bool caerOutputNetTCPInit(caerModuleData moduleData) {
 		free(streams->address);
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network connection.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network connection.");
 		return (false);
 	}
 

@@ -1,32 +1,27 @@
-IF (NOT VISUALIZER)
-	SET(VISUALIZER 0 CACHE BOOL "Enable the visualizer module, based on the SFML C++ library.")
+IF (OS_MACOSX)
+	# This cannot work on MacOS X anymore, due to graphics not being
+	# confined to the main thread anymore.
+	RETURN()
 ENDIF()
 
-IF (VISUALIZER)
-	# Visualizer support via the SFML C++ library
-	PKG_CHECK_MODULES(SFML REQUIRED sfml-graphics>=2.3.0)
+IF (NOT ENABLE_VISUALIZER)
+	SET(ENABLE_VISUALIZER 0 CACHE BOOL "Enable the visualizer module. This is deprecated in favor of dv-gui!")
+ENDIF()
 
-	SET(VISUALIZER_LIBS ${CAER_LIBS} ${SFML_LIBRARIES})
-	SET(VISUALIZER_INCDIRS ${CAER_INCDIRS} ${SFML_INCLUDE_DIRS})
-	SET(VISUALIZER_LIBDIRS ${CAER_LIBDIRS} ${SFML_LIBRARY_DIRS})
+IF (ENABLE_VISUALIZER)
+	FIND_PACKAGE(SFML 2.3.0 REQUIRED COMPONENTS graphics)
 
-	PKG_CHECK_MODULES(GLEW REQUIRED glew>=1.10.0)
-
-	SET(VISUALIZER_LIBS ${VISUALIZER_LIBS} ${GLEW_LIBRARIES})
-	SET(VISUALIZER_INCDIRS ${VISUALIZER_INCDIRS} ${GLEW_INCLUDE_DIRS})
-	SET(VISUALIZER_LIBDIRS ${VISUALIZER_LIBDIRS} ${GLEW_LIBRARY_DIRS})
-
-	INCLUDE_DIRECTORIES(${VISUALIZER_INCDIRS})
-	LINK_DIRECTORIES(${VISUALIZER_LIBDIRS})
-
-	ADD_LIBRARY(visualizer SHARED visualizer.cpp visualizer_handlers.cpp visualizer_renderers.cpp)
+	ADD_LIBRARY(visualizer SHARED visualizer.cpp)
 
 	SET_TARGET_PROPERTIES(visualizer
 		PROPERTIES
-		PREFIX "caer_"
+		PREFIX "dv_"
 	)
 
-	TARGET_LINK_LIBRARIES(visualizer ${VISUALIZER_LIBS})
+	TARGET_LINK_LIBRARIES(visualizer
+		PRIVATE
+			dvsdk
+			sfml-graphics)
 
-	INSTALL(TARGETS visualizer DESTINATION ${CAER_MODULES_DIR})
+	INSTALL(TARGETS visualizer DESTINATION ${DV_MODULES_DIR})
 ENDIF()

@@ -1952,7 +1952,7 @@ int InputBuffer::completeLine(PromptBase& pi) {
   linenoiseCompletions lc;
   char32_t c = 0;
 
-  // CAER CHANGE: startIndex is 0 always, as we need the full string to be
+  // DV CHANGE: startIndex is 0 always, as we need the full string to be
   // passed to completionCallback() so that it can orient itself and understand
   // which particular completion step it has to do.
   int startIndex = 0;
@@ -2580,7 +2580,7 @@ int InputBuffer::getInputLine(PromptBase& pi) {
 
     // ctrl-I/tab, command completion, needs to be before switch statement
     if (c == ctrlChar('I') && completionCallback) {
-      // CAER CHANGE: we want completion on empty lines, but care far less
+      // DV CHANGE: we want completion on empty lines, but care far less
       // about copying stuff with leading tabs, which is not normal for us.
       // if (pos == 0) continue;
       // SERVER-4967 -- in earlier versions, you could paste

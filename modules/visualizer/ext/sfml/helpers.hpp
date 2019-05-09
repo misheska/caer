@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 
 namespace sfml {
+
 class Helpers {
 public:
 	static void setOriginToCenter(sf::Shape &shape) {
@@ -42,6 +43,7 @@ public:
 #endif
 	}
 };
-}
+
+} // namespace sfml
 
 #endif /* EXT_SFML_HELPERS_HPP_ */

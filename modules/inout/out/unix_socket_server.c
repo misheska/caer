@@ -1,25 +1,24 @@
-#include "caer-sdk/cross/portable_io.h"
-#include "caer-sdk/mainloop.h"
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/mainloop.h"
 
 #include "output_common.h"
 
-static bool caerOutputUnixSocketServerInit(caerModuleData moduleData);
+static bool caerOutputUnixSocketServerInit(dvModuleData moduleData);
 
-static const struct caer_module_functions OutputUnixSocketServerFunctions
-	= {.moduleInit    = &caerOutputUnixSocketServerInit,
-		.moduleRun    = &caerOutputCommonRun,
-		.moduleConfig = NULL,
-		.moduleExit   = &caerOutputCommonExit,
-		.moduleReset  = &caerOutputCommonReset};
+static const struct dvModuleFunctionsS OutputUnixSocketServerFunctions = {
+	.moduleInit   = &caerOutputUnixSocketServerInit,
+	.moduleRun    = &caerOutputCommonRun,
+	.moduleConfig = NULL,
+	.moduleExit   = &caerOutputCommonExit,
+};
 
 static const struct caer_event_stream_in OutputUnixSocketServerInputs[]
 	= {{.type = -1, .number = -1, .readOnly = true}};
 
-static const struct caer_module_info OutputUnixSockeServertInfo = {
+static const struct dvModuleInfoS OutputUnixSockeServertInfo = {
 	.version           = 1,
-	.name              = "UnixSocketServerOutput",
 	.description       = "Send AEDAT 3 data out through a Unix Socket to connected clients (server mode).",
-	.type              = CAER_MODULE_OUTPUT,
+	.type              = DV_MODULE_OUTPUT,
 	.memSize           = sizeof(struct output_common_state),
 	.functions         = &OutputUnixSocketServerFunctions,
 	.inputStreams      = OutputUnixSocketServerInputs,
@@ -28,25 +27,25 @@ static const struct caer_module_info OutputUnixSockeServertInfo = {
 	.outputStreamsSize = 0,
 };
 
-caerModuleInfo caerModuleGetInfo(void) {
+dvModuleInfo dvModuleGetInfo(void) {
 	return (&OutputUnixSockeServertInfo);
 }
 
-static bool caerOutputUnixSocketServerInit(caerModuleData moduleData) {
+static bool caerOutputUnixSocketServerInit(dvModuleData moduleData) {
 	// First, always create all needed setting nodes, set their default values
 	// and add their listeners.
-	sshsNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateString(moduleData->moduleNode, "socketPath", "/tmp/caer.sock", 2, PATH_MAX, DVCFG_FLAGS_NORMAL,
 		"Unix Socket path for writing output data (server mode, create new socket).");
-	sshsNodeCreateInt(
-		moduleData->moduleNode, "backlogSize", 5, 1, 32, SSHS_FLAGS_NORMAL, "Maximum number of pending connections.");
-	sshsNodeCreateInt(moduleData->moduleNode, "concurrentConnections", 10, 1, 128, SSHS_FLAGS_NORMAL,
+	dvConfigNodeCreateInt(
+		moduleData->moduleNode, "backlogSize", 5, 1, 32, DVCFG_FLAGS_NORMAL, "Maximum number of pending connections.");
+	dvConfigNodeCreateInt(moduleData->moduleNode, "concurrentConnections", 10, 1, 128, DVCFG_FLAGS_NORMAL,
 		"Maximum number of concurrent active connections.");
 
 	// Allocate memory.
-	size_t numClients         = (size_t) sshsNodeGetInt(moduleData->moduleNode, "concurrentConnections");
+	size_t numClients         = (size_t) dvConfigNodeGetInt(moduleData->moduleNode, "concurrentConnections");
 	outputCommonNetIO streams = malloc(sizeof(*streams) + (numClients * sizeof(uv_stream_t *)));
 	if (streams == NULL) {
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for streams structure.");
 		return (false);
 	}
 
@@ -54,7 +53,7 @@ static bool caerOutputUnixSocketServerInit(caerModuleData moduleData) {
 	if (streams->server == NULL) {
 		free(streams);
 
-		caerModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network server.");
+		dvModuleLog(moduleData, CAER_LOG_ERROR, "Failed to allocate memory for network server.");
 		return (false);
 	}
 
@@ -69,7 +68,7 @@ static bool caerOutputUnixSocketServerInit(caerModuleData moduleData) {
 	}
 
 	// Remember address.
-	streams->address = sshsNodeGetString(moduleData->moduleNode, "socketPath");
+	streams->address = dvConfigNodeGetString(moduleData->moduleNode, "socketPath");
 
 	streams->server->data = streams;
 
@@ -86,8 +85,8 @@ static bool caerOutputUnixSocketServerInit(caerModuleData moduleData) {
 	UV_RET_CHECK(retVal, moduleData->moduleSubSystemString, "uv_pipe_bind", libuvCloseLoopHandles(&streams->loop);
 				 uv_loop_close(&streams->loop); free(streams->address); free(streams); return (false));
 
-	retVal = uv_listen(
-		streams->server, sshsNodeGetInt(moduleData->moduleNode, "backlogSize"), &caerOutputCommonOnServerConnection);
+	retVal = uv_listen(streams->server, dvConfigNodeGetInt(moduleData->moduleNode, "backlogSize"),
+		&caerOutputCommonOnServerConnection);
 	UV_RET_CHECK(retVal, moduleData->moduleSubSystemString, "uv_listen", libuvCloseLoopHandles(&streams->loop);
 				 uv_loop_close(&streams->loop); free(streams->address); free(streams); return (false));
 

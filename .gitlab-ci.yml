@@ -1,0 +1,28 @@
+stages:
+  - build
+
+build_mac:
+  stage: build
+  tags:
+    - mac
+    - build
+  script:
+    - cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl .
+    - make -j2
+    - mkdir -p dv-runtime-packaged-mac/dv_modules
+    - cp src/dv-runtime dv-runtime-packaged-mac/
+    - macpack -v -d dv_modules/libs dv-runtime-packaged-mac/dv-runtime
+    - cp modules/output/dv_output_net_tcp_server.dylib dv-runtime-packaged-mac/dv_modules/
+    - cp modules/dvsnoisefilter/dv_dvsnoisefilter.dylib dv-runtime-packaged-mac/dv_modules/
+    - cp modules/cameras/dv_edvs.dylib dv-runtime-packaged-mac/dv_modules/
+    - cp modules/cameras/dv_davis.dylib dv-runtime-packaged-mac/dv_modules/
+    - macpack -v -d libs dv-runtime-packaged-mac/dv_modules/dv_output_net_tcp_server.dylib
+    - macpack -v -d libs dv-runtime-packaged-mac/dv_modules/dv_dvsnoisefilter.dylib
+    - macpack -v -d libs dv-runtime-packaged-mac/dv_modules/dv_edvs.dylib
+    - macpack -v -d libs dv-runtime-packaged-mac/dv_modules/dv_davis.dylib
+
+  artifacts:
+    name: dv-runtime-packaged-mac
+    paths:
+      - dv-runtime-packaged-mac
+    expire_in: 1 day

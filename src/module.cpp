@@ -1,668 +1,895 @@
-#include "module.h"
+#include "module.hpp"
+
+#include "dv-sdk/cross/portable_io.h"
+#include "dv-sdk/cross/portable_threads.h"
+
+#include "main.hpp"
 
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
+#include <boost/core/demangle.hpp>
 #include <boost/format.hpp>
-#include <iterator>
-#include <mutex>
+#include <chrono>
 #include <regex>
-#include <thread>
-#include <vector>
+#include <typeinfo>
 
-static struct {
-	std::vector<boost::filesystem::path> modulePaths;
-	std::recursive_mutex modulePathsMutex;
-} glModuleData;
-
-static void caerModuleShutdownListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
-static void caerModuleLogLevelListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue);
-
-void caerModuleConfigInit(sshsNode moduleNode) {
-	// Per-module log level support. Initialize with global log level value.
-	sshsNodeCreateInt(moduleNode, "logLevel", caerLogLevelGet(), CAER_LOG_EMERGENCY, CAER_LOG_DEBUG, SSHS_FLAGS_NORMAL,
-		"Module-specific log-level.");
-
-	// Initialize shutdown controls. By default modules always run.
-	sshsNodeCreateBool(moduleNode, "runAtStartup", true, SSHS_FLAGS_NORMAL,
-		"Start this module when the mainloop starts."); // Allow for users to disable a module at start.
-
-	// Call module's configInit function to create default static config.
-	const std::string moduleName = sshsNodeGetStdString(moduleNode, "moduleLibrary");
-
+dv::Module::Module(std::string_view name_, std::string_view library_) :
+	name(name_),
+	moduleConfigNode(dv::Cfg::GLOBAL.getNode("/mainloop/" + name + "/")),
+	threadAlive(false) {
 	// Load library to get module functions.
-	std::pair<ModuleLibrary, caerModuleInfo> mLoad;
-
 	try {
-		mLoad = caerLoadModuleLibrary(moduleName);
+		std::tie(library, info) = dv::ModulesLoadLibrary(library_);
 	}
 	catch (const std::exception &ex) {
-		boost::format exMsg = boost::format("moduleConfigInit() load for '%s': %s") % moduleName % ex.what();
-		libcaer::log::log(libcaer::log::logLevel::ERROR, sshsNodeGetName(moduleNode), exMsg.str().c_str());
-		return;
+		auto exMsg = boost::format("%s: module library load failed, exception '%s :: %s'.") % name
+					 % boost::core::demangle(typeid(ex).name()) % ex.what();
+		dv::Log(dv::logLevel::ERROR, exMsg);
+		throw std::runtime_error(exMsg.str());
 	}
 
-	if (mLoad.second->functions->moduleConfigInit != nullptr) {
-		try {
-			mLoad.second->functions->moduleConfigInit(moduleNode);
-		}
-		catch (const std::exception &ex) {
-			boost::format exMsg = boost::format("moduleConfigInit() for '%s': %s") % moduleName % ex.what();
-			libcaer::log::log(libcaer::log::logLevel::ERROR, sshsNodeGetName(moduleNode), exMsg.str().c_str());
-		}
-	}
+	// Set configuration node (so it's user accessible).
+	moduleNode = static_cast<dvConfigNode>(moduleConfigNode);
 
-	caerUnloadModuleLibrary(mLoad.first);
+	// State allocated later by init().
+	moduleState = nullptr;
+
+	// Ensure the library is stored for successive startups.
+	moduleConfigNode.create<dv::CfgType::STRING>(
+		"moduleLibrary", std::string(library_), {1, PATH_MAX}, dv::CfgFlags::READ_ONLY, "Module library.");
+
+	// Initialize logging related functionality.
+	LoggingInit();
+
+	// Initialize running related functionality.
+	RunningInit();
+
+	// Ensure static configuration is created on each module initialization.
+	StaticInit();
+
+	dv::Log(dv::logLevel::DEBUG, "%s", "Module initialized.");
 }
 
-void caerModuleSM(caerModuleFunctions moduleFunctions, caerModuleData moduleData, size_t memSize,
-	caerEventPacketContainer in, caerEventPacketContainer *out) {
-	bool running = moduleData->running.load(std::memory_order_relaxed);
+void dv::Module::start() {
+	// Start module thread.
+	threadAlive = true;
+	thread      = std::thread(&dv::Module::runThread, this);
+}
 
-	if (moduleData->moduleStatus == CAER_MODULE_RUNNING && running) {
-		if (moduleData->configUpdate.load(std::memory_order_relaxed) != 0) {
-			moduleData->configUpdate.store(0);
+dv::Module::~Module() {
+	// Switch to current module logger.
+	dv::LoggerSet(&logger);
 
-			if (moduleFunctions->moduleConfig != nullptr) {
+	// Check module is properly shut down, which takes care of
+	// cleaning up all input connections. This should always be
+	// the case as it's a requirement for calling removeModule().
+	if (run.isRunning) {
+		dv::Log(dv::logLevel::CRITICAL, "%s", "Destroying a running module. This should never happen!");
+	}
+
+	// Stop module thread and wait for it to exit.
+	threadAlive = false;
+	run.cond.notify_all();
+	thread.join();
+
+	// Cleanup configuration and types.
+	moduleConfigNode.removeNode();
+
+	MainData::getGlobal().typeSystem.unregisterModuleTypes(this);
+
+	dv::Log(dv::logLevel::DEBUG, "%s", "Module destroyed.");
+
+	// Last, unload the shared library plugin.
+	dv::ModulesUnloadLibrary(library);
+}
+
+void dv::Module::LoggingInit() {
+	// Per-module custom log string prefix.
+	logger.logPrefix = name;
+
+	// Per-module log level support. Initialize with global log level value.
+	moduleConfigNode.create<dv::CfgType::INT>("logLevel", CAER_LOG_NOTICE, {CAER_LOG_EMERGENCY, CAER_LOG_DEBUG},
+		dv::CfgFlags::NORMAL, "Module-specific log-level.");
+
+	moduleConfigNode.addAttributeListener(&logger.logLevel, &moduleLogLevelListener);
+	logger.logLevel = moduleConfigNode.get<dv::CfgType::INT>("logLevel");
+
+	// Switch to current module logger.
+	dv::LoggerSet(&logger);
+}
+
+void dv::Module::RunningInit() {
+	// Initialize shutdown controls. By default modules are OFF.
+	moduleConfigNode.create<dv::CfgType::BOOL>("running", false, {}, dv::CfgFlags::NORMAL, "Module start/stop.");
+
+	moduleConfigNode.create<dv::CfgType::BOOL>(
+		"isRunning", false, {}, dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT, "Module running state.");
+
+	moduleConfigNode.addAttributeListener(&run, &moduleRunningListener);
+	run.running = moduleConfigNode.get<dv::CfgType::BOOL>("running");
+
+	run.forcedShutdown = false;
+
+	run.isRunning = false;
+	moduleConfigNode.updateReadOnly<dv::CfgType::BOOL>("isRunning", false);
+}
+
+void dv::Module::StaticInit() {
+	moduleConfigNode.addAttributeListener(&run.configUpdate, &moduleConfigUpdateListener);
+
+	// Call module's staticInit function to create default static config.
+	if (info->functions->moduleStaticInit != nullptr) {
+		try {
+			info->functions->moduleStaticInit(this);
+		}
+		catch (const std::exception &ex) {
+			auto exMsg = boost::format("moduleStaticInit(): failed, exception '%s :: %s'.")
+						 % boost::core::demangle(typeid(ex).name()) % ex.what();
+			dv::Log(dv::logLevel::ERROR, exMsg);
+			throw std::runtime_error(exMsg.str());
+		}
+	}
+
+	// Each module can set priority attributes for UI display. By default let's show 'running'.
+	// Called last to allow for configInit() function to create a different default first.
+	moduleConfigNode.attributeModifierPriorityAttributes("running");
+}
+
+void dv::Module::registerType(const dv::Types::Type type) {
+	MainData::getGlobal().typeSystem.registerModuleType(this, type);
+}
+
+void dv::Module::registerInput(std::string_view inputName, std::string_view typeName, bool optional) {
+	auto typeInfo = MainData::getGlobal().typeSystem.getTypeInfo(typeName, this);
+
+	std::string inputNameString(inputName);
+
+	if (inputs.count(inputNameString)) {
+		throw std::invalid_argument("Input with name '" + inputNameString + "' already exists.");
+	}
+
+	// Add info to internal data structure.
+	inputs.try_emplace(inputNameString, typeInfo, optional, this);
+
+	// Add info to ConfigTree.
+	auto inputNode = moduleConfigNode.getRelativeNode("inputs/" + inputNameString + "/");
+
+	inputNode.create<dv::CfgType::BOOL>("optional", optional, {}, dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT,
+		"Module can run without this input being connected.");
+	inputNode.create<dv::CfgType::STRING>("typeIdentifier", typeInfo.identifier, {4, 4},
+		dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT, "Type identifier.");
+	inputNode.create<dv::CfgType::STRING>("typeDescription", typeInfo.description, {1, 200},
+		dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT, "Type description.");
+
+	// Add connectivity configuration attribute.
+	inputNode.create<dv::CfgType::STRING>(
+		"from", "", {0, 256}, dv::CfgFlags::NORMAL, "From which 'moduleName[outputName]' to get data.");
+
+	dv::Log(dv::logLevel::DEBUG, "Input '%s' registered with type '%s' (optional=%d).", inputNameString.c_str(),
+		typeInfo.identifier, optional);
+}
+
+void dv::Module::registerOutput(std::string_view outputName, std::string_view typeName) {
+	auto typeInfo = MainData::getGlobal().typeSystem.getTypeInfo(typeName, this);
+
+	std::string outputNameString(outputName);
+
+	if (outputs.count(outputNameString)) {
+		throw std::invalid_argument("Output with name '" + outputNameString + "' already exists.");
+	}
+
+	// Add info to ConfigTree.
+	auto outputNode = moduleConfigNode.getRelativeNode("outputs/" + outputNameString + "/");
+
+	outputNode.create<dv::CfgType::STRING>("typeIdentifier", typeInfo.identifier, {4, 4},
+		dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT, "Type identifier.");
+	outputNode.create<dv::CfgType::STRING>("typeDescription", typeInfo.description, {1, 200},
+		dv::CfgFlags::READ_ONLY | dv::CfgFlags::NO_EXPORT, "Type description.");
+
+	auto infoNode = outputNode.getRelativeNode("info/");
+
+	// Add info to internal data structure.
+	outputs.try_emplace(outputNameString, typeInfo, infoNode, this);
+
+	dv::Log(
+		dv::logLevel::DEBUG, "Output '%s' registered with type '%s'.", outputNameString.c_str(), typeInfo.identifier);
+}
+
+static const std::regex inputConnRegex("^([a-zA-Z-_\\d\\.]+)\\[([a-zA-Z-_\\d\\.]+)\\]$");
+
+void dv::Module::inputConnectivityInitialize() {
+	for (auto &input : inputs) {
+		// Get current module connectivity configuration.
+		auto inputNode = moduleConfigNode.getRelativeNode("inputs/" + input.first + "/");
+		auto inputConn = inputNode.get<dv::CfgType::STRING>("from");
+
+		// Check basic syntax: either empty or 'x[y]'.
+		if (inputConn.empty()) {
+			if (input.second.optional) {
+				// Fine if optional, just skip this input then.
+				continue;
+			}
+			else {
+				// Not optional, must be defined!
+				auto msg = boost::format(
+							   "Input '%s': input is not optional, its connectivity attribute can not be left empty.")
+						   % input.first;
+				throw std::domain_error(msg.str());
+			}
+		}
+
+		// Not empty, so check syntax and then components.
+		std::smatch inputConnComponents;
+		if (!std::regex_match(inputConn, inputConnComponents, inputConnRegex)) {
+			auto msg
+				= boost::format("Input '%s': Invalid format of connectivity attribute '%s'.") % input.first % inputConn;
+			throw std::invalid_argument(msg.str());
+		}
+
+		auto moduleName = inputConnComponents.str(1);
+		auto outputName = inputConnComponents.str(2);
+
+		// Does the referenced module exist?
+		auto otherModule = getModule(moduleName);
+		if (otherModule == nullptr) {
+			auto msg = boost::format("Input '%s': invalid connectivity attribute, module '%s' does not exist.")
+					   % input.first % moduleName;
+			throw std::runtime_error(msg.str());
+		}
+
+		// Does it have the specified output?
+		auto moduleOutput = otherModule->getModuleOutput(outputName);
+		if (moduleOutput == nullptr) {
+			auto msg = boost::format(
+						   "Input '%s': invalid connectivity attribute, output '%s' does not exist in module '%s'.")
+					   % input.first % outputName % moduleName;
+			throw std::runtime_error(msg.str());
+		}
+
+		// Then, check the type.
+		// If the expected type is ANYT, we accept anything.
+		if ((input.second.type.id != dv::Types::anyId) && (input.second.type.id != moduleOutput->type.id)) {
+			auto msg = boost::format("Input '%s': invalid connectivity attribute, output '%s' in module '%s' has type "
+									 "'%s', but this input requires type '%s'.")
+					   % input.first % outputName % moduleName % moduleOutput->type.identifier % input.second.type.id;
+			throw std::out_of_range(msg.str());
+		}
+
+		// Last, ensure the other module is running.
+		if (!otherModule->run.isRunning) {
+			auto msg = boost::format("Input '%s': required module '%s' is not running. Please start it first!")
+					   % input.first % moduleName;
+			throw std::runtime_error(msg.str());
+		}
+
+		// All is well, let's connect to that output.
+		OutConnection dataConn{&input.second.queue, &dataAvailable, &input.second};
+
+		connectToModuleOutput(moduleOutput, dataConn);
+
+		// And we're done.
+		input.second.linkedOutput = moduleOutput;
+	}
+}
+
+dv::Module *dv::Module::getModule(const std::string &moduleName) {
+	try {
+		return (MainData::getGlobal().modules.at(moduleName).get());
+	}
+	catch (const std::out_of_range &) {
+		// Fine, not found.
+		return (nullptr);
+	}
+}
+
+dv::ModuleOutput *dv::Module::getModuleOutput(const std::string &outputName) {
+	try {
+		return (&outputs.at(outputName));
+	}
+	catch (const std::out_of_range &) {
+		// Fine, not found.
+		return (nullptr);
+	}
+}
+
+dv::ModuleInput *dv::Module::getModuleInput(const std::string &outputName) {
+	try {
+		return (&inputs.at(outputName));
+	}
+	catch (const std::out_of_range &) {
+		// Fine, not found.
+		return (nullptr);
+	}
+}
+
+void dv::Module::connectToModuleOutput(ModuleOutput *output, OutConnection connection) {
+	std::scoped_lock lock(output->destinationsLock);
+
+	output->destinations.push_back(connection);
+}
+
+void dv::Module::disconnectFromModuleOutput(ModuleOutput *output, OutConnection connection) {
+	std::scoped_lock lock(output->destinationsLock);
+
+	auto pos = std::find(output->destinations.begin(), output->destinations.end(), connection);
+
+	if (pos != output->destinations.end()) {
+		output->destinations.erase(pos);
+	}
+}
+
+void dv::Module::inputConnectivityDestroy() {
+	// Cleanup inputs, disconnect from all of them.
+	for (auto &input : inputs) {
+		if (input.second.linkedOutput != nullptr) {
+			// Remove the connection from the output.
+			OutConnection dataConn{nullptr, nullptr, &input.second};
+
+			disconnectFromModuleOutput(input.second.linkedOutput, dataConn);
+
+			// Disconnected.
+			input.second.linkedOutput = nullptr;
+		}
+
+		// Empty queue of any remaining data elements.
+		{
+			std::scoped_lock lock(dataAvailable.lock);
+
+			while (!input.second.queue.empty()) {
+				auto dataPtr = input.second.queue.get();
+
+				// Ensure refcount is decremented properly.
+				boost::intrusive_ptr<IntrusiveTypedObject> packet(dataPtr, false);
+
+				dataAvailable.count--;
+			}
+		}
+
+		// Empty per-input tracker of live memory of remaining data.
+		input.second.inUsePackets.clear();
+	}
+}
+
+/**
+ * Check that each output's info node has been populated with
+ * at least one informative attribute, so that downstream modules
+ * can find out relevant information about the output.
+ *
+ * Throws std::domain_error if any problem is detected.
+ */
+void dv::Module::verifyOutputInfoNodes() {
+	for (const auto &out : outputs) {
+		if (out.second.infoNode.getAttributeKeys().size() == 0) {
+			auto msg = boost::format("Output '%s' has no informative attributes in info node.") % out.first;
+			throw std::domain_error(msg.str());
+		}
+	}
+}
+
+/**
+ * Remove all attributes and children of the informative
+ * output nodes, leaving them empty.
+ * This cleanup should happen on module initialization failure
+ * and on module exit, to ensure no stale attributes are kept.
+ */
+void dv::Module::cleanupOutputInfoNodes() {
+	for (auto &out : outputs) {
+		out.second.infoNode.clearSubTree(true);
+		out.second.infoNode.removeSubTree();
+	}
+}
+
+void dv::Module::shutdownProcedure(bool doModuleExit, bool disableModule) {
+	if (doModuleExit && info->functions->moduleExit != nullptr) {
+		try {
+			info->functions->moduleExit(this);
+		}
+		catch (const std::exception &ex) {
+			dv::Log(dv::logLevel::ERROR, "moduleExit(): '%s :: %s', disabling module.",
+				boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
+			disableModule = true;
+		}
+	}
+
+	// Free state memory.
+	if (info->memSize != 0) {
+		// Only deallocate if we were the original allocator.
+		free(moduleState);
+	}
+	moduleState = nullptr;
+
+	// Disconnect from other modules.
+	inputConnectivityDestroy();
+
+	// Cleanup output info nodes, if any exist.
+	cleanupOutputInfoNodes();
+
+	// This module has shut down, thus all its direct downstream modules
+	// should have shut down too, and no outputs should remain active.
+	for (auto &output : outputs) {
+		std::scoped_lock lock(output.second.destinationsLock);
+
+		if (!output.second.destinations.empty()) {
+			dv::Log(dv::logLevel::CRITICAL,
+				"Output '%s': %d links still existing on shutdown. This should never happen!", output.first.c_str(),
+				output.second.destinations.size());
+		}
+	}
+
+	// If we cannot recover from whatever caused the shutdown,
+	// we force-disable the module and let the user take action.
+	if (disableModule) {
+		moduleConfigNode.put<dv::CfgType::BOOL>("running", false);
+	}
+	else {
+		run.runDelay = true;
+	}
+}
+
+void dv::Module::forcedShutdown(bool shutdown) {
+	{
+		std::scoped_lock lock(run.lock);
+
+		run.forcedShutdown = shutdown;
+	}
+
+	run.cond.notify_all();
+}
+
+void dv::Module::runThread() {
+	// Set thread-local logger once at startup.
+	dv::LoggerSet(&logger);
+
+	// Set thread name.
+	portable_thread_set_name(logger.logPrefix.c_str());
+
+	dv::Log(dv::logLevel::DEBUG, "%s", "Module thread running.");
+
+	// Run state machine as long as module is running.
+	while (threadAlive.load(std::memory_order_relaxed)) {
+		runStateMachine();
+	}
+
+	dv::Log(dv::logLevel::DEBUG, "%s", "Module thread stopped.");
+}
+
+void dv::Module::runStateMachine() {
+	if (run.runDelay) {
+		// Rate-limit retries to once per second.
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+
+		run.runDelay = false;
+	}
+
+	bool shouldRun = false;
+
+	{
+		std::unique_lock lock(run.lock);
+
+		run.cond.wait(lock, [this]() {
+			if (!threadAlive.load(std::memory_order_relaxed)) {
+				return (true); // Stop waiting on thread exit.
+			}
+
+			return (run.running || run.isRunning.load(std::memory_order_relaxed));
+		});
+
+		shouldRun = (run.running && !run.forcedShutdown);
+	}
+
+	if (run.isRunning.load(std::memory_order_relaxed) && shouldRun) {
+		if (run.configUpdate.load(std::memory_order_relaxed)) {
+			run.configUpdate = false;
+
+			if (info->functions->moduleConfig != nullptr) {
 				// Call config function. 'configUpdate' variable reset is done above.
 				try {
-					moduleFunctions->moduleConfig(moduleData);
+					info->functions->moduleConfig(this);
 				}
 				catch (const std::exception &ex) {
-					libcaer::log::log(libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString,
-						"moduleConfig(): '%s', disabling module.", ex.what());
-					sshsNodePut(moduleData->moduleNode, "running", false);
+					dv::Log(dv::logLevel::ERROR, "moduleConfig(): '%s :: %s', disabling module.",
+						boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
+
+					moduleConfigNode.put<dv::CfgType::BOOL>("running", false);
 					return;
 				}
 			}
 		}
 
-		if (moduleFunctions->moduleRun != nullptr) {
-			try {
-				moduleFunctions->moduleRun(moduleData, in, out);
-			}
-			catch (const std::exception &ex) {
-				libcaer::log::log(libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString,
-					"moduleRun(): '%s', disabling module.", ex.what());
-				sshsNodePut(moduleData->moduleNode, "running", false);
+		// Only run if there is data. On timeout with no data, do nothing.
+		// If is an input generation module (no inputs defined at all), always run.
+		if (inputs.size() > 0) {
+			std::unique_lock lock(dataAvailable.lock);
+
+			if (!dataAvailable.cond.wait_for(
+					lock, std::chrono::seconds(1), [this]() { return (dataAvailable.count > 0); })) {
 				return;
 			}
 		}
 
-		if (moduleData->doReset.load(std::memory_order_relaxed) != 0) {
-			int16_t resetCallSourceID = I16T(moduleData->doReset.exchange(0));
+		if (info->functions->moduleRun != nullptr) {
+			try {
+				info->functions->moduleRun(this);
+			}
+			catch (const std::exception &ex) {
+				dv::Log(dv::logLevel::ERROR, "moduleRun(): '%s :: %s', disabling module.",
+					boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
 
-			if (moduleFunctions->moduleReset != nullptr) {
-				// Call reset function. 'doReset' variable reset is done above.
-				try {
-					moduleFunctions->moduleReset(moduleData, resetCallSourceID);
-				}
-				catch (const std::exception &ex) {
-					libcaer::log::log(libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString,
-						"moduleReset(): '%s', disabling module.", ex.what());
-					sshsNodePut(moduleData->moduleNode, "running", false);
-					return;
-				}
+				moduleConfigNode.put<dv::CfgType::BOOL>("running", false);
+				return;
 			}
 		}
 	}
-	else if (moduleData->moduleStatus == CAER_MODULE_STOPPED && running) {
-		// Check that all modules this module depends on are also running.
-		int16_t *neededModules;
-		size_t neededModulesSize = caerMainloopModuleGetInputDeps(moduleData->moduleID, &neededModules);
-
-		if (neededModulesSize > 0) {
-			for (size_t i = 0; i < neededModulesSize; i++) {
-				if (caerMainloopModuleGetStatus(neededModules[i]) != CAER_MODULE_RUNNING) {
-					free(neededModules);
-					return;
-				}
-			}
-
-			free(neededModules);
-		}
+	else if (!run.isRunning.load(std::memory_order_relaxed) && shouldRun) {
+		// Serialize module start/stop globally.
+		std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
 		// Allocate memory for module state.
-		if (memSize != 0) {
-			moduleData->moduleState = calloc(1, memSize);
-			if (moduleData->moduleState == nullptr) {
+		if (info->memSize != 0) {
+			moduleState = calloc(1, info->memSize);
+			if (moduleState == nullptr) {
+				dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", "memory allocation failure");
+
+				shutdownProcedure(false, true);
 				return;
 			}
 		}
 		else {
 			// memSize is zero, so moduleState must be nullptr.
-			moduleData->moduleState = nullptr;
+			moduleState = nullptr;
+		}
+
+		// At module startup, check that input connectivity is
+		// satisfied and hook up the input queues.
+		try {
+			inputConnectivityInitialize();
+		}
+		catch (const std::runtime_error &ex) {
+			dv::Log(dv::logLevel::INFO, "moduleInit(): '%s', retrying ...", ex.what());
+
+			// Runtime errors indicate problems the system can
+			// maybe recover from with no user intervention,
+			// so we allow the module to restart.
+			shutdownProcedure(false, false);
+			return;
+		}
+		catch (const std::exception &ex) {
+			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", ex.what());
+
+			shutdownProcedure(false, true);
+			return;
 		}
 
 		// Reset variables, as the following Init() is stronger than a reset
 		// and implies a full configuration update. This avoids stale state
 		// forcing an update and/or reset right away in the first run of
 		// the module, which is unneeded and wasteful.
-		moduleData->configUpdate.store(0);
-		moduleData->doReset.store(0);
+		run.configUpdate = false;
 
-		if (moduleFunctions->moduleInit != nullptr) {
+		if (info->functions->moduleInit != nullptr) {
 			try {
-				if (!moduleFunctions->moduleInit(moduleData)) {
+				if (!info->functions->moduleInit(this)) {
 					throw std::runtime_error("Failed to initialize module.");
 				}
 			}
 			catch (const std::exception &ex) {
-				libcaer::log::log(
-					libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString, "moduleInit(): %s", ex.what());
+				dv::Log(dv::logLevel::INFO, "moduleInit(): '%s :: %s', retrying ...",
+					boost::core::demangle(typeid(ex).name()).c_str(), ex.what());
 
-				if (memSize != 0) {
-					// Only deallocate if we were the original allocator.
-					free(moduleData->moduleState);
-				}
-				moduleData->moduleState = nullptr;
-
+				shutdownProcedure(false, false);
 				return;
 			}
 		}
 
-		moduleData->moduleStatus = CAER_MODULE_RUNNING;
+		// Check that all info nodes for the outputs have been created and populated.
+		try {
+			verifyOutputInfoNodes();
+		}
+		catch (const std::exception &ex) {
+			dv::Log(dv::logLevel::ERROR, "moduleInit(): '%s', disabling module.", ex.what());
 
-		// After starting successfully, try to enable dependent
-		// modules if their 'runAtStartup' is true. Else shutting down
-		// an input would kill everything until mainloop restart.
-		// This is consistent with initial mainloop start.
-		int16_t *dependantModules;
-		size_t dependantModulesSize = caerMainloopModuleGetOutputRevDeps(moduleData->moduleID, &dependantModules);
+			shutdownProcedure(true, true);
+			return;
+		}
 
-		if (dependantModulesSize > 0) {
-			for (size_t i = 0; i < dependantModulesSize; i++) {
-				sshsNode moduleConfigNode = caerMainloopModuleGetConfigNode(dependantModules[i]);
+		run.isRunning = true;
+		moduleConfigNode.updateReadOnly<dv::CfgType::BOOL>("isRunning", true);
+	}
+	else if (run.isRunning.load(std::memory_order_relaxed) && !shouldRun) {
+		std::vector<std::string> forcedShutdownModuleNames;
 
-				if (sshsNodeGetBool(moduleConfigNode, "runAtStartup")) {
-					sshsNodePut(moduleConfigNode, "running", true);
+		{
+			// Serialize module start/stop globally.
+			std::scoped_lock lock(MainData::getGlobal().modulesLock);
+
+			// Shutdown downstream modules first. This happens recursively.
+			// First prevent any module from connecting to us. Running is a pre-condition
+			// checked with this isRunning variable, so we set it false early
+			// to provent any later module from establishing a new connection.
+			run.isRunning = false;
+
+			// Gather all outputs that must be shutdown.
+			for (auto &out : outputs) {
+				std::scoped_lock destLock(out.second.destinationsLock);
+
+				for (auto &dest : out.second.destinations) {
+					forcedShutdownModuleNames.push_back(dest.linkedInput->parentModule->name);
 				}
 			}
 
-			free(dependantModules);
-		}
-	}
-	else if (moduleData->moduleStatus == CAER_MODULE_RUNNING && !running) {
-		moduleData->moduleStatus = CAER_MODULE_STOPPED;
+			// Remove any duplicates.
+			vectorSortUnique(forcedShutdownModuleNames);
 
-		if (moduleFunctions->moduleExit != nullptr) {
-			try {
-				moduleFunctions->moduleExit(moduleData);
-			}
-			catch (const std::exception &ex) {
-				libcaer::log::log(
-					libcaer::log::logLevel::ERROR, moduleData->moduleSubSystemString, "moduleExit(): %s", ex.what());
+			// Now force all those modules to shut down and remain
+			// in shutdown until allowed to run again, after this
+			// module has also turned itself off. Here we can just
+			// getModule() directly, as we still hold the global modules
+			// lock and nothing can have removed a module in the meantime.
+			for (auto &mName : forcedShutdownModuleNames) {
+				getModule(mName)->forcedShutdown(true);
 			}
 		}
 
-		if (memSize != 0) {
-			// Only deallocate if we were the original allocator.
-			free(moduleData->moduleState);
-		}
-		moduleData->moduleState = nullptr;
+	checkDownstreamShutdown:
+		// Wait until all downstream modules have really quit. We check
+		// moduleNode.isRunning here because that is set _after_ a module
+		// has fully shut down (while the isRunning variable is set early).
+		// We hold the global modules lock during the check and check again
+		// that the module actually exists, to handle the case where modules
+		// could have been removed in the mean-time while we didn't hold
+		// the global lock. The global lock must be released between checks
+		// to allow the other modules to run their shutdown code.
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-		// Shutdown of module: ensure all modules depending on this
-		// one also get stopped (running set to false).
-		int16_t *dependantModules;
-		size_t dependantModulesSize = caerMainloopModuleGetOutputRevDeps(moduleData->moduleID, &dependantModules);
+		{
+			// Serialize module start/stop globally.
+			std::scoped_lock lock(MainData::getGlobal().modulesLock);
 
-		if (dependantModulesSize > 0) {
-			for (size_t i = 0; i < dependantModulesSize; i++) {
-				sshsNode moduleConfigNode = caerMainloopModuleGetConfigNode(dependantModules[i]);
+			for (auto &mName : forcedShutdownModuleNames) {
+				auto mod = getModule(mName);
+				if (mod == nullptr) {
+					continue;
+				}
 
-				sshsNodePut(moduleConfigNode, "running", false);
-			}
-
-			free(dependantModules);
-		}
-	}
-}
-
-caerModuleData caerModuleInitialize(int16_t moduleID, const char *moduleName, sshsNode moduleNode) {
-	// Allocate memory for the module.
-	caerModuleData moduleData = (caerModuleData) calloc(1, sizeof(struct caer_module_data));
-	if (moduleData == nullptr) {
-		caerLog(CAER_LOG_ALERT, moduleName, "Failed to allocate memory for module. Error: %d.", errno);
-		return (nullptr);
-	}
-
-	// Set module ID for later identification (used as quick key often).
-	moduleData->moduleID = moduleID;
-
-	// Set configuration node (so it's user accessible).
-	moduleData->moduleNode = moduleNode;
-
-	// Put module into startup state. 'running' flag is updated later based on user startup wishes.
-	moduleData->moduleStatus = CAER_MODULE_STOPPED;
-
-	// Setup default full log string name.
-	size_t nameLength                 = strlen(moduleName);
-	moduleData->moduleSubSystemString = (char *) malloc(nameLength + 1);
-	if (moduleData->moduleSubSystemString == nullptr) {
-		free(moduleData);
-
-		caerLog(CAER_LOG_ALERT, moduleName, "Failed to allocate subsystem string for module.");
-		return (nullptr);
-	}
-
-	strncpy(moduleData->moduleSubSystemString, moduleName, nameLength);
-	moduleData->moduleSubSystemString[nameLength] = '\0';
-
-	// Ensure static configuration is created on each module initialization.
-	caerModuleConfigInit(moduleNode);
-
-	// Per-module log level support.
-	uint8_t logLevel = U8T(sshsNodeGetInt(moduleData->moduleNode, "logLevel"));
-
-	moduleData->moduleLogLevel.store(logLevel, std::memory_order_relaxed);
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleLogLevelListener);
-
-	// Initialize shutdown controls.
-	bool runModule = sshsNodeGetBool(moduleData->moduleNode, "runAtStartup");
-
-	sshsNodeCreateBool(
-		moduleData->moduleNode, "running", false, SSHS_FLAGS_NORMAL | SSHS_FLAGS_NO_EXPORT, "Module start/stop.");
-	sshsNodePutBool(moduleData->moduleNode, "running", runModule);
-
-	moduleData->running.store(runModule, std::memory_order_relaxed);
-	sshsNodeAddAttributeListener(moduleData->moduleNode, moduleData, &caerModuleShutdownListener);
-
-	std::atomic_thread_fence(std::memory_order_release);
-
-	return (moduleData);
-}
-
-void caerModuleDestroy(caerModuleData moduleData) {
-	// Remove listener, which can reference invalid memory in userData.
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleShutdownListener);
-	sshsNodeRemoveAttributeListener(moduleData->moduleNode, moduleData, &caerModuleLogLevelListener);
-
-	// Deallocate module memory. Module state has already been destroyed.
-	free(moduleData->moduleSubSystemString);
-	free(moduleData);
-}
-
-static void caerModuleShutdownListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
-	UNUSED_ARGUMENT(node);
-
-	caerModuleData data = (caerModuleData) userData;
-
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_BOOL && caerStrEquals(changeKey, "running")) {
-		atomic_store(&data->running, changeValue.boolean);
-	}
-}
-
-static void caerModuleLogLevelListener(sshsNode node, void *userData, enum sshs_node_attribute_events event,
-	const char *changeKey, enum sshs_node_attr_value_type changeType, union sshs_node_attr_value changeValue) {
-	UNUSED_ARGUMENT(node);
-
-	caerModuleData data = (caerModuleData) userData;
-
-	if (event == SSHS_ATTRIBUTE_MODIFIED && changeType == SSHS_INT && caerStrEquals(changeKey, "logLevel")) {
-		atomic_store(&data->moduleLogLevel, U8T(changeValue.iint));
-	}
-}
-
-std::pair<ModuleLibrary, caerModuleInfo> caerLoadModuleLibrary(const std::string &moduleName) {
-	// For each module, we search if a path exists to load it from.
-	// If yes, we do so. The various OS's shared library load mechanisms
-	// will keep track of reference count if same module is loaded
-	// multiple times.
-	boost::filesystem::path modulePath;
-
-	{
-		std::lock_guard<std::recursive_mutex> lock(glModuleData.modulePathsMutex);
-
-		for (const auto &p : glModuleData.modulePaths) {
-			if (moduleName == p.stem().string()) {
-				// Found a module with same name!
-				modulePath = p;
-			}
-		}
-	}
-
-	if (modulePath.empty()) {
-		boost::format exMsg = boost::format("No module library for '%s' found.") % moduleName;
-		throw std::runtime_error(exMsg.str());
-	}
-
-#if BOOST_HAS_DLL_LOAD
-	ModuleLibrary moduleLibrary;
-	try {
-		moduleLibrary.load(modulePath.c_str(), boost::dll::load_mode::rtld_now);
-	}
-	catch (const std::exception &ex) {
-		// Failed to load shared library!
-		boost::format exMsg
-			= boost::format("Failed to load library '%s', error: '%s'.") % modulePath.string() % ex.what();
-		throw std::runtime_error(exMsg.str());
-	}
-
-	caerModuleInfo (*getInfo)(void);
-	try {
-		getInfo = moduleLibrary.get<caerModuleInfo(void)>("caerModuleGetInfo");
-	}
-	catch (const std::exception &ex) {
-		// Failed to find symbol in shared library!
-		caerUnloadModuleLibrary(moduleLibrary);
-		boost::format exMsg
-			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % ex.what();
-		throw std::runtime_error(exMsg.str());
-	}
-#else
-	void *moduleLibrary = dlopen(modulePath.c_str(), RTLD_NOW);
-	if (moduleLibrary == nullptr) {
-		// Failed to load shared library!
-		boost::format exMsg
-			= boost::format("Failed to load library '%s', error: '%s'.") % modulePath.string() % dlerror();
-		throw std::runtime_error(exMsg.str());
-	}
-
-	caerModuleInfo (*getInfo)(void) = (caerModuleInfo(*)(void)) dlsym(moduleLibrary, "caerModuleGetInfo");
-	if (getInfo == nullptr) {
-		// Failed to find symbol in shared library!
-		caerUnloadModuleLibrary(moduleLibrary);
-		boost::format exMsg
-			= boost::format("Failed to find symbol in library '%s', error: '%s'.") % modulePath.string() % dlerror();
-		throw std::runtime_error(exMsg.str());
-	}
-#endif
-
-	caerModuleInfo info = (*getInfo)();
-	if (info == nullptr) {
-		caerUnloadModuleLibrary(moduleLibrary);
-		boost::format exMsg = boost::format("Failed to get info from library '%s'.") % modulePath.string();
-		throw std::runtime_error(exMsg.str());
-	}
-
-	return (std::pair<ModuleLibrary, caerModuleInfo>(moduleLibrary, info));
-}
-
-// Small helper to unload libraries on error.
-void caerUnloadModuleLibrary(ModuleLibrary &moduleLibrary) {
-#if BOOST_HAS_DLL_LOAD
-	moduleLibrary.unload();
-#else
-	dlclose(moduleLibrary);
-#endif
-}
-
-static void checkInputOutputStreamDefinitions(caerModuleInfo info) {
-	if (info->type == CAER_MODULE_INPUT) {
-		if (info->inputStreams != nullptr || info->inputStreamsSize != 0 || info->outputStreams == nullptr
-			|| info->outputStreamsSize == 0) {
-			throw std::domain_error("Wrong I/O event stream definitions for type INPUT.");
-		}
-	}
-	else if (info->type == CAER_MODULE_OUTPUT) {
-		if (info->inputStreams == nullptr || info->inputStreamsSize == 0 || info->outputStreams != nullptr
-			|| info->outputStreamsSize != 0) {
-			throw std::domain_error("Wrong I/O event stream definitions for type OUTPUT.");
-		}
-
-		// Also ensure that all input streams of an output module are marked read-only.
-		bool readOnlyError = false;
-
-		for (size_t i = 0; i < info->inputStreamsSize; i++) {
-			if (!info->inputStreams[i].readOnly) {
-				readOnlyError = true;
-				break;
-			}
-		}
-
-		if (readOnlyError) {
-			throw std::domain_error("Input event streams not marked read-only for type OUTPUT.");
-		}
-	}
-	else {
-		// CAER_MODULE_PROCESSOR
-		if (info->inputStreams == nullptr || info->inputStreamsSize == 0) {
-			throw std::domain_error("Wrong I/O event stream definitions for type PROCESSOR.");
-		}
-
-		// If no output streams are defined, then at least one input event
-		// stream must not be readOnly, so that there is modified data to output.
-		if (info->outputStreams == nullptr || info->outputStreamsSize == 0) {
-			bool readOnlyError = true;
-
-			for (size_t i = 0; i < info->inputStreamsSize; i++) {
-				if (!info->inputStreams[i].readOnly) {
-					readOnlyError = false;
-					break;
+				if (dv::Cfg::GLOBAL.getNode("/mainloop/" + mName + "/").get<dv::CfgType::BOOL>("isRunning")) {
+					goto checkDownstreamShutdown;
 				}
 			}
+		}
 
-			if (readOnlyError) {
-				throw std::domain_error(
-					"No output streams and all input streams are marked read-only for type PROCESSOR.");
+		{
+			// Serialize module start/stop globally.
+			std::scoped_lock lock(MainData::getGlobal().modulesLock);
+
+			// Full shutdown.
+			shutdownProcedure(true, false);
+
+			moduleConfigNode.updateReadOnly<dv::CfgType::BOOL>("isRunning", false);
+
+			// Allow downstream modules to start again, depending on user config.
+			// First check for the existence of the corresponding module to verify
+			// the module still exists, since we didn't hold the global modules lock
+			// before all the time, it could have been removed by now.
+			for (auto &mName : forcedShutdownModuleNames) {
+				auto mod = getModule(mName);
+				if (mod == nullptr) {
+					continue;
+				}
+
+				mod->forcedShutdown(false);
 			}
 		}
 	}
 }
 
-/**
- * Type must be either -1 or well defined (0-INT16_MAX).
- * Number must be either -1 or well defined (1-INT16_MAX). Zero not allowed.
- * The event stream array must be ordered by ascending type ID.
- * For each type, only one definition can exist.
- * If type is -1 (any), then number must also be -1; having a defined
- * number in this case makes no sense (N of any type???), a special exception
- * is made for the number 1 (1 of any type) with inputs, which can be useful.
- * Also this must then be the only definition.
- * If number is -1, then either the type is also -1 and this is the
- * only event stream definition (same as rule above), OR the type is well
- * defined and this is the only event stream definition for that type.
- */
-static void checkInputStreamDefinitions(caerEventStreamIn inputStreams, size_t inputStreamsSize) {
-	for (size_t i = 0; i < inputStreamsSize; i++) {
-		// Check type range.
-		if (inputStreams[i].type < -1) {
-			throw std::domain_error("Input stream has invalid type value.");
-		}
-
-		// Check number range.
-		if (inputStreams[i].number < -1 || inputStreams[i].number == 0) {
-			throw std::domain_error("Input stream has invalid number value.");
-		}
-
-		// Check sorted array and only one definition per type; the two
-		// requirements together mean strict monotonicity for types.
-		if (i > 0 && inputStreams[i - 1].type >= inputStreams[i].type) {
-			throw std::domain_error("Input stream has invalid order of declaration or duplicates.");
-		}
-
-		// Check that any type is always together with any number or 1, and the
-		// only definition present in that case.
-		if (inputStreams[i].type == -1
-			&& ((inputStreams[i].number != -1 && inputStreams[i].number != 1) || inputStreamsSize != 1)) {
-			throw std::domain_error("Input stream has invalid any declaration.");
-		}
+dv::Types::TypedObject *dv::Module::outputAllocate(std::string_view outputName) {
+	auto output = getModuleOutput(std::string(outputName));
+	if (output == nullptr) {
+		// Not found.
+		auto msg = boost::format("Output with name '%s' doesn't exist.") % outputName;
+		throw std::out_of_range(msg.str());
 	}
+
+	if (!output->nextPacket) {
+		// Allocate new and store.
+		output->nextPacket = new IntrusiveTypedObject(output->type);
+	}
+
+	// Return current value.
+	return (output->nextPacket.get());
 }
 
-/**
- * Type must be either -1 or well defined (0-INT16_MAX).
- * The event stream array must be ordered by ascending type ID.
- * For each type, only one definition can exist.
- * If type is -1 (any), then this must then be the only definition.
- */
-static void checkOutputStreamDefinitions(caerEventStreamOut outputStreams, size_t outputStreamsSize) {
-	// If type is any, must be the only definition.
-	if (outputStreamsSize == 1 && outputStreams[0].type == -1) {
+void dv::Module::outputCommit(std::string_view outputName) {
+	auto output = getModuleOutput(std::string(outputName));
+	if (output == nullptr) {
+		// Not found.
+		auto msg = boost::format("Output with name '%s' doesn't exist.") % outputName;
+		throw std::out_of_range(msg.str());
+	}
+
+	if (!output->nextPacket) {
+		// Not previously allocated, ignore.
 		return;
 	}
 
-	for (size_t i = 0; i < outputStreamsSize; i++) {
-		// Check type range.
-		if (outputStreams[i].type < 0) {
-			throw std::domain_error("Output stream has invalid type value.");
-		}
+	{
+		std::scoped_lock lock(output->destinationsLock);
 
-		// Check sorted array and only one definition per type; the two
-		// requirements together mean strict monotonicity for types.
-		if (i > 0 && outputStreams[i - 1].type >= outputStreams[i].type) {
-			throw std::domain_error("Output stream has invalid order of declaration or duplicates.");
+		for (auto &dest : output->destinations) {
+			// Send new data to downstream module, increasing its reference
+			// count to share ownership amongst the downstream modules.
+			auto refInc = output->nextPacket;
+
+			try {
+				dest.queue->put(refInc.get());
+				refInc.detach();
+			}
+			catch (const std::out_of_range &) {
+				// TODO: notify user somehow, statistics?
+				continue;
+			}
+
+			// Notify downstream module about new data being available.
+			{
+				std::scoped_lock lock2(dest.dataAvailable->lock);
+				dest.dataAvailable->count++;
+			}
+
+			dest.dataAvailable->cond.notify_all();
 		}
+	}
+
+	output->nextPacket.reset();
+}
+
+const dv::Types::TypedObject *dv::Module::inputGet(std::string_view inputName) {
+	auto input = getModuleInput(std::string(inputName));
+	if (input == nullptr) {
+		// Not found.
+		auto msg = boost::format("Input with name '%s' doesn't exist.") % inputName;
+		throw std::out_of_range(msg.str());
+	}
+
+	IntrusiveTypedObject *dataPtr = nullptr;
+
+	try {
+		dataPtr = input->queue.get();
+	}
+	catch (const std::out_of_range &) {
+		// Empty queue, no data, return NULL.
+		return (nullptr);
+	}
+
+	{
+		std::scoped_lock lock(dataAvailable.lock);
+		dataAvailable.count--;
+	}
+
+	boost::intrusive_ptr<IntrusiveTypedObject> nextPacket(dataPtr, false);
+
+	input->inUsePackets.push_back(nextPacket);
+
+	return (nextPacket.get());
+}
+
+void dv::Module::inputDismiss(std::string_view inputName, const dv::Types::TypedObject *data) {
+	auto input = getModuleInput(std::string(inputName));
+	if (input == nullptr) {
+		// Not found.
+		auto msg = boost::format("Input with name '%s' doesn't exist.") % inputName;
+		throw std::out_of_range(msg.str());
+	}
+
+	auto pos = std::find(input->inUsePackets.begin(), input->inUsePackets.end(), data);
+
+	if (pos != input->inUsePackets.end()) {
+		input->inUsePackets.erase(pos);
 	}
 }
 
-void caerUpdateModulesInformation() {
-	std::lock_guard<std::recursive_mutex> lock(glModuleData.modulePathsMutex);
-
-	sshsNode modulesNode = sshsGetNode(sshsGetGlobal(), "/caer/modules/");
-
-	// Clear out modules information.
-	sshsNodeClearSubTree(modulesNode, false);
-	glModuleData.modulePaths.clear();
-
-	// Search for available modules. Will be loaded as needed later.
-	const std::string modulesSearchPath = sshsNodeGetStdString(modulesNode, "modulesSearchPath");
-
-	// Split on '|'.
-	std::vector<std::string> searchPaths;
-	boost::algorithm::split(searchPaths, modulesSearchPath, boost::is_any_of("|"));
-
-	// Search is recursive for binary shared libraries.
-	const std::regex moduleRegex("\\w+\\.(so|dll|dylib)");
-
-	for (const auto &sPath : searchPaths) {
-		if (!boost::filesystem::exists(sPath)) {
-			continue;
-		}
-
-		std::for_each(boost::filesystem::recursive_directory_iterator(sPath),
-			boost::filesystem::recursive_directory_iterator(),
-			[&moduleRegex](const boost::filesystem::directory_entry &e) {
-				if (boost::filesystem::exists(e.path()) && boost::filesystem::is_regular_file(e.path())
-					&& std::regex_match(e.path().filename().string(), moduleRegex)) {
-					glModuleData.modulePaths.push_back(e.path());
-				}
-			});
+/**
+ * Get informative node for an output of this module.
+ *
+ * @param outputName name of output.
+ * @return informative node for that output.
+ */
+dv::Config::Node dv::Module::outputGetInfoNode(std::string_view outputName) {
+	auto output = getModuleOutput(std::string(outputName));
+	if (output == nullptr) {
+		// Not found.
+		auto msg = boost::format("Output with name '%s' doesn't exist.") % outputName;
+		throw std::out_of_range(msg.str());
 	}
 
-	// Sort and unique.
-	vectorSortUnique(glModuleData.modulePaths);
+	return (output->infoNode);
+}
 
-	// No modules, cannot start!
-	if (glModuleData.modulePaths.empty()) {
-		boost::format exMsg = boost::format("Failed to find any modules on path(s) '%s'.") % modulesSearchPath;
-		throw std::runtime_error(exMsg.str());
+/**
+ * Get informative node for an input from that input's upstream module.
+ *
+ * @param inputName name of input.
+ * @return informative node for that input.
+ */
+const dv::Config::Node dv::Module::inputGetInfoNode(std::string_view inputName) {
+	auto input = getModuleInput(std::string(inputName));
+	if (input == nullptr) {
+		// Not found.
+		auto msg = boost::format("Input with name '%s' doesn't exist.") % inputName;
+		throw std::out_of_range(msg.str());
 	}
 
-	// Generate nodes for each module, with their in/out information as attributes.
-	// This also checks basic validity of the module's information.
-	auto iter = std::begin(glModuleData.modulePaths);
-
-	while (iter != std::end(glModuleData.modulePaths)) {
-		std::string moduleName = iter->stem().string();
-
-		// Load library.
-		std::pair<ModuleLibrary, caerModuleInfo> mLoad;
-
-		try {
-			mLoad = caerLoadModuleLibrary(moduleName);
-		}
-		catch (const std::exception &ex) {
-			boost::format exMsg = boost::format("Module '%s': %s") % moduleName % ex.what();
-			libcaer::log::log(libcaer::log::logLevel::ERROR, "Module", exMsg.str().c_str());
-
-			iter = glModuleData.modulePaths.erase(iter);
-			continue;
-		}
-
-		try {
-			// Check that the modules respect the basic I/O definition requirements.
-			checkInputOutputStreamDefinitions(mLoad.second);
-
-			// Check I/O event stream definitions for correctness.
-			if (mLoad.second->inputStreams != nullptr) {
-				checkInputStreamDefinitions(mLoad.second->inputStreams, mLoad.second->inputStreamsSize);
-			}
-
-			if (mLoad.second->outputStreams != nullptr) {
-				checkOutputStreamDefinitions(mLoad.second->outputStreams, mLoad.second->outputStreamsSize);
-			}
-		}
-		catch (const std::exception &ex) {
-			boost::format exMsg = boost::format("Module '%s': %s") % moduleName % ex.what();
-			libcaer::log::log(libcaer::log::logLevel::ERROR, "Module", exMsg.str().c_str());
-
-			caerUnloadModuleLibrary(mLoad.first);
-
-			iter = glModuleData.modulePaths.erase(iter);
-			continue;
-		}
-
-		// Get SSHS node under /caer/modules/.
-		sshsNode moduleNode = sshsGetRelativeNode(modulesNode, moduleName + "/");
-
-		// Parse caerModuleInfo into SSHS.
-		sshsNodeCreate(moduleNode, "version", I32T(mLoad.second->version), 0, INT32_MAX,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Module version.");
-		sshsNodeCreate(moduleNode, "name", mLoad.second->name, 1, 256, SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
-			"Module name.");
-		sshsNodeCreate(moduleNode, "description", mLoad.second->description, 1, 8192,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Module description.");
-		sshsNodeCreate(moduleNode, "type", caerModuleTypeToString(mLoad.second->type), 1, 64,
-			SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Module type.");
-
-		if (mLoad.second->inputStreamsSize > 0) {
-			sshsNode inputStreamsNode = sshsGetRelativeNode(moduleNode, "inputStreams/");
-
-			sshsNodeCreate(inputStreamsNode, "size", I32T(mLoad.second->inputStreamsSize), 1, INT16_MAX,
-				SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Number of input streams.");
-
-			for (size_t i = 0; i < mLoad.second->inputStreamsSize; i++) {
-				sshsNode inputStreamNode      = sshsGetRelativeNode(inputStreamsNode, std::to_string(i) + "/");
-				caerEventStreamIn inputStream = &mLoad.second->inputStreams[i];
-
-				sshsNodeCreate(inputStreamNode, "type", inputStream->type, I16T(-1), I16T(INT16_MAX),
-					SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Input event type (-1 for any type).");
-				sshsNodeCreate(inputStreamNode, "number", inputStream->number, I16T(-1), I16T(INT16_MAX),
-					SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Number of inputs of this type (-1 for any number).");
-				sshsNodeCreate(inputStreamNode, "readOnly", inputStream->readOnly,
-					SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Whether this input is modified or not.");
-			}
-		}
-
-		if (mLoad.second->outputStreamsSize > 0) {
-			sshsNode outputStreamsNode = sshsGetRelativeNode(moduleNode, "outputStreams/");
-
-			sshsNodeCreate(outputStreamsNode, "size", I32T(mLoad.second->outputStreamsSize), 1, INT16_MAX,
-				SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT, "Number of output streams.");
-
-			for (size_t i = 0; i < mLoad.second->outputStreamsSize; i++) {
-				sshsNode outputStreamNode       = sshsGetRelativeNode(outputStreamsNode, std::to_string(i) + "/");
-				caerEventStreamOut outputStream = &mLoad.second->outputStreams[i];
-
-				sshsNodeCreate(outputStreamNode, "type", outputStream->type, I16T(-1), I16T(INT16_MAX),
-					SSHS_FLAGS_READ_ONLY | SSHS_FLAGS_NO_EXPORT,
-					"Output event type (-1 for undefined output determined at runtime).");
-			}
-		}
-
-		// Done, unload library.
-		caerUnloadModuleLibrary(mLoad.first);
-
-		iter++;
+	auto moduleOutput = input->linkedOutput;
+	if (moduleOutput == nullptr) {
+		// Input can be unconnected.
+		auto msg = boost::format("Input '%s' is unconnected.") % inputName;
+		throw std::runtime_error(msg.str());
 	}
 
-	// Got all available modules, expose them as a sorted list.
-	std::vector<std::string> modulePathsSorted;
-	for (const auto &modulePath : glModuleData.modulePaths) {
-		modulePathsSorted.push_back(modulePath.stem().string());
+	auto infoNode = moduleOutput->infoNode;
+	if (infoNode.getAttributeKeys().size() == 0) {
+		auto msg = boost::format("No informative content present for input '%s'.") % inputName;
+		throw std::runtime_error(msg.str());
 	}
 
-	std::sort(modulePathsSorted.begin(), modulePathsSorted.end());
+	return (infoNode);
+}
 
-	std::string modulesList;
-	for (const auto &modulePath : modulePathsSorted) {
-		modulesList += (modulePath + ",");
+/**
+ * Check if an input is connected properly and can get data at runtime.
+ * Most useful in moduleInit() to verify status of optional inputs.
+ *
+ * @param inputName name of input.
+ * @return true if input is connected and valid, false otherwise.
+ */
+bool dv::Module::inputIsConnected(std::string_view inputName) {
+	auto input = getModuleInput(std::string(inputName));
+	if (input == nullptr) {
+		// Not found.
+		auto msg = boost::format("Input with name '%s' doesn't exist.") % inputName;
+		throw std::out_of_range(msg.str());
 	}
-	modulesList.pop_back(); // Remove trailing comma.
 
-	sshsNodeUpdateReadOnlyAttribute(modulesNode, "modulesListOptions", modulesList);
+	return (input->linkedOutput != nullptr);
+}
+
+void dv::Module::moduleRunningListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+	UNUSED_ARGUMENT(node);
+
+	auto run = static_cast<dv::RunControl *>(userData);
+
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_BOOL && caerStrEquals(changeKey, "running")) {
+		{
+			std::scoped_lock lock(run->lock);
+
+			run->running = changeValue.boolean;
+		}
+
+		run->cond.notify_all();
+	}
+}
+
+void dv::Module::moduleLogLevelListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+	UNUSED_ARGUMENT(node);
+
+	auto logLevel = static_cast<std::atomic_int32_t *>(userData);
+
+	if (event == DVCFG_ATTRIBUTE_MODIFIED && changeType == DVCFG_TYPE_INT && caerStrEquals(changeKey, "logLevel")) {
+		logLevel->store(changeValue.iint);
+	}
+}
+
+void dv::Module::moduleConfigUpdateListener(dvConfigNode node, void *userData, enum dvConfigAttributeEvents event,
+	const char *changeKey, enum dvConfigAttributeType changeType, union dvConfigAttributeValue changeValue) {
+	UNUSED_ARGUMENT(node);
+	UNUSED_ARGUMENT(changeKey);
+	UNUSED_ARGUMENT(changeType);
+	UNUSED_ARGUMENT(changeValue);
+
+	auto configUpdate = static_cast<std::atomic_bool *>(userData);
+
+	// Simply set the config update flag to 1 on any attribute change.
+	if (event == DVCFG_ATTRIBUTE_MODIFIED) {
+		configUpdate->store(true);
+	}
 }

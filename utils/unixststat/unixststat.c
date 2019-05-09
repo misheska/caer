@@ -1,6 +1,11 @@
+#include <libcaer/events/common.h>
+
 #include "ext/net_rw.h"
 #include "modules/inout/inout_common.h"
+
 #include <inttypes.h>
+#include <signal.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,11 +14,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-
-#include <libcaer/events/common.h>
-
-#include <signal.h>
-#include <stdatomic.h>
 
 static atomic_bool globalShutdown = ATOMIC_VAR_INIT(false);
 
@@ -47,11 +47,11 @@ int main(int argc, char *argv[]) {
 	// First of all, parse the local path we need to connect to.
 	// That is the only parameter permitted at the moment.
 	// If none passed, attempt to connect to default local path.
-	const char *localSocket = "/tmp/caer.sock";
+	const char *localSocket = "/tmp/dv.sock";
 
 	if (argc != 1 && argc != 2) {
 		fprintf(stderr, "Incorrect argument number. Either pass none for default local socket"
-						"path of /tmp/caer.sock, or pass the absolute path to the socket.\n");
+						"path of /tmp/dv.sock, or pass the absolute path to the socket.\n");
 		return (EXIT_FAILURE);
 	}
 

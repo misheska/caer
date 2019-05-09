@@ -1,5 +1,5 @@
-#ifndef CAER_SDK_NET_RW_H_
-#define CAER_SDK_NET_RW_H_
+#ifndef DV_SDK_NET_RW_H_
+#define DV_SDK_NET_RW_H_
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -114,4 +114,4 @@ static inline ssize_t readUntilDone(int fd, uint8_t *buffer, size_t bytesToRead)
 	return ((ssize_t) curRead);
 }
 
-#endif /* CAER_SDK_NET_RW_H_ */
+#endif /* DV_SDK_NET_RW_H_ */

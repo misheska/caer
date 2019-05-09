@@ -1,10 +1,13 @@
-ADD_LIBRARY(dvsnoisefilter SHARED dvsnoisefilter.c)
+ADD_LIBRARY(dvsnoisefilter SHARED dvsnoisefilter.cpp)
 
 SET_TARGET_PROPERTIES(dvsnoisefilter
 	PROPERTIES
-	PREFIX "caer_"
+	PREFIX "dv_"
 )
 
-TARGET_LINK_LIBRARIES(dvsnoisefilter ${CAER_LIBS})
+TARGET_LINK_LIBRARIES(dvsnoisefilter
+	PRIVATE
+		dvsdk
+		Boost::boost)
 
-INSTALL(TARGETS dvsnoisefilter DESTINATION ${CAER_MODULES_DIR})
+INSTALL(TARGETS dvsnoisefilter DESTINATION ${DV_MODULES_DIR})
