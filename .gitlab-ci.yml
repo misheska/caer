@@ -26,3 +26,12 @@ build_mac:
     paths:
       - dv-runtime-packaged-mac
     expire_in: 1 day
+
+build_rpi:
+  stage: build
+  tags:
+    - rpi
+    - build
+  script:
+    - cmake -DCMAKE_INSTALL_PREFIX=/usr .
+    - make -j2
