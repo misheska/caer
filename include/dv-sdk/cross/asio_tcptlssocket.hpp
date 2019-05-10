@@ -1,12 +1,10 @@
-#ifndef SRC_ASIO_H_
-#define SRC_ASIO_H_
+#ifndef DV_SDK_ASIO_TCPTLSSOCKET_HPP_
+#define DV_SDK_ASIO_TCPTLSSOCKET_HPP_
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/version.hpp>
 #include <deque>
-#include <functional>
-#include <mutex>
 #include <utility>
 
 namespace asio    = boost::asio;
@@ -189,4 +187,4 @@ private:
 		writeQueue; // No locking for writeQueue because all changes are posted to io_service thread.
 };
 
-#endif /* SRC_ASIO_H_ */
+#endif /* DV_SDK_ASIO_TCPTLSSOCKET_HPP_ */

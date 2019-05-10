@@ -1,8 +1,8 @@
 #define DV_API_OPENCV_SUPPORT 0
+#include "dv-sdk/cross/asio_tcptlssocket.hpp"
 #include "dv-sdk/module.hpp"
 
 #include "dv_output.hpp"
-#include "src/config_server/asio.h"
 
 class NetTCPServer;
 

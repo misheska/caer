@@ -1,7 +1,8 @@
 #ifndef SRC_CONFIG_SERVER_CONFIG_SERVER_CONNECTION_H_
 #define SRC_CONFIG_SERVER_CONFIG_SERVER_CONNECTION_H_
 
-#include "asio.h"
+#include "dv-sdk/cross/asio_tcptlssocket.hpp"
+
 #include "dv_config_action_data.hpp"
 
 #include <memory>

@@ -2,7 +2,7 @@
 #include "dv-sdk/utils.h"
 
 #include "../../src/config_server/dv_config_action_data.hpp"
-#include "utils/ext/linenoise-ng/linenoise.h"
+#include "../ext/linenoise-ng/linenoise.h"
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/asio.hpp>
