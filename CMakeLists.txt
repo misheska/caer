@@ -69,16 +69,16 @@ IF (OpenCV_VERSION VERSION_LESS "3.1.0")
 	MESSAGE(FATAL_ERROR "Cannot find OpenCV 3.1.0 or newer.")
 ENDIF()
 
-# We always refer back to dv-sdk/ for example.
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/)
-
 # Define module installation paths.
 SET(DV_MODULES_DIR ${CMAKE_INSTALL_DATAROOTDIR}/dv/modules)
 MESSAGE(STATUS "Final modules installation directory is: ${CMAKE_INSTALL_PREFIX}/${DV_MODULES_DIR}")
 ADD_DEFINITIONS(-DDV_MODULES_DIR=${USER_LOCAL_PREFIX}/${DV_MODULES_DIR})
 
-# Install SDK library.
-ADD_SUBDIRECTORY(dv-sdk)
+# Add main include dir for all targets.
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include/)
+
+# Install header files.
+ADD_SUBDIRECTORY(include)
 
 # Compile libdvsdk and dv-runtime main executable.
 ADD_SUBDIRECTORY(src)
