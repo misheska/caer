@@ -1,7 +1,5 @@
 #include "service.hpp"
 
-#include "main.hpp"
-
 #if !defined(OS_WINDOWS)
 #	include <fcntl.h>
 #	include <sys/stat.h>
@@ -77,65 +75,6 @@ static void unixDaemonize() {
 }
 #endif
 
-#if defined(OS_WINDOWS)
-#	include <windows.h>
-
-SERVICE_STATUS ServiceStatus;
-SERVICE_STATUS_HANDLE hStatus;
-
-void ServiceMain(int argc, char **argv);
-void ControlHandler(DWORD request);
-
-void ServiceMain(int argc, char **argv) {
-	int error;
-
-	ServiceStatus.dwServiceType             = SERVICE_WIN32;
-	ServiceStatus.dwCurrentState            = SERVICE_START_PENDING;
-	ServiceStatus.dwControlsAccepted        = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
-	ServiceStatus.dwWin32ExitCode           = 0;
-	ServiceStatus.dwServiceSpecificExitCode = 0;
-	ServiceStatus.dwCheckPoint              = 0;
-	ServiceStatus.dwWaitHint                = 0;
-
-	hStatus = RegisterServiceCtrlHandler("dv-runtime-service", (LPHANDLER_FUNCTION) ControlHandler);
-	if (hStatus == (SERVICE_STATUS_HANDLE) 0) {
-		// Registering Control Handler failed
-		return;
-	}
-
-	// We report the running status to SCM.
-	ServiceStatus.dwCurrentState = SERVICE_RUNNING;
-	SetServiceStatus(hStatus, &ServiceStatus);
-
-	// The worker loop of a service
-	(*runner)();
-}
-
-// Control handler function
-void ControlHandler(DWORD request) {
-	switch (request) {
-		case SERVICE_CONTROL_STOP:
-			ServiceStatus.dwWin32ExitCode = 0;
-			ServiceStatus.dwCurrentState  = SERVICE_STOPPED;
-			SetServiceStatus(hStatus, &ServiceStatus);
-			dv::MainData::getGlobal().systemRunning = false;
-			return;
-
-		case SERVICE_CONTROL_SHUTDOWN:
-			ServiceStatus.dwWin32ExitCode = 0;
-			ServiceStatus.dwCurrentState  = SERVICE_STOPPED;
-			SetServiceStatus(hStatus, &ServiceStatus);
-			dv::MainData::getGlobal().systemRunning = false;
-			return;
-
-		default:
-			// Report current status
-			SetServiceStatus(hStatus, &ServiceStatus);
-			return;
-	}
-}
-#endif
-
 void dv::ServiceInit(void (*runner)()) {
 	auto systemNode = dv::Config::GLOBAL.getNode("/system/");
 
@@ -146,17 +85,8 @@ void dv::ServiceInit(void (*runner)()) {
 
 	if (backgroundService) {
 #if defined(OS_WINDOWS)
-		// Implement Windows service.
-		SERVICE_TABLE_ENTRY ServiceTable[2];
-
-		ServiceTable[0].lpServiceName = "dv-runtime-service";
-		ServiceTable[0].lpServiceProc = (LPSERVICE_MAIN_FUNCTION) ServiceMain;
-
-		ServiceTable[1].lpServiceName = NULL;
-		ServiceTable[1].lpServiceProc = NULL;
-
-		// Start the control dispatcher thread for our service
-		StartServiceCtrlDispatcher(ServiceTable);
+		// TODO: implement Windows service.
+		(*runner)();
 #else
 		// Unix: double fork to background.
 		unixDaemonize();
