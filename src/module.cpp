@@ -129,6 +129,10 @@ void dv::Module::StaticInit() {
 		}
 	}
 
+	// Each module has a GUI support attribute which allows GUIs to dump their per-module
+	// options in a string in the config tree.
+	moduleConfigNode.attributeModifierGUISupport();
+
 	// Each module can set priority attributes for UI display. By default let's show 'running'.
 	// Called last to allow for configInit() function to create a different default first.
 	moduleConfigNode.attributeModifierPriorityAttributes("running");

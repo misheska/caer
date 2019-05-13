@@ -183,6 +183,7 @@ void dvConfigNodeAttributeModifierListOptions(
 void dvConfigNodeAttributeModifierFileChooser(dvConfigNode node, const char *key, const char *typeAndExtensions);
 void dvConfigNodeAttributeModifierUnit(dvConfigNode node, const char *key, const char *unitInformation);
 void dvConfigNodeAttributeModifierPriorityAttributes(dvConfigNode node, const char *priorityAttributes);
+void dvConfigNodeAttributeModifierGUISupport(dvConfigNode node);
 void dvConfigNodeAttributeButtonReset(dvConfigNode node, const char *key);
 
 bool dvConfigNodeExistsRelativeNode(dvConfigNode node, const char *nodePath);
