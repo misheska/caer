@@ -657,8 +657,8 @@ public:
 		dvConfigNodeAttributeModifierPriorityAttributes(node, priorityAttributes.c_str());
 	}
 
-	void attributeGUISupport() {
-		dvConfigNodeAttributeGUISupport(node);
+	void attributeModifierGUISupport() {
+		dvConfigNodeAttributeModifierGUISupport(node);
 	}
 
 	void attributeButtonReset(const std::string &key) {

@@ -1454,13 +1454,13 @@ void dvConfigNodeAttributeModifierPriorityAttributes(dvConfigNode node, const ch
 		"Comma separated list of attributes to prioritize regarding visualization in the UI (can be empty).");
 }
 
-void dvConfigNodeAttributeGUISupport(dvConfigNode node) {
+void dvConfigNodeAttributeModifierGUISupport(dvConfigNode node) {
     std::scoped_lock lockNode(node->node_lock);
     dv_value v;
     v.emplace<std::string>("");
 
     node->createAttributeModifier("_guiSupport", v, {0, INT32_MAX}, DVCFG_FLAGS_NORMAL,
-            "Attribute used by a gui to store information only concerning the gui in.");
+            "Attribute used by a gui to store information only concerning the gui.");
 }
 
 void dvConfigNodeAttributeButtonReset(dvConfigNode node, const char *key) {
