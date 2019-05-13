@@ -1,13 +1,15 @@
-stages:
-  - build
-
-build_mac:
+build_macosx:
   stage: build
   tags:
-    - mac
+    - macosx
     - build
+  before_script:
+    - brew update
+    - brew upgrade
   script:
-    - cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl .
+    - mkdir build
+    - cd build
+    - cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl ..
     - make -j2
     - mkdir -p dv-runtime-packaged-mac/dv_modules
     - cp src/dv-runtime dv-runtime-packaged-mac/
@@ -27,11 +29,16 @@ build_mac:
       - dv-runtime-packaged-mac
     expire_in: 1 day
 
-build_rpi:
+build_raspbian:
   stage: build
   tags:
-    - rpi
+    - raspbian
     - build
+  before_script:
+    - sudo apt-get -y update
+    - sudo apt-get -y upgrade
   script:
-    - cmake -DCMAKE_INSTALL_PREFIX=/usr .
+    - mkdir build
+    - cd build
+    - cmake -DCMAKE_INSTALL_PREFIX=/usr ..
     - make -j2
