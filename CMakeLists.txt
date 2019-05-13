@@ -49,6 +49,13 @@ SET(DV_PKGCONFIG_REQUIRES_PRIVATE "libcaer >= 3.1.9")
 # Boost support for C++
 FIND_PACKAGE(Boost 1.50 REQUIRED COMPONENTS system filesystem iostreams program_options)
 
+# Fix new Boost/CMake behavior that doesn't properly declare the versions
+IF (NOT DEFINED Boost_MAJOR_VERSION)
+	SET(Boost_MAJOR_VERSION ${Boost_VERSION_MAJOR})
+	SET(Boost_MINOR_VERSION ${Boost_VERSION_MINOR})
+	SET(Boost_SUBMINOR_VERSION ${Boost_VERSION_PATCH})
+ENDIF()
+
 # boost.ASIO needs threading
 SET(BOOST_ASIO_LIBRARIES ${SYSTEM_THREAD_LIBS})
 
