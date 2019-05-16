@@ -113,6 +113,9 @@ public:
 			ioService.reset();
 #endif
 		}
+
+		// Cleanup manually added output info nodes.
+		moduleNode.getRelativeNode("outputs/").removeNode();
 	}
 
 	void removeClient(Connection *client) {
