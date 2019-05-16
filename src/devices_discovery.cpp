@@ -62,8 +62,8 @@ void dv::DevicesUpdateList() {
 					dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "USB device serial number.");
 
 				if (!dev.deviceErrorOpen && !dev.deviceErrorVersion) {
-					devNode.create<dvCfgType::INT>("LogicVersion", info->logicVersion, {0, INT16_MAX},
-						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of FPGA logic.");
+					devNode.create<dvCfgType::INT>("FirmwareVersion", info->firmwareVersion, {0, INT16_MAX},
+						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Version of device firmware.");
 					devNode.create<dvCfgType::BOOL>("DeviceIsMaster", info->deviceIsMaster, {},
 						dvCfgFlags::READ_ONLY | dvCfgFlags::NO_EXPORT, "Device is timestamp master.");
 

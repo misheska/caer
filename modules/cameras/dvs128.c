@@ -161,8 +161,8 @@ static bool caerInputDVS128Init(dvModuleData moduleData) {
 	dvConfigNodeCreateInt(sourceInfoNode, "usbDeviceAddress", devInfo.deviceUSBDeviceAddress, 0, 255,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device USB device address.");
 
-	dvConfigNodeCreateInt(sourceInfoNode, "logicVersion", devInfo.logicVersion, devInfo.logicVersion,
-		devInfo.logicVersion, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device FPGA logic version.");
+	dvConfigNodeCreateInt(sourceInfoNode, "firmwareVersion", devInfo.firmwareVersion, devInfo.firmwareVersion,
+		devInfo.firmwareVersion, DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Device USB firmware version.");
 	dvConfigNodeCreateBool(sourceInfoNode, "deviceIsMaster", devInfo.deviceIsMaster,
 		DVCFG_FLAGS_READ_ONLY | DVCFG_FLAGS_NO_EXPORT, "Timestamp synchronization support: device master status.");
 
